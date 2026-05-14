@@ -24,6 +24,7 @@ input-files:
   - docs/verification/dictionary-mark/self-test/validation.md
   - docs/verification/dictionary-mark/utilities/utilities.md
   - docs/verification/dictionary-mark/utilities/glob-matcher.md
+  - docs/verification/dictionary-mark/utilities/path-helpers.md
   - docs/verification/ots/buildmark.md
   - docs/verification/ots/fileassert.md
   - docs/verification/ots/pandoc.md

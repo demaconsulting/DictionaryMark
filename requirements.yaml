@@ -13,6 +13,7 @@ includes:
   - docs/reqstream/dictionary-mark/dictionary/markdown-formatter.yaml
   - docs/reqstream/dictionary-mark/utilities/utilities.yaml
   - docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml
+  - docs/reqstream/dictionary-mark/utilities/path-helpers.yaml
   - docs/reqstream/dictionary-mark/platform-requirements.yaml
   - docs/reqstream/ots/xunit.yaml
   - docs/reqstream/ots/reqstream.yaml

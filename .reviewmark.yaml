@@ -220,6 +220,10 @@ reviews:
   - id: DictionaryMark-Utilities-PathHelpers
     title: Review of DictionaryMark PathHelpers unit implementation
     paths:
+      - "docs/reqstream/dictionary-mark/utilities/path-helpers.yaml"
       - "docs/design/dictionary-mark/utilities/utilities.md"
+      - "docs/design/dictionary-mark/utilities/path-helpers.md"
+      - "docs/verification/dictionary-mark/utilities/utilities.md"
+      - "docs/verification/dictionary-mark/utilities/path-helpers.md"
       - "src/**/Utilities/PathHelpers.cs"
       - "test/**/Utilities/PathHelpersTests.cs"
