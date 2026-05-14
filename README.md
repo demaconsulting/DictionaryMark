@@ -21,22 +21,60 @@ dictionarymark --input file1.yaml --input file2.yaml --sort alpha
 
 ## Options
 
-| Option | Description |
-| :--- | :--- |
-| `-v, --version` | Display version information |
-| `-?, -h, --help` | Display help |
-| `--silent` | Suppress console output |
-| `--validate` | Run self-validation |
-| `-i, --input <pattern>` | Input YAML file or glob pattern (repeatable) |
-| `-o, --output <file>` | Output Markdown file (default: stdout) |
-| `-f, --format <format>` | Output format: `bullets` (default) or `table` |
-| `-s, --section <heading>` | Section heading text |
-| `--term-header <header>` | Term column header for table format (default: Term) |
-| `--def-header <header>` | Definition column header (default: Definition) |
-| `--sort <order>` | Sort order: `file` (default) or `alpha` |
-| `--log <file>` | Write output to log file |
-| `--results <file>` | Write validation results (.trx or .xml) |
-| `--depth <n>` | Set heading depth (default: 1) |
+| Option                    | Description                                              |
+| :------------------------ | :------------------------------------------------------- |
+| `-v, --version`           | Display version information                              |
+| `-?, -h, --help`          | Display help                                             |
+| `--silent`                | Suppress console output                                  |
+| `--validate`              | Run self-validation                                      |
+| `-i, --input <pattern>`   | Input YAML file or glob pattern (repeatable)             |
+| `-o, --output <file>`     | Output Markdown file (default: stdout)                   |
+| `-f, --format <format>`   | Output format: `bullets` (default) or `table`            |
+| `-s, --section <heading>` | Section heading text                                     |
+| `--term-header <header>`  | Term column header for table format (default: Term)      |
+| `--def-header <header>`   | Definition column header (default: Definition)           |
+| `--sort <order>`          | Sort order: `file` (default) or `alpha`                  |
+| `--log <file>`            | Write output to log file                                 |
+| `--results <file>`        | Write validation results (.trx or .xml)                  |
+| `--depth <n>`             | Set heading depth (default: 1)                           |
+
+## Example
+
+Given an input file `glossary.yaml`:
+
+```yaml
+API: Application Programming Interface
+CLI: Command-Line Interface
+SDK: Software Development Kit
+```
+
+Running:
+
+```sh
+dictionarymark --input glossary.yaml --format table --section "Glossary"
+```
+
+Produces:
+
+```markdown
+# Glossary
+
+| Term | Definition                        |
+| :--- | :-------------------------------- |
+| API  | Application Programming Interface |
+| CLI  | Command-Line Interface            |
+| SDK  | Software Development Kit          |
+```
+
+Or with `--format bullets`:
+
+```markdown
+# Glossary
+
+- **API** — Application Programming Interface
+- **CLI** — Command-Line Interface
+- **SDK** — Software Development Kit
+```
 
 ## License
 

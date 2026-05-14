@@ -1,13 +1,14 @@
 ---
-title: Template DotNet Tool User Guide
-subtitle: A .NET Reference Implementation for CLI Tools
+title: DictionaryMark User Guide
+subtitle: Generate Markdown Dictionaries from YAML
 author: DEMA Consulting
-description: A .NET Reference Implementation for CLI Tools
+description: User guide for DictionaryMark, a .NET CLI tool that generates Markdown dictionary files from YAML input.
 lang: en-US
 keywords:
-  - Template DotNet Tool
+  - DictionaryMark
   - .NET
   - Command-Line Tool
-  - Documentation
-  - Best Practices
+  - Markdown
+  - YAML
+  - Dictionary
 ---
