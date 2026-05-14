@@ -1,0 +1,12 @@
+---
+# DictionaryMark Dictionary Subsystem Requirements
+
+sections:
+  - title: Dictionary Subsystem Requirements
+    requirements:
+      - id: DictionaryMark-Dictionary-Subsystem
+        title: The Dictionary subsystem shall provide YAML loading, conflict detection, and Markdown formatting.
+        justification: |
+          A cohesive dictionary subsystem enables clean separation of concerns and
+          facilitates testing of each component independently.
+        tests: []

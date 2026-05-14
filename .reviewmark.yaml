@@ -195,3 +195,30 @@ reviews:
     paths:
       - "docs/reqstream/ots/xunit.yaml"
       - "docs/verification/ots/xunit.md"
+
+  # DictionaryMark Reviews
+  - id: DictionaryMark-Architecture
+    title: Review of DictionaryMark system architecture
+    paths:
+      - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/dictionary-mark.md"
+      - "docs/verification/dictionary-mark/dictionary-mark.md"
+      - "test/**/IntegrationTests.cs"
+
+  - id: DictionaryMark-Dictionary
+    title: Review of DictionaryMark Dictionary subsystem
+    paths:
+      - "docs/reqstream/dictionary-mark/dictionary/**/*.yaml"
+      - "docs/design/dictionary-mark/dictionary/dictionary.md"
+      - "docs/verification/dictionary-mark/dictionary/dictionary.md"
+      - "src/**/Dictionary/*.cs"
+      - "test/**/Dictionary/*.cs"
+
+  - id: DictionaryMark-Utilities-GlobMatcher
+    title: Review of DictionaryMark GlobMatcher unit
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml"
+      - "docs/design/dictionary-mark/utilities/utilities.md"
+      - "docs/verification/dictionary-mark/utilities/utilities.md"
+      - "src/**/Utilities/GlobMatcher.cs"
+      - "test/**/Utilities/GlobMatcherTests.cs"

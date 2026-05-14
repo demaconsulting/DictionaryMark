@@ -1,0 +1,40 @@
+---
+# DictionaryMark MarkdownFormatter Unit Requirements
+
+sections:
+  - title: MarkdownFormatter Unit Requirements
+    requirements:
+      - id: DictionaryMark-Formatter-Bullets
+        title: The MarkdownFormatter class shall format dictionary entries as a Markdown bullet list.
+        justification: |
+          Bullet list format is a simple, readable format for glossary-style content.
+        tests:
+          - MarkdownFormatter_Format_BulletsFormat_GeneratesBulletList
+          - MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading
+
+      - id: DictionaryMark-Formatter-Table
+        title: The MarkdownFormatter class shall format dictionary entries as a Markdown table.
+        justification: |
+          Table format provides a structured presentation suitable for documentation
+          with many entries or side-by-side comparisons.
+        tests:
+          - MarkdownFormatter_Format_TableFormat_GeneratesTable
+          - MarkdownFormatter_Format_TableWithSectionHeading_IncludesHeading
+          - MarkdownFormatter_Format_TableWithCustomHeaders_UsesCustomHeaders
+          - MarkdownFormatter_Format_TableWithPipeInValue_EscapesPipe
+
+      - id: DictionaryMark-Formatter-Sorting
+        title: The MarkdownFormatter class shall sort entries alphabetically when requested.
+        justification: |
+          Alphabetical ordering helps users quickly locate terms in large dictionaries.
+        tests:
+          - MarkdownFormatter_Format_AlphabeticalSort_SortsEntries
+          - MarkdownFormatter_Format_FileOrder_PreservesOrder
+
+      - id: DictionaryMark-Formatter-Deduplication
+        title: The MarkdownFormatter class shall deduplicate entries, keeping the first occurrence.
+        justification: |
+          Deduplication ensures each term appears only once in the output, preventing
+          redundant entries from multiple source files.
+        tests:
+          - MarkdownFormatter_Format_DuplicateEntries_DeduplicatesKeepingFirst

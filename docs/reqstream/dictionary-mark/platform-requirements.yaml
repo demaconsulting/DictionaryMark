@@ -1,0 +1,23 @@
+---
+# DictionaryMark Platform Requirements
+
+sections:
+  - title: Platform Requirements
+    requirements:
+      - id: DictionaryMark-Platform-DotNet8
+        title: The tool shall run on .NET 8.0 (LTS).
+        justification: |
+          .NET 8.0 is the current long-term support release, ensuring broad compatibility.
+        tests: []
+
+      - id: DictionaryMark-Platform-DotNet9
+        title: The tool shall run on .NET 9.0.
+        justification: |
+          .NET 9.0 is the current standard release.
+        tests: []
+
+      - id: DictionaryMark-Platform-DotNet10
+        title: The tool shall run on .NET 10.0.
+        justification: |
+          .NET 10.0 ensures forward compatibility with upcoming runtime versions.
+        tests: []

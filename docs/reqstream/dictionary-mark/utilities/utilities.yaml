@@ -1,0 +1,12 @@
+---
+# DictionaryMark Utilities Subsystem Requirements
+
+sections:
+  - title: Utilities Subsystem Requirements
+    requirements:
+      - id: DictionaryMark-Utilities-Subsystem
+        title: The Utilities subsystem shall provide shared file-matching utilities.
+        justification: |
+          Shared utilities prevent duplication and ensure consistent behavior
+          across all tool subsystems.
+        tests: []

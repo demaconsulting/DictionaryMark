@@ -1,0 +1,33 @@
+---
+# DictionaryMark Program Unit Requirements
+
+sections:
+  - title: Program Unit Requirements
+    requirements:
+      - id: DictionaryMark-Program-Version
+        title: The Program unit shall display version information when the version flag is set.
+        justification: |
+          Provides users with the tool version for troubleshooting and compatibility checks.
+        tests:
+          - Program_Run_WithVersionFlag_DisplaysVersionOnly
+
+      - id: DictionaryMark-Program-Help
+        title: The Program unit shall display usage information when the help flag is set.
+        justification: |
+          Users need access to inline documentation for available flags and usage patterns.
+        tests:
+          - Program_Run_WithHelpFlag_DisplaysUsageInformation
+
+      - id: DictionaryMark-Program-Validate
+        title: The Program unit shall run self-validation when the validate flag is set.
+        justification: |
+          Allows the tool to verify its own correct operation in the deployment environment.
+        tests:
+          - Program_Run_WithValidateFlag_RunsValidation
+
+      - id: DictionaryMark-Program-DefaultBehavior
+        title: The Program unit shall run tool logic when no action flag is set.
+        justification: |
+          Ensures the tool always performs a meaningful action when invoked.
+        tests:
+          - Program_Run_NoArguments_DisplaysDefaultBehavior
