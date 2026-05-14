@@ -295,16 +295,16 @@ internal sealed class Context : IDisposable
 
                 case "-f":
                 case "--format":
-                {
-                    var formatValue = GetRequiredStringArgument(arg, args, index, "a format value (table or bullets)");
-                    Format = formatValue.ToLowerInvariant() switch
                     {
-                        "table" => OutputFormat.Table,
-                        "bullets" => OutputFormat.Bullets,
-                        _ => throw new ArgumentException($"{arg} requires 'table' or 'bullets'", nameof(args))
-                    };
-                    return index + 1;
-                }
+                        var formatValue = GetRequiredStringArgument(arg, args, index, "a format value (table or bullets)");
+                        Format = formatValue.ToLowerInvariant() switch
+                        {
+                            "table" => OutputFormat.Table,
+                            "bullets" => OutputFormat.Bullets,
+                            _ => throw new ArgumentException($"{arg} requires 'table' or 'bullets'", nameof(args))
+                        };
+                        return index + 1;
+                    }
 
                 case "-s":
                 case "--section":
@@ -321,16 +321,16 @@ internal sealed class Context : IDisposable
                     return index + 1;
 
                 case "--sort":
-                {
-                    var sortValue = GetRequiredStringArgument(arg, args, index, "a sort value (file or alpha)");
-                    SortBy = sortValue.ToLowerInvariant() switch
                     {
-                        "file" => SortOrder.FileOrder,
-                        "alpha" => SortOrder.Alphabetical,
-                        _ => throw new ArgumentException($"{arg} requires 'file' or 'alpha'", nameof(args))
-                    };
-                    return index + 1;
-                }
+                        var sortValue = GetRequiredStringArgument(arg, args, index, "a sort value (file or alpha)");
+                        SortBy = sortValue.ToLowerInvariant() switch
+                        {
+                            "file" => SortOrder.FileOrder,
+                            "alpha" => SortOrder.Alphabetical,
+                            _ => throw new ArgumentException($"{arg} requires 'file' or 'alpha'", nameof(args))
+                        };
+                        return index + 1;
+                    }
 
                 default:
                     throw new ArgumentException($"Unsupported argument '{arg}'", nameof(args));

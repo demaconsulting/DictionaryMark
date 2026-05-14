@@ -130,7 +130,7 @@ public class ValidationTests
         {
             using var context = Context.Create(["--silent", "--results", xmlFile]);
 
-            // Act: run validation with XML results output  
+            // Act: run validation with XML results output
             Validation.Run(context);
 
             // Assert: verify XML file is created with JUnit format content
