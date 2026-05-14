@@ -1,0 +1,23 @@
+---
+resource-path:
+  - docs/design
+  - docs/design/template-dot-net-tool
+  - docs/design/template-dot-net-tool/cli
+  - docs/design/template-dot-net-tool/self-test
+  - docs/design/template-dot-net-tool/utilities
+  - docs/template
+
+input-files:
+  - docs/design/title.txt
+  - docs/design/introduction.md
+  - docs/design/template-dot-net-tool/template-dot-net-tool.md
+  - docs/design/template-dot-net-tool/program.md
+  - docs/design/template-dot-net-tool/cli/cli.md
+  - docs/design/template-dot-net-tool/cli/context.md
+  - docs/design/template-dot-net-tool/self-test/self-test.md
+  - docs/design/template-dot-net-tool/self-test/validation.md
+  - docs/design/template-dot-net-tool/utilities/utilities.md
+  - docs/design/template-dot-net-tool/utilities/path-helpers.md
+template: template.html
+table-of-contents: true
+number-sections: true

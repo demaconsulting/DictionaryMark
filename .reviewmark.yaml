@@ -1,0 +1,197 @@
+---
+# ReviewMark Configuration File
+# This file defines which files require review, where the evidence store is located,
+# and how files are grouped into named review-sets following hierarchical scope principles.
+
+# Patterns identifying all files that require review.
+# Processed in order; prefix a pattern with '!' to exclude.
+needs-review:
+  - "README.md"                   # Root README file
+  - "requirements.yaml"           # Root requirements file
+  - "**/*.cs"                     # All C# source and test files
+  - "docs/reqstream/**/*.yaml"    # Requirements files
+  - "docs/design/**/*.md"         # Design documentation files
+  - "docs/verification/**/*.md"   # Verification documentation files
+  - "docs/user_guide/**/*.md"     # User guide documentation
+  - "!**/obj/**"                  # Exclude build output
+  - "!**/bin/**"                  # Exclude build output
+  - "!node_modules/**"            # Exclude npm dependencies
+  - "!**/.venv/**"                # Exclude Python virtual environment
+
+# Evidence source: review data and index.json are located in the 'reviews' branch
+# of this repository, accessed through the GitHub public HTTPS raw content access.
+# Note: The 'reviews' branch must be created and populated with review evidence PDFs
+# and an index.json before enforcement (--enforce flag) can be enabled in the pipeline.
+evidence-source:
+  type: url
+  location: https://raw.githubusercontent.com/demaconsulting/TemplateDotNetTool/reviews/index.json
+
+# Review sets following hierarchical scope principles.
+# Each review-set focuses on a single compliance question with manageable file counts.
+reviews:
+  # Purpose
+  - id: Purpose
+    title: Review of user-facing capabilities and system promises
+    paths:
+      - "README.md"
+      - "docs/user_guide/**/*.md"
+      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
+      - "docs/design/introduction.md"
+      - "docs/design/template-dot-net-tool/template-dot-net-tool.md"
+
+  # TemplateTool - Specials
+  - id: TemplateTool-Architecture
+    title: Review of Template DotNet Tool system architecture and operational validation
+    paths:
+      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
+      - "docs/design/introduction.md"
+      - "docs/design/template-dot-net-tool/template-dot-net-tool.md"
+      - "docs/verification/template-dot-net-tool/template-dot-net-tool.md"
+      - "test/**/IntegrationTests.cs"
+
+  - id: TemplateTool-Design
+    title: Review of Template DotNet Tool architectural and design consistency
+    paths:
+      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
+      - "docs/reqstream/template-dot-net-tool/platform-requirements.yaml"
+      - "docs/design/introduction.md"
+      - "docs/design/template-dot-net-tool/**/*.md"
+      - "docs/verification/introduction.md"
+
+  - id: TemplateTool-AllRequirements
+    title: Review of Template DotNet Tool requirements quality and traceability
+    paths:
+      - "requirements.yaml"
+      - "docs/reqstream/template-dot-net-tool/**/*.yaml"
+      - "docs/reqstream/ots/*.yaml"
+
+  - id: OTS-Verification
+    title: Review of OTS software verification evidence
+    paths:
+      - "docs/reqstream/ots/*.yaml"
+      - "docs/verification/ots/*.md"
+
+  # TemplateTool - Program
+  - id: TemplateTool-Program
+    title: Review of Template DotNet Tool Program unit implementation
+    paths:
+      - "docs/reqstream/template-dot-net-tool/program.yaml"
+      - "docs/design/template-dot-net-tool/program.md"
+      - "docs/verification/template-dot-net-tool/program.md"
+      - "src/**/Program.cs"
+      - "test/**/ProgramTests.cs"
+
+  # TemplateTool - Cli
+  - id: TemplateTool-Cli
+    title: Review of Template DotNet Tool Cli subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/template-dot-net-tool/cli/cli.yaml"
+      - "docs/design/template-dot-net-tool/cli/cli.md"
+      - "docs/verification/template-dot-net-tool/cli/cli.md"
+      - "test/**/Cli/CliSubsystemTests.cs"
+
+  - id: TemplateTool-Cli-Context
+    title: Review of Template DotNet Tool Context unit implementation
+    paths:
+      - "docs/reqstream/template-dot-net-tool/cli/context.yaml"
+      - "docs/design/template-dot-net-tool/cli/context.md"
+      - "docs/verification/template-dot-net-tool/cli/context.md"
+      - "src/**/Cli/Context.cs"
+      - "test/**/Cli/ContextTests.cs"
+
+  # TemplateTool - SelfTest
+  - id: TemplateTool-SelfTest
+    title: Review of Template DotNet Tool SelfTest subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/template-dot-net-tool/self-test/self-test.yaml"
+      - "docs/design/template-dot-net-tool/self-test/self-test.md"
+      - "docs/verification/template-dot-net-tool/self-test/self-test.md"
+      - "test/**/SelfTest/SelfTestSubsystemTests.cs"
+
+  - id: TemplateTool-SelfTest-Validation
+    title: Review of Template DotNet Tool Validation unit implementation
+    paths:
+      - "docs/reqstream/template-dot-net-tool/self-test/validation.yaml"
+      - "docs/design/template-dot-net-tool/self-test/validation.md"
+      - "docs/verification/template-dot-net-tool/self-test/validation.md"
+      - "src/**/SelfTest/Validation.cs"
+      - "test/**/SelfTest/ValidationTests.cs"
+
+  # TemplateTool - Utilities
+  - id: TemplateTool-Utilities
+    title: Review of Template DotNet Tool Utilities subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/template-dot-net-tool/utilities/utilities.yaml"
+      - "docs/design/template-dot-net-tool/utilities/utilities.md"
+      - "docs/verification/template-dot-net-tool/utilities/utilities.md"
+      - "test/**/Utilities/UtilitiesSubsystemTests.cs"
+
+  - id: TemplateTool-Utilities-PathHelpers
+    title: Review of Template DotNet Tool PathHelpers unit implementation
+    paths:
+      - "docs/reqstream/template-dot-net-tool/utilities/path-helpers.yaml"
+      - "docs/design/template-dot-net-tool/utilities/path-helpers.md"
+      - "docs/verification/template-dot-net-tool/utilities/path-helpers.md"
+      - "src/**/Utilities/PathHelpers.cs"
+      - "test/**/Utilities/PathHelpersTests.cs"
+
+  # OTS Items
+  - id: OTS-BuildMark
+    title: Review of BuildMark OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/buildmark.yaml"
+      - "docs/verification/ots/buildmark.md"
+
+  - id: OTS-FileAssert
+    title: Review of FileAssert OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/fileassert.yaml"
+      - "docs/verification/ots/fileassert.md"
+
+  - id: OTS-Pandoc
+    title: Review of Pandoc OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/pandoc.yaml"
+      - "docs/verification/ots/pandoc.md"
+
+  - id: OTS-ReqStream
+    title: Review of ReqStream OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/reqstream.yaml"
+      - "docs/verification/ots/reqstream.md"
+
+  - id: OTS-ReviewMark
+    title: Review of ReviewMark OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/reviewmark.yaml"
+      - "docs/verification/ots/reviewmark.md"
+
+  - id: OTS-SarifMark
+    title: Review of SarifMark OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/sarifmark.yaml"
+      - "docs/verification/ots/sarifmark.md"
+
+  - id: OTS-SonarMark
+    title: Review of SonarMark OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/sonarmark.yaml"
+      - "docs/verification/ots/sonarmark.md"
+
+  - id: OTS-VersionMark
+    title: Review of VersionMark OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/versionmark.yaml"
+      - "docs/verification/ots/versionmark.md"
+
+  - id: OTS-WeasyPrint
+    title: Review of WeasyPrint OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/weasyprint.yaml"
+      - "docs/verification/ots/weasyprint.md"
+
+  - id: OTS-xUnit
+    title: Review of xUnit OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/xunit.yaml"
+      - "docs/verification/ots/xunit.md"
