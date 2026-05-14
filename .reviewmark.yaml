@@ -24,118 +24,18 @@ needs-review:
 # and an index.json before enforcement (--enforce flag) can be enabled in the pipeline.
 evidence-source:
   type: url
-  location: https://raw.githubusercontent.com/demaconsulting/TemplateDotNetTool/reviews/index.json
+  location: https://raw.githubusercontent.com/demaconsulting/DictionaryMark/reviews/index.json
 
 # Review sets following hierarchical scope principles.
 # Each review-set focuses on a single compliance question with manageable file counts.
 reviews:
-  # Purpose
-  - id: Purpose
-    title: Review of user-facing capabilities and system promises
-    paths:
-      - "README.md"
-      - "docs/user_guide/**/*.md"
-      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
-      - "docs/design/introduction.md"
-      - "docs/design/template-dot-net-tool/template-dot-net-tool.md"
-
-  # TemplateTool - Specials
-  - id: TemplateTool-Architecture
-    title: Review of Template DotNet Tool system architecture and operational validation
-    paths:
-      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
-      - "docs/design/introduction.md"
-      - "docs/design/template-dot-net-tool/template-dot-net-tool.md"
-      - "docs/verification/template-dot-net-tool/template-dot-net-tool.md"
-      - "test/**/IntegrationTests.cs"
-
-  - id: TemplateTool-Design
-    title: Review of Template DotNet Tool architectural and design consistency
-    paths:
-      - "docs/reqstream/template-dot-net-tool/template-dot-net-tool.yaml"
-      - "docs/reqstream/template-dot-net-tool/platform-requirements.yaml"
-      - "docs/design/introduction.md"
-      - "docs/design/template-dot-net-tool/**/*.md"
-      - "docs/verification/introduction.md"
-
-  - id: TemplateTool-AllRequirements
-    title: Review of Template DotNet Tool requirements quality and traceability
-    paths:
-      - "requirements.yaml"
-      - "docs/reqstream/template-dot-net-tool/**/*.yaml"
-      - "docs/reqstream/ots/*.yaml"
-
+  # OTS Items
   - id: OTS-Verification
     title: Review of OTS software verification evidence
     paths:
       - "docs/reqstream/ots/*.yaml"
       - "docs/verification/ots/*.md"
 
-  # TemplateTool - Program
-  - id: TemplateTool-Program
-    title: Review of Template DotNet Tool Program unit implementation
-    paths:
-      - "docs/reqstream/template-dot-net-tool/program.yaml"
-      - "docs/design/template-dot-net-tool/program.md"
-      - "docs/verification/template-dot-net-tool/program.md"
-      - "src/**/Program.cs"
-      - "test/**/ProgramTests.cs"
-
-  # TemplateTool - Cli
-  - id: TemplateTool-Cli
-    title: Review of Template DotNet Tool Cli subsystem architecture and interfaces
-    paths:
-      - "docs/reqstream/template-dot-net-tool/cli/cli.yaml"
-      - "docs/design/template-dot-net-tool/cli/cli.md"
-      - "docs/verification/template-dot-net-tool/cli/cli.md"
-      - "test/**/Cli/CliSubsystemTests.cs"
-
-  - id: TemplateTool-Cli-Context
-    title: Review of Template DotNet Tool Context unit implementation
-    paths:
-      - "docs/reqstream/template-dot-net-tool/cli/context.yaml"
-      - "docs/design/template-dot-net-tool/cli/context.md"
-      - "docs/verification/template-dot-net-tool/cli/context.md"
-      - "src/**/Cli/Context.cs"
-      - "test/**/Cli/ContextTests.cs"
-
-  # TemplateTool - SelfTest
-  - id: TemplateTool-SelfTest
-    title: Review of Template DotNet Tool SelfTest subsystem architecture and interfaces
-    paths:
-      - "docs/reqstream/template-dot-net-tool/self-test/self-test.yaml"
-      - "docs/design/template-dot-net-tool/self-test/self-test.md"
-      - "docs/verification/template-dot-net-tool/self-test/self-test.md"
-      - "test/**/SelfTest/SelfTestSubsystemTests.cs"
-
-  - id: TemplateTool-SelfTest-Validation
-    title: Review of Template DotNet Tool Validation unit implementation
-    paths:
-      - "docs/reqstream/template-dot-net-tool/self-test/validation.yaml"
-      - "docs/design/template-dot-net-tool/self-test/validation.md"
-      - "docs/verification/template-dot-net-tool/self-test/validation.md"
-      - "src/**/SelfTest/Validation.cs"
-      - "test/**/SelfTest/ValidationTests.cs"
-
-  # TemplateTool - Utilities
-  - id: TemplateTool-Utilities
-    title: Review of Template DotNet Tool Utilities subsystem architecture and interfaces
-    paths:
-      - "docs/reqstream/template-dot-net-tool/utilities/utilities.yaml"
-      - "docs/design/template-dot-net-tool/utilities/utilities.md"
-      - "docs/verification/template-dot-net-tool/utilities/utilities.md"
-      - "test/**/Utilities/UtilitiesSubsystemTests.cs"
-
-  - id: TemplateTool-Utilities-PathHelpers
-    title: Review of Template DotNet Tool PathHelpers unit implementation
-    paths:
-      - "docs/reqstream/template-dot-net-tool/utilities/path-helpers.yaml"
-      - "docs/design/template-dot-net-tool/utilities/path-helpers.md"
-      - "docs/verification/template-dot-net-tool/utilities/path-helpers.md"
-      - "src/**/Utilities/PathHelpers.cs"
-      - "test/**/Utilities/PathHelpersTests.cs"
-
-  # OTS Items
   - id: OTS-BuildMark
     title: Review of BuildMark OTS verification evidence
     paths:
@@ -197,28 +97,129 @@ reviews:
       - "docs/verification/ots/xunit.md"
 
   # DictionaryMark Reviews
+  - id: DictionaryMark-Purpose
+    title: Review of DictionaryMark user-facing capabilities and system promises
+    paths:
+      - "README.md"
+      - "docs/user_guide/**/*.md"
+      - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/design/introduction.md"
+      - "docs/design/dictionary-mark/dictionary-mark.md"
+
   - id: DictionaryMark-Architecture
-    title: Review of DictionaryMark system architecture
+    title: Review of DictionaryMark system architecture and operational validation
     paths:
       - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/design/introduction.md"
       - "docs/design/dictionary-mark/dictionary-mark.md"
       - "docs/verification/dictionary-mark/dictionary-mark.md"
       - "test/**/IntegrationTests.cs"
 
+  - id: DictionaryMark-AllRequirements
+    title: Review of DictionaryMark requirements quality and traceability
+    paths:
+      - "requirements.yaml"
+      - "docs/reqstream/dictionary-mark/**/*.yaml"
+      - "docs/reqstream/ots/*.yaml"
+
+  - id: DictionaryMark-Program
+    title: Review of DictionaryMark Program unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/program.yaml"
+      - "docs/design/dictionary-mark/program.md"
+      - "docs/verification/dictionary-mark/program.md"
+      - "src/**/Program.cs"
+      - "test/**/ProgramTests.cs"
+
+  - id: DictionaryMark-Cli
+    title: Review of DictionaryMark Cli subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/dictionary-mark/cli/cli.yaml"
+      - "docs/design/dictionary-mark/cli/cli.md"
+      - "docs/verification/dictionary-mark/cli/cli.md"
+      - "test/**/Cli/CliSubsystemTests.cs"
+
+  - id: DictionaryMark-Cli-Context
+    title: Review of DictionaryMark Context unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/cli/context.yaml"
+      - "docs/design/dictionary-mark/cli/context.md"
+      - "docs/verification/dictionary-mark/cli/context.md"
+      - "src/**/Cli/Context.cs"
+      - "test/**/Cli/ContextTests.cs"
+
+  - id: DictionaryMark-SelfTest
+    title: Review of DictionaryMark SelfTest subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/dictionary-mark/self-test/self-test.yaml"
+      - "docs/design/dictionary-mark/self-test/self-test.md"
+      - "docs/verification/dictionary-mark/self-test/self-test.md"
+      - "test/**/SelfTest/SelfTestSubsystemTests.cs"
+
+  - id: DictionaryMark-SelfTest-Validation
+    title: Review of DictionaryMark Validation unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/self-test/validation.yaml"
+      - "docs/design/dictionary-mark/self-test/validation.md"
+      - "docs/verification/dictionary-mark/self-test/validation.md"
+      - "src/**/SelfTest/Validation.cs"
+      - "test/**/SelfTest/ValidationTests.cs"
+
   - id: DictionaryMark-Dictionary
     title: Review of DictionaryMark Dictionary subsystem
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary/**/*.yaml"
+      - "docs/reqstream/dictionary-mark/dictionary/dictionary.yaml"
       - "docs/design/dictionary-mark/dictionary/dictionary.md"
       - "docs/verification/dictionary-mark/dictionary/dictionary.md"
-      - "src/**/Dictionary/*.cs"
-      - "test/**/Dictionary/*.cs"
+      - "test/**/Dictionary/DictionaryGeneratorTests.cs"
 
-  - id: DictionaryMark-Utilities-GlobMatcher
-    title: Review of DictionaryMark GlobMatcher unit
+  - id: DictionaryMark-Dictionary-YamlLoader
+    title: Review of DictionaryMark YamlDictionaryLoader unit implementation
     paths:
-      - "docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml"
+      - "docs/reqstream/dictionary-mark/dictionary/yaml-loader.yaml"
+      - "docs/design/dictionary-mark/dictionary/yaml-loader.md"
+      - "docs/verification/dictionary-mark/dictionary/yaml-loader.md"
+      - "src/**/Dictionary/YamlDictionaryLoader.cs"
+      - "test/**/Dictionary/YamlDictionaryLoaderTests.cs"
+
+  - id: DictionaryMark-Dictionary-ConflictDetector
+    title: Review of DictionaryMark ConflictDetector unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/dictionary/conflict-detector.yaml"
+      - "docs/design/dictionary-mark/dictionary/conflict-detector.md"
+      - "docs/verification/dictionary-mark/dictionary/conflict-detector.md"
+      - "src/**/Dictionary/ConflictDetector.cs"
+      - "test/**/Dictionary/ConflictDetectorTests.cs"
+
+  - id: DictionaryMark-Dictionary-MarkdownFormatter
+    title: Review of DictionaryMark MarkdownFormatter unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/dictionary/markdown-formatter.yaml"
+      - "docs/design/dictionary-mark/dictionary/markdown-formatter.md"
+      - "docs/verification/dictionary-mark/dictionary/markdown-formatter.md"
+      - "src/**/Dictionary/MarkdownFormatter.cs"
+      - "test/**/Dictionary/MarkdownFormatterTests.cs"
+
+  - id: DictionaryMark-Utilities
+    title: Review of DictionaryMark Utilities subsystem architecture and interfaces
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/utilities.yaml"
       - "docs/design/dictionary-mark/utilities/utilities.md"
       - "docs/verification/dictionary-mark/utilities/utilities.md"
+      - "test/**/Utilities/UtilitiesSubsystemTests.cs"
+
+  - id: DictionaryMark-Utilities-GlobMatcher
+    title: Review of DictionaryMark GlobMatcher unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml"
+      - "docs/design/dictionary-mark/utilities/glob-matcher.md"
+      - "docs/verification/dictionary-mark/utilities/glob-matcher.md"
       - "src/**/Utilities/GlobMatcher.cs"
       - "test/**/Utilities/GlobMatcherTests.cs"
+
+  - id: DictionaryMark-Utilities-PathHelpers
+    title: Review of DictionaryMark PathHelpers unit implementation
+    paths:
+      - "docs/design/dictionary-mark/utilities/utilities.md"
+      - "src/**/Utilities/PathHelpers.cs"
+      - "test/**/Utilities/PathHelpersTests.cs"

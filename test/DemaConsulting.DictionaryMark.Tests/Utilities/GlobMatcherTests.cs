@@ -91,4 +91,38 @@ public class GlobMatcherTests
             File.Delete(tmpFile);
         }
     }
+
+    /// <summary>
+    ///     Test that an absolute path glob pattern matches files in the target directory.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles()
+    {
+        var tmpDir = Path.GetTempPath();
+        var tmpFile = Path.Combine(tmpDir, $"glob-test-{Guid.NewGuid()}.yaml");
+        File.WriteAllText(tmpFile, "key: value");
+        try
+        {
+            // Use an absolute path with a wildcard pattern
+            var pattern = Path.Combine(tmpDir, "*.yaml");
+            var result = GlobMatcher.GetFiles([pattern]);
+            Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            File.Delete(tmpFile);
+        }
+    }
+
+    /// <summary>
+    ///     Test that an absolute path glob pattern with no matches returns empty.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty()
+    {
+        var nonExistentDir = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}");
+        var pattern = Path.Combine(nonExistentDir, "*.yaml");
+        var result = GlobMatcher.GetFiles([pattern]);
+        Assert.Empty(result);
+    }
 }

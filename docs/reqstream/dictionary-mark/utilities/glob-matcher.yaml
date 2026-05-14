@@ -14,6 +14,8 @@ sections:
           - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty
           - GlobMatcher_GetFiles_EmptyPatternList_ReturnsEmpty
           - GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults
+          - GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
+          - GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty
 
       - id: DictionaryMark-GlobMatcher-Validation
         title: The GlobMatcher class shall reject null or empty patterns with a descriptive error.

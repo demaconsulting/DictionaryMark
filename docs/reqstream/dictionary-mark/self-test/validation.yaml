@@ -1,0 +1,36 @@
+---
+# DictionaryMark Validation Unit Requirements
+
+sections:
+  - title: Validation Unit Requirements
+    requirements:
+      - id: DictionaryMark-Validation-Run
+        title: The Validation unit shall execute self-validation tests and report results.
+        justification: |
+          Self-validation demonstrates the tool is functioning correctly in its
+          deployment environment, satisfying tool qualification requirements.
+        tests:
+          - Validation_Run_WithSilentContext_PrintsSummary
+          - Validation_Run_NullContext_ThrowsArgumentNullException
+
+      - id: DictionaryMark-Validation-TrxOutput
+        title: The Validation unit shall write TRX-format results when a .trx results file is specified.
+        justification: |
+          TRX format is widely used in MSTest-compatible toolchains and CI pipelines.
+        tests:
+          - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
+
+      - id: DictionaryMark-Validation-JUnitOutput
+        title: The Validation unit shall write JUnit-format results when a .xml results file is specified.
+        justification: |
+          JUnit XML is the most widely supported test results interchange format,
+          enabling integration with a broad range of CI/CD and reporting tools.
+        tests:
+          - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
+
+      - id: DictionaryMark-Validation-UnsupportedExtension
+        title: The Validation unit shall report an error for unsupported results file extensions.
+        justification: |
+          Clear error messages help users identify misconfiguration quickly.
+        tests:
+          - SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile

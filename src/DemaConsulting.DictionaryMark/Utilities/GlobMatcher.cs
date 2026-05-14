@@ -59,17 +59,70 @@ internal static class GlobMatcher
                 continue;
             }
 
-            // Use glob matching relative to current directory
-            var matcher = new Matcher();
-            matcher.AddInclude(pattern);
-            var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Environment.CurrentDirectory)));
-            foreach (var match in result.Files)
+            // For absolute path with wildcards, find the non-wildcard base directory
+            if (Path.IsPathRooted(pattern))
             {
-                var fullPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, match.Path));
-                files.Add(fullPath);
+                MatchAbsoluteGlob(pattern, files);
+                continue;
             }
+
+            // Use glob matching relative to current directory
+            MatchRelativeGlob(pattern, files);
         }
 
         return [.. files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
+    ///     Matches an absolute path glob pattern against the file system.
+    /// </summary>
+    /// <param name="pattern">Absolute path pattern containing wildcards.</param>
+    /// <param name="files">Set to add matching file paths to.</param>
+    private static void MatchAbsoluteGlob(string pattern, HashSet<string> files)
+    {
+        var normalizedPattern = pattern.Replace('\\', '/');
+        var firstWildcard = normalizedPattern.IndexOfAny(['*', '?']);
+        var lastSepBeforeWildcard = normalizedPattern.LastIndexOf('/', firstWildcard);
+        string baseDir;
+        string relPattern;
+        if (lastSepBeforeWildcard >= 0)
+        {
+            baseDir = normalizedPattern[..lastSepBeforeWildcard];
+            relPattern = normalizedPattern[(lastSepBeforeWildcard + 1)..];
+        }
+        else
+        {
+            baseDir = Path.GetPathRoot(pattern) ?? Environment.CurrentDirectory;
+            relPattern = normalizedPattern[baseDir.Length..];
+        }
+
+        if (Directory.Exists(baseDir))
+        {
+            var matcher = new Matcher();
+            matcher.AddInclude(relPattern);
+            var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(baseDir)));
+            foreach (var match in result.Files)
+            {
+                var fullPath = Path.GetFullPath(Path.Combine(baseDir, match.Path));
+                files.Add(fullPath);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Matches a relative glob pattern against the current directory.
+    /// </summary>
+    /// <param name="pattern">Relative glob pattern.</param>
+    /// <param name="files">Set to add matching file paths to.</param>
+    private static void MatchRelativeGlob(string pattern, HashSet<string> files)
+    {
+        var matcher = new Matcher();
+        matcher.AddInclude(pattern);
+        var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Environment.CurrentDirectory)));
+        foreach (var match in result.Files)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, match.Path));
+            files.Add(fullPath);
+        }
     }
 }
