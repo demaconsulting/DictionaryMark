@@ -583,7 +583,7 @@ jobs:
           dotnet sarifmark
           --sarif artifacts/csharp.sarif
           --report docs/code_quality/generated/codeql-quality.md
-          --heading "Template DotNet Tool CodeQL Analysis"
+          --heading "DictionaryMark CodeQL Analysis"
           --report-depth 1
 
       - name: Display CodeQL Quality Report

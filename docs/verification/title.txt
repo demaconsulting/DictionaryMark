@@ -1,11 +1,11 @@
 ---
-title: Template DotNet Tool Verification Design Document
-subtitle: A .NET Reference Implementation for CLI Tools
+title: DictionaryMark Verification Design Document
+subtitle: Generate Markdown Dictionaries from YAML
 author: DEMA Consulting
-description: Verification design document for the Template DotNet Tool
+description: Verification design document for DictionaryMark
 lang: en-US
 keywords:
-  - Template DotNet Tool
+  - DictionaryMark
   - .NET
   - Command-Line Tool
   - Verification

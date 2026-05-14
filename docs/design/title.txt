@@ -1,11 +1,11 @@
 ---
-title: Template DotNet Tool Software Design Document
-subtitle: A .NET Reference Implementation for CLI Tools
+title: DictionaryMark Software Design Document
+subtitle: Generate Markdown Dictionaries from YAML
 author: DEMA Consulting
-description: Detailed design document for the Template DotNet Tool
+description: Detailed design document for DictionaryMark
 lang: en-US
 keywords:
-  - Template DotNet Tool
+  - DictionaryMark
   - .NET
   - Command-Line Tool
   - Design
