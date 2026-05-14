@@ -746,9 +746,9 @@ jobs:
           design
 
       # === COMPILE VERIFICATION DOCUMENT ===
-      # This section generates the Verification Design document using Pandoc and WeasyPrint.
+      # This section generates the Verification document using Pandoc and WeasyPrint.
       # FileAssert validates that the HTML and PDF outputs contain expected content.
-      # Downstream projects: Add any additional verification document steps here.
+      # Downstream projects: Add any additional verification steps here.
 
       - name: Create verification output directory
         shell: bash
