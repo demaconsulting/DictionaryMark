@@ -27,7 +27,7 @@ when no conflicts exist.
 - Same term + same definition → no conflict (deduplication allowed).
 - Same term + different definition → conflict (one message per term).
 
-**Throws:** `ArgumentNullException` — when `entries` is null.
+**Throws:** `ArgumentNullException` - when `entries` is null.
 
 ## Interactions
 

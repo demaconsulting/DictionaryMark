@@ -11,13 +11,46 @@ sections:
           deployment environment, satisfying tool qualification requirements.
         tests:
           - Validation_Run_WithSilentContext_PrintsSummary
+          - Validation_Run_WithSilentContext_ExitCodeIsZero
           - Validation_Run_NullContext_ThrowsArgumentNullException
+
+      - id: DictionaryMark-Validation-BulletGeneration
+        title: The Validation unit shall include a self-test that verifies bullet-list generation from YAML input.
+        justification: |
+          Confirms the core bullet-list output path is functioning correctly in the
+          deployment environment.
+        tests:
+          - Validation_Run_WithSilentContext_BulletGenerationTestPasses
+
+      - id: DictionaryMark-Validation-TableGeneration
+        title: The Validation unit shall include a self-test that verifies Markdown table generation from YAML input.
+        justification: |
+          Confirms the core table output path is functioning correctly in the
+          deployment environment.
+        tests:
+          - Validation_Run_WithSilentContext_TableGenerationTestPasses
+
+      - id: DictionaryMark-Validation-CustomHeaders
+        title: The Validation unit shall include a self-test that verifies custom column headers in table output.
+        justification: |
+          Confirms that the --term-header and --def-header options are applied correctly.
+        tests:
+          - Validation_Run_WithSilentContext_CustomHeadersTestPasses
+
+      - id: DictionaryMark-Validation-ConflictDetection
+        title: The Validation unit shall include a self-test that verifies conflicting definitions are detected.
+        justification: |
+          Confirms that cross-file conflict detection is functioning correctly in the
+          deployment environment.
+        tests:
+          - Validation_Run_WithSilentContext_ConflictDetectionTestPasses
 
       - id: DictionaryMark-Validation-TrxOutput
         title: The Validation unit shall write TRX-format results when a .trx results file is specified.
         justification: |
           TRX format is widely used in MSTest-compatible toolchains and CI pipelines.
         tests:
+          - Validation_Run_WithTrxResultsFile_WritesTrxFile
           - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
 
       - id: DictionaryMark-Validation-JUnitOutput
@@ -26,6 +59,7 @@ sections:
           JUnit XML is the most widely supported test results interchange format,
           enabling integration with a broad range of CI/CD and reporting tools.
         tests:
+          - Validation_Run_WithXmlResultsFile_WritesXmlFile
           - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
 
       - id: DictionaryMark-Validation-UnsupportedExtension
@@ -33,4 +67,5 @@ sections:
         justification: |
           Clear error messages help users identify misconfiguration quickly.
         tests:
+          - Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile
           - SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile

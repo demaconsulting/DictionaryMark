@@ -15,20 +15,20 @@ how they are realized.
 
 This document covers the detailed design of the following subsystems and software units:
 
-- **DictionaryMark** — the system as a whole (`dictionary-mark.md`)
-- **Program** — entry point and execution orchestrator (`Program.cs`)
+- **DictionaryMark** - the system as a whole (`dictionary-mark.md`)
+- **Program** - entry point and execution orchestrator (`Program.cs`)
 - **Cli** subsystem
-  - **Context** — command-line argument parser and I/O owner (`Cli/Context.cs`)
+  - **Context** - command-line argument parser and I/O owner (`Cli/Context.cs`)
 - **Dictionary** subsystem
-  - **DictionaryGenerator** — orchestrates dictionary generation (`Dictionary/DictionaryGenerator.cs`)
-  - **YamlDictionaryLoader** — loads YAML flat-dictionary files (`Dictionary/YamlDictionaryLoader.cs`)
-  - **ConflictDetector** — detects term conflicts across files (`Dictionary/ConflictDetector.cs`)
-  - **MarkdownFormatter** — formats entries as Markdown (`Dictionary/MarkdownFormatter.cs`)
+  - **DictionaryGenerator** - orchestrates dictionary generation (`Dictionary/DictionaryGenerator.cs`)
+  - **YamlDictionaryLoader** - loads YAML flat-dictionary files (`Dictionary/YamlDictionaryLoader.cs`)
+  - **ConflictDetector** - detects term conflicts across files (`Dictionary/ConflictDetector.cs`)
+  - **MarkdownFormatter** - formats entries as Markdown (`Dictionary/MarkdownFormatter.cs`)
 - **SelfTest** subsystem
-  - **Validation** — self-validation test runner (`SelfTest/Validation.cs`)
+  - **Validation** - self-validation test runner (`SelfTest/Validation.cs`)
 - **Utilities** subsystem
-  - **GlobMatcher** — file-matching via glob patterns (`Utilities/GlobMatcher.cs`)
-  - **PathHelpers** — safe path combination utilities (`Utilities/PathHelpers.cs`)
+  - **GlobMatcher** - file-matching via glob patterns (`Utilities/GlobMatcher.cs`)
+  - **PathHelpers** - safe path combination utilities (`Utilities/PathHelpers.cs`)
 
 The following topics are out of scope:
 
@@ -67,19 +67,19 @@ reviewers an explicit navigation aid from design to code:
 
 ```text
 src/DemaConsulting.DictionaryMark/
-├── Program.cs                          — entry point and execution orchestrator
+├── Program.cs                          - entry point and execution orchestrator
 ├── Cli/
-│   └── Context.cs                      — command-line argument parser and I/O owner
+│   └── Context.cs                      - command-line argument parser and I/O owner
 ├── Dictionary/
-│   ├── DictionaryGenerator.cs          — orchestrates dictionary generation
-│   ├── YamlDictionaryLoader.cs         — loads YAML flat-dictionary files
-│   ├── ConflictDetector.cs             — detects term conflicts across files
-│   └── MarkdownFormatter.cs            — formats entries as Markdown
+│   ├── DictionaryGenerator.cs          - orchestrates dictionary generation
+│   ├── YamlDictionaryLoader.cs         - loads YAML flat-dictionary files
+│   ├── ConflictDetector.cs             - detects term conflicts across files
+│   └── MarkdownFormatter.cs            - formats entries as Markdown
 ├── SelfTest/
-│   └── Validation.cs                   — self-validation test runner
+│   └── Validation.cs                   - self-validation test runner
 └── Utilities/
-    ├── GlobMatcher.cs                  — file-matching via glob patterns
-    └── PathHelpers.cs                  — safe path combination utilities
+    ├── GlobMatcher.cs                  - file-matching via glob patterns
+    └── PathHelpers.cs                  - safe path combination utilities
 ```
 
 The test project mirrors the same layout under `test/DemaConsulting.DictionaryMark.Tests/`.
@@ -107,5 +107,5 @@ Each software item in the structure above has corresponding artifacts in paralle
 
 ## References
 
-- [REF-1] DictionaryMark User Guide — `docs/user_guide/introduction.md`
-- [REF-2] DictionaryMark Repository — `https://github.com/demaconsulting/DictionaryMark`
+- [REF-1] DictionaryMark User Guide - `docs/user_guide/introduction.md`
+- [REF-2] DictionaryMark Repository - `https://github.com/demaconsulting/DictionaryMark`

@@ -9,10 +9,10 @@ absolute file paths matching the supplied patterns.
 `GlobMatcher.GetFiles` processes each pattern in turn:
 
 1. Rejects null or empty patterns with `ArgumentException`.
-2. Absolute paths **without** wildcards — checks `File.Exists` directly.
-3. Absolute paths **with** wildcards — locates the non-wildcard base directory (the segment
+2. Absolute paths **without** wildcards - checks `File.Exists` directly.
+3. Absolute paths **with** wildcards - locates the non-wildcard base directory (the segment
    before the first `*` or `?`), then uses `Matcher` with that base.
-4. Relative patterns — uses `Matcher` with `Environment.CurrentDirectory` as the base.
+4. Relative patterns - uses `Matcher` with `Environment.CurrentDirectory` as the base.
 
 Results are accumulated in a case-insensitive `HashSet<string>` for deduplication, then
 returned as a sorted `IReadOnlyList<string>`.
@@ -29,8 +29,8 @@ Returns a sorted, deduplicated list of absolute file paths matching the supplied
 
 **Throws:**
 
-- `ArgumentNullException` — when `patterns` is null.
-- `ArgumentException` — when any pattern is null or empty.
+- `ArgumentNullException` - when `patterns` is null.
+- `ArgumentException` - when any pattern is null or empty.
 
 ## Interactions
 

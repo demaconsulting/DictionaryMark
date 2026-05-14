@@ -11,18 +11,18 @@ of four primary subsystems:
 
 ### Major Components
 
-- **CLI Subsystem** — Command-line argument parsing and user interface management
-- **Dictionary Subsystem** — YAML loading, conflict detection, and Markdown formatting
-- **Utilities Subsystem** — Shared file-matching utilities via glob patterns
-- **SelfTest Subsystem** — Automated validation framework
+- **CLI Subsystem** - Command-line argument parsing and user interface management
+- **Dictionary Subsystem** - YAML loading, conflict detection, and Markdown formatting
+- **Utilities Subsystem** - Shared file-matching utilities via glob patterns
+- **SelfTest Subsystem** - Automated validation framework
 
 ### Component Interactions
 
 The Program unit acts as the system orchestrator:
 
-1. **Initialization Phase** — Program creates Context from CLI subsystem to parse arguments
-2. **Execution Phase** — Program delegates to Dictionary subsystem for generation
-3. **Output Phase** — All subsystems use Context for consistent output and logging
+1. **Initialization Phase** - Program creates Context from CLI subsystem to parse arguments
+2. **Execution Phase** - Program delegates to Dictionary subsystem for generation
+3. **Output Phase** - All subsystems use Context for consistent output and logging
 
 ## External Interfaces
 

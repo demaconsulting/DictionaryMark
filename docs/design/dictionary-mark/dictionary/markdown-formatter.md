@@ -21,13 +21,13 @@ Returns the formatted Markdown string.
 
 **Processing steps:**
 
-1. Deduplicate entries — first occurrence of each term (case-insensitive) wins.
-2. Sort — alphabetical by term when `options.SortOrder == Alphabetical`; otherwise preserve
+1. Deduplicate entries - first occurrence of each term (case-insensitive) wins.
+2. Sort - alphabetical by term when `options.SortOrder == Alphabetical`; otherwise preserve
    file order.
 3. Emit optional `## {SectionHeading}` heading when `options.SectionHeading` is non-empty.
 4. Render as bullet list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
 
-**Throws:** `ArgumentNullException` — when `entries` or `options` is null.
+**Throws:** `ArgumentNullException` - when `entries` or `options` is null.
 
 ### FormatBullets *(private)*
 

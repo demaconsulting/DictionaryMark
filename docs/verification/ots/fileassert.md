@@ -19,7 +19,7 @@ have been generated, exercising FileAssert's built-in self-validation suite and 
 functional test results for ReqStream.
 
 Second, FileAssert is used throughout the pipeline to validate every generated document before
-ReqStream runs — Build Notes, Code Quality, Review Plan, Review Report, Design, Verification,
+ReqStream runs - Build Notes, Code Quality, Review Plan, Review Report, Design, Verification,
 and User Guide. If FileAssert were non-functional, these validation steps would fail or produce
 incorrect results, causing `reqstream --enforce` to report missing test coverage and fail the
 build. A passing CI build therefore constitutes transitive evidence that FileAssert correctly

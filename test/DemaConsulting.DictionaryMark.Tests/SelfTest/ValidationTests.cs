@@ -36,7 +36,7 @@ public class ValidationTests
     public void Validation_Run_NullContext_ThrowsArgumentNullException()
     {
         // Arrange: setup test conditions
-        // No setup required — null is the input under test.
+        // No setup required - null is the input under test.
 
         // Act & Assert: invoke Run with null context and verify ArgumentNullException is thrown
         Assert.Throws<ArgumentNullException>(() => Validation.Run(null!));
@@ -180,6 +180,72 @@ public class ValidationTests
                 File.Delete(jsonFile);
             }
 
+            if (File.Exists(logFile))
+            {
+                File.Delete(logFile);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Test that Run includes a bullet generation test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_BulletGenerationTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_BulletGeneration");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a table generation test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_TableGenerationTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_TableGeneration");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a custom headers test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_CustomHeadersTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_CustomHeaders");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a conflict detection test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_ConflictDetectionTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_ConflictDetection");
+    }
+
+    /// <summary>
+    ///     Runs <see cref="Validation.Run"/> with a silent context and log file and asserts
+    ///     that the log output contains a "Passed" entry for the specified self-test name.
+    /// </summary>
+    /// <param name="selfTestName">The name of the self-test expected to appear as passed.</param>
+    private static void AssertSelfTestPasses(string selfTestName)
+    {
+        // Arrange: setup log file to capture validation output
+        var logFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.log");
+        try
+        {
+            using (var context = Context.Create(["--silent", "--log", logFile]))
+            {
+                // Act: run validation
+                Validation.Run(context);
+            }
+
+            // Assert: the named self-test should appear as passed in the log
+            var logContent = File.ReadAllText(logFile);
+            Assert.Contains($"{selfTestName} - Passed", logContent);
+        }
+        finally
+        {
             if (File.Exists(logFile))
             {
                 File.Delete(logFile);

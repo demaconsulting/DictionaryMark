@@ -76,9 +76,9 @@ Output:
 ```markdown
 # Glossary
 
-- **API** — Application Programming Interface
-- **CLI** — Command-Line Interface
-- **SDK** — Software Development Kit
+- **API**: Application Programming Interface
+- **CLI**: Command-Line Interface
+- **SDK**: Software Development Kit
 ```
 
 ## Generate a Table
@@ -147,6 +147,19 @@ dictionarymark --validate --results results.trx
 
 The results file format is determined by the file extension: `.trx` for TRX (MSTest) format,
 or `.xml` for JUnit format.
+
+### Validation Tests
+
+The self-validation suite runs the following tests:
+
+| Test                               | What is verified                                                   |
+| :--------------------------------- | :----------------------------------------------------------------- |
+| `DictionaryMark_VersionDisplay`    | `--version` flag outputs a valid version string                    |
+| `DictionaryMark_HelpDisplay`       | `--help` flag outputs usage and options text                       |
+| `DictionaryMark_BulletGeneration`  | Bullet list is generated correctly from a YAML input file          |
+| `DictionaryMark_TableGeneration`   | Markdown table is generated correctly from a YAML input file       |
+| `DictionaryMark_CustomHeaders`     | `--term-header` and `--def-header` override the table column text  |
+| `DictionaryMark_ConflictDetection` | Conflicting definitions across files are detected and reported     |
 
 ### Heading Depth
 

@@ -8,8 +8,8 @@ logic.
 
 `Context` is created once per tool invocation via the `Create` factory method. It parses the
 argument list using the inner `ArgumentParser` helper, opens any requested log file, and exposes
-the parsed flags as read-only properties. It also owns the two output channels — console and log
-file — through its `WriteLine` and `WriteError` methods.
+the parsed flags as read-only properties. It also owns the two output channels - console and log
+file - through its `WriteLine` and `WriteError` methods.
 
 ## Data Model
 
@@ -39,8 +39,8 @@ file — through its `WriteLine` and `WriteError` methods.
 Factory method. Delegates to the private `ArgumentParser` helper and opens the log file if
 `--log` was supplied.
 
-**Throws:** `ArgumentException` — when an unknown argument or missing value is encountered.
-`InvalidOperationException` — when a log file cannot be opened.
+**Throws:** `ArgumentException` - when an unknown argument or missing value is encountered.
+`InvalidOperationException` - when a log file cannot be opened.
 
 ### WriteLine(string message)
 

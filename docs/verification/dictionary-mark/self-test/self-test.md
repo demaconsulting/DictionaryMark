@@ -39,7 +39,7 @@ workflow end-to-end. Tests create `Context` instances with validation arguments,
 
 ### SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults
 
-**Scenario**: Two separate validation runs — one for TRX, one for JUnit XML.
+**Scenario**: Two separate validation runs - one for TRX, one for JUnit XML.
 
 **Expected**: Both files created with correct format content; both runs exit 0.
 

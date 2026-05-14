@@ -49,7 +49,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_VersionFlag_Provided_OutputsVersion()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with version flag
         var exitCode = Runner.Run(
@@ -71,7 +71,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_HelpFlag_Provided_OutputsUsageInformation()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with help flag
         var exitCode = Runner.Run(
@@ -94,7 +94,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_NoArguments_Invoked_DisplaysBanner()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with no arguments
         var exitCode = Runner.Run(
@@ -114,7 +114,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_ValidateFlag_Provided_RunsValidation()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with validate flag
         var exitCode = Runner.Run(
@@ -238,7 +238,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_SilentFlag_Provided_SuppressesOutput()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with --version and --silent to produce deterministic silent output
         var exitCode = Runner.Run(
@@ -331,7 +331,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_UnknownArgument_Provided_ReturnsError()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with an unknown argument
         var exitCode = Runner.Run(
@@ -352,7 +352,7 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_ValidateWithDepth_DepthThree_OutputsCorrectHeadingLevel()
     {
-        // Arrange: (none — constructor initializes _dllPath)
+        // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run validation with heading depth 3
         var exitCode = Runner.Run(

@@ -36,6 +36,30 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 
 **Expected**: Exit code is 0.
 
+### Validation_Run_WithSilentContext_BulletGenerationTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_BulletGeneration - Passed".
+
+### Validation_Run_WithSilentContext_TableGenerationTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_TableGeneration - Passed".
+
+### Validation_Run_WithSilentContext_CustomHeadersTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_CustomHeaders - Passed".
+
+### Validation_Run_WithSilentContext_ConflictDetectionTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_ConflictDetection - Passed".
+
 ### Validation_Run_WithTrxResultsFile_WritesTrxFile
 
 **Scenario**: `Validation.Run` is called with `["--silent", "--results", trxFile]`.
@@ -57,7 +81,12 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 ## Requirements Coverage
 
 - **`DictionaryMark-Validation-Run`**: Validation_Run_WithSilentContext_PrintsSummary,
+  Validation_Run_WithSilentContext_ExitCodeIsZero,
   Validation_Run_NullContext_ThrowsArgumentNullException.
+- **`DictionaryMark-Validation-BulletGeneration`**: Validation_Run_WithSilentContext_BulletGenerationTestPasses.
+- **`DictionaryMark-Validation-TableGeneration`**: Validation_Run_WithSilentContext_TableGenerationTestPasses.
+- **`DictionaryMark-Validation-CustomHeaders`**: Validation_Run_WithSilentContext_CustomHeadersTestPasses.
+- **`DictionaryMark-Validation-ConflictDetection`**: Validation_Run_WithSilentContext_ConflictDetectionTestPasses.
 - **`DictionaryMark-Validation-TrxOutput`**: Validation_Run_WithTrxResultsFile_WritesTrxFile.
 - **`DictionaryMark-Validation-JUnitOutput`**: Validation_Run_WithXmlResultsFile_WritesXmlFile.
 - **`DictionaryMark-Validation-UnsupportedExtension`**: Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile.

@@ -14,8 +14,8 @@ codes.
 
 | Dependency   | Usage in Tests                                                           |
 |--------------|--------------------------------------------------------------------------|
-| `Context`    | Used directly (not mocked) — created from the argument array under test. |
-| `Validation` | Used directly (not mocked) — called when the validate flag is set.       |
+| `Context`    | Used directly (not mocked) - created from the argument array under test. |
+| `Validation` | Used directly (not mocked) - called when the validate flag is set.       |
 
 No test doubles are introduced at the `Program` level; all collaborators execute their real logic.
 

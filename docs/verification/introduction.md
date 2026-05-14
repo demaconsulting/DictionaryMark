@@ -1,12 +1,12 @@
 # Introduction
 
-This document provides the verification design for the Template DotNet Tool, a .NET command-line
-application demonstrating best practices for DEMA Consulting DotNet Tools.
+This document provides the verification design for DictionaryMark, a .NET command-line
+application that reads YAML dictionary files and generates formatted Markdown output.
 
 ## Purpose
 
-The purpose of this document is to describe how each requirement for the Template DotNet Tool is
-verified. For every software item — system, subsystem, and unit — this document names the
+The purpose of this document is to describe how each requirement for DictionaryMark is
+verified. For every software item - system, subsystem, and unit - this document names the
 verification approach, identifies the test scenarios (including boundary conditions and error
 paths), describes what is mocked or stubbed, and maps each requirement to at least one named
 test scenario. The document does not restate design; it explains how the design is proven correct.
@@ -14,16 +14,22 @@ test scenario. The document does not restate design; it explains how the design 
 ## Scope
 
 This document covers the verification design for the same software items described in the
-*Template DotNet Tool Software Design Document*:
+*DictionaryMark Software Design Document*:
 
-- **TemplateDotNetTool** — the system as a whole
-- **Program** — entry point and execution orchestrator
-- **Cli** — command-line interface subsystem
-  - **Context** — argument parser and I/O owner
-- **SelfTest** — self-validation subsystem
-  - **Validation** — self-validation test runner
-- **Utilities** — shared utility subsystem
-  - **PathHelpers** — safe path combination utilities
+- **DictionaryMark** - the system as a whole
+- **Program** - entry point and execution orchestrator
+- **Cli** - command-line interface subsystem
+  - **Context** - argument parser and I/O owner
+- **Dictionary** - dictionary processing subsystem
+  - **DictionaryGenerator** - orchestrates dictionary generation
+  - **YamlDictionaryLoader** - loads YAML flat-dictionary files
+  - **ConflictDetector** - detects term conflicts across files
+  - **MarkdownFormatter** - formats entries as Markdown
+- **SelfTest** - self-validation subsystem
+  - **Validation** - self-validation test runner
+- **Utilities** - shared utility subsystem
+  - **GlobMatcher** - file-matching via glob patterns
+  - **PathHelpers** - safe path combination utilities
 
 The following topics are out of scope:
 
@@ -32,29 +38,35 @@ The following topics are out of scope:
 
 The following OTS items are also covered:
 
-- **BuildMark** — build-notes documentation tool
-- **FileAssert** — document assertion tool
-- **Pandoc** — Markdown-to-HTML conversion tool
-- **ReqStream** — requirements traceability tool
-- **ReviewMark** — file review enforcement tool
-- **SarifMark** — SARIF report conversion tool
-- **SonarMark** — SonarCloud quality report tool
-- **VersionMark** — tool-version documentation tool
-- **WeasyPrint** — HTML-to-PDF conversion tool
-- **xUnit** — unit-testing framework
+- **BuildMark** - build-notes documentation tool
+- **FileAssert** - document assertion tool
+- **Pandoc** - Markdown-to-HTML conversion tool
+- **ReqStream** - requirements traceability tool
+- **ReviewMark** - file review enforcement tool
+- **SarifMark** - SARIF report conversion tool
+- **SonarMark** - SonarCloud quality report tool
+- **VersionMark** - tool-version documentation tool
+- **WeasyPrint** - HTML-to-PDF conversion tool
+- **xUnit** - unit-testing framework
 
 ## Software Structure
 
 The following tree shows the software items covered by this document:
 
 ```text
-TemplateDotNetTool (System)
+DictionaryMark (System)
 ├── Program (Unit)
 ├── Cli (Subsystem)
 │   └── Context (Unit)
+├── Dictionary (Subsystem)
+│   ├── DictionaryGenerator (Unit)
+│   ├── YamlDictionaryLoader (Unit)
+│   ├── ConflictDetector (Unit)
+│   └── MarkdownFormatter (Unit)
 ├── SelfTest (Subsystem)
 │   └── Validation (Unit)
 └── Utilities (Subsystem)
+    ├── GlobMatcher (Unit)
     └── PathHelpers (Unit)
 
 OTS Items

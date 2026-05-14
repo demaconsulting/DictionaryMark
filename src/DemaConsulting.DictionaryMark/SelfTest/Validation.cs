@@ -58,6 +58,10 @@ internal static class Validation
         // Run core functionality tests
         RunVersionTest(context, testResults);
         RunHelpTest(context, testResults);
+        RunBulletGenerationTest(context, testResults);
+        RunTableGenerationTest(context, testResults);
+        RunCustomHeadersTest(context, testResults);
+        RunConflictDetectionTest(context, testResults);
 
         // Calculate totals
         var totalTests = testResults.Results.Count;
@@ -234,6 +238,241 @@ internal static class Validation
         catch (Exception ex)
         {
             HandleTestException(test, context, "DictionaryMark_HelpDisplay", ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test for bullet list generation from a YAML input file.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunBulletGenerationTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_BulletGeneration";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory();
+            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
+            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
+
+            var args = new[] { "--silent", "--input", inputFile, "--format", "bullets", "--output", outputFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains("**Alpha**: First letter") &&
+                    content.Contains("**Beta**: Second letter"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Expected bullet entries not found in output";
+                    context.WriteError($"✗ {TestName} - Failed: Expected bullet entries not found in output");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test for Markdown table generation from a YAML input file.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunTableGenerationTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_TableGeneration";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory();
+            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
+            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
+
+            var args = new[] { "--silent", "--input", inputFile, "--format", "table", "--output", outputFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains("| Term") && content.Contains("| Definition") &&
+                    content.Contains("Alpha") && content.Contains("First letter"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Expected table content not found in output";
+                    context.WriteError($"✗ {TestName} - Failed: Expected table content not found in output");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test for custom column header generation in table format.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunCustomHeadersTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_CustomHeaders";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory();
+            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
+            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}");
+
+            var args = new[]
+            {
+                "--silent", "--input", inputFile, "--format", "table",
+                "--term-header", "Abbreviation", "--def-header", "Meaning",
+                "--output", outputFile
+            };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains("Abbreviation") && content.Contains("Meaning"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Custom headers not found in output";
+                    context.WriteError($"✗ {TestName} - Failed: Custom headers not found in output");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that conflict detection reports an error for conflicting definitions.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunConflictDetectionTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_ConflictDetection";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory();
+            var fileA = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "a.yaml");
+            var fileB = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "b.yaml");
+
+            File.WriteAllText(fileA, $"Alpha: First letter{Environment.NewLine}");
+            File.WriteAllText(fileB, $"Alpha: Different definition{Environment.NewLine}");
+
+            var args = new[] { "--silent", "--input", fileA, "--input", fileB };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            // Conflicting definitions must produce a non-zero exit code
+            if (exitCode != 0)
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                context.WriteLine($"✓ {TestName} - Passed");
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = "Conflict was not detected (expected non-zero exit code)";
+                context.WriteError($"✗ {TestName} - Failed: Conflict was not detected");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
         }
 
         FinalizeTestResult(test, startTime, testResults);

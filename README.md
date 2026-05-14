@@ -71,9 +71,37 @@ Or with `--format bullets`:
 ```markdown
 # Glossary
 
-- **API** — Application Programming Interface
-- **CLI** — Command-Line Interface
-- **SDK** — Software Development Kit
+- **API**: Application Programming Interface
+- **CLI**: Command-Line Interface
+- **SDK**: Software Development Kit
+```
+
+## Self-Validation
+
+DictionaryMark includes a built-in self-validation mode for use in regulated environments
+where tool qualification evidence is required.
+
+```sh
+dictionarymark --validate
+```
+
+The validation report includes system information (tool version, OS, .NET runtime) and
+the following self-tests:
+
+| Test                              | What is verified                                                  |
+| :-------------------------------- | :---------------------------------------------------------------- |
+| `DictionaryMark_VersionDisplay`   | `--version` flag outputs a valid version string                   |
+| `DictionaryMark_HelpDisplay`      | `--help` flag outputs usage and options text                      |
+| `DictionaryMark_BulletGeneration` | Bullet list is generated correctly from a YAML input file         |
+| `DictionaryMark_TableGeneration`  | Markdown table is generated correctly from a YAML input file      |
+| `DictionaryMark_CustomHeaders`    | `--term-header` and `--def-header` override the table column text |
+| `DictionaryMark_ConflictDetection`| Conflicting definitions across files are detected and reported    |
+
+Results can be saved to a file:
+
+```sh
+dictionarymark --validate --results results.trx   # TRX (MSTest) format
+dictionarymark --validate --results results.xml   # JUnit XML format
 ```
 
 ## License

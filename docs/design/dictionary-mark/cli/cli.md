@@ -10,7 +10,7 @@ logic.
 
 Created once per tool invocation via the `Context.Create` factory method. It parses the
 argument list, opens any requested log file, and exposes the parsed flags as read-only
-properties. It also owns the two output channels — console and log file — through its
+properties. It also owns the two output channels - console and log file - through its
 `WriteLine` and `WriteError` methods.
 
 ## Interactions
