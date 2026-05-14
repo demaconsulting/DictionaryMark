@@ -1,0 +1,15 @@
+---
+# DictionaryMark SelfTest Subsystem Requirements
+
+sections:
+  - title: SelfTest Subsystem Requirements
+    requirements:
+      - id: DictionaryMark-SelfTest-Subsystem
+        title: The SelfTest subsystem shall provide a mechanism to execute self-validation tests.
+        justification: |
+          Regulated environments require tool qualification evidence to demonstrate
+          that the tool functions correctly in its deployment environment.
+        tests:
+          - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
+          - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
+          - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults

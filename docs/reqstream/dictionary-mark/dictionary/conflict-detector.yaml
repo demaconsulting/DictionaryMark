@@ -1,0 +1,18 @@
+---
+# DictionaryMark ConflictDetector Unit Requirements
+
+sections:
+  - title: ConflictDetector Unit Requirements
+    requirements:
+      - id: DictionaryMark-ConflictDetector-Detect
+        title: The ConflictDetector class shall detect terms with conflicting definitions across multiple files.
+        justification: |
+          When merging dictionaries from multiple sources, conflicting definitions must be
+          detected and reported so users can resolve ambiguities before publishing.
+        tests:
+          - ConflictDetector_Detect_NoEntries_ReturnsEmpty
+          - ConflictDetector_Detect_UniqueTerms_ReturnsEmpty
+          - ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty
+          - ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict
+          - ConflictDetector_Detect_CaseInsensitiveConflict_Detected
+          - ConflictDetector_Detect_MultipleConflicts_ReturnsAll

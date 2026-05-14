@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DemaConsulting.DictionaryMark/DemaConsulting.DictionaryMark.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DemaConsulting.DictionaryMark.Tests/DemaConsulting.DictionaryMark.Tests.csproj" />
+  </Folder>
+</Solution>

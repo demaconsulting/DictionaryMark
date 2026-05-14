@@ -1,0 +1,24 @@
+---
+# DictionaryMark YamlDictionaryLoader Unit Requirements
+
+sections:
+  - title: YamlDictionaryLoader Unit Requirements
+    requirements:
+      - id: DictionaryMark-YamlLoader-Load
+        title: The YamlDictionaryLoader class shall load flat YAML key-value mappings as dictionary entries.
+        justification: |
+          YAML is a human-friendly format for maintaining dictionary data. The loader must
+          handle flat mappings and report structural errors clearly.
+        tests:
+          - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
+          - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
+          - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
+
+      - id: DictionaryMark-YamlLoader-Errors
+        title: The YamlDictionaryLoader class shall report errors for non-flat YAML structures and missing files.
+        justification: |
+          Clear error messages help users identify and fix invalid input files quickly.
+        tests:
+          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
+          - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
+          - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException

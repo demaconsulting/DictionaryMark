@@ -1,23 +1,29 @@
 ---
 resource-path:
   - docs/design
-  - docs/design/template-dot-net-tool
-  - docs/design/template-dot-net-tool/cli
-  - docs/design/template-dot-net-tool/self-test
-  - docs/design/template-dot-net-tool/utilities
+  - docs/design/dictionary-mark
+  - docs/design/dictionary-mark/cli
+  - docs/design/dictionary-mark/dictionary
+  - docs/design/dictionary-mark/self-test
+  - docs/design/dictionary-mark/utilities
   - docs/template
 
 input-files:
   - docs/design/title.txt
   - docs/design/introduction.md
-  - docs/design/template-dot-net-tool/template-dot-net-tool.md
-  - docs/design/template-dot-net-tool/program.md
-  - docs/design/template-dot-net-tool/cli/cli.md
-  - docs/design/template-dot-net-tool/cli/context.md
-  - docs/design/template-dot-net-tool/self-test/self-test.md
-  - docs/design/template-dot-net-tool/self-test/validation.md
-  - docs/design/template-dot-net-tool/utilities/utilities.md
-  - docs/design/template-dot-net-tool/utilities/path-helpers.md
+  - docs/design/dictionary-mark/dictionary-mark.md
+  - docs/design/dictionary-mark/program.md
+  - docs/design/dictionary-mark/cli/cli.md
+  - docs/design/dictionary-mark/cli/context.md
+  - docs/design/dictionary-mark/dictionary/dictionary.md
+  - docs/design/dictionary-mark/dictionary/yaml-loader.md
+  - docs/design/dictionary-mark/dictionary/conflict-detector.md
+  - docs/design/dictionary-mark/dictionary/markdown-formatter.md
+  - docs/design/dictionary-mark/self-test/self-test.md
+  - docs/design/dictionary-mark/self-test/validation.md
+  - docs/design/dictionary-mark/utilities/utilities.md
+  - docs/design/dictionary-mark/utilities/glob-matcher.md
+  - docs/design/dictionary-mark/utilities/path-helpers.md
 template: template.html
 table-of-contents: true
 number-sections: true

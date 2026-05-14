@@ -99,7 +99,7 @@ Write-Host "Fixing: dotnet format..."
 $slnFiles = @(Get-ChildItem -Filter "*.sln" -ErrorAction SilentlyContinue) +
             @(Get-ChildItem -Filter "*.slnx" -ErrorAction SilentlyContinue)
 if ($slnFiles.Count -gt 0) {
-    dotnet format 2>$null
+    dotnet format DemaConsulting.DictionaryMark.slnx 2>$null
 }
 
 # [PROJECT-SPECIFIC] Add additional language-specific auto-formatters here.

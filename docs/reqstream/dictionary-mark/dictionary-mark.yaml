@@ -1,0 +1,84 @@
+---
+# DictionaryMark System-Level Requirements
+
+sections:
+  - title: System-Level Requirements
+    requirements:
+      - id: DictionaryMark-System-Version
+        title: The tool shall display version information when the version flag is provided.
+        justification: |
+          Users need to quickly identify the version of the tool they are using for
+          troubleshooting and compatibility verification.
+        tests:
+          - DictionaryMark_VersionFlag_Provided_OutputsVersion
+
+      - id: DictionaryMark-System-Help
+        title: The tool shall display usage information when the help flag is provided.
+        justification: |
+          Users need access to command-line usage documentation without requiring
+          external resources.
+        tests:
+          - DictionaryMark_HelpFlag_Provided_OutputsUsageInformation
+
+      - id: DictionaryMark-System-Validate
+        title: The tool shall execute self-validation tests when the validate flag is provided.
+        justification: |
+          Regulated environments require tool qualification evidence to demonstrate
+          that the tool functions correctly in its deployment environment.
+        tests:
+          - DictionaryMark_ValidateFlag_Provided_RunsValidation
+
+      - id: DictionaryMark-System-Silent
+        title: The tool shall suppress console output when the silent flag is provided.
+        justification: |
+          Enables automated scripts and CI/CD pipelines to run the tool without
+          cluttering output logs when only the exit code is needed.
+        tests:
+          - DictionaryMark_SilentFlag_Provided_SuppressesOutput
+
+      - id: DictionaryMark-System-Log
+        title: The tool shall write output to a log file when the log flag is provided.
+        justification: |
+          Provides persistent logging for debugging and compliance audit trails.
+        tests:
+          - DictionaryMark_LogFlag_Provided_WritesOutputToFile
+
+      - id: DictionaryMark-System-ErrorHandling
+        title: The tool shall return a non-zero exit code for unrecognized arguments.
+        justification: |
+          A non-zero exit code enables CI/CD pipelines to detect and surface
+          misconfiguration failures automatically.
+        tests:
+          - DictionaryMark_UnknownArgument_Provided_ReturnsError
+
+      - id: DictionaryMark-System-GenerateBullets
+        title: The tool shall generate a Markdown bullet list from YAML dictionary files.
+        justification: |
+          The primary use case is generating a bullet-list dictionary from YAML input files
+          for inclusion in documentation.
+        tests:
+          - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
+
+      - id: DictionaryMark-System-GenerateTable
+        title: The tool shall generate a Markdown table from YAML dictionary files when table format is requested.
+        justification: |
+          Table format provides an alternative presentation for users who prefer
+          structured tabular layouts in their documentation.
+        tests:
+          - DictionaryMark_Generate_TableFormat_OutputsTable
+
+      - id: DictionaryMark-System-OutputFile
+        title: The tool shall write generated Markdown to a file when the output flag is provided.
+        justification: |
+          Writing to a file enables integration with documentation pipelines that
+          consume generated Markdown files.
+        tests:
+          - DictionaryMark_Generate_WithOutputFile_WritesFile
+
+      - id: DictionaryMark-System-ConflictDetection
+        title: The tool shall report errors and return a non-zero exit code when conflicting definitions are detected.
+        justification: |
+          Conflicting definitions indicate data quality issues that must be resolved
+          before publishing documentation. Users must be notified.
+        tests:
+          - DictionaryMark_Generate_ConflictingEntries_ReportsError

@@ -127,11 +127,11 @@ if (-not $skipDotnetTools) {
 # Verifies C# code formatting matches .editorconfig rules.
 Write-Host "Linting: dotnet format..."
 $skipDotnetFormat = $false
-dotnet restore > $null
+dotnet restore DemaConsulting.DictionaryMark.slnx > $null
 if ($LASTEXITCODE -ne 0) { $lintError = $true; $skipDotnetFormat = $true }
 
 if (-not $skipDotnetFormat) {
-    dotnet format --verify-no-changes --no-restore
+    dotnet format DemaConsulting.DictionaryMark.slnx --verify-no-changes --no-restore
     if ($LASTEXITCODE -ne 0) { $lintError = $true }
 }
 

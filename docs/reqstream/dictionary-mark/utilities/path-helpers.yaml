@@ -1,0 +1,31 @@
+---
+# DictionaryMark PathHelpers Unit Requirements
+
+sections:
+  - title: PathHelpers Unit Requirements
+    requirements:
+      - id: DictionaryMark-PathHelpers-SafePathCombine
+        title: The PathHelpers class shall safely combine paths, ensuring the result remains within the base directory.
+        justification: |
+          Combining user-supplied path components without validation creates path-traversal
+          vulnerabilities. SafePathCombine resolves both paths to absolute form and rejects
+          any combined path that escapes the base directory.
+        tests:
+          - PathHelpers_SafePathCombine_ValidPaths_CombinesCorrectly
+          - PathHelpers_SafePathCombine_CurrentDirectoryReference_CombinesCorrectly
+          - PathHelpers_SafePathCombine_NestedPaths_CombinesCorrectly
+          - PathHelpers_SafePathCombine_EmptyRelativePath_ReturnsBasePath
+          - PathHelpers_SafePathCombine_DotDotPrefixedName_CombinesCorrectly
+
+      - id: DictionaryMark-PathHelpers-Validation
+        title: The PathHelpers class shall reject null inputs and path-traversal attempts with descriptive errors.
+        justification: |
+          Null inputs and path-traversal attempts (double-dot segments, absolute relative
+          paths) must be rejected early with clear exceptions so callers can identify and
+          correct invalid usage.
+        tests:
+          - PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException
+          - PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException
+          - PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException
+          - PathHelpers_SafePathCombine_DoubleDotsInMiddle_ThrowsArgumentException
+          - PathHelpers_SafePathCombine_AbsolutePath_ThrowsArgumentException

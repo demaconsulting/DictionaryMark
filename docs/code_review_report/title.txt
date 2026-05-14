@@ -1,11 +1,11 @@
 ---
-title: Template DotNet Tool Review Report
-subtitle: File Review Report for the Template DotNet Tool
+title: DictionaryMark Review Report
+subtitle: File Review Report for DictionaryMark
 author: DEMA Consulting
-description: File Review Report for the Template DotNet Tool
+description: File Review Report for DictionaryMark
 lang: en-US
 keywords:
-  - Template DotNet Tool
+  - DictionaryMark
   - Review Report
   - File Reviews
   - .NET

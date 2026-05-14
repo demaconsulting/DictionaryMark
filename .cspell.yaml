@@ -38,6 +38,12 @@ words:
   - snupkg
   - sonarmark
   - templatetool
+  - DictionaryMark
+  - dictionarymark
+  - YamlDotNet
+  - yamldotnet
+  - Globbing
+  - globbing
   - venv
   - versionmark
   - Weasyprint

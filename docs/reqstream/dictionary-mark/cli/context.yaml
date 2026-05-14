@@ -1,0 +1,34 @@
+---
+# DictionaryMark Context Unit Requirements
+
+sections:
+  - title: Context Unit Requirements
+    requirements:
+      - id: DictionaryMark-Context-ArgumentParsing
+        title: The Context class shall parse command-line arguments into structured properties.
+        justification: |
+          Provides a standardized approach to command-line argument parsing across all
+          DEMA Consulting DotNet Tools.
+        tests:
+          - Context_Create_NoArguments_ReturnsDefaultContext
+          - Context_Create_InputFlag_AddsPattern
+          - Context_Create_MultipleInputFlags_AddsAllPatterns
+          - Context_Create_OutputFlag_SetsOutputFile
+          - Context_Create_FormatFlag_Table_SetsTableFormat
+          - Context_Create_FormatFlag_Bullets_SetsBulletsFormat
+          - Context_Create_SectionFlag_SetsSectionHeading
+          - Context_Create_TermHeaderFlag_SetsTermHeader
+          - Context_Create_DefinitionHeaderFlag_SetsDefinitionHeader
+          - Context_Create_SortFlag_Alpha_SetsAlphabetical
+          - Context_Create_SortFlag_File_SetsFileOrder
+
+      - id: DictionaryMark-Context-InvalidArgs
+        title: The Context class shall reject unknown or malformed command-line arguments with a descriptive error.
+        justification: |
+          Providing clear feedback for invalid arguments helps users quickly correct mistakes.
+        tests:
+          - Context_Create_UnknownArgument_ThrowsArgumentException
+          - Context_Create_InputFlag_WithoutValue_ThrowsArgumentException
+          - Context_Create_OutputFlag_WithoutValue_ThrowsArgumentException
+          - Context_Create_FormatFlag_InvalidValue_ThrowsArgumentException
+          - Context_Create_SortFlag_InvalidValue_ThrowsArgumentException
