@@ -1,24 +1,29 @@
 ---
 resource-path:
   - docs/verification
-  - docs/verification/template-dot-net-tool
-  - docs/verification/template-dot-net-tool/cli
-  - docs/verification/template-dot-net-tool/self-test
-  - docs/verification/template-dot-net-tool/utilities
+  - docs/verification/dictionary-mark
+  - docs/verification/dictionary-mark/cli
+  - docs/verification/dictionary-mark/dictionary
+  - docs/verification/dictionary-mark/self-test
+  - docs/verification/dictionary-mark/utilities
   - docs/verification/ots
   - docs/template
 
 input-files:
   - docs/verification/title.txt
   - docs/verification/introduction.md
-  - docs/verification/template-dot-net-tool/template-dot-net-tool.md
-  - docs/verification/template-dot-net-tool/program.md
-  - docs/verification/template-dot-net-tool/cli/cli.md
-  - docs/verification/template-dot-net-tool/cli/context.md
-  - docs/verification/template-dot-net-tool/self-test/self-test.md
-  - docs/verification/template-dot-net-tool/self-test/validation.md
-  - docs/verification/template-dot-net-tool/utilities/utilities.md
-  - docs/verification/template-dot-net-tool/utilities/path-helpers.md
+  - docs/verification/dictionary-mark/dictionary-mark.md
+  - docs/verification/dictionary-mark/program.md
+  - docs/verification/dictionary-mark/cli/cli.md
+  - docs/verification/dictionary-mark/cli/context.md
+  - docs/verification/dictionary-mark/dictionary/dictionary.md
+  - docs/verification/dictionary-mark/dictionary/yaml-loader.md
+  - docs/verification/dictionary-mark/dictionary/conflict-detector.md
+  - docs/verification/dictionary-mark/dictionary/markdown-formatter.md
+  - docs/verification/dictionary-mark/self-test/self-test.md
+  - docs/verification/dictionary-mark/self-test/validation.md
+  - docs/verification/dictionary-mark/utilities/utilities.md
+  - docs/verification/dictionary-mark/utilities/glob-matcher.md
   - docs/verification/ots/buildmark.md
   - docs/verification/ots/fileassert.md
   - docs/verification/ots/pandoc.md
