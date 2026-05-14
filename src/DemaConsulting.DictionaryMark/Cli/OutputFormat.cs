@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-namespace DemaConsulting.DictionaryMark.Cli;
+namespace DemaConsulting.DictionaryMark.Dictionary;
 
 /// <summary>
 ///     Output format for generated Markdown.

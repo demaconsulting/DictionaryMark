@@ -98,18 +98,15 @@ public class YamlDictionaryLoaderTests
     }
 
     /// <summary>
-    ///     Test that a single-entry YAML file is loaded as a single entry.
+    ///     Test that a single-entry YAML file is loaded as a single entry (no duplicate key).
     /// </summary>
     [Fact]
-    public void YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException()
+    public void YamlDictionaryLoader_Load_SingleEntry_ReturnsSingleEntry()
     {
         var tmpFile = Path.GetTempFileName();
         try
         {
-            // YAML parsers may or may not report duplicate keys; we check our logic
             File.WriteAllText(tmpFile, "Term1: Definition1\n");
-            // Create a file with explicit duplicate using file-level tracking approach
-            // YamlDotNet may handle duplicates differently; test our detection logic
             var entries = YamlDictionaryLoader.Load(tmpFile);
             Assert.Single(entries);
         }

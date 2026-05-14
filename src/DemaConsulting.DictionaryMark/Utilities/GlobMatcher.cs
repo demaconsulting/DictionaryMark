@@ -80,20 +80,27 @@ internal static class GlobMatcher
     /// <param name="files">Set to add matching file paths to.</param>
     private static void MatchAbsoluteGlob(string pattern, HashSet<string> files)
     {
+        // Normalize to forward slashes so all subsequent index arithmetic is consistent
         var normalizedPattern = pattern.Replace('\\', '/');
+
+        // Find the last separator before the first wildcard to identify the base directory
         var firstWildcard = normalizedPattern.IndexOfAny(['*', '?']);
         var lastSepBeforeWildcard = normalizedPattern.LastIndexOf('/', firstWildcard);
+
         string baseDir;
         string relPattern;
         if (lastSepBeforeWildcard >= 0)
         {
+            // Split at the separator: everything before it is the base directory
             baseDir = normalizedPattern[..lastSepBeforeWildcard];
             relPattern = normalizedPattern[(lastSepBeforeWildcard + 1)..];
         }
         else
         {
-            baseDir = Path.GetPathRoot(pattern) ?? Environment.CurrentDirectory;
-            relPattern = normalizedPattern[baseDir.Length..];
+            // No separator before the wildcard - derive the root from the normalized path
+            var root = Path.GetPathRoot(normalizedPattern) ?? string.Empty;
+            baseDir = root.TrimEnd('/');
+            relPattern = normalizedPattern[root.Length..];
         }
 
         if (Directory.Exists(baseDir))

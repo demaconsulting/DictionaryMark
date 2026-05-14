@@ -93,6 +93,7 @@ internal sealed class DictionaryGenerator
         {
             Format = context.Format,
             SectionHeading = context.SectionHeading,
+            HeadingDepth = context.HeadingDepth,
             TermHeader = context.TermHeader,
             DefinitionHeader = context.DefinitionHeader,
             SortOrder = context.SortBy

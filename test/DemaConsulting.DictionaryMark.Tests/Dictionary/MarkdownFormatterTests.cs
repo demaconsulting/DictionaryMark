@@ -18,7 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
@@ -47,14 +46,14 @@ public class MarkdownFormatterTests
     }
 
     /// <summary>
-    ///     Test that bullets with section heading includes the heading.
+    ///     Test that bullets with section heading includes the heading at default depth (1).
     /// </summary>
     [Fact]
     public void MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading()
     {
         var options = new MarkdownOptions { Format = OutputFormat.Bullets, SectionHeading = "Glossary" };
         var result = MarkdownFormatter.Format(TwoEntries, options);
-        Assert.Contains("## Glossary", result);
+        Assert.Contains("# Glossary", result);
         Assert.Contains("- **Alpha**: First letter", result);
     }
 
@@ -73,14 +72,14 @@ public class MarkdownFormatterTests
     }
 
     /// <summary>
-    ///     Test that table with section heading includes the heading.
+    ///     Test that table with section heading includes the heading at default depth (1).
     /// </summary>
     [Fact]
     public void MarkdownFormatter_Format_TableWithSectionHeading_IncludesHeading()
     {
         var options = new MarkdownOptions { Format = OutputFormat.Table, SectionHeading = "Glossary" };
         var result = MarkdownFormatter.Format(TwoEntries, options);
-        Assert.Contains("## Glossary", result);
+        Assert.Contains("# Glossary", result);
         Assert.Contains("| Term | Definition |", result);
     }
 
@@ -175,5 +174,51 @@ public class MarkdownFormatterTests
         var options = new MarkdownOptions { Format = OutputFormat.Bullets };
         var result = MarkdownFormatter.Format([], options);
         Assert.True(string.IsNullOrWhiteSpace(result) || result == string.Empty);
+    }
+
+    /// <summary>
+    ///     Test that empty table entries emit a N/A row.
+    /// </summary>
+    [Fact]
+    public void MarkdownFormatter_Format_EmptyTableEntries_EmitsNaRow()
+    {
+        var options = new MarkdownOptions { Format = OutputFormat.Table };
+        var result = MarkdownFormatter.Format([], options);
+        Assert.Contains("| N/A | N/A |", result);
+    }
+
+    /// <summary>
+    ///     Test that HeadingDepth 1 emits a level-1 heading.
+    /// </summary>
+    [Fact]
+    public void MarkdownFormatter_Format_HeadingDepth1_EmitsLevelOneHeading()
+    {
+        var options = new MarkdownOptions { Format = OutputFormat.Bullets, SectionHeading = "Glossary", HeadingDepth = 1 };
+        var result = MarkdownFormatter.Format(TwoEntries, options);
+        Assert.Contains("# Glossary", result);
+        Assert.DoesNotContain("## Glossary", result);
+    }
+
+    /// <summary>
+    ///     Test that HeadingDepth 2 emits a level-2 heading.
+    /// </summary>
+    [Fact]
+    public void MarkdownFormatter_Format_HeadingDepth2_EmitsLevelTwoHeading()
+    {
+        var options = new MarkdownOptions { Format = OutputFormat.Bullets, SectionHeading = "Glossary", HeadingDepth = 2 };
+        var result = MarkdownFormatter.Format(TwoEntries, options);
+        Assert.Contains("## Glossary", result);
+        Assert.DoesNotContain("### Glossary", result);
+    }
+
+    /// <summary>
+    ///     Test that HeadingDepth 6 emits a level-6 heading.
+    /// </summary>
+    [Fact]
+    public void MarkdownFormatter_Format_HeadingDepth6_EmitsLevelSixHeading()
+    {
+        var options = new MarkdownOptions { Format = OutputFormat.Bullets, SectionHeading = "Glossary", HeadingDepth = 6 };
+        var result = MarkdownFormatter.Format(TwoEntries, options);
+        Assert.Contains("###### Glossary", result);
     }
 }

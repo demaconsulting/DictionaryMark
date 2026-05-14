@@ -51,7 +51,7 @@ SDK: Software Development Kit
 Running:
 
 ```sh
-dictionarymark --input glossary.yaml --format table --section "Glossary"
+dictionarymark --input glossary.yaml --format table --section "Glossary" --depth 1
 ```
 
 Produces:
@@ -59,11 +59,11 @@ Produces:
 ```markdown
 # Glossary
 
-| Term | Definition                        |
-| :--- | :-------------------------------- |
-| API  | Application Programming Interface |
-| CLI  | Command-Line Interface            |
-| SDK  | Software Development Kit          |
+| Term | Definition |
+| :--- | :--- |
+| API | Application Programming Interface |
+| CLI | Command-Line Interface |
+| SDK | Software Development Kit |
 ```
 
 Or with `--format bullets`:

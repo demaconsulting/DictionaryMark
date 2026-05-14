@@ -18,8 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using DemaConsulting.DictionaryMark.Cli;
-
 namespace DemaConsulting.DictionaryMark.Dictionary;
 
 /// <summary>
@@ -32,6 +30,9 @@ public sealed class MarkdownOptions
 
     /// <summary>Gets or initializes the optional section heading text.</summary>
     public string? SectionHeading { get; init; }
+
+    /// <summary>Gets or initializes the heading depth for section headings (1-6, default: 1).</summary>
+    public int HeadingDepth { get; init; } = 1;
 
     /// <summary>Gets or initializes the term column header (table format only).</summary>
     public string TermHeader { get; init; } = "Term";

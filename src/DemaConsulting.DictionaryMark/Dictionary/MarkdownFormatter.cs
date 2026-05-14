@@ -42,20 +42,21 @@ internal static class MarkdownFormatter
         var deduped = entries.Where(e => seen.Add(e.Term)).ToList();
 
         // Sort if requested
-        IEnumerable<DictionaryEntry> ordered = options.SortOrder == Cli.SortOrder.Alphabetical
+        IEnumerable<DictionaryEntry> ordered = options.SortOrder == SortOrder.Alphabetical
             ? deduped.OrderBy(e => e.Term, StringComparer.OrdinalIgnoreCase)
             : deduped;
 
         var sb = new System.Text.StringBuilder();
 
-        // Optional section heading (level 2)
+        // Optional section heading at configurable depth (1-6)
         if (!string.IsNullOrEmpty(options.SectionHeading))
         {
-            sb.AppendLine($"## {options.SectionHeading}");
+            var depth = Math.Clamp(options.HeadingDepth, 1, 6);
+            sb.AppendLine($"{new string('#', depth)} {options.SectionHeading}");
             sb.AppendLine();
         }
 
-        if (options.Format == Cli.OutputFormat.Table)
+        if (options.Format == OutputFormat.Table)
         {
             FormatTable(sb, ordered, options);
         }
@@ -85,9 +86,17 @@ internal static class MarkdownFormatter
     {
         sb.AppendLine($"| {EscapePipe(options.TermHeader)} | {EscapePipe(options.DefinitionHeader)} |");
         sb.AppendLine("| :--- | :--- |");
-        foreach (var entry in entries)
+        var entryList = entries.ToList();
+        if (entryList.Count == 0)
         {
-            sb.AppendLine($"| {EscapePipe(entry.Term)} | {EscapePipe(entry.Definition)} |");
+            sb.AppendLine("| N/A | N/A |");
+        }
+        else
+        {
+            foreach (var entry in entryList)
+            {
+                sb.AppendLine($"| {EscapePipe(entry.Term)} | {EscapePipe(entry.Definition)} |");
+            }
         }
     }
 

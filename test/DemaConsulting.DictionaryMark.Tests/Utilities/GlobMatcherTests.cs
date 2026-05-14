@@ -98,8 +98,9 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles()
     {
-        var tmpDir = Path.GetTempPath();
-        var tmpFile = Path.Combine(tmpDir, $"glob-test-{Guid.NewGuid()}.yaml");
+        var tmpDir = Path.Combine(Path.GetTempPath(), $"glob-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        var tmpFile = Path.Combine(tmpDir, "test.yaml");
         File.WriteAllText(tmpFile, "key: value");
         try
         {
@@ -110,7 +111,7 @@ public class GlobMatcherTests
         }
         finally
         {
-            File.Delete(tmpFile);
+            Directory.Delete(tmpDir, recursive: true);
         }
     }
 

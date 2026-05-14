@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
+using DemaConsulting.DictionaryMark.Dictionary;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 
@@ -544,7 +545,7 @@ public class ContextTests
     public void Context_Create_FormatFlag_Table_SetsTableFormat()
     {
         using var context = Context.Create(["--format", "table"]);
-        Assert.Equal(DictionaryMark.Cli.OutputFormat.Table, context.Format);
+        Assert.Equal(OutputFormat.Table, context.Format);
     }
 
     /// <summary>Test creating a context with --format bullets sets bullets format.</summary>
@@ -552,7 +553,7 @@ public class ContextTests
     public void Context_Create_FormatFlag_Bullets_SetsBulletsFormat()
     {
         using var context = Context.Create(["--format", "bullets"]);
-        Assert.Equal(DictionaryMark.Cli.OutputFormat.Bullets, context.Format);
+        Assert.Equal(OutputFormat.Bullets, context.Format);
     }
 
     /// <summary>Test creating a context with --section sets section heading.</summary>
@@ -584,7 +585,7 @@ public class ContextTests
     public void Context_Create_SortFlag_Alpha_SetsAlphabetical()
     {
         using var context = Context.Create(["--sort", "alpha"]);
-        Assert.Equal(DictionaryMark.Cli.SortOrder.Alphabetical, context.SortBy);
+        Assert.Equal(SortOrder.Alphabetical, context.SortBy);
     }
 
     /// <summary>Test creating a context with --sort file sets file order sort.</summary>
@@ -592,7 +593,7 @@ public class ContextTests
     public void Context_Create_SortFlag_File_SetsFileOrder()
     {
         using var context = Context.Create(["--sort", "file"]);
-        Assert.Equal(DictionaryMark.Cli.SortOrder.FileOrder, context.SortBy);
+        Assert.Equal(SortOrder.FileOrder, context.SortBy);
     }
 
     /// <summary>Test creating a context with --input without value throws exception.</summary>
@@ -646,7 +647,7 @@ public class ContextTests
     public void Context_Create_DefaultFormat_IsBullets()
     {
         using var context = Context.Create([]);
-        Assert.Equal(DictionaryMark.Cli.OutputFormat.Bullets, context.Format);
+        Assert.Equal(OutputFormat.Bullets, context.Format);
     }
 
     /// <summary>Test that the default sort order is FileOrder.</summary>
@@ -654,7 +655,7 @@ public class ContextTests
     public void Context_Create_DefaultSort_IsFileOrder()
     {
         using var context = Context.Create([]);
-        Assert.Equal(DictionaryMark.Cli.SortOrder.FileOrder, context.SortBy);
+        Assert.Equal(SortOrder.FileOrder, context.SortBy);
     }
 }
 

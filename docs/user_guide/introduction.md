@@ -68,7 +68,7 @@ SDK: Software Development Kit
 Generate a Markdown bullet list:
 
 ```bash
-dictionarymark --input glossary.yaml --format bullets --section "Glossary"
+dictionarymark --input glossary.yaml --format bullets --section "Glossary" --depth 1
 ```
 
 Output:
@@ -83,22 +83,22 @@ Output:
 
 ## Generate a Table
 
-Generate a Markdown table from the same input:
+Generate a Markdown table from the same input, with a level-2 heading:
 
 ```bash
-dictionarymark --input glossary.yaml --format table --section "Glossary"
+dictionarymark --input glossary.yaml --format table --section "Glossary" --depth 2
 ```
 
 Output:
 
 ```markdown
-# Glossary
+## Glossary
 
-| Term | Definition                        |
-| :--- | :-------------------------------- |
-| API  | Application Programming Interface |
-| CLI  | Command-Line Interface            |
-| SDK  | Software Development Kit          |
+| Term | Definition |
+| :--- | :--- |
+| API | Application Programming Interface |
+| CLI | Command-Line Interface |
+| SDK | Software Development Kit |
 ```
 
 ## Multiple Input Files
@@ -204,7 +204,7 @@ Error: Unsupported argument '--unknown'
 Conflicting definitions for the same term across input files also produce a clear error:
 
 ```text
-Error: Conflict detected for term 'API': 'Application Programming Interface' vs 'Advanced Programming Interface'
+Error: Conflict: term 'API' has multiple definitions
 ```
 
 This behavior enables automated scripts and CI/CD pipelines to detect and surface
