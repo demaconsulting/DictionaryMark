@@ -54,6 +54,7 @@ public class MarkdownFormatterTests
         var options = new MarkdownOptions { Format = OutputFormat.Bullets, SectionHeading = "Glossary" };
         var result = MarkdownFormatter.Format(TwoEntries, options);
         Assert.Contains("# Glossary", result);
+        Assert.DoesNotContain("## Glossary", result);
         Assert.Contains("- **Alpha**: First letter", result);
     }
 

@@ -73,7 +73,7 @@ public class YamlDictionaryLoaderTests
     ///     Test that a non-existent file throws FileNotFoundException.
     /// </summary>
     [Fact]
-    public void YamlDictionaryLoader_Load_NonExistentFile_ThrowsIOException()
+    public void YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException()
     {
         var path = Path.Combine(Path.GetTempPath(), "nonexistent_dictionarymark_test_file.yaml");
         Assert.Throws<FileNotFoundException>(() => YamlDictionaryLoader.Load(path));
@@ -90,25 +90,6 @@ public class YamlDictionaryLoaderTests
         {
             File.WriteAllText(tmpFile, "Term1:\n  nested: value\n");
             Assert.Throws<InvalidOperationException>(() => YamlDictionaryLoader.Load(tmpFile));
-        }
-        finally
-        {
-            File.Delete(tmpFile);
-        }
-    }
-
-    /// <summary>
-    ///     Test that a single-entry YAML file is loaded as a single entry (no duplicate key).
-    /// </summary>
-    [Fact]
-    public void YamlDictionaryLoader_Load_SingleEntry_ReturnsSingleEntry()
-    {
-        var tmpFile = Path.GetTempFileName();
-        try
-        {
-            File.WriteAllText(tmpFile, "Term1: Definition1\n");
-            var entries = YamlDictionaryLoader.Load(tmpFile);
-            Assert.Single(entries);
         }
         finally
         {

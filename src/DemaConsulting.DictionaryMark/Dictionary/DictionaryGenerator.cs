@@ -107,7 +107,6 @@ internal sealed class DictionaryGenerator
             try
             {
                 File.WriteAllText(context.OutputFile, output);
-                context.WriteLine($"Dictionary written to {context.OutputFile}");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

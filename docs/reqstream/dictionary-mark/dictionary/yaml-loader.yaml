@@ -19,6 +19,6 @@ sections:
         justification: |
           Clear error messages help users identify and fix invalid input files quickly.
         tests:
-          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsIOException
+          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
           - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
           - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException

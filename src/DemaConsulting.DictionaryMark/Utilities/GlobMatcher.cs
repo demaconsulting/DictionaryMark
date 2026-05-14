@@ -89,11 +89,25 @@ internal static class GlobMatcher
 
         string baseDir;
         string relPattern;
-        if (lastSepBeforeWildcard >= 0)
+        if (lastSepBeforeWildcard > 0)
         {
             // Split at the separator: everything before it is the base directory
             baseDir = normalizedPattern[..lastSepBeforeWildcard];
             relPattern = normalizedPattern[(lastSepBeforeWildcard + 1)..];
+
+            // On Windows, a bare drive letter "C:" resolves to the current directory of
+            // that drive, not its root. Append a slash to get the drive root "C:/".
+            if (baseDir.Length == 2 && baseDir[1] == ':')
+            {
+                baseDir += '/';
+            }
+        }
+        else if (lastSepBeforeWildcard == 0)
+        {
+            // Wildcard immediately after the leading slash (e.g. "/*.yaml" on Unix):
+            // base is the filesystem root.
+            baseDir = "/";
+            relPattern = normalizedPattern[1..];
         }
         else
         {

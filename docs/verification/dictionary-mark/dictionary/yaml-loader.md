@@ -30,7 +30,7 @@ assert on the returned entries or expected exceptions.
 
 **Expected**: Empty list returned.
 
-### YamlDictionaryLoader_Load_NonExistentFile_ThrowsIOException
+### YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
 
 **Scenario**: Path points to a non-existent file.
 
@@ -41,12 +41,6 @@ assert on the returned entries or expected exceptions.
 **Scenario**: File contains a nested YAML structure (`Term1:\n  nested: value`).
 
 **Expected**: `InvalidOperationException` is thrown.
-
-### YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException
-
-**Scenario**: File contains a single entry; duplicate key detection logic is exercised.
-
-**Expected**: Single entry returned (baseline for duplicate detection logic).
 
 ### YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
 
