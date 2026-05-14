@@ -84,6 +84,7 @@ public class DictionaryGeneratorTests
             generator.Generate(context);
 
             Assert.Equal(1, context.ExitCode);
+            Assert.Contains("Conflict: term 'API' has multiple definitions", errWriter.ToString());
         }
         finally
         {
@@ -117,6 +118,7 @@ public class DictionaryGeneratorTests
             generator.Generate(context);
 
             Assert.Equal(1, context.ExitCode);
+            Assert.Contains("No input files found", errWriter.ToString());
         }
         finally
         {

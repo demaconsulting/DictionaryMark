@@ -68,10 +68,12 @@ public class GlobMatcherTests
     /// <summary>
     ///     Test that null or empty pattern throws ArgumentException.
     /// </summary>
-    [Fact]
-    public void GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException()
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException(string? pattern)
     {
-        Assert.Throws<ArgumentException>(() => GlobMatcher.GetFiles([string.Empty]));
+        Assert.Throws<ArgumentException>(() => GlobMatcher.GetFiles([pattern!]));
     }
 
     /// <summary>
