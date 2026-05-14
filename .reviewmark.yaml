@@ -172,6 +172,7 @@ reviews:
       - "docs/design/dictionary-mark/dictionary/dictionary.md"
       - "docs/verification/dictionary-mark/dictionary/dictionary.md"
       - "test/**/Dictionary/DictionaryGeneratorTests.cs"
+      - "test/**/Dictionary/DictionarySubsystemTests.cs"
 
   - id: DictionaryMark-Dictionary-YamlLoader
     title: Review of DictionaryMark YamlDictionaryLoader unit implementation

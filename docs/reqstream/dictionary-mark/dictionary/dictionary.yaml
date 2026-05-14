@@ -9,4 +9,7 @@ sections:
         justification: |
           A cohesive dictionary subsystem enables clean separation of concerns and
           facilitates testing of each component independently.
-        tests: []
+        tests:
+          - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
+          - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
+          - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts

@@ -9,4 +9,10 @@ sections:
         justification: |
           A consistent CLI layer ensures all tool interactions follow the same patterns
           for argument handling and output formatting.
-        tests: []
+        tests:
+          - CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
+          - CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits
+          - CliSubsystem_ValidateFlow_ContextAndProgram_RunsValidationAndExits
+          - CliSubsystem_SilentFlow_ContextAndProgram_SuppressesOutput
+          - CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile
+          - CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero

@@ -9,4 +9,8 @@ sections:
         justification: |
           Shared utilities prevent duplication and ensure consistent behavior
           across all tool subsystems.
-        tests: []
+        tests:
+          - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
+          - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
+          - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
+          - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
