@@ -44,7 +44,7 @@ code is 1; no Markdown output is written.
 **Scenario**: `Generate` is called with a context created from an empty argument array (no
 `--input` flags), so the input pattern list is empty.
 
-**Expected**: Standard error contains `"No input files found"`; exit code is 1.
+**Expected**: Standard error contains `"No input files found matching the specified patterns."`; exit code is 1.
 
 **Requirement coverage**: `DictionaryMark-DictionaryGenerator-FileLoading`.
 

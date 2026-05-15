@@ -48,7 +48,6 @@ reviews:
       - "docs/design/dictionary-mark.md"
       - "docs/verification/dictionary-mark.md"
       - "test/**/IntegrationTests.cs"
-      - "test/**/Runner.cs"
       - "test/**/AssemblyInfo.cs"
 
   - id: DictionaryMark-TestHelpers
@@ -65,11 +64,13 @@ reviews:
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
       - "docs/verification/introduction.md"
+      - "docs/verification/ots.md"
 
   - id: DictionaryMark-AllRequirements
     title: Review of All DictionaryMark requirements quality and traceability
     paths:
       - "requirements.yaml"
+      - "docs/reqstream/dictionary-mark.yaml"
       - "docs/reqstream/dictionary-mark/**/*.yaml"
       - "docs/reqstream/ots/*.yaml"
 

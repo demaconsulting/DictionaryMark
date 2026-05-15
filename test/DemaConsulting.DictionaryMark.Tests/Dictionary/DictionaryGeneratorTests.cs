@@ -30,6 +30,34 @@ namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
 public class DictionaryGeneratorTests
 {
     /// <summary>
+    ///     Test that generating with no input patterns reports an error.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_NoInputPatterns_ReportsError()
+    {
+        // Arrange: context with no --input flags; redirect stderr to capture error output
+        var originalError = Console.Error;
+        try
+        {
+            using var errWriter = new StringWriter();
+            Console.SetError(errWriter);
+            using var context = Context.Create([]);
+
+            // Act
+            var generator = new DictionaryGenerator();
+            generator.Generate(context);
+
+            // Assert
+            Assert.Equal(1, context.ExitCode);
+            Assert.Contains("No input files found", errWriter.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    /// <summary>
     ///     Test that generating from a single YAML file writes to stdout.
     /// </summary>
     [Fact]
