@@ -135,32 +135,17 @@ public class DictionaryGeneratorTests
         using var tmpDir = new TemporaryDirectory();
         var tmpInputFile = tmpDir.GetFilePath("input.yaml");
         var tmpOutputFile = tmpDir.GetFilePath("output.md");
-        try
-        {
-            File.WriteAllText(tmpInputFile, "API: Application Programming Interface\n");
-            if (File.Exists(tmpOutputFile))
-            {
-                File.Delete(tmpOutputFile);
-            }
+        File.WriteAllText(tmpInputFile, "API: Application Programming Interface\n");
+        using var context = Context.Create(["--input", tmpInputFile, "--output", tmpOutputFile]);
 
-            using var context = Context.Create(["--input", tmpInputFile, "--output", tmpOutputFile]);
+        // Act: generate with an output file configured
+        var generator = new DictionaryGenerator();
+        generator.Generate(context);
 
-            // Act: generate with an output file configured
-            var generator = new DictionaryGenerator();
-            generator.Generate(context);
-
-            // Assert: output file exists and contains the expected content; exit code is 0
-            Assert.True(File.Exists(tmpOutputFile), "Output file should be created by Generate");
-            var fileContent = File.ReadAllText(tmpOutputFile);
-            Assert.Contains("API", fileContent);
-            Assert.Equal(0, context.ExitCode);
-        }
-        finally
-        {
-            if (File.Exists(tmpOutputFile))
-            {
-                File.Delete(tmpOutputFile);
-            }
-        }
+        // Assert: output file exists and contains the expected content; exit code is 0
+        Assert.True(File.Exists(tmpOutputFile), "Output file should be created by Generate");
+        var fileContent = File.ReadAllText(tmpOutputFile);
+        Assert.Contains("API", fileContent);
+        Assert.Equal(0, context.ExitCode);
     }
 }
