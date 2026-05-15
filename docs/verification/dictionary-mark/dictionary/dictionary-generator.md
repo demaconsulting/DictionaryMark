@@ -48,6 +48,16 @@ code is 1; no Markdown output is written.
 
 **Requirement coverage**: `DictionaryMark-DictionaryGenerator-FileLoading`.
 
+##### DictionaryGenerator_Generate_OutputFile_WritesToFile
+
+**Scenario**: `Generate` is called with a context specifying a single YAML input file and a
+temporary output file path.
+
+**Expected**: The output file is created and contains the formatted Markdown output (including
+`"API"`); exit code is 0.
+
+**Requirement coverage**: `DictionaryMark-DictionaryGenerator-OutputRouting`.
+
 #### Requirements Coverage
 
 - **`DictionaryMark-DictionaryGenerator-FileLoading`**:
@@ -56,4 +66,5 @@ code is 1; no Markdown output is written.
 - **`DictionaryMark-DictionaryGenerator-ConflictReporting`**:
   DictionaryGenerator_Generate_ConflictingEntries_ReportsError
 - **`DictionaryMark-DictionaryGenerator-OutputRouting`**:
-  DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
+  DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout,
+  DictionaryGenerator_Generate_OutputFile_WritesToFile

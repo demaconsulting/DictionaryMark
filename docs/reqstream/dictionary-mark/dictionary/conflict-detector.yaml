@@ -16,3 +16,27 @@ sections:
           - ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict
           - ConflictDetector_Detect_CaseInsensitiveConflict_Detected
           - ConflictDetector_Detect_MultipleConflicts_ReturnsAll
+
+      - id: DictionaryMark-ConflictDetector-CaseInsensitive
+        title: The ConflictDetector class shall compare terms case-insensitively when detecting conflicts.
+        justification: |
+          Dictionary terms may appear in different cases across source files. Case-insensitive
+          comparison ensures that "Term" and "term" are treated as the same term.
+        tests:
+          - ConflictDetector_Detect_CaseInsensitiveConflict_Detected
+
+      - id: DictionaryMark-ConflictDetector-Deduplication
+        title: The ConflictDetector class shall treat identical term-definition pairs as allowed duplicates, not conflicts.
+        justification: |
+          The same entry may appear in multiple source files (e.g., a shared term). Exact
+          duplicates (same term, same definition) are not conflicts and must not be reported.
+        tests:
+          - ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty
+
+      - id: DictionaryMark-ConflictDetector-NullRejection
+        title: The ConflictDetector class shall throw ArgumentNullException when the entries argument is null.
+        justification: |
+          Null input is a programming error that should be detected immediately at the API
+          boundary rather than causing a NullReferenceException deeper in the call stack.
+        tests:
+          - ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException

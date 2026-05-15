@@ -20,28 +20,39 @@ unit in isolation.
 
 ### UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
 
-**Scenario**: `GlobMatcher` resolves a concrete file path; result is passed to
-`PathHelpers.SafePathCombine`.
+**Scenario**: `PathHelpers.SafePathCombine` is called with a base path and several valid
+relative paths. Each result is verified to be a fully-qualified absolute path that remains
+within the base directory.
 
-**Expected**: Resolved path matches the expected absolute file path; no exception thrown.
+**Expected**: Resolved paths remain within the base directory; no exception thrown.
 
 ### UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
 
-**Scenario**: `PathHelpers.SafePathCombine` is called with a path-traversal sequence.
+**Scenario**: `PathHelpers.SafePathCombine` is called with a path-traversal sequence
+(e.g., `"../escape.txt"`).
 
-**Expected**: `InvalidOperationException` thrown; no file system access attempted.
+**Expected**: `ArgumentException` thrown; no file system access attempted.
 
 ### UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
 
-**Scenario**: `PathHelpers.SafePathCombine` is called with an absolute second path argument.
+**Scenario**: `PathHelpers.SafePathCombine` is called with an absolute second path argument
+(e.g., `"/etc/passwd"` on Unix or `C:\Windows\...` on Windows).
 
-**Expected**: `InvalidOperationException` thrown.
+**Expected**: `ArgumentException` thrown.
 
 ### UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
 
-**Scenario**: `PathHelpers.EnsureDirectoryExists` is called with a valid safe path.
+**Scenario**: `PathHelpers.SafePathCombine` is used to compute safe paths within a temporary
+base directory, then `Directory.CreateDirectory` is called with those paths.
 
-**Expected**: Directory is created; no exception thrown.
+**Expected**: Directories are created successfully; no exception thrown.
+
+### UtilitiesSubsystem_GlobMatcher_ResolvesFiles
+
+**Scenario**: `GlobMatcher.GetFiles` is called with a glob pattern that matches one or more
+temporary files created in a temporary directory.
+
+**Expected**: The returned list contains the expected file paths; no exception thrown.
 
 ### Requirements Coverage
 

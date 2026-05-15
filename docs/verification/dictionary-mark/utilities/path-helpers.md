@@ -84,8 +84,8 @@ is supplied.
   PathHelpers_SafePathCombine_NestedPaths_CombinesCorrectly,
   PathHelpers_SafePathCombine_EmptyRelativePath_ReturnsBasePath,
   PathHelpers_SafePathCombine_DotDotPrefixedName_CombinesCorrectly.
-- **`DictionaryMark-PathHelpers-Validation`**: PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException,
-  PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException,
-  PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException,
+- **`DictionaryMark-PathHelpers-NullValidation`**: PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException,
+  PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException.
+- **`DictionaryMark-PathHelpers-TraversalValidation`**: PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException,
   PathHelpers_SafePathCombine_DoubleDotsInMiddle_ThrowsArgumentException,
   PathHelpers_SafePathCombine_AbsolutePath_ThrowsArgumentException.

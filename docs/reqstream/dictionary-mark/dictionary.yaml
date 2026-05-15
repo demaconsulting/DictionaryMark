@@ -11,7 +11,9 @@ sections:
           processing depends on correctly parsed term-definition pairs.
         children:
           - DictionaryMark-YamlLoader-Load
-          - DictionaryMark-YamlLoader-Errors
+          - DictionaryMark-YamlLoader-StructureErrors
+          - DictionaryMark-YamlLoader-FileErrors
+          - DictionaryMark-YamlLoader-DuplicateKeys
         tests:
           - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
           - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown

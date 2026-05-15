@@ -108,30 +108,45 @@ public class DictionaryGeneratorTests
     }
 
     /// <summary>
-    ///     Test that generating with no input patterns reports an error.
+    ///     Test that generating with an output file writes the formatted output to that file.
     /// </summary>
     [Fact]
-    public void DictionaryGenerator_Generate_NoInputPatterns_ReportsError()
+    public void DictionaryGenerator_Generate_OutputFile_WritesToFile()
     {
-        // Arrange
-        var originalError = Console.Error;
+        // Arrange: create a temporary YAML file and specify a temporary output file path
+        var tmpInputFile = Path.GetTempFileName() + ".yaml";
+        var tmpOutputFile = Path.GetTempFileName() + ".md";
         try
         {
-            using var errWriter = new StringWriter();
-            Console.SetError(errWriter);
-            using var context = Context.Create([]);
+            File.WriteAllText(tmpInputFile, "API: Application Programming Interface\n");
+            if (File.Exists(tmpOutputFile))
+            {
+                File.Delete(tmpOutputFile);
+            }
 
-            // Act
+            using var context = Context.Create(["--input", tmpInputFile, "--output", tmpOutputFile]);
+
+            // Act: generate with an output file configured
             var generator = new DictionaryGenerator();
             generator.Generate(context);
 
-            // Assert
-            Assert.Equal(1, context.ExitCode);
-            Assert.Contains("No input files found", errWriter.ToString());
+            // Assert: output file exists and contains the expected content; exit code is 0
+            Assert.True(File.Exists(tmpOutputFile), "Output file should be created by Generate");
+            var fileContent = File.ReadAllText(tmpOutputFile);
+            Assert.Contains("API", fileContent);
+            Assert.Equal(0, context.ExitCode);
         }
         finally
         {
-            Console.SetError(originalError);
+            if (File.Exists(tmpInputFile))
+            {
+                File.Delete(tmpInputFile);
+            }
+
+            if (File.Exists(tmpOutputFile))
+            {
+                File.Delete(tmpOutputFile);
+            }
         }
     }
 }

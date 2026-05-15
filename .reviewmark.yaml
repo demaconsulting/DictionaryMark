@@ -158,9 +158,9 @@ reviews:
   - id: DictionaryMark-Dictionary-Generator
     title: Review of DictionaryMark Dictionary DictionaryGenerator unit implementation
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary.yaml"
-      - "docs/design/dictionary-mark/dictionary.md"
-      - "docs/verification/dictionary-mark/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml"
+      - "docs/design/dictionary-mark/dictionary/dictionary-generator.md"
+      - "docs/verification/dictionary-mark/dictionary/dictionary-generator.md"
       - "src/**/Dictionary/DictionaryGenerator.cs"
       - "test/**/Dictionary/DictionaryGeneratorTests.cs"
 

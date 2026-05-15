@@ -37,7 +37,8 @@ Returns the formatted Markdown string.
    file order.
 3. Emit optional section heading when `options.SectionHeading` is non-empty. The heading
    level is derived from `options.HeadingDepth` (e.g., depth 1 produces `# {SectionHeading}`,
-   depth 2 produces `## {SectionHeading}`).
+   depth 2 produces `## {SectionHeading}`). Values outside the range 1–6 are clamped to that
+   range by `Math.Clamp` before the heading is emitted.
 4. Render as bullet list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
 
 **Throws:** `ArgumentNullException` - when `entries` or `options` is null.
@@ -49,7 +50,9 @@ Emits one `- **{Term}**: {Definition}` line per entry.
 ##### FormatTable *(private)*
 
 Emits a Markdown table with a header row, alignment row (`| :--- | :--- |`), and one data
-row per entry. Uses `EscapePipe` on all term and definition values.
+row per entry. Uses `EscapePipe` on all term and definition values. When the entry list is
+empty, a single `| N/A | N/A |` row is emitted in place of data rows to produce a valid
+non-empty table.
 
 ##### EscapePipe *(private)*
 

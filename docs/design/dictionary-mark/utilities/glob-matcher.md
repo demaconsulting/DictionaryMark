@@ -14,8 +14,10 @@ absolute file paths matching the supplied patterns.
    before the first `*` or `?`), then uses `Matcher` with that base.
 4. Relative patterns - uses `Matcher` with `Environment.CurrentDirectory` as the base.
 
-Results are accumulated in a case-insensitive `HashSet<string>` for deduplication, then
-returned as a sorted `IReadOnlyList<string>`.
+Results are accumulated in a `HashSet<string>` keyed with `StringComparer.OrdinalIgnoreCase`
+for case-insensitive deduplication, then returned as a sorted `IReadOnlyList<string>`. On
+case-sensitive file systems (such as Linux), paths differing only in case refer to distinct
+files but will be merged into a single entry by the deduplicator.
 
 #### Data Model
 

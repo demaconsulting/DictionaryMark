@@ -22,3 +22,4 @@ sections:
           - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
           - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
           - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+          - UtilitiesSubsystem_GlobMatcher_ResolvesFiles

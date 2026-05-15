@@ -33,3 +33,4 @@ sections:
           documentation pipelines that consume generated Markdown files.
         tests:
           - DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
+          - DictionaryGenerator_Generate_OutputFile_WritesToFile

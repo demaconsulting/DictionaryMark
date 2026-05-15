@@ -146,5 +146,33 @@ public class UtilitiesSubsystemTests
             }
         }
     }
-}
 
+    /// <summary>
+    ///     Test that GlobMatcher resolves files matching a glob pattern at the subsystem level.
+    /// </summary>
+    [Fact]
+    public void UtilitiesSubsystem_GlobMatcher_ResolvesFiles()
+    {
+        // Arrange: create a temporary directory with a known file
+        var tempDir = Path.Combine(Path.GetTempPath(), $"glob_test_{Guid.NewGuid()}");
+        var testFile = Path.Combine(tempDir, "test.yaml");
+        try
+        {
+            Directory.CreateDirectory(tempDir);
+            File.WriteAllText(testFile, "key: value\n");
+
+            // Act: resolve files matching the pattern
+            var files = GlobMatcher.GetFiles([testFile]);
+
+            // Assert: the test file is found in the resolved list
+            Assert.Contains(testFile, files);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+}

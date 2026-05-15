@@ -34,7 +34,11 @@ internal static class ConflictDetector
     ///     Same term + same definition is NOT a conflict (it is a duplicate, which is allowed).
     ///     Same term + different definition IS a conflict.
     ///     Term comparison is case-insensitive.
+    ///     Definition comparison is case-sensitive (ordinal); two definitions that differ only
+    ///     in casing are treated as different definitions and constitute a conflict.
+    ///     Thread-safe; all state is method-local.
     /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries"/> is null.</exception>
     public static IReadOnlyList<string> Detect(IEnumerable<DictionaryEntry> entries)
     {
         // Validate input
@@ -42,6 +46,7 @@ internal static class ConflictDetector
 
         var termDefinitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var conflicts = new List<string>();
+        // Track reported conflicts to emit at most one message per conflicting term
         var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var entry in entries)

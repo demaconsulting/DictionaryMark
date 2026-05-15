@@ -32,6 +32,14 @@ internal sealed class DictionaryGenerator
     ///     Generates Markdown output from YAML dictionary files.
     /// </summary>
     /// <param name="context">The context containing command line arguments.</param>
+    /// <remarks>
+    ///     Applies an early-return-on-error strategy: each error condition writes to
+    ///     <c>context.WriteError</c> (which sets the exit code to 1) and returns immediately,
+    ///     with no output generated. Error cases include invalid input patterns, I/O errors
+    ///     reading YAML files, invalid YAML structure, no files found, and I/O or access errors
+    ///     writing the output file.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
     public void Generate(Context context)
     {
         // Validate input

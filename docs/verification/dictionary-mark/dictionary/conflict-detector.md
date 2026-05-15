@@ -54,6 +54,20 @@ It defines test scenarios, dependency usage, and requirement coverage for
 
 **Expected**: Two conflict messages returned.
 
+##### ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException
+
+**Scenario**: `null` is passed as the `entries` argument.
+
+**Expected**: `ArgumentNullException` is thrown.
+
 #### Requirements Coverage
 
-- **`DictionaryMark-ConflictDetector-Detect`**: All `ConflictDetector_Detect_*` tests.
+- **`DictionaryMark-ConflictDetector-Detect`**: ConflictDetector_Detect_NoEntries_ReturnsEmpty,
+  ConflictDetector_Detect_UniqueTerms_ReturnsEmpty,
+  ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty,
+  ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict,
+  ConflictDetector_Detect_CaseInsensitiveConflict_Detected,
+  ConflictDetector_Detect_MultipleConflicts_ReturnsAll.
+- **`DictionaryMark-ConflictDetector-CaseInsensitive`**: ConflictDetector_Detect_CaseInsensitiveConflict_Detected.
+- **`DictionaryMark-ConflictDetector-Deduplication`**: ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty.
+- **`DictionaryMark-ConflictDetector-NullRejection`**: ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException.

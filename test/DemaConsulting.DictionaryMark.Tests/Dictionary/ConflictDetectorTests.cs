@@ -33,7 +33,12 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_NoEntries_ReturnsEmpty()
     {
+        // Arrange: empty entry collection
+
+        // Act: detect conflicts in empty collection
         var result = ConflictDetector.Detect([]);
+
+        // Assert: no conflicts reported
         Assert.Empty(result);
     }
 
@@ -43,12 +48,17 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_UniqueTerms_ReturnsEmpty()
     {
+        // Arrange: two entries with distinct terms
         var entries = new[]
         {
             new DictionaryEntry("Term1", "Def1"),
             new DictionaryEntry("Term2", "Def2")
         };
+
+        // Act: detect conflicts among unique terms
         var result = ConflictDetector.Detect(entries);
+
+        // Assert: no conflicts reported
         Assert.Empty(result);
     }
 
@@ -58,13 +68,17 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty()
     {
-        // Same term + same definition = no conflict
+        // Arrange: two entries with identical term and identical definition
         var entries = new[]
         {
             new DictionaryEntry("Term1", "Def1"),
             new DictionaryEntry("Term1", "Def1")
         };
+
+        // Act: detect conflicts among exact duplicates
         var result = ConflictDetector.Detect(entries);
+
+        // Assert: same term + same definition is deduplication, not a conflict
         Assert.Empty(result);
     }
 
@@ -74,12 +88,17 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict()
     {
+        // Arrange: two entries with same term but different definitions
         var entries = new[]
         {
             new DictionaryEntry("Term1", "Def1"),
             new DictionaryEntry("Term1", "DifferentDef")
         };
+
+        // Act: detect conflicts
         var result = ConflictDetector.Detect(entries);
+
+        // Assert: one conflict message referencing the term
         Assert.Single(result);
         Assert.Contains("Term1", result[0]);
     }
@@ -90,12 +109,17 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_CaseInsensitiveConflict_Detected()
     {
+        // Arrange: entries with same term in different cases but different definitions
         var entries = new[]
         {
             new DictionaryEntry("term1", "Def1"),
             new DictionaryEntry("TERM1", "DifferentDef")
         };
+
+        // Act: detect conflicts with case-insensitive term comparison
         var result = ConflictDetector.Detect(entries);
+
+        // Assert: one conflict reported
         Assert.Single(result);
     }
 
@@ -105,6 +129,7 @@ public class ConflictDetectorTests
     [Fact]
     public void ConflictDetector_Detect_MultipleConflicts_ReturnsAll()
     {
+        // Arrange: two pairs of conflicting entries
         var entries = new[]
         {
             new DictionaryEntry("Term1", "Def1"),
@@ -112,7 +137,23 @@ public class ConflictDetectorTests
             new DictionaryEntry("Term2", "Def2"),
             new DictionaryEntry("Term2", "ConflictDef2")
         };
+
+        // Act: detect conflicts among all entries
         var result = ConflictDetector.Detect(entries);
+
+        // Assert: two conflict messages returned (one per conflicting term)
         Assert.Equal(2, result.Count);
+    }
+
+    /// <summary>
+    ///     Test that null entries throws ArgumentNullException.
+    /// </summary>
+    [Fact]
+    public void ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException()
+    {
+        // Arrange: null as the entries argument
+
+        // Act / Assert: passing null throws ArgumentNullException
+        Assert.Throws<ArgumentNullException>(() => ConflictDetector.Detect(null!));
     }
 }

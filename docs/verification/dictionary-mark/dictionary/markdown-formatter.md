@@ -27,9 +27,9 @@ invoke `MarkdownFormatter.Format`, and assert on the content and ordering of the
 
 ##### MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading
 
-**Scenario**: Bullets format with `SectionHeading = "Glossary"`.
+**Scenario**: Bullets format with `SectionHeading = "Glossary"` (default `HeadingDepth = 1`).
 
-**Expected**: Output contains `"## Glossary"` and the bullet entries.
+**Expected**: Output contains `"# Glossary"` and the bullet entries.
 
 ##### MarkdownFormatter_Format_TableFormat_GeneratesTable
 
@@ -39,9 +39,9 @@ invoke `MarkdownFormatter.Format`, and assert on the content and ordering of the
 
 ##### MarkdownFormatter_Format_TableWithSectionHeading_IncludesHeading
 
-**Scenario**: Table format with `SectionHeading = "Glossary"`.
+**Scenario**: Table format with `SectionHeading = "Glossary"` (default `HeadingDepth = 1`).
 
-**Expected**: Output contains `"## Glossary"` and table header row.
+**Expected**: Output contains `"# Glossary"` and table header row.
 
 ##### MarkdownFormatter_Format_TableWithCustomHeaders_UsesCustomHeaders
 
@@ -75,19 +75,47 @@ invoke `MarkdownFormatter.Format`, and assert on the content and ordering of the
 
 ##### MarkdownFormatter_Format_EmptyEntries_ReturnsEmptyOutput
 
-**Scenario**: Empty entry list passed to `Format`.
+**Scenario**: Empty entry list passed to `Format` with bullet format.
 
 **Expected**: Output is empty or whitespace-only.
+
+##### MarkdownFormatter_Format_EmptyTableEntries_EmitsNaRow
+
+**Scenario**: Empty entry list passed to `Format` with table format.
+
+**Expected**: Output contains `"| N/A | N/A |"`.
+
+##### MarkdownFormatter_Format_HeadingDepth1_EmitsLevelOneHeading
+
+**Scenario**: `SectionHeading = "Glossary"` with `HeadingDepth = 1`.
+
+**Expected**: Output contains `"# Glossary"` and does not contain `"## Glossary"`.
+
+##### MarkdownFormatter_Format_HeadingDepth2_EmitsLevelTwoHeading
+
+**Scenario**: `SectionHeading = "Glossary"` with `HeadingDepth = 2`.
+
+**Expected**: Output contains `"## Glossary"` and does not contain `"### Glossary"`.
+
+##### MarkdownFormatter_Format_HeadingDepth6_EmitsLevelSixHeading
+
+**Scenario**: `SectionHeading = "Glossary"` with `HeadingDepth = 6`.
+
+**Expected**: Output contains `"###### Glossary"`.
 
 #### Requirements Coverage
 
 - **`DictionaryMark-Formatter-Bullets`**: MarkdownFormatter_Format_BulletsFormat_GeneratesBulletList,
-  MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading,
-  MarkdownFormatter_Format_AlphabeticalSort_SortsEntries,
-  MarkdownFormatter_Format_FileOrder_PreservesOrder,
-  MarkdownFormatter_Format_DuplicateEntries_DeduplicatesKeepingFirst,
-  MarkdownFormatter_Format_EmptyEntries_ReturnsEmptyOutput.
+  MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading.
 - **`DictionaryMark-Formatter-Table`**: MarkdownFormatter_Format_TableFormat_GeneratesTable,
   MarkdownFormatter_Format_TableWithSectionHeading_IncludesHeading,
   MarkdownFormatter_Format_TableWithCustomHeaders_UsesCustomHeaders,
   MarkdownFormatter_Format_TableWithPipeInValue_EscapesPipe.
+- **`DictionaryMark-Formatter-Sorting`**: MarkdownFormatter_Format_AlphabeticalSort_SortsEntries,
+  MarkdownFormatter_Format_FileOrder_PreservesOrder.
+- **`DictionaryMark-Formatter-Deduplication`**: MarkdownFormatter_Format_DuplicateEntries_DeduplicatesKeepingFirst.
+- **`DictionaryMark-Formatter-SectionHeading`**: MarkdownFormatter_Format_BulletsWithSectionHeading_IncludesHeading,
+  MarkdownFormatter_Format_TableWithSectionHeading_IncludesHeading,
+  MarkdownFormatter_Format_HeadingDepth1_EmitsLevelOneHeading,
+  MarkdownFormatter_Format_HeadingDepth2_EmitsLevelTwoHeading,
+  MarkdownFormatter_Format_HeadingDepth6_EmitsLevelSixHeading.

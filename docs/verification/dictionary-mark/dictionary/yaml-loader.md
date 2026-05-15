@@ -54,6 +54,24 @@ assert on the returned entries or expected exceptions.
 
 **Expected**: Single entry with term `"API"` and definition `"Application Programming Interface"`.
 
+##### YamlDictionaryLoader_Load_NullFilePath_ThrowsArgumentNullException
+
+**Scenario**: `null` is passed as the `filePath` argument.
+
+**Expected**: `ArgumentNullException` is thrown.
+
+##### YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException
+
+**Scenario**: File contains two entries with the same key (case-insensitive), e.g. `"Term1"` and `"term1"`.
+
+**Expected**: `InvalidOperationException` is thrown.
+
 #### Requirements Coverage
 
-- **`DictionaryMark-YamlLoader-Load`**: All `YamlDictionaryLoader_Load_*` tests.
+- **`DictionaryMark-YamlLoader-Load`**: YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries,
+  YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList,
+  YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry.
+- **`DictionaryMark-YamlLoader-StructureErrors`**: YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException,
+  YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException.
+- **`DictionaryMark-YamlLoader-FileErrors`**: YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException.
+- **`DictionaryMark-YamlLoader-DuplicateKeys`**: YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException.

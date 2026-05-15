@@ -17,15 +17,22 @@ sections:
           - PathHelpers_SafePathCombine_EmptyRelativePath_ReturnsBasePath
           - PathHelpers_SafePathCombine_DotDotPrefixedName_CombinesCorrectly
 
-      - id: DictionaryMark-PathHelpers-Validation
-        title: The PathHelpers class shall reject null inputs and path-traversal attempts with descriptive errors.
+      - id: DictionaryMark-PathHelpers-NullValidation
+        title: The PathHelpers class shall reject null inputs with ArgumentNullException.
         justification: |
-          Null inputs and path-traversal attempts (double-dot segments, absolute relative
-          paths) must be rejected early with clear exceptions so callers can identify and
-          correct invalid usage.
+          Null inputs must be rejected early with ArgumentNullException so callers can
+          identify and correct missing argument usage before any path logic is attempted.
         tests:
           - PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException
           - PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException
+
+      - id: DictionaryMark-PathHelpers-TraversalValidation
+        title: The PathHelpers class shall reject path-traversal attempts and absolute relative paths with ArgumentException.
+        justification: |
+          Path-traversal attempts (double-dot segments, absolute relative paths) must be
+          rejected with clear exceptions so callers can identify and correct invalid usage
+          that could escape the intended base directory.
+        tests:
           - PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException
           - PathHelpers_SafePathCombine_DoubleDotsInMiddle_ThrowsArgumentException
           - PathHelpers_SafePathCombine_AbsolutePath_ThrowsArgumentException

@@ -37,10 +37,19 @@ Orchestrates the full generation pipeline.
 5. Write output — if `context.OutputFile` is set, write the formatted string to that file path;
    otherwise write to `context.WriteLine`.
 
-**Error handling:** When no input files are found matching the supplied patterns, the method
-calls `context.WriteError` with the message `"Error: No input files found matching the
-specified patterns."` and returns without generating output; the context exit code is set to 1
-by `WriteError`.
+#### Error Handling
+
+`Generate` applies an early-return-on-error strategy: each error condition calls
+`context.WriteError` (which sets the exit code to 1) and returns immediately, with no output
+generated. The five error cases are:
+
+| Error case | Exception / Condition | Behavior |
+| ---------- | --------------------- | -------- |
+| Invalid input pattern | `ArgumentException` from `GlobMatcher.GetFiles` | Calls `context.WriteError("Error: Invalid input pattern: {message}")` and returns. |
+| No files found | Empty list returned by `GlobMatcher.GetFiles` | Calls `context.WriteError("Error: No input files found matching the specified patterns.")` and returns. |
+| I/O error reading YAML | `IOException` from `YamlDictionaryLoader.Load` | Calls `context.WriteError("Error: Failed to read file '{file}': {message}")` and returns. |
+| Invalid YAML structure | `InvalidOperationException` from `YamlDictionaryLoader.Load` | Calls `context.WriteError("Error: Invalid YAML in file '{file}': {message}")` and returns. |
+| I/O or access error writing output | `IOException` or `UnauthorizedAccessException` from `File.WriteAllText` | Calls `context.WriteError("Error: Failed to write output file '{file}': {message}")` and returns. |
 
 #### Interactions
 

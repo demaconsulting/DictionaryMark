@@ -28,14 +28,26 @@ namespace DemaConsulting.DictionaryMark.Tests.Utilities;
 public class GlobMatcherTests
 {
     /// <summary>
+    ///     Test that a null patterns collection throws ArgumentNullException.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException()
+    {
+        // Act + Assert:
+        Assert.Throws<ArgumentNullException>(() => GlobMatcher.GetFiles(null!));
+    }
+
+    /// <summary>
     ///     Test that an existing absolute path returns the file.
     /// </summary>
     [Fact]
     public void GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile()
     {
+        // Arrange:
         var tmpFile = Path.GetTempFileName();
         try
         {
+            // Act + Assert:
             var result = GlobMatcher.GetFiles([tmpFile]);
             Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
         }
@@ -51,6 +63,7 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty()
     {
+        // Act + Assert:
         var result = GlobMatcher.GetFiles(["/nonexistent/path/file.yaml"]);
         Assert.Empty(result);
     }
@@ -61,6 +74,7 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_EmptyPatternList_ReturnsEmpty()
     {
+        // Act + Assert:
         var result = GlobMatcher.GetFiles([]);
         Assert.Empty(result);
     }
@@ -73,6 +87,7 @@ public class GlobMatcherTests
     [InlineData(null)]
     public void GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException(string? pattern)
     {
+        // Act + Assert:
         Assert.Throws<ArgumentException>(() => GlobMatcher.GetFiles([pattern!]));
     }
 
@@ -82,9 +97,11 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults()
     {
+        // Arrange:
         var tmpFile = Path.GetTempFileName();
         try
         {
+            // Act + Assert:
             var result = GlobMatcher.GetFiles([tmpFile, tmpFile]);
             Assert.Single(result);
         }
@@ -100,15 +117,19 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles()
     {
+        // Arrange:
         var tmpDir = Path.Combine(Path.GetTempPath(), $"glob-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tmpDir);
         var tmpFile = Path.Combine(tmpDir, "test.yaml");
         File.WriteAllText(tmpFile, "key: value");
         try
         {
-            // Use an absolute path with a wildcard pattern
             var pattern = Path.Combine(tmpDir, "*.yaml");
+
+            // Act:
             var result = GlobMatcher.GetFiles([pattern]);
+
+            // Assert:
             Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
         }
         finally
@@ -123,9 +144,41 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty()
     {
+        // Arrange:
         var nonExistentDir = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}");
         var pattern = Path.Combine(nonExistentDir, "*.yaml");
+
+        // Act + Assert:
         var result = GlobMatcher.GetFiles([pattern]);
         Assert.Empty(result);
+    }
+
+    /// <summary>
+    ///     Test that a relative glob pattern resolves matching files in the current directory.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles()
+    {
+        // Arrange:
+        var tmpDir = Path.Combine(Path.GetTempPath(), $"glob-rel-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        var tmpFile = Path.Combine(tmpDir, "test.yaml");
+        File.WriteAllText(tmpFile, "key: value");
+        var savedDir = Environment.CurrentDirectory;
+        try
+        {
+            Environment.CurrentDirectory = tmpDir;
+
+            // Act:
+            var result = GlobMatcher.GetFiles(["*.yaml"]);
+
+            // Assert:
+            Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Environment.CurrentDirectory = savedDir;
+            Directory.Delete(tmpDir, recursive: true);
+        }
     }
 }

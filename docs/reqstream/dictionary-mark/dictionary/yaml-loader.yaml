@@ -14,11 +14,27 @@ sections:
           - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
           - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
 
-      - id: DictionaryMark-YamlLoader-Errors
-        title: The YamlDictionaryLoader class shall report errors for non-flat YAML structures and missing files.
+      - id: DictionaryMark-YamlLoader-StructureErrors
+        title: The YamlDictionaryLoader class shall throw InvalidOperationException for non-flat YAML structures.
         justification: |
-          Clear error messages help users identify and fix invalid input files quickly.
+          Non-flat YAML (nested mappings, sequences) is not a valid dictionary format.
+          The loader must reject such structures with a clear error to help users fix invalid files.
         tests:
-          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
           - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
           - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
+
+      - id: DictionaryMark-YamlLoader-FileErrors
+        title: The YamlDictionaryLoader class shall throw IOException when the specified file cannot be read.
+        justification: |
+          Missing or inaccessible files are a common operational error. Propagating the
+          IOException allows callers to report a clear, actionable message to the user.
+        tests:
+          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
+
+      - id: DictionaryMark-YamlLoader-DuplicateKeys
+        title: The YamlDictionaryLoader class shall throw InvalidOperationException when a YAML file contains duplicate keys.
+        justification: |
+          Duplicate keys within a single file represent a data quality error. Detecting
+          them at load time prevents silent data loss or unpredictable behavior downstream.
+        tests:
+          - YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException

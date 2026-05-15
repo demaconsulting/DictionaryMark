@@ -17,6 +17,12 @@ and directories to exercise real file-system matching behavior. Paths are cleane
 
 #### Test Scenarios
 
+##### GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException
+
+**Scenario**: A null reference is passed as the patterns collection.
+
+**Expected**: `ArgumentNullException` is thrown.
+
 ##### GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
 
 **Scenario**: A single absolute path to an existing temp file is passed.
@@ -37,7 +43,8 @@ and directories to exercise real file-system matching behavior. Paths are cleane
 
 ##### GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException
 
-**Scenario**: A list containing an empty string pattern is passed.
+**Scenario**: A list containing a null-element or an empty-string pattern is passed (both
+cases covered via `[Theory]`).
 
 **Expected**: `ArgumentException` is thrown.
 
@@ -60,6 +67,13 @@ exists.
 
 **Expected**: Empty result.
 
+##### GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
+
+**Scenario**: A relative glob pattern (`*.yaml`) is passed while the current directory
+contains a matching file.
+
+**Expected**: Result contains the matching file path resolved to an absolute path.
+
 #### Requirements Coverage
 
 - **`DictionaryMark-GlobMatcher-GetFiles`**: GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile,
@@ -67,5 +81,7 @@ exists.
   GlobMatcher_GetFiles_EmptyPatternList_ReturnsEmpty,
   GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults,
   GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles,
-  GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty.
-- **`DictionaryMark-GlobMatcher-Validation`**: GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException.
+  GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty,
+  GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles.
+- **`DictionaryMark-GlobMatcher-Validation`**: GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException,
+  GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException.

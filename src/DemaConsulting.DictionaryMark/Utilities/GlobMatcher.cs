@@ -33,6 +33,7 @@ internal static class GlobMatcher
     /// </summary>
     /// <param name="patterns">Glob patterns to match against.</param>
     /// <returns>Sorted, deduplicated list of matching file paths.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="patterns"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when a pattern is null or empty.</exception>
     public static IReadOnlyList<string> GetFiles(IEnumerable<string> patterns)
     {
