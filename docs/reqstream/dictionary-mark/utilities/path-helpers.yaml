@@ -27,7 +27,8 @@ sections:
           - PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException
 
       - id: DictionaryMark-PathHelpers-TraversalValidation
-        title: The PathHelpers class shall reject path-traversal attempts and absolute relative paths with ArgumentException.
+        title: The PathHelpers class shall reject path-traversal attempts and absolute relative paths
+          with ArgumentException.
         justification: |
           Path-traversal attempts (double-dot segments, absolute relative paths) must be
           rejected with clear exceptions so callers can identify and correct invalid usage

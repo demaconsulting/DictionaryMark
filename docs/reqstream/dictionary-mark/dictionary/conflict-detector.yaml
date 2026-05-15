@@ -26,7 +26,8 @@ sections:
           - ConflictDetector_Detect_CaseInsensitiveConflict_Detected
 
       - id: DictionaryMark-ConflictDetector-Deduplication
-        title: The ConflictDetector class shall treat identical term-definition pairs as allowed duplicates, not conflicts.
+        title: The ConflictDetector class shall treat identical term-definition pairs as allowed duplicates,
+          not conflicts.
         justification: |
           The same entry may appear in multiple source files (e.g., a shared term). Exact
           duplicates (same term, same definition) are not conflicts and must not be reported.
