@@ -41,8 +41,8 @@ sections:
           - Context_Create_ValidateFlag_SetsValidateTrue
 
       - id: DictionaryMark-Context-ResultsFlag
-        title: The Context class shall parse the --results/--result flag and set the ResultsFile property; an ArgumentException
-          shall be thrown when the value is missing.
+        title: The Context class shall parse the --results/--result flag and set the ResultsFile
+          property; an ArgumentException shall be thrown when the value is missing.
         justification: |
           The results file path must be captured so the self-validation subsystem can
           write structured output for CI/CD pipeline consumption.

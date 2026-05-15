@@ -11,11 +11,9 @@ unit in isolation.
 
 ### Dependencies
 
-| Dependency    | Usage in Tests                                                                                |
-|---------------|-----------------------------------------------------------------------------------------------|
-| `GlobMatcher` | Invoked directly to test pattern resolution and deduplication.                                |
-| `PathHelpers` | Invoked directly to test path combination and traversal rejection.                            |
-| File system   | Temporary directories created via `TemporaryDirectory` to provide real file-system fixtures. |
+- **`GlobMatcher`**: Invoked directly to test pattern resolution and deduplication.
+- **`PathHelpers`**: Invoked directly to test path combination and traversal rejection.
+- **File system**: Temporary directories created via `TemporaryDirectory` to provide real file-system fixtures.
 
 ### Test Scenarios
 

@@ -32,7 +32,8 @@ sections:
           - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
 
       - id: DictionaryMark-YamlLoader-DuplicateKeys
-        title: The YamlDictionaryLoader class shall throw InvalidOperationException when a YAML file contains duplicate keys.
+        title: The YamlDictionaryLoader class shall throw InvalidOperationException when a YAML
+          file contains duplicate keys.
         justification: |
           Duplicate keys within a single file represent a data quality error. Detecting
           them at load time prevents silent data loss or unpredictable behavior downstream.

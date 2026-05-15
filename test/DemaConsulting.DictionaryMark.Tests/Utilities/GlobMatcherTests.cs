@@ -26,6 +26,7 @@ namespace DemaConsulting.DictionaryMark.Tests.Utilities;
 /// <summary>
 ///     Unit tests for the GlobMatcher class.
 /// </summary>
+[Collection("Sequential")]
 public class GlobMatcherTests
 {
     /// <summary>

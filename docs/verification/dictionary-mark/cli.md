@@ -12,12 +12,10 @@ flags, output content, and exit codes. No mocking is used; all collaborators exe
 
 ### Dependencies
 
-| Dependency   | Usage in Tests                                                                                  |
-|--------------|--------------------------------------------------------------------------------------------------|
-| `Context`    | Created from argument arrays to test flag parsing and output behavior.                           |
-| `Program`    | Invoked with created contexts to test end-to-end CLI dispatch.                                   |
-| `Validation` | Called indirectly when the validate flag is passed.                                              |
-| File system  | Temporary results and log files created via `TemporaryDirectory` for file-output tests.         |
+- **`Context`**: Created from argument arrays to test flag parsing and output behavior.
+- **`Program`**: Invoked with created contexts to test end-to-end CLI dispatch.
+- **`Validation`**: Called indirectly when the validate flag is passed.
+- **File system**: Temporary results and log files created via `TemporaryDirectory` for file-output tests.
 
 ### Test Scenarios
 

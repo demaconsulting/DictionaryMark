@@ -40,22 +40,18 @@ File.WriteAllText(filePath, "key: value");
 
 #### Members
 
-| Member | Description |
-|---|---|
-| `DirectoryPath` | Full path to the temporary directory. |
-| `GetFilePath(fileName)` | Returns the full path to a named file within the directory. |
-| `Dispose()` | Deletes the directory and all its contents; ignores cleanup errors. |
+- **`DirectoryPath`**: Full path to the temporary directory.
+- **`GetFilePath(fileName)`**: Returns the full path to a named file within the directory.
+- **`Dispose()`**: Deletes the directory and all its contents; ignores cleanup errors.
 
 ### Adoption Across the Test Suite
 
 `TemporaryDirectory` is used in all test classes that create temporary files
 or directories:
 
-| Test file | Usage |
-|---|---|
-| `Utilities/GlobMatcherTests.cs` | Provides directories for glob pattern matching tests. |
-| `Utilities/UtilitiesSubsystemTests.cs` | Provides directories for path-helper and GlobMatcher subsystem tests. |
-| `Cli/CliSubsystemTests.cs` | Provides directories for results and log file output tests. |
-| `SelfTest/SelfTestSubsystemTests.cs` | Provides directories for validation result file tests. |
-| `SelfTest/ValidationTests.cs` | Provides directories for TRX, XML, and log output tests. |
-| `IntegrationTests.cs` | Provides directories for YAML input, output, and results file tests. |
+- **`Utilities/GlobMatcherTests.cs`**: Provides directories for glob pattern matching tests.
+- **`Utilities/UtilitiesSubsystemTests.cs`**: Provides directories for path-helper and GlobMatcher subsystem tests.
+- **`Cli/CliSubsystemTests.cs`**: Provides directories for results and log file output tests.
+- **`SelfTest/SelfTestSubsystemTests.cs`**: Provides directories for validation result file tests.
+- **`SelfTest/ValidationTests.cs`**: Provides directories for TRX, XML, and log output tests.
+- **`IntegrationTests.cs`**: Provides directories for YAML input, output, and results file tests.

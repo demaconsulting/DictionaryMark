@@ -11,9 +11,8 @@ and directories to exercise real file-system matching behavior. Directory-based 
 
 #### Dependencies
 
-| Dependency  | Usage in Tests                                                            |
-| ----------- | ------------------------------------------------------------------------- |
-| File system | Temporary files and directories created via `TemporaryDirectory` (or `Path.GetTempFileName` for single-file tests) to verify matching behavior. |
+- **File system**: Temporary files and directories created via `TemporaryDirectory` (or
+  `Path.GetTempFileName` for single-file tests) to verify matching behavior.
 
 #### Test Scenarios
 
