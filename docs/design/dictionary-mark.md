@@ -7,7 +7,7 @@ that reads YAML dictionary files and generates Markdown output in bullet or tabl
 
 DictionaryMark is a command-line application that processes YAML files containing
 term-definition pairs and produces formatted Markdown output. The system consists
-of four primary subsystems:
+of four primary subsystems: Cli, SelfTest, Dictionary, and Utilities.
 
 ## Major Components
 
@@ -26,7 +26,9 @@ The Program unit acts as the system orchestrator:
 
 ## External Interfaces
 
-## Command-Line Interface
+DictionaryMark exposes a single external interface — its command-line argument list.
+
+### Command-Line Interface
 
 - **Version Query**: `-v`, `--version`
 - **Help Display**: `-?`, `-h`, `--help`
@@ -46,7 +48,9 @@ The Program unit acts as the system orchestrator:
 
 ## Error Handling
 
-## Unrecognized Argument Handling
+DictionaryMark reports errors via stderr and signals failure through a non-zero exit code.
+
+### Unrecognized Argument Handling
 
 When an unrecognized argument is supplied on the command line, the tool:
 
@@ -55,7 +59,7 @@ When an unrecognized argument is supplied on the command line, the tool:
 
 No Markdown output is generated when an argument error occurs.
 
-## Conflict Detection Behavior
+### Conflict Detection Behavior
 
 When conflicting definitions are detected across input files, the tool:
 
@@ -67,12 +71,14 @@ Conflict errors are reported before any Markdown output is written.
 
 ## Data Flow
 
-## Input Processing
+Data moves through the system in two phases: input processing and output generation.
+
+### Input Processing
 
 1. **YAML files** → YamlDictionaryLoader reads flat key-value mappings
 2. **Entries** → ConflictDetector checks for term conflicts across files
 3. **Validated entries** → MarkdownFormatter generates output
 
-## Output Processing
+### Output Processing
 
 1. **Formatted Markdown** → Written to output file or stdout

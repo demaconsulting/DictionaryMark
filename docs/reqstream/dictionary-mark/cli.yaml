@@ -9,6 +9,8 @@ sections:
         justification: |
           A dedicated argument-parsing layer ensures all tool interactions use the same
           consistent patterns for interpreting flags, values, and defaults.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
         tests:
           - CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
           - CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits
@@ -20,6 +22,8 @@ sections:
         justification: |
           Centralised output management in Context ensures all subsystems write to the same
           channels and that silent mode and log files are applied uniformly.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
         tests:
           - CliSubsystem_SilentFlow_ContextAndProgram_SuppressesOutput
           - CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile

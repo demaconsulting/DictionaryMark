@@ -40,3 +40,31 @@ sections:
           - Context_Create_OutputFlag_WithoutValue_ThrowsArgumentException
           - Context_Create_FormatFlag_InvalidValue_ThrowsArgumentException
           - Context_Create_SortFlag_InvalidValue_ThrowsArgumentException
+
+      - id: DictionaryMark-Context-VersionFlag
+        title: The Context class shall parse the --version (-v) flag and set the Version property to true.
+        justification: |
+          The version flag must be recognized and routed to the correct display path
+          by Program.Run.
+        tests:
+          - Context_Create_VersionFlag_SetsVersionTrue
+          - Context_Create_ShortVersionFlag_SetsVersionTrue
+
+      - id: DictionaryMark-Context-SilentFlag
+        title: The Context class shall parse the --silent flag and suppress output on both output channels.
+        justification: |
+          Silent mode must be applied uniformly to all output so that automated pipelines
+          receive no unexpected console output from the tool.
+        tests:
+          - Context_Create_SilentFlag_SetsSilentTrue
+          - Context_WriteLine_Silent_DoesNotWriteToConsole
+          - Context_WriteError_Silent_DoesNotWriteToConsole
+
+      - id: DictionaryMark-Context-LogFlag
+        title: The Context class shall parse the --log flag and open the specified file for log output.
+        justification: |
+          Log files provide a persistent record of tool output for debugging and
+          compliance audit trails.
+        tests:
+          - Context_Create_LogFlag_OpensLogFile
+          - Context_WriteError_WritesToLogFile

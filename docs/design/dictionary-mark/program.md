@@ -44,8 +44,9 @@ Writes the full usage/options text to `context`.
 
 #### RunToolLogic(Context context) *(private)*
 
-If `context.InputPatterns` is non-empty, creates a `DictionaryGenerator` and calls `Generate`.
-Otherwise, writes a hint directing the user to `--input` and `--help`.
+If `context.InputPatterns` is non-empty, creates a `DictionaryGenerator` and calls `Generate`
+(`DictionaryMark-Program-GenerateDictionary`).
+Otherwise, writes a hint directing the user to `--input` and `--help` (`DictionaryMark-Program-NoInputHint`).
 
 ### Interactions
 

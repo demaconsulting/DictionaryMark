@@ -49,29 +49,31 @@ output generation:
 - Alphabetical sort: outputs entries in alphabetical order.
 - Heading depth: generates headings at the specified Markdown level.
 - Validation results (TRX): writes TRX-format test results file.
+- Validation results (JUnit XML): writes JUnit XML-format test results file.
 - Error handling: returns non-zero exit code for unrecognized arguments.
 
 ## Requirements Coverage
 
-| Requirement                                 | Test                                                                       |
-|---------------------------------------------|----------------------------------------------------------------------------|
-| DictionaryMark-System-Version               | DictionaryMark_VersionFlag_Provided_OutputsVersion                        |
-| DictionaryMark-System-Help                  | DictionaryMark_HelpFlag_Provided_OutputsUsageInformation                  |
-| DictionaryMark-System-Validate              | DictionaryMark_ValidateFlag_Provided_RunsValidation                       |
-| DictionaryMark-System-Silent                | DictionaryMark_SilentFlag_Provided_SuppressesOutput                       |
-| DictionaryMark-System-Log                   | DictionaryMark_LogFlag_Provided_WritesOutputToFile                        |
-| DictionaryMark-System-ErrorHandling         | DictionaryMark_UnknownArgument_Provided_ReturnsError                      |
-| DictionaryMark-System-GenerateBullets       | DictionaryMark_Generate_BulletsFormat_OutputsBulletList                   |
-| DictionaryMark-System-GenerateTable         | DictionaryMark_Generate_TableFormat_OutputsTable                          |
-| DictionaryMark-System-OutputFile            | DictionaryMark_Generate_WithOutputFile_WritesFile                         |
-| DictionaryMark-System-ConflictDetection-Report    | DictionaryMark_Generate_ConflictingEntries_ReportsError             |
-| DictionaryMark-System-ConflictDetection-ExitCode  | DictionaryMark_Generate_ConflictingEntries_ReportsError             |
-| DictionaryMark-System-SectionHeading        | DictionaryMark_Generate_WithSectionHeading_OutputsHeading                 |
-| DictionaryMark-System-TermHeader            | DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader                |
-| DictionaryMark-System-DefHeader             | DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader                 |
-| DictionaryMark-System-SortAlpha             | DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder              |
-| DictionaryMark-System-HeadingDepth          | DictionaryMark_ValidateWithDepth_DepthThree_OutputsCorrectHeadingLevel    |
-| DictionaryMark-System-ValidateResults       | DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile          |
+| Requirement | Test |
+|---|---|
+| DictionaryMark-System-Version | DictionaryMark_VersionFlag_Provided_OutputsVersion |
+| DictionaryMark-System-Help | DictionaryMark_HelpFlag_Provided_OutputsUsageInformation |
+| DictionaryMark-System-Validate | DictionaryMark_ValidateFlag_Provided_RunsValidation |
+| DictionaryMark-System-Silent | DictionaryMark_SilentFlag_Provided_SuppressesOutput |
+| DictionaryMark-System-Log | DictionaryMark_LogFlag_Provided_WritesOutputToFile |
+| DictionaryMark-System-ErrorHandling | DictionaryMark_UnknownArgument_Provided_ReturnsError |
+| DictionaryMark-System-GenerateBullets | DictionaryMark_Generate_BulletsFormat_OutputsBulletList |
+| DictionaryMark-System-GenerateTable | DictionaryMark_Generate_TableFormat_OutputsTable |
+| DictionaryMark-System-OutputFile | DictionaryMark_Generate_WithOutputFile_WritesFile |
+| DictionaryMark-System-ConflictDetection-Report | DictionaryMark_Generate_ConflictingEntries_ReportsError |
+| DictionaryMark-System-ConflictDetection-ExitCode | DictionaryMark_Generate_ConflictingEntries_ReportsError |
+| DictionaryMark-System-SectionHeading | DictionaryMark_Generate_WithSectionHeading_OutputsHeading |
+| DictionaryMark-System-TermHeader | DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader |
+| DictionaryMark-System-DefHeader | DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader |
+| DictionaryMark-System-SortAlpha | DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder |
+| DictionaryMark-System-HeadingDepth | DictionaryMark_ValidateWithDepth_DepthThree_OutputsCorrectHeadingLevel |
+| DictionaryMark-System-ValidateResults-TRX | DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile |
+| DictionaryMark-System-ValidateResults-XML | DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile |
 
 ## Acceptance Criteria
 

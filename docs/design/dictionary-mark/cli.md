@@ -4,8 +4,6 @@ The CLI subsystem handles command-line argument parsing and program output for D
 It is the primary interface between the user's command-line invocation and the tool's internal
 logic.
 
-### Components
-
 ### Context
 
 Created once per tool invocation via the `Context.Create` factory method. It parses the

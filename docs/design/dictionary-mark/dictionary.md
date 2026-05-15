@@ -2,8 +2,6 @@
 
 The Dictionary subsystem handles loading, validating, and formatting dictionary entries.
 
-### Components
-
 ### YamlDictionaryLoader
 
 Reads YAML files with flat string-to-string mappings. Uses YamlDotNet to parse

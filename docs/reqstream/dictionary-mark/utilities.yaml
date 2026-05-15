@@ -12,6 +12,11 @@ sections:
           Shared utilities prevent duplication and ensure consistent behavior across all
           tool subsystems. Path-safety enforcement in PathHelpers prevents directory-
           traversal attacks when combining base paths with caller-supplied relative paths.
+        children:
+          - DictionaryMark-GlobMatcher-GetFiles
+          - DictionaryMark-GlobMatcher-Validation
+          - DictionaryMark-PathHelpers-SafePathCombine
+          - DictionaryMark-PathHelpers-Validation
         tests:
           - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
           - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException

@@ -9,6 +9,9 @@ sections:
         justification: |
           YAML loading is the foundational step of the dictionary pipeline; all subsequent
           processing depends on correctly parsed term-definition pairs.
+        children:
+          - DictionaryMark-YamlLoader-Load
+          - DictionaryMark-YamlLoader-Errors
         tests:
           - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
           - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
@@ -18,6 +21,8 @@ sections:
         justification: |
           Conflict detection prevents incorrect documentation from being generated when the
           same term has different definitions in different source files.
+        children:
+          - DictionaryMark-ConflictDetector-Detect
         tests:
           - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts
 
@@ -26,6 +31,11 @@ sections:
         justification: |
           Markdown formatting is the final output stage of the dictionary pipeline, converting
           loaded and validated entries into the output format requested by the user.
+        children:
+          - DictionaryMark-Formatter-Bullets
+          - DictionaryMark-Formatter-Table
+          - DictionaryMark-Formatter-Sorting
+          - DictionaryMark-Formatter-Deduplication
         tests:
           - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
           - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown

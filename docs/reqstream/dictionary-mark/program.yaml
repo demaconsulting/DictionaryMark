@@ -25,13 +25,21 @@ sections:
         tests:
           - Program_Run_WithValidateFlag_RunsValidation
 
-      - id: DictionaryMark-Program-DefaultBehavior
+      - id: DictionaryMark-Program-GenerateDictionary
         title: >-
-          The Program unit shall invoke dictionary generation when no action flag is set
-          and input patterns are specified; otherwise it shall display a usage hint.
+          The Program unit shall invoke dictionary generation when input patterns are
+          specified and no action flag overrides it.
         justification: |
-          When invoked without a version, help, or validate flag, the tool must perform its
-          primary function (dictionary generation) or guide the user toward correct usage.
+          When invoked without a version, help, or validate flag and input patterns are
+          provided, the tool must perform its primary function of dictionary generation.
+        tests:
+          - Program_Run_WithInputPatterns_InvokesDictionaryGeneration
+
+      - id: DictionaryMark-Program-NoInputHint
+        title: The Program unit shall display a usage hint when neither action flag nor input patterns are set.
+        justification: |
+          When invoked without any action flag or input patterns, the tool must guide the
+          user toward correct usage by displaying a helpful hint.
         tests:
           - Program_Run_NoArguments_DisplaysDefaultBehavior
 

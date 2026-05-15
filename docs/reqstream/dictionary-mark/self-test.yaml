@@ -9,6 +9,15 @@ sections:
         justification: |
           Regulated environments require tool qualification evidence to demonstrate
           that the tool functions correctly in its deployment environment.
+        children:
+          - DictionaryMark-Validation-Run
+          - DictionaryMark-Validation-BulletGeneration
+          - DictionaryMark-Validation-TableGeneration
+          - DictionaryMark-Validation-CustomHeaders
+          - DictionaryMark-Validation-ConflictDetection
+          - DictionaryMark-Validation-TrxOutput
+          - DictionaryMark-Validation-JUnitOutput
+          - DictionaryMark-Validation-UnsupportedExtension
         tests:
           - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
           - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults

@@ -53,9 +53,18 @@ is 0.
 
 **Expected**: Standard output contains the tool name and copyright notice; exit code is 0.
 
-**Requirement coverage**: `DictionaryMark-Program-DefaultBehavior`, `DictionaryMark-Program-ExitCode`.
+**Requirement coverage**: `DictionaryMark-Program-NoInputHint`, `DictionaryMark-Program-ExitCode`.
 
-#### Program_Version_ReturnsNonEmptyString
+#### Program_Run_WithInputPatterns_InvokesDictionaryGeneration
+
+**Scenario**: `Program.Run` is called with a context created from `["--input", tmpFile]` where
+`tmpFile` is a temporary YAML file containing a dictionary entry.
+
+**Expected**: Standard output contains the YAML entry term; exit code is 0.
+
+**Requirement coverage**: `DictionaryMark-Program-GenerateDictionary`, `DictionaryMark-Program-ExitCode`.
+
+#### Program_Version_Read_ReturnsNonEmptyString
 
 **Scenario**: The `Program.Version` static property is read.
 
@@ -99,10 +108,11 @@ is 0.
 
 - **`DictionaryMark-Program-Version`**: Program_Run_WithVersionFlag_DisplaysVersionOnly,
   Program_Run_WithShortVersionFlag_DisplaysVersion,
-  Program_Version_ReturnsNonEmptyString
+  Program_Version_Read_ReturnsNonEmptyString
 - **`DictionaryMark-Program-Help`**: Program_Run_WithHelpFlag_DisplaysUsageInformation,
   Program_Run_WithShortHelpFlag_DisplaysUsage,
   Program_Run_WithQuestionMarkFlag_DisplaysUsage
 - **`DictionaryMark-Program-Validate`**: Program_Run_WithValidateFlag_RunsValidation
 - **`DictionaryMark-Program-ExitCode`**: Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode
-- **`DictionaryMark-Program-DefaultBehavior`**: Program_Run_NoArguments_DisplaysDefaultBehavior
+- **`DictionaryMark-Program-GenerateDictionary`**: Program_Run_WithInputPatterns_InvokesDictionaryGeneration
+- **`DictionaryMark-Program-NoInputHint`**: Program_Run_NoArguments_DisplaysDefaultBehavior

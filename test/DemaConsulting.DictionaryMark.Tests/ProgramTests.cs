@@ -148,10 +148,48 @@ public class ProgramTests
     }
 
     /// <summary>
+    ///     Test that Run with input patterns invokes dictionary generation.
+    /// </summary>
+    /// <remarks>
+    ///     Requirement: DictionaryMark-Program-GenerateDictionary
+    /// </remarks>
+    [Fact]
+    public void Program_Run_WithInputPatterns_InvokesDictionaryGeneration()
+    {
+        // Arrange: create a temporary YAML file with a dictionary entry
+        var tmpFile = Path.GetTempFileName() + ".yaml";
+        var originalOut = Console.Out;
+        try
+        {
+            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            using var outWriter = new StringWriter();
+            Console.SetOut(outWriter);
+            using var context = Context.Create(["--input", tmpFile]);
+
+            // Act: execute the operation being tested
+            Program.Run(context);
+
+            // Assert: verify expected behavior - dictionary generation output is present
+            var output = outWriter.ToString();
+            Assert.Contains("API", output);
+            Assert.Equal(0, context.ExitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            if (File.Exists(tmpFile))
+            {
+                File.Delete(tmpFile);
+            }
+        }
+    }
+
+    /// <summary>
     ///     Test that version property returns non-empty version string.
     /// </summary>
     [Fact]
-    public void Program_Version_ReturnsNonEmptyString()
+    public void Program_Version_Read_ReturnsNonEmptyString()
     {
         // Act: execute the operation being tested
         var version = Program.Version;

@@ -104,8 +104,10 @@ Each software item in the structure above has corresponding artifacts in paralle
 - Source code: `src/{System}/.../{Item}.cs` (PascalCase for C#)
 - Tests: `test/{System}.Tests/.../{Item}Tests.cs` (PascalCase for C#)
 - Review-sets: defined in `.reviewmark.yaml`
+- User guide: `docs/user_guide/{system-name}.md`
 
 ## References
 
-- [REF-1] DictionaryMark User Guide - `docs/user_guide/introduction.md`
-- [REF-2] DictionaryMark Repository - `https://github.com/demaconsulting/DictionaryMark`
+- [REF-1] YAML 1.2 Specification - <https://yaml.org/spec/1.2.2/>
+- [REF-2] .NET SDK Documentation - <https://learn.microsoft.com/dotnet/>
+- [REF-3] CommonMark Specification - <https://spec.commonmark.org/>

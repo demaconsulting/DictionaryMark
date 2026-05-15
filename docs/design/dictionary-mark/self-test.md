@@ -4,8 +4,6 @@ The SelfTest subsystem provides self-validation functionality for DictionaryMark
 the tool to verify its own correct operation in the deployment environment, which is a
 requirement for tool qualification in regulated environments.
 
-### Components
-
 ### Validation
 
 Executes a set of in-process self-tests (version display, help display) and reports the

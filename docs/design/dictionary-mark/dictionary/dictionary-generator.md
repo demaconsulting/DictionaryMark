@@ -37,8 +37,10 @@ Orchestrates the full generation pipeline.
 5. Write output — if `context.OutputFile` is set, write the formatted string to that file path;
    otherwise write to `context.WriteLine`.
 
-**Throws:** `InvalidOperationException` — when no input files are found matching the supplied
-patterns; writes error via `context.WriteError` and sets exit code 1.
+**Error handling:** When no input files are found matching the supplied patterns, the method
+calls `context.WriteError` with the message `"Error: No input files found matching the
+specified patterns."` and returns without generating output; the context exit code is set to 1
+by `WriteError`.
 
 #### Interactions
 
