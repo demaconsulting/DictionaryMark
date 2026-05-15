@@ -19,6 +19,7 @@ input-files:
   - docs/design/dictionary-mark/dictionary/yaml-loader.md
   - docs/design/dictionary-mark/dictionary/conflict-detector.md
   - docs/design/dictionary-mark/dictionary/markdown-formatter.md
+  - docs/design/dictionary-mark/dictionary/dictionary-generator.md
   - docs/design/dictionary-mark/self-test.md
   - docs/design/dictionary-mark/self-test/validation.md
   - docs/design/dictionary-mark/utilities.md

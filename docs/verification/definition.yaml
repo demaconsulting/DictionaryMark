@@ -20,11 +20,14 @@ input-files:
   - docs/verification/dictionary-mark/dictionary/yaml-loader.md
   - docs/verification/dictionary-mark/dictionary/conflict-detector.md
   - docs/verification/dictionary-mark/dictionary/markdown-formatter.md
+  - docs/verification/dictionary-mark/dictionary/dictionary-generator.md
   - docs/verification/dictionary-mark/self-test.md
   - docs/verification/dictionary-mark/self-test/validation.md
   - docs/verification/dictionary-mark/utilities.md
   - docs/verification/dictionary-mark/utilities/glob-matcher.md
   - docs/verification/dictionary-mark/utilities/path-helpers.md
+  - docs/verification/dictionary-mark/test-helpers.md
+  - docs/verification/ots.md
   - docs/verification/ots/buildmark.md
   - docs/verification/ots/fileassert.md
   - docs/verification/ots/pandoc.md
