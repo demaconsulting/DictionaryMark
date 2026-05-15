@@ -42,6 +42,7 @@ words:
   - dictionarymark
   - YamlDotNet
   - yamldotnet
+  - deduplicator
   - Globbing
   - globbing
   - venv

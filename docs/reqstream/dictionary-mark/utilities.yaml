@@ -1,0 +1,26 @@
+---
+# DictionaryMark Utilities Subsystem Requirements
+
+sections:
+  - title: Utilities Subsystem Requirements
+    requirements:
+      - id: DictionaryMark-Utilities-Subsystem
+        title: >-
+          The Utilities subsystem shall provide shared file-matching utilities and
+          path-safety enforcement to prevent path-traversal vulnerabilities.
+        justification: |
+          Shared utilities prevent duplication and ensure consistent behavior across all
+          tool subsystems. Path-safety enforcement in PathHelpers prevents directory-
+          traversal attacks when combining base paths with caller-supplied relative paths.
+        children:
+          - DictionaryMark-GlobMatcher-GetFiles
+          - DictionaryMark-GlobMatcher-Validation
+          - DictionaryMark-PathHelpers-SafePathCombine
+          - DictionaryMark-PathHelpers-NullValidation
+          - DictionaryMark-PathHelpers-TraversalValidation
+        tests:
+          - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
+          - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
+          - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
+          - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+          - UtilitiesSubsystem_GlobMatcher_ResolvesFiles

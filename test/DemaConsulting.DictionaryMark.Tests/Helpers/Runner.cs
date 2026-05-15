@@ -20,7 +20,7 @@
 
 using System.Diagnostics;
 
-namespace DemaConsulting.DictionaryMark.Tests;
+namespace DemaConsulting.DictionaryMark.Tests.Helpers;
 
 /// <summary>
 ///     Program runner class for integration testing.

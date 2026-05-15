@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 
@@ -138,6 +139,42 @@ public class ProgramTests
             var output = outWriter.ToString();
             Assert.Contains("DictionaryMark version", output);
             Assert.Contains("Copyright", output);
+            Assert.Contains("No input files", output);
+            Assert.Equal(0, context.ExitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    /// <summary>
+    ///     Test that Run with input patterns invokes dictionary generation.
+    /// </summary>
+    /// <remarks>
+    ///     Requirement: DictionaryMark-Program-GenerateDictionary
+    /// </remarks>
+    [Fact]
+    public void Program_Run_WithInputPatterns_InvokesDictionaryGeneration()
+    {
+        // Arrange: create a temporary YAML file with a dictionary entry
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        var originalOut = Console.Out;
+        try
+        {
+            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            using var outWriter = new StringWriter();
+            Console.SetOut(outWriter);
+            using var context = Context.Create(["--input", tmpFile]);
+
+            // Act: execute the operation being tested
+            Program.Run(context);
+
+            // Assert: verify expected behavior - dictionary generation output is present
+            var output = outWriter.ToString();
+            Assert.Contains("API", output);
             Assert.Equal(0, context.ExitCode);
         }
         finally
@@ -150,7 +187,7 @@ public class ProgramTests
     ///     Test that version property returns non-empty version string.
     /// </summary>
     [Fact]
-    public void Program_Version_ReturnsNonEmptyString()
+    public void Program_Version_Read_ReturnsNonEmptyString()
     {
         // Act: execute the operation being tested
         var version = Program.Version;
@@ -270,4 +307,3 @@ public class ProgramTests
         }
     }
 }
-

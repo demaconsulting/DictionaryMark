@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
 
@@ -30,12 +31,42 @@ namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
 public class DictionaryGeneratorTests
 {
     /// <summary>
+    ///     Test that generating with no input patterns reports an error.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_NoInputPatterns_ReportsError()
+    {
+        // Arrange: context with no --input flags; redirect stderr to capture error output
+        var originalError = Console.Error;
+        try
+        {
+            using var errWriter = new StringWriter();
+            Console.SetError(errWriter);
+            using var context = Context.Create([]);
+
+            // Act
+            var generator = new DictionaryGenerator();
+            generator.Generate(context);
+
+            // Assert
+            Assert.Equal(1, context.ExitCode);
+            Assert.Contains("No input files found", errWriter.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    /// <summary>
     ///     Test that generating from a single YAML file writes to stdout.
     /// </summary>
     [Fact]
     public void DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout()
     {
-        var tmpFile = Path.GetTempFileName() + ".yaml";
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
         var originalOut = Console.Out;
         try
         {
@@ -45,9 +76,11 @@ public class DictionaryGeneratorTests
             Console.SetOut(outWriter);
             using var context = Context.Create(["--input", tmpFile]);
 
+            // Act
             var generator = new DictionaryGenerator();
             generator.Generate(context);
 
+            // Assert
             var output = outWriter.ToString();
             Assert.Contains("API", output);
             Assert.Equal(0, context.ExitCode);
@@ -55,10 +88,6 @@ public class DictionaryGeneratorTests
         finally
         {
             Console.SetOut(originalOut);
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
         }
     }
 
@@ -68,8 +97,10 @@ public class DictionaryGeneratorTests
     [Fact]
     public void DictionaryGenerator_Generate_ConflictingEntries_ReportsError()
     {
-        var tmpFile1 = Path.GetTempFileName() + ".yaml";
-        var tmpFile2 = Path.GetTempFileName() + ".yaml";
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile1 = tmpDir.GetFilePath("first.yaml");
+        var tmpFile2 = tmpDir.GetFilePath("second.yaml");
         var originalError = Console.Error;
         try
         {
@@ -80,49 +111,41 @@ public class DictionaryGeneratorTests
             Console.SetError(errWriter);
             using var context = Context.Create(["--input", tmpFile1, "--input", tmpFile2]);
 
+            // Act
             var generator = new DictionaryGenerator();
             generator.Generate(context);
 
+            // Assert
             Assert.Equal(1, context.ExitCode);
             Assert.Contains("Conflict: term 'API' has multiple definitions", errWriter.ToString());
         }
         finally
         {
             Console.SetError(originalError);
-            if (File.Exists(tmpFile1))
-            {
-                File.Delete(tmpFile1);
-            }
-
-            if (File.Exists(tmpFile2))
-            {
-                File.Delete(tmpFile2);
-            }
         }
     }
 
     /// <summary>
-    ///     Test that generating with no input patterns reports an error.
+    ///     Test that generating with an output file writes the formatted output to that file.
     /// </summary>
     [Fact]
-    public void DictionaryGenerator_Generate_NoInputPatterns_ReportsError()
+    public void DictionaryGenerator_Generate_OutputFile_WritesToFile()
     {
-        var originalError = Console.Error;
-        try
-        {
-            using var errWriter = new StringWriter();
-            Console.SetError(errWriter);
-            using var context = Context.Create([]);
+        // Arrange: create a temporary YAML file and specify a temporary output file path
+        using var tmpDir = new TemporaryDirectory();
+        var tmpInputFile = tmpDir.GetFilePath("input.yaml");
+        var tmpOutputFile = tmpDir.GetFilePath("output.md");
+        File.WriteAllText(tmpInputFile, "API: Application Programming Interface\n");
+        using var context = Context.Create(["--input", tmpInputFile, "--output", tmpOutputFile]);
 
-            var generator = new DictionaryGenerator();
-            generator.Generate(context);
+        // Act: generate with an output file configured
+        var generator = new DictionaryGenerator();
+        generator.Generate(context);
 
-            Assert.Equal(1, context.ExitCode);
-            Assert.Contains("No input files found", errWriter.ToString());
-        }
-        finally
-        {
-            Console.SetError(originalError);
-        }
+        // Assert: output file exists and contains the expected content; exit code is 0
+        Assert.True(File.Exists(tmpOutputFile), "Output file should be created by Generate");
+        var fileContent = File.ReadAllText(tmpOutputFile);
+        Assert.Contains("API", fileContent);
+        Assert.Equal(0, context.ExitCode);
     }
 }

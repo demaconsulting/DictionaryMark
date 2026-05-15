@@ -33,7 +33,12 @@ public class DictionaryEntryTests
     [Fact]
     public void DictionaryEntry_Constructor_ValidArgs_SetsProperties()
     {
+        // Arrange: term and definition strings for the new entry
+
+        // Act: construct a DictionaryEntry with known values
         var entry = new DictionaryEntry("Term", "Definition");
+
+        // Assert: Term and Definition properties match the constructor arguments
         Assert.Equal("Term", entry.Term);
         Assert.Equal("Definition", entry.Definition);
     }
@@ -44,7 +49,12 @@ public class DictionaryEntryTests
     [Fact]
     public void DictionaryEntry_Constructor_EmptyStrings_SetsProperties()
     {
+        // Arrange: empty strings as term and definition
+
+        // Act: construct a DictionaryEntry with empty values
         var entry = new DictionaryEntry("", "");
+
+        // Assert: Term and Definition are both empty strings
         Assert.Equal("", entry.Term);
         Assert.Equal("", entry.Definition);
     }

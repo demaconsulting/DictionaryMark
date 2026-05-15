@@ -1,24 +1,23 @@
-# CLI Subsystem Verification
+## CLI Subsystem Verification
 
 This document describes the subsystem-level verification design for the CLI subsystem. It
 defines test scenarios, dependency usage, and requirement coverage for CLI integration
 workflows tested in `CliSubsystemTests.cs`.
 
-## Verification Approach
+### Verification Approach
 
 The CLI subsystem is verified through integration tests that exercise `Context` and `Program`
 together. Tests pass controlled argument arrays, capture console output, and assert on parsed
 flags, output content, and exit codes. No mocking is used; all collaborators execute real logic.
 
-## Dependencies
+### Dependencies
 
-| Dependency   | Usage in Tests                                                           |
-|--------------|--------------------------------------------------------------------------|
-| `Context`    | Created from argument arrays to test flag parsing and output behavior.   |
-| `Program`    | Invoked with created contexts to test end-to-end CLI dispatch.           |
-| `Validation` | Called indirectly when the validate flag is passed.                      |
+- **`Context`**: Created from argument arrays to test flag parsing and output behavior.
+- **`Program`**: Invoked with created contexts to test end-to-end CLI dispatch.
+- **`Validation`**: Called indirectly when the validate flag is passed.
+- **File system**: Temporary results and log files created via `TemporaryDirectory` for file-output tests.
 
-## Test Scenarios
+### Test Scenarios
 
 ### CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
 
@@ -98,11 +97,19 @@ flags, output content, and exit codes. No mocking is used; all collaborators exe
 
 **Expected**: `context.HeadingDepth` is 2, log contains "## DEMA Consulting", exit code 0.
 
-## Requirements Coverage
+### Requirements Coverage
 
-- **`DictionaryMark-Cli-Context`**: All CliSubsystem tests exercise `Context.Create` flag
-  parsing as part of the end-to-end workflow.
-- **`DictionaryMark-Program-Version`**: CliSubsystem_VersionFlow_* tests.
-- **`DictionaryMark-Program-Help`**: CliSubsystem_HelpFlow_* tests.
-- **`DictionaryMark-Program-Validate`**: CliSubsystem_ValidateFlow_ContextAndProgram_RunsValidationAndExits.
-- **`DictionaryMark-SelfTest-Subsystem`**: CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile.
+- **`DictionaryMark-Cli-ArgumentParsing`**: CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits,
+  CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits_WithShortVFlag,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits_WithShortQuestionFlag,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits_WithShortHFlag,
+  CliSubsystem_ValidateFlow_ContextAndProgram_RunsValidationAndExits,
+  CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero.
+- **`DictionaryMark-Cli-OutputManagement`**: CliSubsystem_SilentFlow_ContextAndProgram_SuppressesOutput,
+  CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile.
+- **`DictionaryMark-Cli-ResultsFile`**: CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile,
+  CliSubsystem_ResultAliasFlow_ContextAndProgram_WritesResultsFile.
+- **`DictionaryMark-Cli-HeadingDepth`**: CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth.
+- **`DictionaryMark-Cli-ErrorOutput`**: CliSubsystem_ErrorOutput_ContextAndProgram_WritesErrorToStderr,
+  CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero.

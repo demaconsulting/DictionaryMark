@@ -31,6 +31,15 @@ internal static class MarkdownFormatter
     /// <param name="entries">The dictionary entries to format.</param>
     /// <param name="options">The formatting options.</param>
     /// <returns>The formatted Markdown string.</returns>
+    /// <remarks>
+    ///     Deduplication is performed first (first occurrence of each term wins, case-insensitive),
+    ///     followed by optional alphabetical sorting, optional section heading emission, and
+    ///     format dispatch to either bullet-list or table rendering.
+    ///     <c>HeadingDepth</c> values outside the range 1–6 are clamped to that range by
+    ///     <c>Math.Clamp</c> before use.
+    ///     This method is thread-safe; all state is local to each invocation.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries"/> or <paramref name="options"/> is null.</exception>
     public static string Format(IReadOnlyList<DictionaryEntry> entries, MarkdownOptions options)
     {
         // Validate input
@@ -71,6 +80,10 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Formats entries as a bullet list.
     /// </summary>
+    /// <remarks>
+    ///     Each entry is emitted as a single line: <c>- **{Term}**: {Definition}</c>.
+    ///     No escaping is applied in bullet format.
+    /// </remarks>
     private static void FormatBullets(System.Text.StringBuilder sb, IEnumerable<DictionaryEntry> entries)
     {
         foreach (var entry in entries)
@@ -82,6 +95,12 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Formats entries as a Markdown table.
     /// </summary>
+    /// <remarks>
+    ///     Emits a header row, an alignment row (<c>| :--- | :--- |</c>), and one data row per entry.
+    ///     When the entry list is empty, a single <c>| N/A | N/A |</c> row is emitted in place of
+    ///     data rows to produce a valid non-empty table.
+    ///     Pipe characters in term and definition values are escaped via <see cref="EscapePipe"/>.
+    /// </remarks>
     private static void FormatTable(System.Text.StringBuilder sb, IEnumerable<DictionaryEntry> entries, MarkdownOptions options)
     {
         sb.AppendLine($"| {EscapePipe(options.TermHeader)} | {EscapePipe(options.DefinitionHeader)} |");
@@ -103,5 +122,9 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Escapes pipe characters in Markdown table cells.
     /// </summary>
+    /// <remarks>
+    ///     Replaces each literal <c>|</c> with <c>\|</c> so that pipe characters in term or
+    ///     definition values do not break the Markdown table structure.
+    /// </remarks>
     private static string EscapePipe(string value) => value.Replace("|", @"\|");
 }

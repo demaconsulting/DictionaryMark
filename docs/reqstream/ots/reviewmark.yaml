@@ -8,7 +8,7 @@ sections:
     sections:
       - title: ReviewMark Requirements
         requirements:
-          - id: Template-OTS-ReviewMark
+          - id: DictionaryMark-OTS-ReviewMark
             title: ReviewMark shall produce review documentation from the review configuration.
             justification: |
               DemaConsulting.ReviewMark reads the .reviewmark.yaml configuration and the review
@@ -19,7 +19,7 @@ sections:
             tests:
               - ReviewMark_ReviewPlanGeneration
               - ReviewMark_ReviewReportGeneration
-          - id: Template-OTS-ReviewMark-Operations
+          - id: DictionaryMark-OTS-ReviewMark-Operations
             title: >-
               ReviewMark shall support index scanning, enforcement, elaboration,
               lint, and directory override operations.

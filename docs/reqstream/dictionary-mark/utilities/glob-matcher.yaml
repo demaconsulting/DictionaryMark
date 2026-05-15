@@ -5,10 +5,17 @@ sections:
   - title: GlobMatcher Unit Requirements
     requirements:
       - id: DictionaryMark-GlobMatcher-GetFiles
-        title: The GlobMatcher class shall match files using glob patterns relative to the current directory.
+        title: The GlobMatcher class shall resolve files from glob patterns, supporting absolute
+          paths (with or without wildcards) and patterns relative to the current directory,
+          returning a sorted, deduplicated list of matching file paths.
         justification: |
           Glob patterns allow users to specify multiple input files concisely, supporting
-          workflows where dictionary files follow consistent naming conventions.
+          workflows where dictionary files follow consistent naming conventions. Three
+          path forms are handled: absolute paths without wildcards (checked with
+          File.Exists), absolute paths with wildcards (matched from the deepest
+          non-wildcard ancestor directory), and relative patterns (matched against the
+          current directory). Output is sorted and deduplicated to produce deterministic
+          results regardless of pattern order.
         tests:
           - GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
           - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty
@@ -16,10 +23,16 @@ sections:
           - GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults
           - GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
           - GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty
+          - GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
 
       - id: DictionaryMark-GlobMatcher-Validation
-        title: The GlobMatcher class shall reject null or empty patterns with a descriptive error.
+        title: The GlobMatcher class shall reject a null patterns collection with
+          ArgumentNullException, and reject null or empty individual pattern elements with
+          ArgumentException.
         justification: |
           Clear error messages help users identify invalid input patterns quickly.
+          Rejecting a null collection before iterating prevents NullReferenceException
+          and makes the contract explicit.
         tests:
+          - GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException
           - GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException

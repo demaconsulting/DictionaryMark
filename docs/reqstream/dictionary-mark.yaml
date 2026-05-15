@@ -1,0 +1,253 @@
+---
+# DictionaryMark System-Level Requirements
+
+sections:
+  - title: System-Level Requirements
+    requirements:
+      - id: DictionaryMark-System-Version
+        title: The tool shall display version information when the version flag is provided.
+        justification: |
+          Users need to quickly identify the version of the tool they are using for
+          troubleshooting and compatibility verification.
+        children:
+          - DictionaryMark-Program-Version
+          - DictionaryMark-Context-ArgumentParsing
+        tests:
+          - DictionaryMark_VersionFlag_Provided_OutputsVersion
+
+      - id: DictionaryMark-System-Help
+        title: The tool shall display usage information when the help flag is provided.
+        justification: |
+          Users need access to command-line usage documentation without requiring
+          external resources.
+        children:
+          - DictionaryMark-Program-Help
+          - DictionaryMark-Context-ArgumentParsing
+        tests:
+          - DictionaryMark_HelpFlag_Provided_OutputsUsageInformation
+
+      - id: DictionaryMark-System-Validate
+        title: The tool shall execute self-validation tests when the validate flag is provided.
+        justification: |
+          Regulated environments require tool qualification evidence to demonstrate
+          that the tool functions correctly in its deployment environment.
+        children:
+          - DictionaryMark-Program-Validate
+          - DictionaryMark-SelfTest-Subsystem
+        tests:
+          - DictionaryMark_ValidateFlag_Provided_RunsValidation
+
+      - id: DictionaryMark-System-Silent
+        title: The tool shall suppress console output when the silent flag is provided.
+        justification: |
+          Enables automated scripts and CI/CD pipelines to run the tool without
+          cluttering output logs when only the exit code is needed.
+        children:
+          - DictionaryMark-Cli-OutputManagement
+          - DictionaryMark-Context-ArgumentParsing
+        tests:
+          - DictionaryMark_SilentFlag_Provided_SuppressesOutput
+
+      - id: DictionaryMark-System-Log
+        title: The tool shall write output to a log file when the log flag is provided.
+        justification: |
+          Provides persistent logging for debugging and compliance audit trails.
+        children:
+          - DictionaryMark-Cli-OutputManagement
+          - DictionaryMark-Context-ArgumentParsing
+        tests:
+          - DictionaryMark_LogFlag_Provided_WritesOutputToFile
+
+      - id: DictionaryMark-System-ErrorHandling
+        title: The tool shall return a non-zero exit code for unrecognized arguments.
+        justification: |
+          A non-zero exit code enables CI/CD pipelines to detect and surface
+          misconfiguration failures automatically.
+        children:
+          - DictionaryMark-Context-InvalidArgs
+          - DictionaryMark-Program-ExitCode
+        tests:
+          - DictionaryMark_UnknownArgument_Provided_ReturnsError
+
+      - id: DictionaryMark-System-GenerateBullets
+        title: The tool shall generate a Markdown bullet list from YAML dictionary files.
+        justification: |
+          The primary use case is generating a bullet-list dictionary from YAML input files
+          for inclusion in documentation.
+        children:
+          - DictionaryMark-Program-GenerateDictionary
+          - DictionaryMark-Dictionary-MarkdownFormatting
+          - DictionaryMark-DictionaryGenerator-FileLoading
+          - DictionaryMark-DictionaryGenerator-OutputRouting
+        tests:
+          - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
+
+      - id: DictionaryMark-System-GenerateTable
+        title: The tool shall generate a Markdown table from YAML dictionary files when table format is requested.
+        justification: |
+          Table format provides an alternative presentation for users who prefer
+          structured tabular layouts in their documentation.
+        children:
+          - DictionaryMark-Program-GenerateDictionary
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_TableFormat_OutputsTable
+
+      - id: DictionaryMark-System-OutputFile
+        title: The tool shall write generated Markdown to a file when the output flag is provided.
+        justification: |
+          Writing to a file enables integration with documentation pipelines that
+          consume generated Markdown files.
+        children:
+          - DictionaryMark-DictionaryGenerator-OutputRouting
+        tests:
+          - DictionaryMark_Generate_WithOutputFile_WritesFile
+
+      - id: DictionaryMark-System-GlobPatterns
+        title: >-
+          The tool shall accept glob patterns in the --input flag and process all
+          YAML files matching those patterns.
+        justification: |
+          Glob pattern support allows users to specify wildcard input patterns rather
+          than enumerating individual files, enabling flexible batch processing.
+        children:
+          - DictionaryMark-GlobMatcher-GetFiles
+          - DictionaryMark-DictionaryGenerator-FileLoading
+        tests:
+          - DictionaryMark_Generate_GlobInput_ProcessesMatches
+
+      - id: DictionaryMark-System-MultipleInputs
+        title: >-
+          The tool shall accept multiple --input flag values and merge the dictionary
+          entries from all specified sources.
+        justification: |
+          Supporting multiple input files allows users to compose dictionaries from
+          separate source files without manual pre-processing.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-DictionaryGenerator-FileLoading
+        tests:
+          - DictionaryMark_Generate_MultipleInputs_MergesEntries
+
+      - id: DictionaryMark-System-ConflictDetection-Report
+        title: The tool shall report an error message when conflicting definitions are detected across input files.
+        justification: |
+          Conflicting definitions indicate data quality issues that must be resolved
+          before publishing documentation. Users must be notified via an explicit error
+          message so they can identify and resolve the conflict.
+        children:
+          - DictionaryMark-Dictionary-ConflictDetection
+          - DictionaryMark-DictionaryGenerator-ConflictReporting
+        tests:
+          - DictionaryMark_Generate_ConflictingEntries_ReportsError
+
+      - id: DictionaryMark-System-ConflictDetection-ExitCode
+        title: The tool shall return a non-zero exit code when conflicting definitions are detected.
+        justification: |
+          A non-zero exit code enables CI/CD pipelines to automatically detect and
+          surface definition conflicts, preventing incorrect documentation from being
+          published silently.
+        children:
+          - DictionaryMark-Program-ExitCode
+          - DictionaryMark-DictionaryGenerator-ConflictReporting
+        tests:
+          - DictionaryMark_Generate_ConflictingEntries_ReportsError
+
+      - id: DictionaryMark-System-SectionHeading
+        title: The tool shall prefix generated Markdown output with a section heading when the section flag is provided.
+        justification: |
+          Section headings allow generated dictionaries to be embedded within larger
+          documentation pages without requiring manual post-processing by the user.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_WithSectionHeading_OutputsHeading
+
+      - id: DictionaryMark-System-TermHeader
+        title: >-
+          The tool shall use the term-header flag value as the term column header
+          in table format output.
+        justification: |
+          Customizable column headers allow users to adapt generated tables to domain
+          vocabularies (e.g., "Word", "Abbreviation") without modifying the output file.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader
+
+      - id: DictionaryMark-System-DefHeader
+        title: >-
+          The tool shall use the def-header flag value as the definition column header
+          in table format output.
+        justification: |
+          Customizable definition column headers allow users to tailor generated tables
+          to their documentation context without post-processing the output.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader
+
+      - id: DictionaryMark-System-SortAlpha
+        title: The tool shall output dictionary entries sorted alphabetically when the sort flag is set to alpha.
+        justification: |
+          Alphabetical ordering improves readability and enables users to locate entries
+          quickly in large dictionaries, regardless of the order terms appear in the
+          source YAML files.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder
+
+      - id: DictionaryMark-System-SortFileOrder
+        title: >-
+          The tool shall output dictionary entries in file-encounter order when the
+          sort order is not set to alphabetical.
+        justification: |
+          Preserving file-encounter order gives users predictable output when
+          the order of entries within source files is intentional.
+        children:
+          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_DefaultSort_PreservesFileOrder
+
+      - id: DictionaryMark-System-HeadingDepth
+        title: >-
+          The tool shall generate section headings at the specified Markdown heading
+          level when the depth flag is provided.
+        justification: |
+          Configurable heading depth allows generated sections to be nested within
+          existing document hierarchies without conflicting with surrounding headings.
+        children:
+          - DictionaryMark-Context-DepthFlag
+          - DictionaryMark-Dictionary-MarkdownFormatting
+        tests:
+          - DictionaryMark_Generate_SectionWithDepth_OutputsHeading
+
+      - id: DictionaryMark-System-ValidateResults-TRX
+        title: >-
+          The tool shall write TRX-format validation test results when the results
+          flag is provided with a .trx extension.
+        justification: |
+          TRX format is widely used in MSTest-compatible toolchains and CI pipelines,
+          enabling structured test evidence consumption without parsing console output.
+        children:
+          - DictionaryMark-Validation-TrxOutput
+        tests:
+          - DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile
+
+      - id: DictionaryMark-System-ValidateResults-XML
+        title: >-
+          The tool shall write JUnit XML-format validation test results when the
+          results flag is provided with a .xml extension.
+        justification: |
+          JUnit XML is the most widely supported test results interchange format,
+          enabling integration with a broad range of CI/CD and reporting tools.
+        children:
+          - DictionaryMark-Validation-JUnitOutput
+        tests:
+          - DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile

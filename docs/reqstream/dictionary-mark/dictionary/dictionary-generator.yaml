@@ -1,0 +1,37 @@
+---
+# DictionaryMark DictionaryGenerator Unit Requirements
+
+sections:
+  - title: DictionaryGenerator Unit Requirements
+    requirements:
+      - id: DictionaryMark-DictionaryGenerator-FileLoading
+        title: >-
+          The DictionaryGenerator shall resolve input glob patterns to file paths and load
+          dictionary entries from each matched file.
+        justification: |
+          The generator must discover all matching YAML files and load their entries before
+          any processing can occur. This is the foundational step of the generation pipeline.
+        tests:
+          - DictionaryGenerator_Generate_NoInputPatterns_ReportsError
+          - DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
+
+      - id: DictionaryMark-DictionaryGenerator-ConflictReporting
+        title: >-
+          The DictionaryGenerator shall report an error and set a non-zero exit code when
+          conflicting definitions are detected across input files.
+        justification: |
+          Conflicting definitions indicate data quality issues that must be surfaced to the
+          user before output is generated, preventing incorrect documentation.
+        tests:
+          - DictionaryGenerator_Generate_ConflictingEntries_ReportsError
+
+      - id: DictionaryMark-DictionaryGenerator-OutputRouting
+        title: >-
+          The DictionaryGenerator shall write formatted Markdown output to the configured
+          output file when specified, or to stdout when no output file is configured.
+        justification: |
+          Flexible output routing enables integration with both interactive use (stdout) and
+          documentation pipelines that consume generated Markdown files.
+        tests:
+          - DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
+          - DictionaryGenerator_Generate_OutputFile_WritesToFile

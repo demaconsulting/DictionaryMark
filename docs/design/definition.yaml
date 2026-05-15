@@ -11,17 +11,18 @@ resource-path:
 input-files:
   - docs/design/title.txt
   - docs/design/introduction.md
-  - docs/design/dictionary-mark/dictionary-mark.md
+  - docs/design/dictionary-mark.md
   - docs/design/dictionary-mark/program.md
-  - docs/design/dictionary-mark/cli/cli.md
+  - docs/design/dictionary-mark/cli.md
   - docs/design/dictionary-mark/cli/context.md
-  - docs/design/dictionary-mark/dictionary/dictionary.md
+  - docs/design/dictionary-mark/dictionary.md
   - docs/design/dictionary-mark/dictionary/yaml-loader.md
   - docs/design/dictionary-mark/dictionary/conflict-detector.md
   - docs/design/dictionary-mark/dictionary/markdown-formatter.md
-  - docs/design/dictionary-mark/self-test/self-test.md
+  - docs/design/dictionary-mark/dictionary/dictionary-generator.md
+  - docs/design/dictionary-mark/self-test.md
   - docs/design/dictionary-mark/self-test/validation.md
-  - docs/design/dictionary-mark/utilities/utilities.md
+  - docs/design/dictionary-mark/utilities.md
   - docs/design/dictionary-mark/utilities/glob-matcher.md
   - docs/design/dictionary-mark/utilities/path-helpers.md
 template: template.html

@@ -14,6 +14,22 @@ sections:
           - Validation_Run_WithSilentContext_ExitCodeIsZero
           - Validation_Run_NullContext_ThrowsArgumentNullException
 
+      - id: DictionaryMark-Validation-VersionDisplay
+        title: The Validation unit shall include a self-test that verifies version display.
+        justification: |
+          Confirms the --version output path is functioning correctly in the
+          deployment environment.
+        tests:
+          - Validation_Run_WithSilentContext_VersionDisplayTestPasses
+
+      - id: DictionaryMark-Validation-HelpDisplay
+        title: The Validation unit shall include a self-test that verifies help display.
+        justification: |
+          Confirms the --help output path is functioning correctly in the
+          deployment environment.
+        tests:
+          - Validation_Run_WithSilentContext_HelpDisplayTestPasses
+
       - id: DictionaryMark-Validation-BulletGeneration
         title: The Validation unit shall include a self-test that verifies bullet-list generation from YAML input.
         justification: |
@@ -51,7 +67,6 @@ sections:
           TRX format is widely used in MSTest-compatible toolchains and CI pipelines.
         tests:
           - Validation_Run_WithTrxResultsFile_WritesTrxFile
-          - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
 
       - id: DictionaryMark-Validation-JUnitOutput
         title: The Validation unit shall write JUnit-format results when a .xml results file is specified.
@@ -60,7 +75,6 @@ sections:
           enabling integration with a broad range of CI/CD and reporting tools.
         tests:
           - Validation_Run_WithXmlResultsFile_WritesXmlFile
-          - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
 
       - id: DictionaryMark-Validation-UnsupportedExtension
         title: The Validation unit shall report an error for unsupported results file extensions.
@@ -68,4 +82,3 @@ sections:
           Clear error messages help users identify misconfiguration quickly.
         tests:
           - Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile
-          - SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile

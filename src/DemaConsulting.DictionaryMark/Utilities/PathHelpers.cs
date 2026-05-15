@@ -21,16 +21,20 @@
 namespace DemaConsulting.DictionaryMark.Utilities;
 
 /// <summary>
-///     Helper utilities for safe path operations.
+///     Helper utilities for safe path operations that enforce a path-traversal-prevention
+///     security boundary on caller-supplied path components.
 /// </summary>
 internal static class PathHelpers
 {
     /// <summary>
     ///     Safely combines two paths, ensuring the resolved combined path stays within the base directory.
     /// </summary>
-    /// <param name="basePath">The base path.</param>
-    /// <param name="relativePath">The relative path to combine.</param>
-    /// <returns>The combined path.</returns>
+    /// <param name="basePath">The base path. Must not be <see langword="null"/>.</param>
+    /// <param name="relativePath">The relative path to combine. Must not be <see langword="null"/>.</param>
+    /// <returns>
+    ///     The result of <c>Path.Combine(basePath, relativePath)</c> in non-resolved form,
+    ///     guaranteed to remain within <paramref name="basePath"/>.
+    /// </returns>
     /// <remarks>
     ///     Provides a security boundary for caller-supplied path components. Stateless and thread-safe.
     ///     Performs no file-system I/O; only string-level path normalization is applied.

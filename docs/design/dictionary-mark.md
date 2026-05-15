@@ -7,16 +7,16 @@ that reads YAML dictionary files and generates Markdown output in bullet or tabl
 
 DictionaryMark is a command-line application that processes YAML files containing
 term-definition pairs and produces formatted Markdown output. The system consists
-of four primary subsystems:
+of four primary subsystems: Cli, SelfTest, Dictionary, and Utilities.
 
-### Major Components
+## Major Components
 
 - **CLI Subsystem** - Command-line argument parsing and user interface management
 - **Dictionary Subsystem** - YAML loading, conflict detection, and Markdown formatting
 - **Utilities Subsystem** - Shared file-matching utilities via glob patterns
 - **SelfTest Subsystem** - Automated validation framework
 
-### Component Interactions
+## Component Interactions
 
 The Program unit acts as the system orchestrator:
 
@@ -25,6 +25,8 @@ The Program unit acts as the system orchestrator:
 3. **Output Phase** - All subsystems use Context for consistent output and logging
 
 ## External Interfaces
+
+DictionaryMark exposes a single external interface — its command-line argument list.
 
 ### Command-Line Interface
 
@@ -41,8 +43,35 @@ The Program unit acts as the system orchestrator:
 - **Term Header**: `--term-header <text>`
 - **Definition Header**: `--def-header <text>`
 - **Sort Order**: `--sort <file|alpha>`
+- **Heading Depth**: `--depth <n>`
+- **Validation Results**: `--result <file>` (alias for `--results`)
+
+## Error Handling
+
+DictionaryMark reports errors via stderr and signals failure through a non-zero exit code.
+
+### Unrecognized Argument Handling
+
+When an unrecognized argument is supplied on the command line, the tool:
+
+1. Writes an error message that names the unrecognized argument to **stderr**.
+2. Exits with a **non-zero exit code** (1).
+
+No Markdown output is generated when an argument error occurs.
+
+### Conflict Detection Behavior
+
+When conflicting definitions are detected across input files, the tool:
+
+1. Writes an error message identifying the conflicting term to **stderr** via
+   `context.WriteError`, setting the internal error flag.
+2. Returns a **non-zero exit code** (1) derived from the error flag.
+
+Conflict errors are reported before any Markdown output is written.
 
 ## Data Flow
+
+Data moves through the system in two phases: input processing and output generation.
 
 ### Input Processing
 

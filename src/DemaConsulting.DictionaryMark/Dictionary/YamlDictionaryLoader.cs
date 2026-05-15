@@ -32,6 +32,7 @@ internal static class YamlDictionaryLoader
     /// </summary>
     /// <param name="filePath">Path to the YAML file.</param>
     /// <returns>List of dictionary entries in file order.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
     /// <exception cref="IOException">Thrown when the file cannot be read.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the YAML structure is not a flat key-value mapping or contains duplicate keys.</exception>
     public static IReadOnlyList<DictionaryEntry> Load(string filePath)

@@ -1,9 +1,9 @@
-# PathHelpers Design
+### PathHelpers Design
 
 The `PathHelpers` class provides safe path-combination utilities that enforce a security
 boundary, preventing path-traversal attacks when joining caller-supplied path components.
 
-## Overview
+#### Overview
 
 `PathHelpers.SafePathCombine` combines a base path with a relative path and verifies that
 the resolved result remains within the base directory:
@@ -20,13 +20,13 @@ the resolved result remains within the base directory:
 No file-system I/O is performed; only string-level path normalization is applied.
 `PathHelpers` is a `static` class and is stateless and thread-safe.
 
-## Data Model
+#### Data Model
 
 `PathHelpers` is a `static` class with no instance state.
 
-## Methods
+#### Methods
 
-### SafePathCombine(string basePath, string relativePath) -> string
+##### SafePathCombine(string basePath, string relativePath) -> string
 
 Combines `basePath` and `relativePath` and returns the result when it stays within
 `basePath`.
@@ -39,6 +39,6 @@ Combines `basePath` and `relativePath` and returns the result when it stays with
 - `NotSupportedException` - when a supplied path contains an unsupported format.
 - `PathTooLongException` - when the combined or resolved path exceeds the maximum length.
 
-## Interactions
+#### Interactions
 
 `PathHelpers` has no external dependencies; it uses only `System.IO.Path` from the .NET BCL.

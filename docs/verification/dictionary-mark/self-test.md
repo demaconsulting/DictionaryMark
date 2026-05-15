@@ -1,23 +1,22 @@
-# SelfTest Subsystem Verification
+## SelfTest Subsystem Verification
 
 This document describes the subsystem-level verification design for the SelfTest subsystem.
 It defines test scenarios, dependency usage, and requirement coverage for
 `SelfTestSubsystemTests.cs`.
 
-## Verification Approach
+### Verification Approach
 
 The SelfTest subsystem is verified through integration tests that exercise the full validation
 workflow end-to-end. Tests create `Context` instances with validation arguments, invoke
 `Validation.Run`, and assert on exit codes, results file presence, and file content.
 
-## Dependencies
+### Dependencies
 
-| Dependency   | Usage in Tests                                                      |
-| ------------ | ------------------------------------------------------------------- |
-| `Context`    | Created with validation arguments to drive the validation workflow. |
-| `Validation` | Invoked directly to exercise the complete self-test workflow.       |
+- **`Context`**: Created with validation arguments to drive the validation workflow.
+- **`Validation`**: Invoked directly to exercise the complete self-test workflow.
+- **File system**: Temporary results files created via `TemporaryDirectory` to verify output file generation.
 
-## Test Scenarios
+### Test Scenarios
 
 ### SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
 
@@ -49,11 +48,16 @@ workflow end-to-end. Tests create `Context` instances with validation arguments,
 
 **Expected**: No file created; exit code 1; stderr contains `".bad"`.
 
-## Requirements Coverage
+### Requirements Coverage
 
 - **`DictionaryMark-SelfTest-Subsystem`**: SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully,
   SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults,
-  SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults.
-- **`DictionaryMark-Validation-TrxOutput`**: SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults.
-- **`DictionaryMark-Validation-JUnitOutput`**: SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults.
-- **`DictionaryMark-Validation-UnsupportedExtension`**: SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile.
+  SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults,
+  SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults.
+
+> **Note**: The unit requirements `DictionaryMark-Validation-TrxOutput`,
+> `DictionaryMark-Validation-JUnitOutput`, and `DictionaryMark-Validation-UnsupportedExtension`
+> are covered by unit-level tests in `ValidationTests.cs` and are not re-linked here.
+> `SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults` exercises
+> sequential re-entry of the subsystem and is linked to `DictionaryMark-SelfTest-Subsystem`
+> because `Validation.Run` is stateless and safe to call sequentially.
