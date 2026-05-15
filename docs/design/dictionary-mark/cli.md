@@ -1,10 +1,10 @@
-# CLI Subsystem Design
+## CLI Subsystem Design
 
 The CLI subsystem handles command-line argument parsing and program output for DictionaryMark.
 It is the primary interface between the user's command-line invocation and the tool's internal
 logic.
 
-## Components
+### Components
 
 ### Context
 
@@ -13,7 +13,7 @@ argument list, opens any requested log file, and exposes the parsed flags as rea
 properties. It also owns the two output channels - console and log file - through its
 `WriteLine` and `WriteError` methods.
 
-## Interactions
+### Interactions
 
 The CLI subsystem is consumed by `Program`, which creates a `Context` instance and passes it
 to all downstream subsystems (`Validation`, `DictionaryGenerator`). The CLI subsystem has no

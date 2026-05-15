@@ -22,6 +22,14 @@ sections:
           - Context_Create_SortFlag_Alpha_SetsAlphabetical
           - Context_Create_SortFlag_File_SetsFileOrder
 
+      - id: DictionaryMark-Context-DepthFlag
+        title: The Context class shall parse the --depth flag value as the heading depth for Markdown output.
+        justification: |
+          Configurable heading depth is required to allow generated sections to integrate
+          into existing document hierarchies at the correct heading level.
+        tests:
+          - Context_Create_DepthFlag_SetsHeadingDepth
+
       - id: DictionaryMark-Context-InvalidArgs
         title: The Context class shall reject unknown or malformed command-line arguments with a descriptive error.
         justification: |

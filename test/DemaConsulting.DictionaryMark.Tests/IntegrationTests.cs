@@ -372,14 +372,20 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_Generate_BulletsFormat_OutputsBulletList()
     {
+        // Arrange: YAML input file with two entries
         var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
         try
         {
             File.WriteAllText(tmpFile, "API: Application Programming Interface\nUI: User Interface\n");
+
+            // Act: run the tool with default bullets format
             var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile);
+
+            // Assert: bullet list structure and content present in output
             Assert.Equal(0, exitCode);
             Assert.Contains("API", output);
             Assert.Contains("UI", output);
+            Assert.Contains("- ", output);
         }
         finally
         {
@@ -394,11 +400,16 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_Generate_TableFormat_OutputsTable()
     {
+        // Arrange: YAML input file with one entry
         var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
         try
         {
             File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            // Act: run the tool with table format
             var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table");
+
+            // Assert: table structure with header and data rows present
             Assert.Equal(0, exitCode);
             Assert.Contains("| Term |", output);
             Assert.Contains("| API |", output);
@@ -416,12 +427,17 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_Generate_WithOutputFile_WritesFile()
     {
+        // Arrange: input YAML file and target output file path
         var tmpInput = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
         var tmpOutput = Path.Combine(Path.GetTempPath(), $"dm_out_{Guid.NewGuid()}.md");
         try
         {
             File.WriteAllText(tmpInput, "API: Application Programming Interface\n");
+
+            // Act: run the tool with --output flag
             var exitCode = Runner.Run(out var _, "dotnet", _dllPath, "--input", tmpInput, "--output", tmpOutput);
+
+            // Assert: output file is created and contains generated content
             Assert.Equal(0, exitCode);
             Assert.True(File.Exists(tmpOutput));
             var content = File.ReadAllText(tmpOutput);
@@ -445,13 +461,18 @@ public class IntegrationTests
     [Fact]
     public void DictionaryMark_Generate_ConflictingEntries_ReportsError()
     {
+        // Arrange: two input files with conflicting definitions for the same term
         var tmpFile1 = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
         var tmpFile2 = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
         try
         {
             File.WriteAllText(tmpFile1, "API: Application Programming Interface\n");
             File.WriteAllText(tmpFile2, "API: Advanced Peripheral Interface\n");
+
+            // Act: run the tool with both conflicting input files
             var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile1, "--input", tmpFile2);
+
+            // Assert: non-zero exit code and conflict error message in output
             Assert.NotEqual(0, exitCode);
             Assert.Contains("Conflict", output);
         }
@@ -468,5 +489,110 @@ public class IntegrationTests
             }
         }
     }
-}
 
+    /// <summary>Test that DictionaryMark outputs a section heading when --section is specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_WithSectionHeading_OutputsHeading()
+    {
+        // Arrange: YAML input file and section heading argument
+        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
+        try
+        {
+            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            // Act: run the tool with --section flag
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--section", "My Section");
+
+            // Assert: section heading appears in output
+            Assert.Equal(0, exitCode);
+            Assert.Contains("My Section", output);
+        }
+        finally
+        {
+            if (File.Exists(tmpFile))
+            {
+                File.Delete(tmpFile);
+            }
+        }
+    }
+
+    /// <summary>Test that DictionaryMark uses custom term header when --term-header is specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader()
+    {
+        // Arrange: YAML input file and term header argument
+        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
+        try
+        {
+            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            // Act: run the tool with --term-header and table format
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--term-header", "Word");
+
+            // Assert: custom header appears in table output
+            Assert.Equal(0, exitCode);
+            Assert.Contains("Word", output);
+        }
+        finally
+        {
+            if (File.Exists(tmpFile))
+            {
+                File.Delete(tmpFile);
+            }
+        }
+    }
+
+    /// <summary>Test that DictionaryMark uses custom definition header when --def-header is specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader()
+    {
+        // Arrange: YAML input file and definition header argument
+        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
+        try
+        {
+            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+
+            // Act: run the tool with --def-header and table format
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--def-header", "Meaning");
+
+            // Assert: custom definition header appears in table output
+            Assert.Equal(0, exitCode);
+            Assert.Contains("Meaning", output);
+        }
+        finally
+        {
+            if (File.Exists(tmpFile))
+            {
+                File.Delete(tmpFile);
+            }
+        }
+    }
+
+    /// <summary>Test that DictionaryMark outputs entries in alphabetical order when --sort alpha is specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder()
+    {
+        // Arrange: YAML input file with entries in reverse alphabetical order
+        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
+        try
+        {
+            File.WriteAllText(tmpFile, "Zebra: Last in alphabet\nAlpha: First in alphabet\n");
+
+            // Act: run the tool with --sort alpha
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--sort", "alpha");
+
+            // Assert: alphabetical ordering - Alpha before Zebra
+            Assert.Equal(0, exitCode);
+            var alphaIndex = output.IndexOf("Alpha", StringComparison.Ordinal);
+            var zebraIndex = output.IndexOf("Zebra", StringComparison.Ordinal);
+            Assert.True(alphaIndex < zebraIndex, "Alpha should appear before Zebra in alphabetical sort");
+        }
+        finally
+        {
+            if (File.Exists(tmpFile))
+            {
+                File.Delete(tmpFile);
+            }
+        }
+    }
+}

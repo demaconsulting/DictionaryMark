@@ -1,10 +1,10 @@
-# GlobMatcher Design
+### GlobMatcher Design
 
 The `GlobMatcher` class resolves file paths from glob patterns using
 `Microsoft.Extensions.FileSystemGlobbing`. It returns a sorted, deduplicated list of
 absolute file paths matching the supplied patterns.
 
-## Overview
+#### Overview
 
 `GlobMatcher.GetFiles` processes each pattern in turn:
 
@@ -17,13 +17,13 @@ absolute file paths matching the supplied patterns.
 Results are accumulated in a case-insensitive `HashSet<string>` for deduplication, then
 returned as a sorted `IReadOnlyList<string>`.
 
-## Data Model
+#### Data Model
 
 `GlobMatcher` is a `static` class with no instance state.
 
-## Methods
+#### Methods
 
-### GetFiles(IEnumerable\<string\> patterns) → IReadOnlyList\<string\>
+##### GetFiles(IEnumerable\<string\> patterns) → IReadOnlyList\<string\>
 
 Returns a sorted, deduplicated list of absolute file paths matching the supplied patterns.
 
@@ -32,7 +32,7 @@ Returns a sorted, deduplicated list of absolute file paths matching the supplied
 - `ArgumentNullException` - when `patterns` is null.
 - `ArgumentException` - when any pattern is null or empty.
 
-## Interactions
+#### Interactions
 
 | Dependency                                | Role                                                    |
 | ----------------------------------------- | ------------------------------------------------------- |

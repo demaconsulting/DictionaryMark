@@ -1,8 +1,8 @@
-# Dictionary Subsystem Design
+## Dictionary Subsystem Design
 
 The Dictionary subsystem handles loading, validating, and formatting dictionary entries.
 
-## Components
+### Components
 
 ### YamlDictionaryLoader
 

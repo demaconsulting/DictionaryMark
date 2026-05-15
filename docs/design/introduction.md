@@ -98,9 +98,9 @@ Throughout this document:
 
 Each software item in the structure above has corresponding artifacts in parallel directory trees:
 
-- Requirements: `docs/reqstream/{system}/.../{item}.yaml` (kebab-case)
-- Design docs: `docs/design/{system}/.../{item}.md` (kebab-case)
-- Verification design: `docs/verification/{system}/.../{item}.md` (kebab-case)
+- Requirements: `docs/reqstream/{system-name}.yaml`, `docs/reqstream/{system-name}/.../{item}.yaml` (kebab-case)
+- Design docs: `docs/design/{system-name}.md`, `docs/design/{system-name}/.../{item}.md` (kebab-case)
+- Verification design: `docs/verification/{system-name}.md`, `docs/verification/{system-name}/.../{item}.md` (kebab-case)
 - Source code: `src/{System}/.../{Item}.cs` (PascalCase for C#)
 - Tests: `test/{System}.Tests/.../{Item}Tests.cs` (PascalCase for C#)
 - Review-sets: defined in `.reviewmark.yaml`

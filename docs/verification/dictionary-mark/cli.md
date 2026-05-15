@@ -1,16 +1,16 @@
-# CLI Subsystem Verification
+## CLI Subsystem Verification
 
 This document describes the subsystem-level verification design for the CLI subsystem. It
 defines test scenarios, dependency usage, and requirement coverage for CLI integration
 workflows tested in `CliSubsystemTests.cs`.
 
-## Verification Approach
+### Verification Approach
 
 The CLI subsystem is verified through integration tests that exercise `Context` and `Program`
 together. Tests pass controlled argument arrays, capture console output, and assert on parsed
 flags, output content, and exit codes. No mocking is used; all collaborators execute real logic.
 
-## Dependencies
+### Dependencies
 
 | Dependency   | Usage in Tests                                                           |
 |--------------|--------------------------------------------------------------------------|
@@ -18,7 +18,7 @@ flags, output content, and exit codes. No mocking is used; all collaborators exe
 | `Program`    | Invoked with created contexts to test end-to-end CLI dispatch.           |
 | `Validation` | Called indirectly when the validate flag is passed.                      |
 
-## Test Scenarios
+### Test Scenarios
 
 ### CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
 
@@ -98,7 +98,7 @@ flags, output content, and exit codes. No mocking is used; all collaborators exe
 
 **Expected**: `context.HeadingDepth` is 2, log contains "## DEMA Consulting", exit code 0.
 
-## Requirements Coverage
+### Requirements Coverage
 
 - **`DictionaryMark-Cli-Context`**: All CliSubsystem tests exercise `Context.Create` flag
   parsing as part of the end-to-end workflow.

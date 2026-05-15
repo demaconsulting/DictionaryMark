@@ -26,8 +26,25 @@ sections:
           - Program_Run_WithValidateFlag_RunsValidation
 
       - id: DictionaryMark-Program-DefaultBehavior
-        title: The Program unit shall run tool logic when no action flag is set.
+        title: >-
+          The Program unit shall invoke dictionary generation when no action flag is set
+          and input patterns are specified; otherwise it shall display a usage hint.
         justification: |
-          Ensures the tool always performs a meaningful action when invoked.
+          When invoked without a version, help, or validate flag, the tool must perform its
+          primary function (dictionary generation) or guide the user toward correct usage.
         tests:
+          - Program_Run_NoArguments_DisplaysDefaultBehavior
+
+      - id: DictionaryMark-Program-ExitCode
+        title: >-
+          The Program unit shall return exit code 0 on success and exit code 1 when an
+          expected error occurs.
+        justification: |
+          A deterministic exit code contract enables CI/CD pipelines to detect failures
+          automatically without parsing output text.
+        tests:
+          - Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode
+          - Program_Run_WithVersionFlag_DisplaysVersionOnly
+          - Program_Run_WithHelpFlag_DisplaysUsageInformation
+          - Program_Run_WithValidateFlag_RunsValidation
           - Program_Run_NoArguments_DisplaysDefaultBehavior

@@ -105,6 +105,7 @@ dotnet tool update DemaConsulting.DictionaryMark
 | `--sort <order>`          | Sort order: `file` (default) or `alpha`                  |
 | `--log <file>`            | Write output to log file                                 |
 | `--results <file>`        | Write validation results (.trx or .xml)                  |
+| `--result <file>`         | Alias for `--results`                                    |
 | `--depth <n>`             | Set heading depth (default: 1)                           |
 
 ### Quick Start Examples
@@ -246,5 +247,6 @@ DictionaryMark is built with the following open-source projects:
 
 - [.NET](https://dotnet.microsoft.com/) - Cross-platform framework for building applications
 - [YamlDotNet](https://github.com/aaubry/YamlDotNet) - YAML parsing library for .NET
-- [Microsoft.Extensions.FileSystemGlobbing](https://www.nuget.org/packages/Microsoft.Extensions.FileSystemGlobbing) - Glob pattern matching for file system paths
+- [Microsoft.Extensions.FileSystemGlobbing](https://www.nuget.org/packages/Microsoft.Extensions.FileSystemGlobbing)
+  \- Glob pattern matching for file system paths
 - [DemaConsulting.TestResults](https://github.com/demaconsulting/TestResults) - TRX and JUnit XML test results library

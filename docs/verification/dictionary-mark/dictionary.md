@@ -1,15 +1,15 @@
-# Dictionary Subsystem Verification
+## Dictionary Subsystem Verification
 
 This document describes unit-level verification for the Dictionary subsystem.
 
-## Components
+### Components
 
 - `YamlDictionaryLoader` - verified in `YamlDictionaryLoaderTests.cs`
 - `ConflictDetector` - verified in `ConflictDetectorTests.cs`
 - `MarkdownFormatter` - verified in `MarkdownFormatterTests.cs`
 - `DictionaryGenerator` - verified in `DictionaryGeneratorTests.cs`
 
-## Subsystem Tests
+### Subsystem Tests
 
 The following subsystem integration tests verify requirement `DictionaryMark-Dictionary-Subsystem`:
 

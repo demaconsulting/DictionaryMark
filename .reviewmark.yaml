@@ -35,18 +35,18 @@ reviews:
     paths:
       - "README.md"
       - "docs/user_guide/**/*.md"
-      - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/reqstream/dictionary-mark.yaml"
       - "docs/design/introduction.md"
-      - "docs/design/dictionary-mark/dictionary-mark.md"
+      - "docs/design/dictionary-mark.md"
 
   # DictionaryMark - Specials
   - id: DictionaryMark-Architecture
     title: Review of DictionaryMark system architecture and operational validation
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/reqstream/dictionary-mark.yaml"
       - "docs/design/introduction.md"
-      - "docs/design/dictionary-mark/dictionary-mark.md"
-      - "docs/verification/dictionary-mark/dictionary-mark.md"
+      - "docs/design/dictionary-mark.md"
+      - "docs/verification/dictionary-mark.md"
       - "test/**/IntegrationTests.cs"
       - "test/**/Runner.cs"
       - "test/**/AssemblyInfo.cs"
@@ -54,7 +54,7 @@ reviews:
   - id: DictionaryMark-Design
     title: Review of DictionaryMark architectural and design consistency
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary-mark.yaml"
+      - "docs/reqstream/dictionary-mark.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark/**/*.md"
       - "docs/verification/introduction.md"
@@ -80,9 +80,9 @@ reviews:
   - id: DictionaryMark-Cli
     title: Review of DictionaryMark Cli subsystem architecture and interfaces
     paths:
-      - "docs/reqstream/dictionary-mark/cli/cli.yaml"
-      - "docs/design/dictionary-mark/cli/cli.md"
-      - "docs/verification/dictionary-mark/cli/cli.md"
+      - "docs/reqstream/dictionary-mark/cli.yaml"
+      - "docs/design/dictionary-mark/cli.md"
+      - "docs/verification/dictionary-mark/cli.md"
       - "test/**/Cli/CliSubsystemTests.cs"
 
   - id: DictionaryMark-Cli-Context
@@ -98,9 +98,9 @@ reviews:
   - id: DictionaryMark-SelfTest
     title: Review that DictionaryMark SelfTest Satisfies Subsystem Requirements
     paths:
-      - "docs/reqstream/dictionary-mark/self-test/self-test.yaml"
-      - "docs/design/dictionary-mark/self-test/self-test.md"
-      - "docs/verification/dictionary-mark/self-test/self-test.md"
+      - "docs/reqstream/dictionary-mark/self-test.yaml"
+      - "docs/design/dictionary-mark/self-test.md"
+      - "docs/verification/dictionary-mark/self-test.md"
       - "test/**/SelfTest/SelfTestSubsystemTests.cs"
 
   - id: DictionaryMark-SelfTest-Validation
@@ -116,9 +116,9 @@ reviews:
   - id: DictionaryMark-Dictionary
     title: Review that DictionaryMark Dictionary Satisfies Subsystem Requirements
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary/dictionary.yaml"
-      - "docs/design/dictionary-mark/dictionary/dictionary.md"
-      - "docs/verification/dictionary-mark/dictionary/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/verification/dictionary-mark/dictionary.md"
       - "test/**/Dictionary/DictionaryGeneratorTests.cs"
       - "test/**/Dictionary/DictionarySubsystemTests.cs"
 
@@ -157,9 +157,9 @@ reviews:
   - id: DictionaryMark-Dictionary-Generator
     title: Review of DictionaryMark Dictionary DictionaryGenerator unit implementation
     paths:
-      - "docs/reqstream/dictionary-mark/dictionary/dictionary.yaml"
-      - "docs/design/dictionary-mark/dictionary/dictionary.md"
-      - "docs/verification/dictionary-mark/dictionary/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/verification/dictionary-mark/dictionary.md"
       - "src/**/Dictionary/DictionaryGenerator.cs"
       - "test/**/Dictionary/DictionaryGeneratorTests.cs"
 
@@ -167,9 +167,9 @@ reviews:
   - id: DictionaryMark-Utilities
     title: Review that DictionaryMark Utilities Satisfies Subsystem Requirements
     paths:
-      - "docs/reqstream/dictionary-mark/utilities/utilities.yaml"
-      - "docs/design/dictionary-mark/utilities/utilities.md"
-      - "docs/verification/dictionary-mark/utilities/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/verification/dictionary-mark/utilities.md"
       - "test/**/Utilities/UtilitiesSubsystemTests.cs"
 
   - id: DictionaryMark-Utilities-GlobMatcher
@@ -185,9 +185,9 @@ reviews:
     title: Review of DictionaryMark Utilities PathHelpers unit implementation
     paths:
       - "docs/reqstream/dictionary-mark/utilities/path-helpers.yaml"
-      - "docs/design/dictionary-mark/utilities/utilities.md"
+      - "docs/design/dictionary-mark/utilities.md"
       - "docs/design/dictionary-mark/utilities/path-helpers.md"
-      - "docs/verification/dictionary-mark/utilities/utilities.md"
+      - "docs/verification/dictionary-mark/utilities.md"
       - "docs/verification/dictionary-mark/utilities/path-helpers.md"
       - "src/**/Utilities/PathHelpers.cs"
       - "test/**/Utilities/PathHelpersTests.cs"

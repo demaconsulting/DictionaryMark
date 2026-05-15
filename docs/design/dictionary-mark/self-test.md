@@ -1,10 +1,10 @@
-# SelfTest Subsystem Design
+## SelfTest Subsystem Design
 
 The SelfTest subsystem provides self-validation functionality for DictionaryMark. It enables
 the tool to verify its own correct operation in the deployment environment, which is a
 requirement for tool qualification in regulated environments.
 
-## Components
+### Components
 
 ### Validation
 
@@ -12,7 +12,7 @@ Executes a set of in-process self-tests (version display, help display) and repo
 results to the user via the `Context` output channels. Optionally writes results to a file
 in TRX or JUnit XML format.
 
-## Interactions
+### Interactions
 
 The SelfTest subsystem is invoked by `Program.Run` when `context.Validate` is `true`. It
 depends on:

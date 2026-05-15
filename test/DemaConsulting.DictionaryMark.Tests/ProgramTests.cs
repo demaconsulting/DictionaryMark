@@ -138,6 +138,7 @@ public class ProgramTests
             var output = outWriter.ToString();
             Assert.Contains("DictionaryMark version", output);
             Assert.Contains("Copyright", output);
+            Assert.Contains("No input files", output);
             Assert.Equal(0, context.ExitCode);
         }
         finally
