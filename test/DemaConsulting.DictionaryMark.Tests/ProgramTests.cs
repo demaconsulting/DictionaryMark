@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 
@@ -157,7 +158,8 @@ public class ProgramTests
     public void Program_Run_WithInputPatterns_InvokesDictionaryGeneration()
     {
         // Arrange: create a temporary YAML file with a dictionary entry
-        var tmpFile = Path.GetTempFileName() + ".yaml";
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
         var originalOut = Console.Out;
         try
         {
@@ -178,10 +180,6 @@ public class ProgramTests
         finally
         {
             Console.SetOut(originalOut);
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
         }
     }
 
@@ -309,4 +307,3 @@ public class ProgramTests
         }
     }
 }
-

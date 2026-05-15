@@ -74,4 +74,5 @@ assert on the returned entries or expected exceptions.
 - **`DictionaryMark-YamlLoader-StructureErrors`**: YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException,
   YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException.
 - **`DictionaryMark-YamlLoader-FileErrors`**: YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException.
+- **`DictionaryMark-YamlLoader-NullInput`**: YamlDictionaryLoader_Load_NullFilePath_ThrowsArgumentNullException.
 - **`DictionaryMark-YamlLoader-DuplicateKeys`**: YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException.

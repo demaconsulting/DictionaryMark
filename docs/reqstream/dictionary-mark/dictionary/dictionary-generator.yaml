@@ -12,6 +12,7 @@ sections:
           The generator must discover all matching YAML files and load their entries before
           any processing can occur. This is the foundational step of the generation pipeline.
         tests:
+          - DictionaryGenerator_Generate_NoInputPatterns_ReportsError
           - DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
 
       - id: DictionaryMark-DictionaryGenerator-ConflictReporting

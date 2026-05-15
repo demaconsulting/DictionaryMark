@@ -32,7 +32,10 @@ internal static class Program
     /// <summary>
     ///     Gets the application version string.
     /// </summary>
-    /// <returns>The assembly informational version string, falling back to assembly version, or "0.0.0" if neither is available.</returns>
+    /// <value>
+    ///     The assembly informational version string, falling back to assembly version, or "0.0.0" if neither is
+    ///     available.
+    /// </value>
     /// <remarks>
     ///     The version is read from the <see cref="AssemblyInformationalVersionAttribute"/> via
     ///     reflection on every access. There is no caching; callers that need the value more than

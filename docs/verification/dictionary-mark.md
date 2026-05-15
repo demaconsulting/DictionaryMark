@@ -76,7 +76,8 @@ output generation:
 
 ## Acceptance Criteria
 
-All integration tests must pass with exit code 0. No tests may be skipped or marked as
-expected failures. The `DictionaryMark_ValidateFlag_Provided_RunsValidation` test must
+All integration tests must pass. Individual tool invocations may return non-zero exit codes
+when exercising expected error scenarios. No tests may be skipped or marked as expected
+failures. The `DictionaryMark_ValidateFlag_Provided_RunsValidation` test must
 report zero failures in the embedded self-validation output. File-based tests must use
 `TemporaryDirectory` to ensure all temporary files are cleaned up on completion.

@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
 
@@ -64,7 +65,8 @@ public class DictionaryGeneratorTests
     public void DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout()
     {
         // Arrange
-        var tmpFile = Path.GetTempFileName() + ".yaml";
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
         var originalOut = Console.Out;
         try
         {
@@ -86,10 +88,6 @@ public class DictionaryGeneratorTests
         finally
         {
             Console.SetOut(originalOut);
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
         }
     }
 
@@ -100,8 +98,9 @@ public class DictionaryGeneratorTests
     public void DictionaryGenerator_Generate_ConflictingEntries_ReportsError()
     {
         // Arrange
-        var tmpFile1 = Path.GetTempFileName() + ".yaml";
-        var tmpFile2 = Path.GetTempFileName() + ".yaml";
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile1 = tmpDir.GetFilePath("first.yaml");
+        var tmpFile2 = tmpDir.GetFilePath("second.yaml");
         var originalError = Console.Error;
         try
         {
@@ -123,15 +122,6 @@ public class DictionaryGeneratorTests
         finally
         {
             Console.SetError(originalError);
-            if (File.Exists(tmpFile1))
-            {
-                File.Delete(tmpFile1);
-            }
-
-            if (File.Exists(tmpFile2))
-            {
-                File.Delete(tmpFile2);
-            }
         }
     }
 
@@ -142,8 +132,9 @@ public class DictionaryGeneratorTests
     public void DictionaryGenerator_Generate_OutputFile_WritesToFile()
     {
         // Arrange: create a temporary YAML file and specify a temporary output file path
-        var tmpInputFile = Path.GetTempFileName() + ".yaml";
-        var tmpOutputFile = Path.GetTempFileName() + ".md";
+        using var tmpDir = new TemporaryDirectory();
+        var tmpInputFile = tmpDir.GetFilePath("input.yaml");
+        var tmpOutputFile = tmpDir.GetFilePath("output.md");
         try
         {
             File.WriteAllText(tmpInputFile, "API: Application Programming Interface\n");
@@ -166,11 +157,6 @@ public class DictionaryGeneratorTests
         }
         finally
         {
-            if (File.Exists(tmpInputFile))
-            {
-                File.Delete(tmpInputFile);
-            }
-
             if (File.Exists(tmpOutputFile))
             {
                 File.Delete(tmpOutputFile);

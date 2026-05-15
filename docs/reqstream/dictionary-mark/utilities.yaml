@@ -16,6 +16,7 @@ sections:
           - DictionaryMark-GlobMatcher-GetFiles
           - DictionaryMark-GlobMatcher-Validation
           - DictionaryMark-PathHelpers-SafePathCombine
+          - DictionaryMark-PathHelpers-NullValidation
           - DictionaryMark-PathHelpers-TraversalValidation
         tests:
           - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly

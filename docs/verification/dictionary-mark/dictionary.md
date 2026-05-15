@@ -1,6 +1,6 @@
 ## Dictionary Subsystem Verification
 
-This document describes unit-level verification for the Dictionary subsystem.
+This document describes subsystem-level verification for the Dictionary subsystem.
 
 ### Components
 

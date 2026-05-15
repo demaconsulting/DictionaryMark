@@ -134,7 +134,7 @@ public class UtilitiesSubsystemTests
     }
 
     /// <summary>
-    ///     Test that GlobMatcher resolves files matching a glob pattern at the subsystem level.
+    ///     Test that GlobMatcher resolves files matching a wildcard pattern at the subsystem level.
     /// </summary>
     [Fact]
     public void UtilitiesSubsystem_GlobMatcher_ResolvesFiles()
@@ -144,8 +144,8 @@ public class UtilitiesSubsystemTests
         var testFile = tmpDir.GetFilePath("test.yaml");
         File.WriteAllText(testFile, "key: value\n");
 
-        // Act: resolve files matching the pattern
-        var files = GlobMatcher.GetFiles([testFile]);
+        // Act: resolve files matching an absolute wildcard pattern
+        var files = GlobMatcher.GetFiles([Path.Combine(tmpDir.DirectoryPath, "*.yaml")]);
 
         // Assert: the test file is found in the resolved list
         Assert.Contains(testFile, files);

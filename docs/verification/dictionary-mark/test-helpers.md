@@ -46,8 +46,8 @@ File.WriteAllText(filePath, "key: value");
 
 ### Adoption Across the Test Suite
 
-`TemporaryDirectory` is used in all test classes that create temporary files
-or directories:
+`TemporaryDirectory` is used in multiple test classes that create temporary files
+or directories, including:
 
 - **`Utilities/GlobMatcherTests.cs`**: Provides directories for glob pattern matching tests.
 - **`Utilities/UtilitiesSubsystemTests.cs`**: Provides directories for path-helper and GlobMatcher subsystem tests.
@@ -55,3 +55,5 @@ or directories:
 - **`SelfTest/SelfTestSubsystemTests.cs`**: Provides directories for validation result file tests.
 - **`SelfTest/ValidationTests.cs`**: Provides directories for TRX, XML, and log output tests.
 - **`IntegrationTests.cs`**: Provides directories for YAML input, output, and results file tests.
+- **`ProgramTests.cs`**: Provides directories for command input-file generation tests.
+- **`Dictionary/DictionaryGeneratorTests.cs`**: Provides directories for YAML input and output file tests.
