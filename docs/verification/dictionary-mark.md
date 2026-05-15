@@ -15,13 +15,11 @@ delete them in `finally` blocks.
 
 ## Test Environment
 
-| Item                   | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| Test framework         | xUnit v3 with `[Collection("Sequential")]` to prevent parallelism. |
-| Execution method       | `dotnet <DLL> <args>` via `Runner.Run` helper.                     |
-| DLL location           | `AppContext.BaseDirectory` (resolved in constructor).              |
-| Temporary files        | `Path.GetTempPath()` with `Guid.NewGuid()` filenames.             |
-| External dependencies  | None — tool is self-contained.                                     |
+- **Test framework**: xUnit v3 with `[Collection("Sequential")]` to prevent parallelism.
+- **Execution method**: `dotnet <DLL> <args>` via `Runner.Run` helper.
+- **DLL location**: `AppContext.BaseDirectory` (resolved in constructor).
+- **Temporary files**: `Path.GetTempPath()` with `Guid.NewGuid()` filenames.
+- **External dependencies**: None — tool is self-contained.
 
 ## External Interface Simulation
 
@@ -55,7 +53,7 @@ output generation:
 ## Requirements Coverage
 
 | Requirement | Test |
-|---|---|
+| --- | --- |
 | DictionaryMark-System-Version | DictionaryMark_VersionFlag_Provided_OutputsVersion |
 | DictionaryMark-System-Help | DictionaryMark_HelpFlag_Provided_OutputsUsageInformation |
 | DictionaryMark-System-Validate | DictionaryMark_ValidateFlag_Provided_RunsValidation |

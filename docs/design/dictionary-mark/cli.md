@@ -13,25 +13,23 @@ properties. It also owns the two output channels - console and log file - throug
 
 ### Accepted Flags
 
-The following table lists every flag accepted by `Context.Create`, its short alias (if any),
+The following list describes every flag accepted by `Context.Create`, its short alias (if any),
 the property it sets, and its default value.
 
-| Flag                                 | Short Alias | Property         | Default      |
-| ------------------------------------ | ----------- | ---------------- | ------------ |
-| `--version`                          | `-v`        | `Version`        | `false`      |
-| `--help`                             | `-h`, `-?`  | `Help`           | `false`      |
-| `--silent`                           | —           | `Silent`         | `false`      |
-| `--validate`                         | —           | `Validate`       | `false`      |
-| `--log <file>`                       | —           | *(log channel)*  | disabled     |
-| `--results <file>` / `--result <file>` | —         | `ResultsFile`    | `null`       |
-| `--depth <n>`                        | —           | `HeadingDepth`   | `1`          |
-| `--input <pattern>`                  | `-i`        | `InputPatterns`  | `[]`         |
-| `--output <file>`                    | `-o`        | `OutputFile`     | `null`       |
-| `--format <table\|bullets>`          | `-f`        | `Format`         | `Bullets`    |
-| `--section <heading>`                | `-s`        | `SectionHeading` | `null`       |
-| `--term-header <text>`               | —           | `TermHeader`     | `"Term"`     |
-| `--def-header <text>` / `--definition-header <text>` | — | `DefinitionHeader` | `"Definition"` |
-| `--sort <file\|alpha>`               | —           | `SortBy`         | `FileOrder`  |
+- `--version` (`-v`) → `Version` (default: `false`)
+- `--help` (`-h`, `-?`) → `Help` (default: `false`)
+- `--silent` → `Silent` (default: `false`)
+- `--validate` → `Validate` (default: `false`)
+- `--log <file>` → *(log channel)* (default: disabled)
+- `--results <file>` / `--result <file>` → `ResultsFile` (default: `null`)
+- `--depth <n>` → `HeadingDepth` (default: `1`)
+- `--input <pattern>` (`-i`) → `InputPatterns` (default: `[]`)
+- `--output <file>` (`-o`) → `OutputFile` (default: `null`)
+- `--format <table|bullets>` (`-f`) → `Format` (default: `Bullets`)
+- `--section <heading>` (`-s`) → `SectionHeading` (default: `null`)
+- `--term-header <text>` → `TermHeader` (default: `"Term"`)
+- `--def-header <text>` / `--definition-header <text>` → `DefinitionHeader` (default: `"Definition"`)
+- `--sort <file|alpha>` → `SortBy` (default: `FileOrder`)
 
 ### Error Handling
 

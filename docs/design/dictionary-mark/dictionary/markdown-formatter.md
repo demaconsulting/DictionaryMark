@@ -15,14 +15,12 @@ Pipe characters in term and definition values are escaped for safe table cell re
 
 `MarkdownFormatter` consumes `MarkdownOptions` with the following fields:
 
-| Field/Property    | Type           | Description                                                       |
-| ----------------- | -------------- | ----------------------------------------------------------------- |
-| `Format`          | `OutputFormat` | Selects bullet-list (`Bullets`) or table (`Table`) rendering.     |
-| `SortOrder`       | `SortOrder`    | Selects file-order or alphabetical sort.                          |
-| `SectionHeading`  | `string?`      | Optional heading text; emitted before entries when non-empty.    |
-| `TermHeader`      | `string`       | Column header for the term column in table format.               |
-| `DefinitionHeader`| `string`       | Column header for the definition column in table format.         |
-| `HeadingDepth`    | `int`          | Heading level (1–6) for the section heading; default 1.          |
+- `Format` (`OutputFormat`) — Selects bullet-list (`Bullets`) or table (`Table`) rendering.
+- `SortOrder` (`SortOrder`) — Selects file-order or alphabetical sort.
+- `SectionHeading` (`string?`) — Optional heading text; emitted before entries when non-empty.
+- `TermHeader` (`string`) — Column header for the term column in table format.
+- `DefinitionHeader` (`string`) — Column header for the definition column in table format.
+- `HeadingDepth` (`int`) — Heading level (1–6) for the section heading; default 1.
 
 #### Methods
 

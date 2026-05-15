@@ -19,11 +19,10 @@ keys within the same file using a case-insensitive hash set.
 `DictionaryEntry` is a `sealed` class that represents a single dictionary entry loaded from a
 YAML file. It is immutable: all properties are set via the constructor and exposed as read-only.
 
-| Member           | Kind        | Type     | Description                                            |
-| ---------------- | ----------- | -------- | ------------------------------------------------------ |
-| `DictionaryEntry(string term, string definition)` | Constructor | — | Initializes a new entry with the given term and definition. Both parameters are required; the constructor stores them directly without validation. |
-| `Term`           | Property    | `string` | The dictionary term (key). Read-only; set by the constructor. |
-| `Definition`     | Property    | `string` | The term's definition (value). Read-only; set by the constructor. |
+- `DictionaryEntry(string term, string definition)` (Constructor) — Initializes a new entry
+  with the given term and definition. Both parameters are required; stored directly without validation.
+- `Term` (`string`, Property) — The dictionary term (key). Read-only; set by the constructor.
+- `Definition` (`string`, Property) — The term's definition (value). Read-only; set by the constructor.
 
 `DictionaryEntry` has no instance methods beyond those inherited from `object`.
 

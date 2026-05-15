@@ -13,24 +13,22 @@ file - through its `WriteLine` and `WriteError` methods.
 
 #### Data Model
 
-| Field/Property     | Type            | Description                                                                   |
-| ------------------ | --------------- | ----------------------------------------------------------------------------- |
-| `_logWriter`       | `StreamWriter?` | Log file writer; `null` when logging is disabled.                             |
-| `_hasErrors`       | `bool`          | Set to `true` on the first `WriteError` call.                                 |
-| `Version`          | `bool`          | `true` when `-v` or `--version` was passed.                                   |
-| `Help`             | `bool`          | `true` when `-?`, `-h`, or `--help` was passed.                               |
-| `Silent`           | `bool`          | `true` when `--silent` was passed.                                            |
-| `Validate`         | `bool`          | `true` when `--validate` was passed.                                          |
-| `ResultsFile`      | `string?`       | Path supplied after `--results` or `--result`, or `null`.                     |
-| `HeadingDepth`     | `int`           | Heading depth for output; valid range 1–6 (default 1); via `--depth`.         |
-| `InputPatterns`    | `List<string>`  | Input file patterns specified via `-i` or `--input` (repeatable).             |
-| `OutputFile`       | `string?`       | Output file path via `-o` or `--output`; `null` means stdout.                 |
-| `Format`           | `OutputFormat`  | Output format (Bullets or Table); via `-f` or `--format`. Default is Bullets. |
-| `SectionHeading`   | `string?`       | Optional section heading text; via `-s` or `--section`.                       |
-| `TermHeader`       | `string`        | Term column header; via `--term-header`. Default is `"Term"`.                 |
-| `DefinitionHeader` | `string`        | Definition column header; via `--def-header` or `--definition-header`. Default is `"Definition"`. |
-| `SortBy`           | `SortOrder`     | Sort order (FileOrder or Alphabetical); via `--sort`. Default is FileOrder.   |
-| `ExitCode`         | `int`           | `1` if `_hasErrors`; `0` otherwise.                                           |
+- `_logWriter` (`StreamWriter?`) — Log file writer; `null` when logging is disabled.
+- `_hasErrors` (`bool`) — Set to `true` on the first `WriteError` call.
+- `Version` (`bool`) — `true` when `-v` or `--version` was passed.
+- `Help` (`bool`) — `true` when `-?`, `-h`, or `--help` was passed.
+- `Silent` (`bool`) — `true` when `--silent` was passed.
+- `Validate` (`bool`) — `true` when `--validate` was passed.
+- `ResultsFile` (`string?`) — Path supplied after `--results` or `--result`, or `null`.
+- `HeadingDepth` (`int`) — Heading depth for output; valid range 1–6 (default 1); via `--depth`.
+- `InputPatterns` (`List<string>`) — Input file patterns specified via `-i` or `--input` (repeatable).
+- `OutputFile` (`string?`) — Output file path via `-o` or `--output`; `null` means stdout.
+- `Format` (`OutputFormat`) — Output format (Bullets or Table); via `-f` or `--format`. Default is Bullets.
+- `SectionHeading` (`string?`) — Optional section heading text; via `-s` or `--section`.
+- `TermHeader` (`string`) — Term column header; via `--term-header`. Default is `"Term"`.
+- `DefinitionHeader` (`string`) — Definition column header; via `--def-header` or `--definition-header`. Default is `"Definition"`.
+- `SortBy` (`SortOrder`) — Sort order (FileOrder or Alphabetical); via `--sort`. Default is FileOrder.
+- `ExitCode` (`int`) — `1` if `_hasErrors`; `0` otherwise.
 
 #### Methods
 

@@ -20,7 +20,7 @@ sections:
       - id: DictionaryMark-Cli-OutputManagement
         title: The CLI subsystem shall manage console output, log file output, and silent-mode suppression.
         justification: |
-          Centralised output management in Context ensures all subsystems write to the same
+          Centralized output management in Context ensures all subsystems write to the same
           channels and that silent mode and log files are applied uniformly.
         children:
           - DictionaryMark-Context-SilentFlag

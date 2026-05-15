@@ -23,7 +23,7 @@ self-tests cover the following categories of behavior:
 
 `Validation.Run` is a stateless operation: it creates temporary directories and contexts
 internally and discards them after each test. It is safe to call sequentially multiple times
-within the same process without any reset or re-initialisation step.
+within the same process without any reset or re-initialization step.
 
 ### Interactions
 

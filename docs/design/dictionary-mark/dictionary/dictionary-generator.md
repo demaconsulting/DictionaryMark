@@ -15,10 +15,6 @@ is called, it resolves input file paths using `GlobMatcher`, loads entries from 
 `DictionaryGenerator` is a concrete class with no persistent instance state. All state is
 local to each `Generate` call.
 
-| Field/Property | Type | Description |
-| -------------- | ---- | ----------- |
-| *(none)*       | —    | No instance fields; all state is local to `Generate`. |
-
 #### Methods
 
 ##### Generate(Context context)
@@ -43,13 +39,16 @@ Orchestrates the full generation pipeline.
 `context.WriteError` (which sets the exit code to 1) and returns immediately, with no output
 generated. The five error cases are:
 
-| Error case | Exception / Condition | Behavior |
-| ---------- | --------------------- | -------- |
-| Invalid input pattern | `ArgumentException` from `GlobMatcher.GetFiles` | Calls `context.WriteError("Error: Invalid input pattern: {message}")` and returns. |
-| No files found | Empty list returned by `GlobMatcher.GetFiles` | Calls `context.WriteError("Error: No input files found matching the specified patterns.")` and returns. |
-| I/O error reading YAML | `IOException` from `YamlDictionaryLoader.Load` | Calls `context.WriteError("Error: Failed to read file '{file}': {message}")` and returns. |
-| Invalid YAML structure | `InvalidOperationException` from `YamlDictionaryLoader.Load` | Calls `context.WriteError("Error: Invalid YAML in file '{file}': {message}")` and returns. |
-| I/O or access error writing output | `IOException` or `UnauthorizedAccessException` from `File.WriteAllText` | Calls `context.WriteError("Error: Failed to write output file '{file}': {message}")` and returns. |
+- **Invalid input pattern** — `ArgumentException` from `GlobMatcher.GetFiles`;
+  calls `context.WriteError("Error: Invalid input pattern: {message}")` and returns.
+- **No files found** — Empty list from `GlobMatcher.GetFiles`;
+  calls `context.WriteError("Error: No input files found matching the specified patterns.")` and returns.
+- **I/O error reading YAML** — `IOException` from `YamlDictionaryLoader.Load`;
+  calls `context.WriteError("Error: Failed to read file '{file}': {message}")` and returns.
+- **Invalid YAML structure** — `InvalidOperationException` from `YamlDictionaryLoader.Load`;
+  calls `context.WriteError("Error: Invalid YAML in file '{file}': {message}")` and returns.
+- **I/O or access error writing output** — `IOException` or `UnauthorizedAccessException` from `File.WriteAllText`;
+  calls `context.WriteError("Error: Failed to write output file '{file}': {message}")` and returns.
 
 #### Interactions
 
