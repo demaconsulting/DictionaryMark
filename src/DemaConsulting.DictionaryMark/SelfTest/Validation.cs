@@ -598,6 +598,13 @@ internal static class Validation
         /// <summary>
         ///     Deletes the temporary directory and all its contents.
         /// </summary>
+        /// <remarks>
+        ///     <see cref="IOException"/> and <see cref="UnauthorizedAccessException"/> are intentionally
+        ///     suppressed during disposal. Cleanup failures are non-fatal: the operating system or the
+        ///     user's temp-folder maintenance process will eventually reclaim the directory, and allowing
+        ///     an exception to escape from <c>Dispose</c> would break <c>using</c> blocks and mask the
+        ///     original test outcome.
+        /// </remarks>
         public void Dispose()
         {
             try

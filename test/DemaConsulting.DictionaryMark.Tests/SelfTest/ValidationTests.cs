@@ -188,6 +188,24 @@ public class ValidationTests
     }
 
     /// <summary>
+    ///     Test that Run includes a version display test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_VersionDisplayTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_VersionDisplay");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a help display test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_HelpDisplayTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_HelpDisplay");
+    }
+
+    /// <summary>
     ///     Test that Run includes a bullet generation test that passes.
     /// </summary>
     [Fact]

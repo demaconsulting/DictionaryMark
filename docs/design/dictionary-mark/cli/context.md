@@ -28,7 +28,7 @@ file - through its `WriteLine` and `WriteError` methods.
 | `Format`           | `OutputFormat`  | Output format (Bullets or Table); via `-f` or `--format`. Default is Bullets. |
 | `SectionHeading`   | `string?`       | Optional section heading text; via `-s` or `--section`.                       |
 | `TermHeader`       | `string`        | Term column header; via `--term-header`. Default is `"Term"`.                 |
-| `DefinitionHeader` | `string`        | Definition column header; via `--def-header`. Default is `"Definition"`.      |
+| `DefinitionHeader` | `string`        | Definition column header; via `--def-header` or `--definition-header`. Default is `"Definition"`. |
 | `SortBy`           | `SortOrder`     | Sort order (FileOrder or Alphabetical); via `--sort`. Default is FileOrder.   |
 | `ExitCode`         | `int`           | `1` if `_hasErrors`; `0` otherwise.                                           |
 
@@ -57,5 +57,7 @@ Disposes `_logWriter` and sets it to `null`.
 
 #### Interactions
 
-`Context` has no dependencies on other tool units. It uses only .NET base class library types
-(`Console`, `StreamWriter`).
+`Context` uses `OutputFormat` and `SortOrder` types from the Dictionary subsystem to represent
+the parsed `--format` and `--sort` flag values respectively. Apart from these type references,
+`Context` has no behavioral dependency on other DictionaryMark subsystems. It uses only .NET
+base class library types (`Console`, `StreamWriter`) for I/O.

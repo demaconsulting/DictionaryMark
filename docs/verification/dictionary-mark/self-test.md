@@ -53,7 +53,12 @@ workflow end-to-end. Tests create `Context` instances with validation arguments,
 
 - **`DictionaryMark-SelfTest-Subsystem`**: SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully,
   SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults,
-  SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults.
-- **`DictionaryMark-Validation-TrxOutput`**: SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults.
-- **`DictionaryMark-Validation-JUnitOutput`**: SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults.
-- **`DictionaryMark-Validation-UnsupportedExtension`**: SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile.
+  SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults,
+  SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults.
+
+> **Note**: The unit requirements `DictionaryMark-Validation-TrxOutput`,
+> `DictionaryMark-Validation-JUnitOutput`, and `DictionaryMark-Validation-UnsupportedExtension`
+> are covered by unit-level tests in `ValidationTests.cs` and are not re-linked here.
+> `SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults` exercises
+> sequential re-entry of the subsystem and is linked to `DictionaryMark-SelfTest-Subsystem`
+> because `Validation.Run` is stateless and safe to call sequentially.

@@ -22,3 +22,4 @@ sections:
           - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
           - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
           - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
+          - SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults

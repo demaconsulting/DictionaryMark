@@ -23,7 +23,38 @@ sections:
           Centralised output management in Context ensures all subsystems write to the same
           channels and that silent mode and log files are applied uniformly.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Context-SilentFlag
+          - DictionaryMark-Context-LogFlag
         tests:
           - CliSubsystem_SilentFlow_ContextAndProgram_SuppressesOutput
           - CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile
+
+      - id: DictionaryMark-Cli-ResultsFile
+        title: The CLI subsystem shall write validation results to a file when a results file path is specified.
+        justification: |
+          Results file output allows integration with CI pipelines and test reporting tools
+          by providing TRX or JUnit XML output of self-validation test runs.
+        children:
+          - DictionaryMark-Context-ResultsFlag
+        tests:
+          - CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile
+          - CliSubsystem_ResultAliasFlow_ContextAndProgram_WritesResultsFile
+
+      - id: DictionaryMark-Cli-HeadingDepth
+        title: The CLI subsystem shall control the heading depth of generated Markdown output via the --depth flag.
+        justification: |
+          Configurable heading depth allows generated sections to integrate into existing
+          document hierarchies at the correct heading level.
+        children:
+          - DictionaryMark-Context-DepthFlag
+        tests:
+          - CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth
+
+      - id: DictionaryMark-Cli-ErrorOutput
+        title: The CLI subsystem shall write error messages to stderr and exit with code 1 on failure.
+        justification: |
+          Directing errors to stderr with a non-zero exit code follows POSIX conventions
+          and allows calling scripts to detect and handle tool failures reliably.
+        tests:
+          - CliSubsystem_ErrorOutput_ContextAndProgram_WritesErrorToStderr
+          - CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero

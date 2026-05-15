@@ -100,9 +100,17 @@ flags, output content, and exit codes. No mocking is used; all collaborators exe
 
 ### Requirements Coverage
 
-- **`DictionaryMark-Cli-Context`**: All CliSubsystem tests exercise `Context.Create` flag
-  parsing as part of the end-to-end workflow.
-- **`DictionaryMark-Program-Version`**: CliSubsystem_VersionFlow_* tests.
-- **`DictionaryMark-Program-Help`**: CliSubsystem_HelpFlow_* tests.
-- **`DictionaryMark-Program-Validate`**: CliSubsystem_ValidateFlow_ContextAndProgram_RunsValidationAndExits.
-- **`DictionaryMark-SelfTest-Subsystem`**: CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile.
+- **`DictionaryMark-Cli-ArgumentParsing`**: CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits,
+  CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits_WithShortVFlag,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits_WithShortQuestionFlag,
+  CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits_WithShortHFlag,
+  CliSubsystem_ValidateFlow_ContextAndProgram_RunsValidationAndExits,
+  CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero.
+- **`DictionaryMark-Cli-OutputManagement`**: CliSubsystem_SilentFlow_ContextAndProgram_SuppressesOutput,
+  CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile.
+- **`DictionaryMark-Cli-ResultsFile`**: CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile,
+  CliSubsystem_ResultAliasFlow_ContextAndProgram_WritesResultsFile.
+- **`DictionaryMark-Cli-HeadingDepth`**: CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth.
+- **`DictionaryMark-Cli-ErrorOutput`**: CliSubsystem_ErrorOutput_ContextAndProgram_WritesErrorToStderr,
+  CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero.

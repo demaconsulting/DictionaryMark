@@ -11,6 +11,40 @@ argument list, opens any requested log file, and exposes the parsed flags as rea
 properties. It also owns the two output channels - console and log file - through its
 `WriteLine` and `WriteError` methods.
 
+### Accepted Flags
+
+The following table lists every flag accepted by `Context.Create`, its short alias (if any),
+the property it sets, and its default value.
+
+| Flag                                 | Short Alias | Property         | Default      |
+| ------------------------------------ | ----------- | ---------------- | ------------ |
+| `--version`                          | `-v`        | `Version`        | `false`      |
+| `--help`                             | `-h`, `-?`  | `Help`           | `false`      |
+| `--silent`                           | —           | `Silent`         | `false`      |
+| `--validate`                         | —           | `Validate`       | `false`      |
+| `--log <file>`                       | —           | *(log channel)*  | disabled     |
+| `--results <file>` / `--result <file>` | —         | `ResultsFile`    | `null`       |
+| `--depth <n>`                        | —           | `HeadingDepth`   | `1`          |
+| `--input <pattern>`                  | `-i`        | `InputPatterns`  | `[]`         |
+| `--output <file>`                    | `-o`        | `OutputFile`     | `null`       |
+| `--format <table\|bullets>`          | `-f`        | `Format`         | `Bullets`    |
+| `--section <heading>`                | `-s`        | `SectionHeading` | `null`       |
+| `--term-header <text>`               | —           | `TermHeader`     | `"Term"`     |
+| `--def-header <text>` / `--definition-header <text>` | — | `DefinitionHeader` | `"Definition"` |
+| `--sort <file\|alpha>`               | —           | `SortBy`         | `FileOrder`  |
+
+### Error Handling
+
+- **Invalid arguments**: When an unknown flag or a flag with a missing required value is
+  encountered, `Context.Create` throws `ArgumentException`. `Program.Main` catches this,
+  writes the error message to stderr via `Console.Error`, and returns exit code 1.
+- **`WriteError` behavior**: Calling `context.WriteError(message)` sets `_hasErrors` to
+  `true` (causing `ExitCode` to return 1), writes the message to `Console.Error` in red
+  (unless `Silent`), and also writes it to the log file when one is open.
+- **Log file failure**: If `--log` is specified and the file cannot be opened,
+  `Context.Create` throws `InvalidOperationException` wrapping the original file-system
+  exception.
+
 ### Interactions
 
 The CLI subsystem is consumed by `Program`, which creates a `Context` instance and passes it

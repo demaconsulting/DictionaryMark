@@ -208,4 +208,36 @@ and exception types. Console streams are temporarily redirected for output asser
 
 #### Requirements Coverage
 
-- **`DictionaryMark-Cli-Context`**: All `Context_Create_*` and `Context_Write*` tests.
+- **`DictionaryMark-Context-ArgumentParsing`**: Context_Create_NoArguments_ReturnsDefaultContext,
+  Context_Create_InputFlag_AddsPattern, Context_Create_ShortInputFlag_AddsPattern,
+  Context_Create_MultipleInputFlags_AddsAllPatterns, Context_Create_OutputFlag_SetsOutputFile,
+  Context_Create_FormatFlag_Table_SetsTableFormat, Context_Create_FormatFlag_Bullets_SetsBulletsFormat,
+  Context_Create_SectionFlag_SetsSectionHeading, Context_Create_TermHeaderFlag_SetsTermHeader,
+  Context_Create_DefinitionHeaderFlag_SetsDefinitionHeader,
+  Context_Create_SortFlag_Alpha_SetsAlphabetical, Context_Create_SortFlag_File_SetsFileOrder,
+  Context_Create_NoInputFlag_InputPatternsEmpty, Context_Create_NoOutputFlag_OutputFileNull,
+  Context_Create_DefaultFormat_IsBullets, Context_Create_DefaultSort_IsFileOrder.
+- **`DictionaryMark-Context-HelpFlag`**: Context_Create_HelpFlag_SetsHelpTrue,
+  Context_Create_ShortHelpFlag_H_SetsHelpTrue, Context_Create_ShortHelpFlag_Question_SetsHelpTrue.
+- **`DictionaryMark-Context-ValidateFlag`**: Context_Create_ValidateFlag_SetsValidateTrue.
+- **`DictionaryMark-Context-ResultsFlag`**: Context_Create_ResultsFlag_SetsResultsFile,
+  Context_Create_ResultsFlag_WithoutValue_ThrowsArgumentException,
+  Context_Create_ResultAliasFlag_SetsResultsFile,
+  Context_Create_ResultAliasFlag_WithoutValue_ThrowsArgumentException.
+- **`DictionaryMark-Context-DepthFlag`**: Context_Create_DepthFlag_SetsHeadingDepth,
+  Context_Create_NoDepthFlag_ReturnsDefaultHeadingDepth,
+  Context_Create_DepthFlag_WithoutValue_ThrowsArgumentException,
+  Context_Create_DepthFlag_NonIntegerValue_ThrowsArgumentException,
+  Context_Create_DepthFlag_ZeroValue_ThrowsArgumentException,
+  Context_Create_DepthFlag_ExceedsMaxValue_ThrowsArgumentException.
+- **`DictionaryMark-Context-InvalidArgs`**: Context_Create_UnknownArgument_ThrowsArgumentException,
+  Context_Create_InputFlag_WithoutValue_ThrowsArgumentException,
+  Context_Create_OutputFlag_WithoutValue_ThrowsArgumentException,
+  Context_Create_FormatFlag_InvalidValue_ThrowsArgumentException,
+  Context_Create_SortFlag_InvalidValue_ThrowsArgumentException.
+- **`DictionaryMark-Context-VersionFlag`**: Context_Create_VersionFlag_SetsVersionTrue,
+  Context_Create_ShortVersionFlag_SetsVersionTrue.
+- **`DictionaryMark-Context-SilentFlag`**: Context_Create_SilentFlag_SetsSilentTrue,
+  Context_WriteLine_Silent_DoesNotWriteToConsole, Context_WriteError_Silent_DoesNotWriteToConsole.
+- **`DictionaryMark-Context-LogFlag`**: Context_Create_LogFlag_OpensLogFile,
+  Context_WriteError_WritesToLogFile.

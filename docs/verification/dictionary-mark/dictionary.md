@@ -11,11 +11,13 @@ This document describes unit-level verification for the Dictionary subsystem.
 
 ### Subsystem Tests
 
-The following subsystem integration tests verify requirement `DictionaryMark-Dictionary-Subsystem`:
+The following subsystem integration tests exercise the Dictionary subsystem pipeline
+end-to-end and are mapped to the subsystem requirements below.
 
-- `DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown` —
-  Bullet list generated end-to-end from YAML loading through Markdown formatting
-- `DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown` —
-  Table format generated end-to-end from YAML loading through Markdown formatting
-- `DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts` —
-  Conflicting definitions detected end-to-end from YAML loading through ConflictDetector
+### Requirements Coverage
+
+- **`DictionaryMark-Dictionary-YamlLoading`**: DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown,
+  DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown.
+- **`DictionaryMark-Dictionary-ConflictDetection`**: DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts.
+- **`DictionaryMark-Dictionary-MarkdownFormatting`**: DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown,
+  DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown.

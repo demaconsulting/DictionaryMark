@@ -22,6 +22,36 @@ sections:
           - Context_Create_SortFlag_Alpha_SetsAlphabetical
           - Context_Create_SortFlag_File_SetsFileOrder
 
+      - id: DictionaryMark-Context-HelpFlag
+        title: The Context class shall parse the --help (-h, -?) flags and set the Help property to true.
+        justification: |
+          The help flag must be recognized and routed to the correct display path
+          by Program.Run so users can discover available options.
+        tests:
+          - Context_Create_HelpFlag_SetsHelpTrue
+          - Context_Create_ShortHelpFlag_H_SetsHelpTrue
+          - Context_Create_ShortHelpFlag_Question_SetsHelpTrue
+
+      - id: DictionaryMark-Context-ValidateFlag
+        title: The Context class shall parse the --validate flag and set the Validate property to true.
+        justification: |
+          The validate flag must be recognized so that Program.Run can route execution
+          to the self-validation workflow.
+        tests:
+          - Context_Create_ValidateFlag_SetsValidateTrue
+
+      - id: DictionaryMark-Context-ResultsFlag
+        title: The Context class shall parse the --results/--result flag and set the ResultsFile property; an ArgumentException
+          shall be thrown when the value is missing.
+        justification: |
+          The results file path must be captured so the self-validation subsystem can
+          write structured output for CI/CD pipeline consumption.
+        tests:
+          - Context_Create_ResultsFlag_SetsResultsFile
+          - Context_Create_ResultsFlag_WithoutValue_ThrowsArgumentException
+          - Context_Create_ResultAliasFlag_SetsResultsFile
+          - Context_Create_ResultAliasFlag_WithoutValue_ThrowsArgumentException
+
       - id: DictionaryMark-Context-DepthFlag
         title: The Context class shall parse the --depth flag value as the heading depth for Markdown output.
         justification: |
@@ -51,7 +81,7 @@ sections:
           - Context_Create_ShortVersionFlag_SetsVersionTrue
 
       - id: DictionaryMark-Context-SilentFlag
-        title: The Context class shall parse the --silent flag and suppress output on both output channels.
+        title: The Context class shall parse the --silent flag and set the Silent property to true.
         justification: |
           Silent mode must be applied uniformly to all output so that automated pipelines
           receive no unexpected console output from the tool.

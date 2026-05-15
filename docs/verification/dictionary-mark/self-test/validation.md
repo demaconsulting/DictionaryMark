@@ -36,6 +36,18 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 
 **Expected**: Exit code is 0.
 
+##### Validation_Run_WithSilentContext_VersionDisplayTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_VersionDisplay - Passed".
+
+##### Validation_Run_WithSilentContext_HelpDisplayTestPasses
+
+**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+
+**Expected**: Log file contains "DictionaryMark_HelpDisplay - Passed".
+
 ##### Validation_Run_WithSilentContext_BulletGenerationTestPasses
 
 **Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
@@ -83,6 +95,8 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 - **`DictionaryMark-Validation-Run`**: Validation_Run_WithSilentContext_PrintsSummary,
   Validation_Run_WithSilentContext_ExitCodeIsZero,
   Validation_Run_NullContext_ThrowsArgumentNullException.
+- **`DictionaryMark-Validation-VersionDisplay`**: Validation_Run_WithSilentContext_VersionDisplayTestPasses.
+- **`DictionaryMark-Validation-HelpDisplay`**: Validation_Run_WithSilentContext_HelpDisplayTestPasses.
 - **`DictionaryMark-Validation-BulletGeneration`**: Validation_Run_WithSilentContext_BulletGenerationTestPasses.
 - **`DictionaryMark-Validation-TableGeneration`**: Validation_Run_WithSilentContext_TableGenerationTestPasses.
 - **`DictionaryMark-Validation-CustomHeaders`**: Validation_Run_WithSilentContext_CustomHeadersTestPasses.
