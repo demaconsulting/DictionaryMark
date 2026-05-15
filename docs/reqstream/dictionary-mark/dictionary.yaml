@@ -13,6 +13,7 @@ sections:
           - DictionaryMark-YamlLoader-Load
           - DictionaryMark-YamlLoader-StructureErrors
           - DictionaryMark-YamlLoader-FileErrors
+          - DictionaryMark-YamlLoader-NullInput
           - DictionaryMark-YamlLoader-DuplicateKeys
         tests:
           - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
@@ -25,6 +26,9 @@ sections:
           same term has different definitions in different source files.
         children:
           - DictionaryMark-ConflictDetector-Detect
+          - DictionaryMark-ConflictDetector-CaseInsensitive
+          - DictionaryMark-ConflictDetector-Deduplication
+          - DictionaryMark-ConflictDetector-NullRejection
         tests:
           - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts
 

@@ -352,6 +352,49 @@ public class IntegrationTests
         Assert.Contains("- ", output);
     }
 
+    /// <summary>Test that DictionaryMark accepts wildcard input patterns and expands matching YAML files.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_GlobInput_ProcessesMatches()
+    {
+        // Arrange: create two YAML files and one non-YAML file in a temporary directory
+        using var tmpDir = new TemporaryDirectory();
+        var firstYamlFile = tmpDir.GetFilePath("first.yaml");
+        var secondYamlFile = tmpDir.GetFilePath("second.yaml");
+        var ignoredFile = tmpDir.GetFilePath("ignored.txt");
+        File.WriteAllText(firstYamlFile, "API: Application Programming Interface\n");
+        File.WriteAllText(secondYamlFile, "UI: User Interface\n");
+        File.WriteAllText(ignoredFile, "This file should not be loaded\n");
+        var wildcardPattern = tmpDir.GetFilePath("*.yaml");
+
+        // Act: run the tool with a wildcard input pattern
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", wildcardPattern);
+
+        // Assert: entries from matching YAML files are present
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", output);
+        Assert.Contains("UI", output);
+    }
+
+    /// <summary>Test that DictionaryMark merges entries from multiple non-conflicting input files.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_MultipleInputs_MergesEntries()
+    {
+        // Arrange: create two input files with non-conflicting entries
+        using var tmpDir = new TemporaryDirectory();
+        var firstInputFile = tmpDir.GetFilePath("input1.yaml");
+        var secondInputFile = tmpDir.GetFilePath("input2.yaml");
+        File.WriteAllText(firstInputFile, "API: Application Programming Interface\n");
+        File.WriteAllText(secondInputFile, "UI: User Interface\n");
+
+        // Act: run the tool with both input files
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", firstInputFile, "--input", secondInputFile);
+
+        // Assert: output contains merged entries from both files
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", output);
+        Assert.Contains("UI", output);
+    }
+
     /// <summary>Test that DictionaryMark generates table output when table format is specified.</summary>
     [Fact]
     public void DictionaryMark_Generate_TableFormat_OutputsTable()
@@ -421,9 +464,12 @@ public class IntegrationTests
         // Act: run the tool with --section flag
         var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--section", "My Section");
 
-        // Assert: section heading appears in output
+        // Assert: section heading is emitted as a Markdown heading before generated entries
         Assert.Equal(0, exitCode);
-        Assert.Contains("My Section", output);
+        var headingIndex = output.IndexOf("# My Section", StringComparison.Ordinal);
+        var entryIndex = output.IndexOf("\n- ", StringComparison.Ordinal);
+        Assert.True(headingIndex >= 0, "Expected '# My Section' heading in output");
+        Assert.True(entryIndex > headingIndex, "Expected section heading to appear before generated entries");
     }
 
     /// <summary>Test that DictionaryMark uses custom term header when --term-header is specified.</summary>
@@ -477,5 +523,53 @@ public class IntegrationTests
         var alphaIndex = output.IndexOf("Alpha", StringComparison.Ordinal);
         var zebraIndex = output.IndexOf("Zebra", StringComparison.Ordinal);
         Assert.True(alphaIndex < zebraIndex, "Alpha should appear before Zebra in alphabetical sort");
+    }
+
+    /// <summary>Test that DictionaryMark preserves file-encounter order by default when sort order is not specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_DefaultSort_PreservesFileOrder()
+    {
+        // Arrange: YAML input file with entries intentionally ordered Zebra then Alpha
+        using var tmpDir = new TemporaryDirectory();
+        var inputFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(inputFile, "Zebra: Last in alphabet\nAlpha: First in alphabet\n");
+
+        // Act: run the tool without --sort so file-order behavior is used
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", inputFile);
+
+        // Assert: default output preserves file encounter order - Zebra before Alpha
+        Assert.Equal(0, exitCode);
+        var zebraIndex = output.IndexOf("Zebra", StringComparison.Ordinal);
+        var alphaIndex = output.IndexOf("Alpha", StringComparison.Ordinal);
+        Assert.True(zebraIndex < alphaIndex, "Zebra should appear before Alpha in default file-order sort");
+    }
+
+    /// <summary>Test that DictionaryMark applies heading depth to generated section headings.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_SectionWithDepth_OutputsHeading()
+    {
+        // Arrange: YAML input file and section heading with explicit heading depth
+        using var tmpDir = new TemporaryDirectory();
+        var inputFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(inputFile, "API: Application Programming Interface\n");
+
+        // Act: run the tool with section heading and depth 3
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet",
+            _dllPath,
+            "--input",
+            inputFile,
+            "--section",
+            "My Section",
+            "--depth",
+            "3");
+
+        // Assert: output contains level-3 heading for the section before generated entries
+        Assert.Equal(0, exitCode);
+        var headingIndex = output.IndexOf("### My Section", StringComparison.Ordinal);
+        var entryIndex = output.IndexOf("\n- ", StringComparison.Ordinal);
+        Assert.True(headingIndex >= 0, "Expected '### My Section' heading in output");
+        Assert.True(entryIndex > headingIndex, "Expected section heading to appear before generated entries");
     }
 }

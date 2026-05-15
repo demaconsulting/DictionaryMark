@@ -114,7 +114,7 @@ sections:
           - DictionaryMark-GlobMatcher-GetFiles
           - DictionaryMark-DictionaryGenerator-FileLoading
         tests:
-          - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
+          - DictionaryMark_Generate_GlobInput_ProcessesMatches
 
       - id: DictionaryMark-System-MultipleInputs
         title: >-
@@ -127,7 +127,7 @@ sections:
           - DictionaryMark-Context-ArgumentParsing
           - DictionaryMark-DictionaryGenerator-FileLoading
         tests:
-          - DictionaryMark_Generate_ConflictingEntries_ReportsError
+          - DictionaryMark_Generate_MultipleInputs_MergesEntries
 
       - id: DictionaryMark-System-ConflictDetection-Report
         title: The tool shall report an error message when conflicting definitions are detected across input files.
@@ -213,7 +213,7 @@ sections:
           - DictionaryMark-Context-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
-          - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
+          - DictionaryMark_Generate_DefaultSort_PreservesFileOrder
 
       - id: DictionaryMark-System-HeadingDepth
         title: >-
@@ -226,7 +226,7 @@ sections:
           - DictionaryMark-Context-DepthFlag
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
-          - DictionaryMark_ValidateWithDepth_DepthThree_OutputsCorrectHeadingLevel
+          - DictionaryMark_Generate_SectionWithDepth_OutputsHeading
 
       - id: DictionaryMark-System-ValidateResults-TRX
         title: >-

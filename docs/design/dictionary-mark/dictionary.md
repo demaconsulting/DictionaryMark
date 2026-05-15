@@ -32,6 +32,7 @@ Loads all entries from the file at `filePath` in document order.
 
 **Throws**:
 
+- `ArgumentNullException` — `filePath` is null.
 - `IOException` — file cannot be read.
 - `InvalidOperationException` — YAML structure is not a flat key-value mapping, or a key appears more than once.
 

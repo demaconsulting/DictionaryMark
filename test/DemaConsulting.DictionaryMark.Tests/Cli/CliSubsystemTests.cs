@@ -383,10 +383,12 @@ public class CliSubsystemTests
     [Fact]
     public void CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth()
     {
-        // Arrange: command line with --validate, --depth 2, and a log file to capture output
+        // Arrange: dictionary-generation command with --depth 2, --section, and a log file to capture output
         using var tmpDir = new TemporaryDirectory();
+        var inputFile = tmpDir.GetFilePath("input.yaml");
         var logFile = tmpDir.GetFilePath("cli_test.log");
-        var args = new[] { "--validate", "--silent", "--depth", "2", "--log", logFile };
+        File.WriteAllText(inputFile, "API: Application Programming Interface\n");
+        var args = new[] { "--input", inputFile, "--section", "CLI Depth", "--depth", "2", "--silent", "--log", logFile };
 
         // Act: create context and run program logic
         using (var context = Context.Create(args))
@@ -398,8 +400,8 @@ public class CliSubsystemTests
             Assert.Equal(0, context.ExitCode);
         }
 
-        // Assert: log contains level-2 heading
+        // Assert: generated output in log contains level-2 heading
         var logContent = File.ReadAllText(logFile);
-        Assert.Contains("## DEMA Consulting", logContent);
+        Assert.Contains("## CLI Depth", logContent);
     }
 }

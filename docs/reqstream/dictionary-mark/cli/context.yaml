@@ -41,8 +41,10 @@ sections:
           - Context_Create_ValidateFlag_SetsValidateTrue
 
       - id: DictionaryMark-Context-ResultsFlag
-        title: The Context class shall parse the --results/--result flag and set the ResultsFile
-          property; an ArgumentException shall be thrown when the value is missing.
+        title: >-
+          The Context class shall parse the --results/--result flag and set the
+          ResultsFile property; an ArgumentException shall be thrown when the value is
+          missing.
         justification: |
           The results file path must be captured so the self-validation subsystem can
           write structured output for CI/CD pipeline consumption.
@@ -59,6 +61,10 @@ sections:
           into existing document hierarchies at the correct heading level.
         tests:
           - Context_Create_DepthFlag_SetsHeadingDepth
+          - Context_Create_DepthFlag_WithoutValue_ThrowsArgumentException
+          - Context_Create_DepthFlag_NonIntegerValue_ThrowsArgumentException
+          - Context_Create_DepthFlag_ZeroValue_ThrowsArgumentException
+          - Context_Create_DepthFlag_ExceedsMaxValue_ThrowsArgumentException
 
       - id: DictionaryMark-Context-InvalidArgs
         title: The Context class shall reject unknown or malformed command-line arguments with a descriptive error.
