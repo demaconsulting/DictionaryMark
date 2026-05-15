@@ -4,6 +4,11 @@
 
 name: "DictionaryMark CodeQL Config"
 
+# Globally ignore build output and generated files
+paths-ignore:
+  - "**/obj/**"
+  - "**/bin/**"
+
 # Query filters to disable specific queries for certain paths
 query-filters:
   - exclude:

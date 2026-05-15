@@ -5,9 +5,8 @@ sections:
   - title: GlobMatcher Unit Requirements
     requirements:
       - id: DictionaryMark-GlobMatcher-GetFiles
-        title: The GlobMatcher class shall resolve files from glob patterns, supporting absolute
-          paths (with or without wildcards) and patterns relative to the current directory,
-          returning a sorted, deduplicated list of matching file paths.
+        title: The GlobMatcher class shall resolve files from glob patterns, supporting absolute paths (with or without wildcards)
+          and patterns relative to the current directory, returning a sorted, deduplicated list of matching file paths.
         justification: |
           Glob patterns allow users to specify multiple input files concisely, supporting
           workflows where dictionary files follow consistent naming conventions. Three
@@ -26,9 +25,8 @@ sections:
           - GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
 
       - id: DictionaryMark-GlobMatcher-Validation
-        title: The GlobMatcher class shall reject a null patterns collection with
-          ArgumentNullException, and reject null or empty individual pattern elements with
-          ArgumentException.
+        title: The GlobMatcher class shall reject a null patterns collection with ArgumentNullException, and reject null or
+          empty individual pattern elements with ArgumentException.
         justification: |
           Clear error messages help users identify invalid input patterns quickly.
           Rejecting a null collection before iterating prevents NullReferenceException

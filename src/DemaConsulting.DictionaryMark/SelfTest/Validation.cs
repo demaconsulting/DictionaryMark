@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Utilities;
 using DemaConsulting.TestResults.IO;
@@ -28,8 +29,10 @@ namespace DemaConsulting.DictionaryMark.SelfTest;
 /// <summary>
 ///     Provides self-validation functionality for DictionaryMark.
 /// </summary>
-internal static class Validation
+internal static partial class Validation
 {
+    private const string SilentArg = "--silent";
+    private const string InputArg = "--input";
     /// <summary>
     ///     Runs self-validation tests and optionally writes results to a file.
     /// </summary>
@@ -125,7 +128,7 @@ internal static class Validation
             // Build command line arguments
             var args = new List<string>
             {
-                "--silent",
+                SilentArg,
                 "--log", logFile,
                 "--version"
             };
@@ -145,9 +148,8 @@ internal static class Validation
                 var logContent = File.ReadAllText(logFile);
 
                 // Verify version string is in log (version contains dots like 0.0.0)
-                var versionPattern = new System.Text.RegularExpressions.Regex(@"\b\d+\.\d+\.\d+");
                 if (!string.IsNullOrWhiteSpace(logContent) &&
-                    versionPattern.IsMatch(logContent))
+                    VersionPattern().IsMatch(logContent))
                 {
                     test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
                     context.WriteLine($"✓ DictionaryMark_VersionDisplay - Passed");
@@ -194,7 +196,7 @@ internal static class Validation
             // Build command line arguments
             var args = new List<string>
             {
-                "--silent",
+                SilentArg,
                 "--log", logFile,
                 "--help"
             };
@@ -262,7 +264,7 @@ internal static class Validation
 
             File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
 
-            var args = new[] { "--silent", "--input", inputFile, "--format", "bullets", "--output", outputFile };
+            var args = new[] { SilentArg, InputArg, inputFile, "--format", "bullets", "--output", outputFile };
             int exitCode;
             using (var testContext = Context.Create(args))
             {
@@ -322,7 +324,7 @@ internal static class Validation
 
             File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
 
-            var args = new[] { "--silent", "--input", inputFile, "--format", "table", "--output", outputFile };
+            var args = new[] { SilentArg, InputArg, inputFile, "--format", "table", "--output", outputFile };
             int exitCode;
             using (var testContext = Context.Create(args))
             {
@@ -384,7 +386,7 @@ internal static class Validation
 
             var args = new[]
             {
-                "--silent", "--input", inputFile, "--format", "table",
+                SilentArg, InputArg, inputFile, "--format", "table",
                 "--term-header", "Abbreviation", "--def-header", "Meaning",
                 "--output", outputFile
             };
@@ -447,7 +449,7 @@ internal static class Validation
             File.WriteAllText(fileA, $"Alpha: First letter{Environment.NewLine}");
             File.WriteAllText(fileB, $"Alpha: Different definition{Environment.NewLine}");
 
-            var args = new[] { "--silent", "--input", fileA, "--input", fileB };
+            var args = new[] { SilentArg, InputArg, fileA, InputArg, fileB };
             int exitCode;
             using (var testContext = Context.Create(args))
             {
@@ -567,6 +569,13 @@ internal static class Validation
         test.ErrorMessage = $"Exception: {ex.Message}";
         context.WriteError($"✗ {testName} - FAILED: {ex.Message}");
     }
+
+    /// <summary>
+    ///     Gets a compiled regular expression for matching version strings (e.g., 1.2.3).
+    /// </summary>
+    /// <returns>A <see cref="Regex"/> that matches version strings.</returns>
+    [GeneratedRegex(@"\b\d+\.\d+\.\d+")]
+    private static partial Regex VersionPattern();
 
     /// <summary>
     ///     Represents a temporary directory that is automatically deleted when disposed.

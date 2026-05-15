@@ -26,7 +26,7 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 /// <summary>
 ///     Generates Markdown dictionary output from YAML input files.
 /// </summary>
-internal sealed class DictionaryGenerator
+internal static class DictionaryGenerator
 {
     /// <summary>
     ///     Generates Markdown output from YAML dictionary files.
@@ -40,7 +40,7 @@ internal sealed class DictionaryGenerator
     ///     writing the output file.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
-    public void Generate(Context context)
+    public static void Generate(Context context)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(context);

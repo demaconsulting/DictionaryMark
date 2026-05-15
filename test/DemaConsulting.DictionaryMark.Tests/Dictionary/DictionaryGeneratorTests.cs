@@ -45,8 +45,7 @@ public class DictionaryGeneratorTests
             using var context = Context.Create([]);
 
             // Act
-            var generator = new DictionaryGenerator();
-            generator.Generate(context);
+            DictionaryGenerator.Generate(context);
 
             // Assert
             Assert.Equal(1, context.ExitCode);
@@ -77,8 +76,7 @@ public class DictionaryGeneratorTests
             using var context = Context.Create(["--input", tmpFile]);
 
             // Act
-            var generator = new DictionaryGenerator();
-            generator.Generate(context);
+            DictionaryGenerator.Generate(context);
 
             // Assert
             var output = outWriter.ToString();
@@ -112,8 +110,7 @@ public class DictionaryGeneratorTests
             using var context = Context.Create(["--input", tmpFile1, "--input", tmpFile2]);
 
             // Act
-            var generator = new DictionaryGenerator();
-            generator.Generate(context);
+            DictionaryGenerator.Generate(context);
 
             // Assert
             Assert.Equal(1, context.ExitCode);
@@ -139,8 +136,7 @@ public class DictionaryGeneratorTests
         using var context = Context.Create(["--input", tmpInputFile, "--output", tmpOutputFile]);
 
         // Act: generate with an output file configured
-        var generator = new DictionaryGenerator();
-        generator.Generate(context);
+        DictionaryGenerator.Generate(context);
 
         // Assert: output file exists and contains the expected content; exit code is 0
         Assert.True(File.Exists(tmpOutputFile), "Output file should be created by Generate");
