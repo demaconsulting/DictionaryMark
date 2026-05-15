@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests.Cli;
 
@@ -256,29 +257,18 @@ public class CliSubsystemTests
     public void CliSubsystem_ResultsFlow_ContextAndProgram_WritesResultsFile()
     {
         // Arrange: temporary results file path and validation command with results output
-        var tempDir = Path.GetTempPath();
-        var resultsFile = Path.Combine(tempDir, $"cli_test_{Guid.NewGuid()}.trx");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.trx");
         var args = new[] { "--validate", "--silent", "--results", resultsFile };
 
-        try
-        {
-            // Act: create context and run program logic
-            using var context = Context.Create(args);
-            Program.Run(context);
+        // Act: create context and run program logic
+        using var context = Context.Create(args);
+        Program.Run(context);
 
-            // Assert: results flag is parsed, validation runs, and results file is written
-            Assert.Equal(resultsFile, context.ResultsFile);
-            Assert.Equal(0, context.ExitCode);
-            Assert.True(File.Exists(resultsFile), "Results file should be written to specified path");
-        }
-        finally
-        {
-            // Cleanup
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        // Assert: results flag is parsed, validation runs, and results file is written
+        Assert.Equal(resultsFile, context.ResultsFile);
+        Assert.Equal(0, context.ExitCode);
+        Assert.True(File.Exists(resultsFile), "Results file should be written to specified path");
     }
 
     /// <summary>
@@ -288,35 +278,24 @@ public class CliSubsystemTests
     public void CliSubsystem_LogFlow_ContextAndProgram_WritesLogFile()
     {
         // Arrange: temporary log file path and version command with log output
-        var tempDir = Path.GetTempPath();
-        var logFile = Path.Combine(tempDir, $"cli_test_{Guid.NewGuid()}.log");
+        using var tmpDir = new TemporaryDirectory();
+        var logFile = tmpDir.GetFilePath("cli_test.log");
         var args = new[] { "--version", "--log", logFile };
 
-        try
+        // Act: create context and run program logic
+        using (var context = Context.Create(args))
         {
-            // Act: create context and run program logic
-            using (var context = Context.Create(args))
-            {
-                Program.Run(context);
+            Program.Run(context);
 
-                // Assert: version flag is parsed and exit code is success
-                Assert.True(context.Version, "Context should parse version flag");
-                Assert.Equal(0, context.ExitCode);
-            }
+            // Assert: version flag is parsed and exit code is success
+            Assert.True(context.Version, "Context should parse version flag");
+            Assert.Equal(0, context.ExitCode);
+        }
 
-            // Assert: log file is written with version output
-            Assert.True(File.Exists(logFile), "Log file should be created at specified path");
-            var logContent = File.ReadAllText(logFile);
-            Assert.False(string.IsNullOrWhiteSpace(logContent), "Log file should contain version output");
-        }
-        finally
-        {
-            // Cleanup
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
-        }
+        // Assert: log file is written with version output
+        Assert.True(File.Exists(logFile), "Log file should be created at specified path");
+        var logContent = File.ReadAllText(logFile);
+        Assert.False(string.IsNullOrWhiteSpace(logContent), "Log file should contain version output");
     }
 
     /// <summary>
@@ -384,29 +363,18 @@ public class CliSubsystemTests
     public void CliSubsystem_ResultAliasFlow_ContextAndProgram_WritesResultsFile()
     {
         // Arrange: temporary results file path and validation command with legacy --result alias
-        var tempDir = Path.GetTempPath();
-        var resultsFile = Path.Combine(tempDir, $"cli_test_{Guid.NewGuid()}.trx");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.trx");
         var args = new[] { "--validate", "--silent", "--result", resultsFile };
 
-        try
-        {
-            // Act: create context and run program logic
-            using var context = Context.Create(args);
-            Program.Run(context);
+        // Act: create context and run program logic
+        using var context = Context.Create(args);
+        Program.Run(context);
 
-            // Assert: legacy --result alias is parsed, validation runs, and results file is written
-            Assert.Equal(resultsFile, context.ResultsFile);
-            Assert.Equal(0, context.ExitCode);
-            Assert.True(File.Exists(resultsFile), "Results file should be written to specified path");
-        }
-        finally
-        {
-            // Cleanup
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        // Assert: legacy --result alias is parsed, validation runs, and results file is written
+        Assert.Equal(resultsFile, context.ResultsFile);
+        Assert.Equal(0, context.ExitCode);
+        Assert.True(File.Exists(resultsFile), "Results file should be written to specified path");
     }
 
     /// <summary>
@@ -416,33 +384,22 @@ public class CliSubsystemTests
     public void CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth()
     {
         // Arrange: command line with --validate, --depth 2, and a log file to capture output
-        var tempDir = Path.GetTempPath();
-        var logFile = Path.Combine(tempDir, $"cli_test_{Guid.NewGuid()}.log");
+        using var tmpDir = new TemporaryDirectory();
+        var logFile = tmpDir.GetFilePath("cli_test.log");
         var args = new[] { "--validate", "--silent", "--depth", "2", "--log", logFile };
 
-        try
+        // Act: create context and run program logic
+        using (var context = Context.Create(args))
         {
-            // Act: create context and run program logic
-            using (var context = Context.Create(args))
-            {
-                Program.Run(context);
+            Program.Run(context);
 
-                // Assert: depth is parsed correctly
-                Assert.Equal(2, context.HeadingDepth);
-                Assert.Equal(0, context.ExitCode);
-            }
+            // Assert: depth is parsed correctly
+            Assert.Equal(2, context.HeadingDepth);
+            Assert.Equal(0, context.ExitCode);
+        }
 
-            // Assert: log contains level-2 heading
-            var logContent = File.ReadAllText(logFile);
-            Assert.Contains("## DEMA Consulting", logContent);
-        }
-        finally
-        {
-            // Cleanup
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
-        }
+        // Assert: log contains level-2 heading
+        var logContent = File.ReadAllText(logFile);
+        Assert.Contains("## DEMA Consulting", logContent);
     }
 }

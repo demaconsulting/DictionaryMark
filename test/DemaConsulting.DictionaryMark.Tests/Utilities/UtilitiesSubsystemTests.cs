@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests;
@@ -113,37 +114,22 @@ public class UtilitiesSubsystemTests
     [Fact]
     public void UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories()
     {
-        // Arrange: setup temp directory and unique root directories for cleanup tracking
-        var tempDir = Path.GetTempPath();
-        var rootDir1 = PathHelpers.SafePathCombine(tempDir, $"test_{Guid.NewGuid()}");
-        var rootDir2 = PathHelpers.SafePathCombine(tempDir, $"nested_{Guid.NewGuid()}");
+        // Arrange: setup two temporary root directories for the test
+        using var tmpDir1 = new TemporaryDirectory();
+        using var tmpDir2 = new TemporaryDirectory();
         var testDirs = new[]
         {
-            rootDir1,
-            PathHelpers.SafePathCombine(rootDir2, "subdirectory")
+            tmpDir1.DirectoryPath,
+            PathHelpers.SafePathCombine(tmpDir2.DirectoryPath, "subdirectory")
         };
 
-        try
+        // Act & Assert: create directories and verify they exist
+        foreach (var testDir in testDirs)
         {
-            // Act & Assert: create directories and verify they exist
-            foreach (var testDir in testDirs)
-            {
-                Directory.CreateDirectory(testDir);
+            Directory.CreateDirectory(testDir);
 
-                Assert.True(Directory.Exists(testDir),
-                    $"Directory should be created successfully: {testDir}");
-            }
-        }
-        finally
-        {
-            // Cleanup: delete only the root directories created by this test
-            foreach (var rootDir in new[] { rootDir1, rootDir2 })
-            {
-                if (Directory.Exists(rootDir))
-                {
-                    Directory.Delete(rootDir, true);
-                }
-            }
+            Assert.True(Directory.Exists(testDir),
+                $"Directory should be created successfully: {testDir}");
         }
     }
 
@@ -154,25 +140,14 @@ public class UtilitiesSubsystemTests
     public void UtilitiesSubsystem_GlobMatcher_ResolvesFiles()
     {
         // Arrange: create a temporary directory with a known file
-        var tempDir = Path.Combine(Path.GetTempPath(), $"glob_test_{Guid.NewGuid()}");
-        var testFile = Path.Combine(tempDir, "test.yaml");
-        try
-        {
-            Directory.CreateDirectory(tempDir);
-            File.WriteAllText(testFile, "key: value\n");
+        using var tmpDir = new TemporaryDirectory();
+        var testFile = tmpDir.GetFilePath("test.yaml");
+        File.WriteAllText(testFile, "key: value\n");
 
-            // Act: resolve files matching the pattern
-            var files = GlobMatcher.GetFiles([testFile]);
+        // Act: resolve files matching the pattern
+        var files = GlobMatcher.GetFiles([testFile]);
 
-            // Assert: the test file is found in the resolved list
-            Assert.Contains(testFile, files);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
+        // Assert: the test file is found in the resolved list
+        Assert.Contains(testFile, files);
     }
 }

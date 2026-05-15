@@ -6,14 +6,14 @@ defines test scenarios, dependency usage, and requirement coverage for `GlobMatc
 #### Verification Approach
 
 `GlobMatcher` is verified with unit tests in `GlobMatcherTests.cs`. Tests use temporary files
-and directories to exercise real file-system matching behavior. Paths are cleaned up in
-`finally` blocks to avoid test pollution.
+and directories to exercise real file-system matching behavior. Directory-based tests use
+`TemporaryDirectory` for automatic cleanup; single-file tests use `Path.GetTempFileName()`.
 
 #### Dependencies
 
 | Dependency  | Usage in Tests                                                            |
 | ----------- | ------------------------------------------------------------------------- |
-| File system | Temporary files created and deleted per test to verify matching behavior. |
+| File system | Temporary files and directories created via `TemporaryDirectory` (or `Path.GetTempFileName` for single-file tests) to verify matching behavior. |
 
 #### Test Scenarios
 
@@ -56,8 +56,8 @@ cases covered via `[Theory]`).
 
 ##### GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
 
-**Scenario**: An absolute path glob pattern (`/tmp/*.yaml`) is passed; a matching temp file
-exists.
+**Scenario**: An absolute path glob pattern pointing to a `TemporaryDirectory` is passed; a
+matching temp file exists.
 
 **Expected**: Result contains the matching file path.
 

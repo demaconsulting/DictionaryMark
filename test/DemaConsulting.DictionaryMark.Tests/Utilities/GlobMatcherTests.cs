@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Utilities;
@@ -118,24 +119,16 @@ public class GlobMatcherTests
     public void GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles()
     {
         // Arrange:
-        var tmpDir = Path.Combine(Path.GetTempPath(), $"glob-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tmpDir);
-        var tmpFile = Path.Combine(tmpDir, "test.yaml");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("test.yaml");
         File.WriteAllText(tmpFile, "key: value");
-        try
-        {
-            var pattern = Path.Combine(tmpDir, "*.yaml");
+        var pattern = Path.Combine(tmpDir.DirectoryPath, "*.yaml");
 
-            // Act:
-            var result = GlobMatcher.GetFiles([pattern]);
+        // Act:
+        var result = GlobMatcher.GetFiles([pattern]);
 
-            // Assert:
-            Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
-        }
-        finally
-        {
-            Directory.Delete(tmpDir, recursive: true);
-        }
+        // Assert:
+        Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -159,26 +152,24 @@ public class GlobMatcherTests
     [Fact]
     public void GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles()
     {
-        // Arrange:
-        var tmpDir = Path.Combine(Path.GetTempPath(), $"glob-rel-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tmpDir);
-        var tmpFile = Path.Combine(tmpDir, "test.yaml");
-        File.WriteAllText(tmpFile, "key: value");
+        // Arrange: use TemporaryDirectory to avoid OS symlink issues (e.g. /tmp -> /private/tmp on macOS)
+        using var tmpDir = new TemporaryDirectory();
+        var testFile = tmpDir.GetFilePath("test.yaml");
+        File.WriteAllText(testFile, "key: value");
         var savedDir = Environment.CurrentDirectory;
         try
         {
-            Environment.CurrentDirectory = tmpDir;
+            Environment.CurrentDirectory = tmpDir.DirectoryPath;
 
             // Act:
             var result = GlobMatcher.GetFiles(["*.yaml"]);
 
             // Assert:
-            Assert.Contains(result, f => string.Equals(f, tmpFile, StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result, f => string.Equals(f, testFile, StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
             Environment.CurrentDirectory = savedDir;
-            Directory.Delete(tmpDir, recursive: true);
         }
     }
 }

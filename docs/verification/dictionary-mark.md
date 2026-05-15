@@ -10,15 +10,16 @@ full system stack — argument parsing, subsystem dispatch, and output generatio
 mocking any internal components.
 
 Each system requirement maps to one or more named integration test scenarios. Integration
-tests that depend on external files create temporary files in `Path.GetTempPath()` and
-delete them in `finally` blocks.
+tests that depend on external files use the `TemporaryDirectory` test helper (see
+`test-helpers.md`) to create and automatically clean up temporary files.
 
 ## Test Environment
 
 - **Test framework**: xUnit v3 with `[Collection("Sequential")]` to prevent parallelism.
 - **Execution method**: `dotnet <DLL> <args>` via `Runner.Run` helper.
 - **DLL location**: `AppContext.BaseDirectory` (resolved in constructor).
-- **Temporary files**: `Path.GetTempPath()` with `Guid.NewGuid()` filenames.
+- **Temporary files**: `TemporaryDirectory` helper — creates a unique subdirectory under
+  `Environment.CurrentDirectory` and deletes it on disposal (see `test-helpers.md`).
 - **External dependencies**: None — tool is self-contained.
 
 ## External Interface Simulation
@@ -77,5 +78,5 @@ output generation:
 
 All integration tests must pass with exit code 0. No tests may be skipped or marked as
 expected failures. The `DictionaryMark_ValidateFlag_Provided_RunsValidation` test must
-report zero failures in the embedded self-validation output. File-based tests must clean
-up temporary files in `finally` blocks to ensure no test artifacts remain.
+report zero failures in the embedded self-validation output. File-based tests must use
+`TemporaryDirectory` to ensure all temporary files are cleaned up on completion.

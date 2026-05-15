@@ -12,10 +12,11 @@ workflow end-to-end. Tests create `Context` instances with validation arguments,
 
 ### Dependencies
 
-| Dependency   | Usage in Tests                                                      |
-| ------------ | ------------------------------------------------------------------- |
-| `Context`    | Created with validation arguments to drive the validation workflow. |
-| `Validation` | Invoked directly to exercise the complete self-test workflow.       |
+| Dependency   | Usage in Tests                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| `Context`    | Created with validation arguments to drive the validation workflow.                          |
+| `Validation` | Invoked directly to exercise the complete self-test workflow.                                |
+| File system  | Temporary results files created via `TemporaryDirectory` to verify output file generation.  |
 
 ### Test Scenarios
 

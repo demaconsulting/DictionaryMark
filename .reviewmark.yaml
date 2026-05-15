@@ -51,6 +51,12 @@ reviews:
       - "test/**/Runner.cs"
       - "test/**/AssemblyInfo.cs"
 
+  - id: DictionaryMark-TestHelpers
+    title: Review of DictionaryMark shared test helper utilities
+    paths:
+      - "docs/verification/dictionary-mark/test-helpers.md"
+      - "test/**/Helpers/*.cs"
+
   - id: DictionaryMark-Design
     title: Review of DictionaryMark architectural and design consistency
     paths:

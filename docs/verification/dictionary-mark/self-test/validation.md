@@ -11,10 +11,10 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 
 #### Dependencies
 
-| Dependency  | Usage in Tests                                                       |
-| ----------- | -------------------------------------------------------------------- |
-| `Context`   | Created from argument arrays; exit code and log output are asserted. |
-| File system | Temporary log and results files capture and verify written content.  |
+| Dependency  | Usage in Tests                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| `Context`   | Created from argument arrays; exit code and log output are asserted.                        |
+| File system | Temporary log and results files created via `TemporaryDirectory` to verify written content. |
 
 #### Test Scenarios
 

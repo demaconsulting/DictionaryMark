@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.SelfTest;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 
@@ -49,28 +50,20 @@ public class ValidationTests
     public void Validation_Run_WithSilentContext_PrintsSummary()
     {
         // Arrange: setup unique log file path to capture silent context output
-        var logFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.log");
-        try
-        {
-            using (var context = Context.Create(["--silent", "--log", logFile]))
-            {
-                // Act: run validation with silent context and log file
-                Validation.Run(context);
-            }
+        using var tmpDir = new TemporaryDirectory();
+        var logFile = tmpDir.GetFilePath("validation_test.log");
 
-            // Assert: verify summary lines are written to log file
-            var logContent = File.ReadAllText(logFile);
-            Assert.Contains("Total Tests:", logContent);
-            Assert.Contains("Passed:", logContent);
-            Assert.Contains("Failed:", logContent);
-        }
-        finally
+        using (var context = Context.Create(["--silent", "--log", logFile]))
         {
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
+            // Act: run validation with silent context and log file
+            Validation.Run(context);
         }
+
+        // Assert: verify summary lines are written to log file
+        var logContent = File.ReadAllText(logFile);
+        Assert.Contains("Total Tests:", logContent);
+        Assert.Contains("Passed:", logContent);
+        Assert.Contains("Failed:", logContent);
     }
 
     /// <summary>
@@ -96,26 +89,18 @@ public class ValidationTests
     public void Validation_Run_WithTrxResultsFile_WritesTrxFile()
     {
         // Arrange: setup TRX file path for test results output
-        var trxFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.trx");
-        try
-        {
-            using var context = Context.Create(["--silent", "--results", trxFile]);
+        using var tmpDir = new TemporaryDirectory();
+        var trxFile = tmpDir.GetFilePath("validation_test.trx");
 
-            // Act: run validation with TRX results output
-            Validation.Run(context);
+        using var context = Context.Create(["--silent", "--results", trxFile]);
 
-            // Assert: verify TRX file is created with expected content
-            Assert.True(File.Exists(trxFile));
-            var content = File.ReadAllText(trxFile);
-            Assert.Contains("<TestRun", content);
-        }
-        finally
-        {
-            if (File.Exists(trxFile))
-            {
-                File.Delete(trxFile);
-            }
-        }
+        // Act: run validation with TRX results output
+        Validation.Run(context);
+
+        // Assert: verify TRX file is created with expected content
+        Assert.True(File.Exists(trxFile));
+        var content = File.ReadAllText(trxFile);
+        Assert.Contains("<TestRun", content);
     }
 
     /// <summary>
@@ -125,26 +110,18 @@ public class ValidationTests
     public void Validation_Run_WithXmlResultsFile_WritesXmlFile()
     {
         // Arrange: setup XML file path for JUnit results output
-        var xmlFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.xml");
-        try
-        {
-            using var context = Context.Create(["--silent", "--results", xmlFile]);
+        using var tmpDir = new TemporaryDirectory();
+        var xmlFile = tmpDir.GetFilePath("validation_test.xml");
 
-            // Act: run validation with XML results output
-            Validation.Run(context);
+        using var context = Context.Create(["--silent", "--results", xmlFile]);
 
-            // Assert: verify XML file is created with JUnit format content
-            Assert.True(File.Exists(xmlFile));
-            var content = File.ReadAllText(xmlFile);
-            Assert.Contains("<testsuites", content);
-        }
-        finally
-        {
-            if (File.Exists(xmlFile))
-            {
-                File.Delete(xmlFile);
-            }
-        }
+        // Act: run validation with XML results output
+        Validation.Run(context);
+
+        // Assert: verify XML file is created with JUnit format content
+        Assert.True(File.Exists(xmlFile));
+        var content = File.ReadAllText(xmlFile);
+        Assert.Contains("<testsuites", content);
     }
 
     /// <summary>
@@ -154,37 +131,24 @@ public class ValidationTests
     public void Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile()
     {
         // Arrange: setup unsupported file extension and log file to capture error output
-        var jsonFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.json");
-        var logFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.log");
-        try
+        using var tmpDir = new TemporaryDirectory();
+        var jsonFile = tmpDir.GetFilePath("validation_test.json");
+        var logFile = tmpDir.GetFilePath("validation_test.log");
+
+        using (var context = Context.Create(["--silent", "--results", jsonFile, "--log", logFile]))
         {
-            using (var context = Context.Create(["--silent", "--results", jsonFile, "--log", logFile]))
-            {
-                // Act: run validation with unsupported results file extension
-                Validation.Run(context);
+            // Act: run validation with unsupported results file extension
+            Validation.Run(context);
 
-                // Assert context state while still valid: no results file and non-zero exit code
-                Assert.False(File.Exists(jsonFile));
-                Assert.Equal(1, context.ExitCode);
-            }
-
-            // Assert log content after disposal to ensure the log writer has been closed and flushed
-            Assert.True(File.Exists(logFile));
-            var logContent = File.ReadAllText(logFile);
-            Assert.Contains("Unsupported results file format", logContent);
+            // Assert context state while still valid: no results file and non-zero exit code
+            Assert.False(File.Exists(jsonFile));
+            Assert.Equal(1, context.ExitCode);
         }
-        finally
-        {
-            if (File.Exists(jsonFile))
-            {
-                File.Delete(jsonFile);
-            }
 
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
-        }
+        // Assert log content after disposal to ensure the log writer has been closed and flushed
+        Assert.True(File.Exists(logFile));
+        var logContent = File.ReadAllText(logFile);
+        Assert.Contains("Unsupported results file format", logContent);
     }
 
     /// <summary>
@@ -249,26 +213,18 @@ public class ValidationTests
     private static void AssertSelfTestPasses(string selfTestName)
     {
         // Arrange: setup log file to capture validation output
-        var logFile = Path.Combine(Path.GetTempPath(), $"validation_test_{Guid.NewGuid()}.log");
-        try
-        {
-            using (var context = Context.Create(["--silent", "--log", logFile]))
-            {
-                // Act: run validation
-                Validation.Run(context);
-            }
+        using var tmpDir = new TemporaryDirectory();
+        var logFile = tmpDir.GetFilePath("validation_test.log");
 
-            // Assert: the named self-test should appear as passed in the log
-            var logContent = File.ReadAllText(logFile);
-            Assert.Contains($"{selfTestName} - Passed", logContent);
-        }
-        finally
+        using (var context = Context.Create(["--silent", "--log", logFile]))
         {
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
+            // Act: run validation
+            Validation.Run(context);
         }
+
+        // Assert: the named self-test should appear as passed in the log
+        var logContent = File.ReadAllText(logFile);
+        Assert.Contains($"{selfTestName} - Passed", logContent);
     }
 }
 

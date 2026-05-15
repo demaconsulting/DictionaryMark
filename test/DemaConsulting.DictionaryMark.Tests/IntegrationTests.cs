@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests;
@@ -136,34 +137,25 @@ public class IntegrationTests
     public void DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile()
     {
         // Arrange: temporary TRX results file path
-        var resultsFile = Path.Combine(Path.GetTempPath(), $"integration_test_{Guid.NewGuid()}.trx");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.trx");
 
-        try
-        {
-            // Act: run validation with TRX results output
-            var exitCode = Runner.Run(
-                out var _,
-                "dotnet",
-                _dllPath,
-                "--validate",
-                "--results",
-                resultsFile);
+        // Act: run validation with TRX results output
+        var exitCode = Runner.Run(
+            out var _,
+            "dotnet",
+            _dllPath,
+            "--validate",
+            "--results",
+            resultsFile);
 
-            // Assert: results file is created with valid TRX structure
-            Assert.Equal(0, exitCode);
-            Assert.True(File.Exists(resultsFile), "Results file was not created");
+        // Assert: results file is created with valid TRX structure
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(resultsFile), "Results file was not created");
 
-            var trxContent = File.ReadAllText(resultsFile);
-            Assert.Contains("<TestRun", trxContent);
-            Assert.Contains("</TestRun>", trxContent);
-        }
-        finally
-        {
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        var trxContent = File.ReadAllText(resultsFile);
+        Assert.Contains("<TestRun", trxContent);
+        Assert.Contains("</TestRun>", trxContent);
     }
 
     /// <summary>
@@ -173,30 +165,21 @@ public class IntegrationTests
     public void DictionaryMark_ResultAlias_LegacyFlag_WritesResultsFile()
     {
         // Arrange: temporary TRX results file path; use legacy --result alias
-        var resultsFile = Path.Combine(Path.GetTempPath(), $"integration_test_{Guid.NewGuid()}.trx");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.trx");
 
-        try
-        {
-            // Act: run validation with legacy --result alias
-            var exitCode = Runner.Run(
-                out var _,
-                "dotnet",
-                _dllPath,
-                "--validate",
-                "--result",
-                resultsFile);
+        // Act: run validation with legacy --result alias
+        var exitCode = Runner.Run(
+            out var _,
+            "dotnet",
+            _dllPath,
+            "--validate",
+            "--result",
+            resultsFile);
 
-            // Assert: results file is created; exit code is success
-            Assert.Equal(0, exitCode);
-            Assert.True(File.Exists(resultsFile), "Results file was not created for legacy --result alias");
-        }
-        finally
-        {
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        // Assert: results file is created; exit code is success
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(resultsFile), "Results file was not created for legacy --result alias");
     }
 
     /// <summary>
@@ -206,30 +189,21 @@ public class IntegrationTests
     public void DictionaryMark_ValidateWithBadExtension_ExtensionInvalid_ReturnsNonZero()
     {
         // Arrange: unsupported results file extension triggers WriteError → ExitCode 1
-        var resultsFile = Path.Combine(Path.GetTempPath(), $"integration_test_{Guid.NewGuid()}.bad");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.bad");
 
-        try
-        {
-            // Act: run validation with unsupported extension
-            var exitCode = Runner.Run(
-                out var _,
-                "dotnet",
-                _dllPath,
-                "--validate",
-                "--results",
-                resultsFile);
+        // Act: run validation with unsupported extension
+        var exitCode = Runner.Run(
+            out var _,
+            "dotnet",
+            _dllPath,
+            "--validate",
+            "--results",
+            resultsFile);
 
-            // Assert: non-zero exit code indicates the error path was triggered
-            Assert.NotEqual(0, exitCode);
-            Assert.False(File.Exists(resultsFile), "No file should be created for unsupported extension");
-        }
-        finally
-        {
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        // Assert: non-zero exit code indicates the error path was triggered
+        Assert.NotEqual(0, exitCode);
+        Assert.False(File.Exists(resultsFile), "No file should be created for unsupported extension");
     }
 
     /// <summary>
@@ -296,33 +270,24 @@ public class IntegrationTests
     public void DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile()
     {
         // Arrange: temporary XML results file path
-        var resultsFile = Path.Combine(Path.GetTempPath(), $"integration_test_{Guid.NewGuid()}.xml");
+        using var tmpDir = new TemporaryDirectory();
+        var resultsFile = tmpDir.GetFilePath("results.xml");
 
-        try
-        {
-            // Act: run validation with JUnit XML results output
-            var exitCode = Runner.Run(
-                out var _,
-                "dotnet",
-                _dllPath,
-                "--validate",
-                "--results",
-                resultsFile);
+        // Act: run validation with JUnit XML results output
+        var exitCode = Runner.Run(
+            out var _,
+            "dotnet",
+            _dllPath,
+            "--validate",
+            "--results",
+            resultsFile);
 
-            // Assert: results file is created with valid JUnit structure
-            Assert.Equal(0, exitCode);
-            Assert.True(File.Exists(resultsFile), "Results file was not created");
+        // Assert: results file is created with valid JUnit structure
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(resultsFile), "Results file was not created");
 
-            var xmlContent = File.ReadAllText(resultsFile);
-            Assert.Contains("<testsuites", xmlContent);
-        }
-        finally
-        {
-            if (File.Exists(resultsFile))
-            {
-                File.Delete(resultsFile);
-            }
-        }
+        var xmlContent = File.ReadAllText(resultsFile);
+        Assert.Contains("<testsuites", xmlContent);
     }
 
     /// <summary>
@@ -373,27 +338,18 @@ public class IntegrationTests
     public void DictionaryMark_Generate_BulletsFormat_OutputsBulletList()
     {
         // Arrange: YAML input file with two entries
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\nUI: User Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\nUI: User Interface\n");
 
-            // Act: run the tool with default bullets format
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile);
+        // Act: run the tool with default bullets format
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile);
 
-            // Assert: bullet list structure and content present in output
-            Assert.Equal(0, exitCode);
-            Assert.Contains("API", output);
-            Assert.Contains("UI", output);
-            Assert.Contains("- ", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: bullet list structure and content present in output
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", output);
+        Assert.Contains("UI", output);
+        Assert.Contains("- ", output);
     }
 
     /// <summary>Test that DictionaryMark generates table output when table format is specified.</summary>
@@ -401,26 +357,17 @@ public class IntegrationTests
     public void DictionaryMark_Generate_TableFormat_OutputsTable()
     {
         // Arrange: YAML input file with one entry
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
 
-            // Act: run the tool with table format
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table");
+        // Act: run the tool with table format
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table");
 
-            // Assert: table structure with header and data rows present
-            Assert.Equal(0, exitCode);
-            Assert.Contains("| Term |", output);
-            Assert.Contains("| API |", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: table structure with header and data rows present
+        Assert.Equal(0, exitCode);
+        Assert.Contains("| Term |", output);
+        Assert.Contains("| API |", output);
     }
 
     /// <summary>Test that DictionaryMark writes output to a file when --output is specified.</summary>
@@ -428,33 +375,19 @@ public class IntegrationTests
     public void DictionaryMark_Generate_WithOutputFile_WritesFile()
     {
         // Arrange: input YAML file and target output file path
-        var tmpInput = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        var tmpOutput = Path.Combine(Path.GetTempPath(), $"dm_out_{Guid.NewGuid()}.md");
-        try
-        {
-            File.WriteAllText(tmpInput, "API: Application Programming Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpInput = tmpDir.GetFilePath("input.yaml");
+        var tmpOutput = tmpDir.GetFilePath("output.md");
+        File.WriteAllText(tmpInput, "API: Application Programming Interface\n");
 
-            // Act: run the tool with --output flag
-            var exitCode = Runner.Run(out var _, "dotnet", _dllPath, "--input", tmpInput, "--output", tmpOutput);
+        // Act: run the tool with --output flag
+        var exitCode = Runner.Run(out var _, "dotnet", _dllPath, "--input", tmpInput, "--output", tmpOutput);
 
-            // Assert: output file is created and contains generated content
-            Assert.Equal(0, exitCode);
-            Assert.True(File.Exists(tmpOutput));
-            var content = File.ReadAllText(tmpOutput);
-            Assert.Contains("API", content);
-        }
-        finally
-        {
-            if (File.Exists(tmpInput))
-            {
-                File.Delete(tmpInput);
-            }
-
-            if (File.Exists(tmpOutput))
-            {
-                File.Delete(tmpOutput);
-            }
-        }
+        // Assert: output file is created and contains generated content
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(tmpOutput));
+        var content = File.ReadAllText(tmpOutput);
+        Assert.Contains("API", content);
     }
 
     /// <summary>Test that DictionaryMark reports error for conflicting definitions.</summary>
@@ -462,32 +395,18 @@ public class IntegrationTests
     public void DictionaryMark_Generate_ConflictingEntries_ReportsError()
     {
         // Arrange: two input files with conflicting definitions for the same term
-        var tmpFile1 = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        var tmpFile2 = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile1, "API: Application Programming Interface\n");
-            File.WriteAllText(tmpFile2, "API: Advanced Peripheral Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile1 = tmpDir.GetFilePath("input1.yaml");
+        var tmpFile2 = tmpDir.GetFilePath("input2.yaml");
+        File.WriteAllText(tmpFile1, "API: Application Programming Interface\n");
+        File.WriteAllText(tmpFile2, "API: Advanced Peripheral Interface\n");
 
-            // Act: run the tool with both conflicting input files
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile1, "--input", tmpFile2);
+        // Act: run the tool with both conflicting input files
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile1, "--input", tmpFile2);
 
-            // Assert: non-zero exit code and conflict error message in output
-            Assert.NotEqual(0, exitCode);
-            Assert.Contains("Conflict", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile1))
-            {
-                File.Delete(tmpFile1);
-            }
-
-            if (File.Exists(tmpFile2))
-            {
-                File.Delete(tmpFile2);
-            }
-        }
+        // Assert: non-zero exit code and conflict error message in output
+        Assert.NotEqual(0, exitCode);
+        Assert.Contains("Conflict", output);
     }
 
     /// <summary>Test that DictionaryMark outputs a section heading when --section is specified.</summary>
@@ -495,25 +414,16 @@ public class IntegrationTests
     public void DictionaryMark_Generate_WithSectionHeading_OutputsHeading()
     {
         // Arrange: YAML input file and section heading argument
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
 
-            // Act: run the tool with --section flag
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--section", "My Section");
+        // Act: run the tool with --section flag
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--section", "My Section");
 
-            // Assert: section heading appears in output
-            Assert.Equal(0, exitCode);
-            Assert.Contains("My Section", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: section heading appears in output
+        Assert.Equal(0, exitCode);
+        Assert.Contains("My Section", output);
     }
 
     /// <summary>Test that DictionaryMark uses custom term header when --term-header is specified.</summary>
@@ -521,25 +431,16 @@ public class IntegrationTests
     public void DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader()
     {
         // Arrange: YAML input file and term header argument
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
 
-            // Act: run the tool with --term-header and table format
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--term-header", "Word");
+        // Act: run the tool with --term-header and table format
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--term-header", "Word");
 
-            // Assert: custom header appears in table output
-            Assert.Equal(0, exitCode);
-            Assert.Contains("Word", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: custom header appears in table output
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Word", output);
     }
 
     /// <summary>Test that DictionaryMark uses custom definition header when --def-header is specified.</summary>
@@ -547,25 +448,16 @@ public class IntegrationTests
     public void DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader()
     {
         // Arrange: YAML input file and definition header argument
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
 
-            // Act: run the tool with --def-header and table format
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--def-header", "Meaning");
+        // Act: run the tool with --def-header and table format
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--format", "table", "--def-header", "Meaning");
 
-            // Assert: custom definition header appears in table output
-            Assert.Equal(0, exitCode);
-            Assert.Contains("Meaning", output);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: custom definition header appears in table output
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Meaning", output);
     }
 
     /// <summary>Test that DictionaryMark outputs entries in alphabetical order when --sort alpha is specified.</summary>
@@ -573,26 +465,17 @@ public class IntegrationTests
     public void DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder()
     {
         // Arrange: YAML input file with entries in reverse alphabetical order
-        var tmpFile = Path.Combine(Path.GetTempPath(), $"dm_test_{Guid.NewGuid()}.yaml");
-        try
-        {
-            File.WriteAllText(tmpFile, "Zebra: Last in alphabet\nAlpha: First in alphabet\n");
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "Zebra: Last in alphabet\nAlpha: First in alphabet\n");
 
-            // Act: run the tool with --sort alpha
-            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--sort", "alpha");
+        // Act: run the tool with --sort alpha
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", tmpFile, "--sort", "alpha");
 
-            // Assert: alphabetical ordering - Alpha before Zebra
-            Assert.Equal(0, exitCode);
-            var alphaIndex = output.IndexOf("Alpha", StringComparison.Ordinal);
-            var zebraIndex = output.IndexOf("Zebra", StringComparison.Ordinal);
-            Assert.True(alphaIndex < zebraIndex, "Alpha should appear before Zebra in alphabetical sort");
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: alphabetical ordering - Alpha before Zebra
+        Assert.Equal(0, exitCode);
+        var alphaIndex = output.IndexOf("Alpha", StringComparison.Ordinal);
+        var zebraIndex = output.IndexOf("Zebra", StringComparison.Ordinal);
+        Assert.True(alphaIndex < zebraIndex, "Alpha should appear before Zebra in alphabetical sort");
     }
 }
