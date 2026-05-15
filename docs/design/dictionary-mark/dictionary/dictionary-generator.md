@@ -5,14 +5,14 @@ coordinating file discovery, loading, conflict detection, formatting, and output
 
 #### Overview
 
-`DictionaryGenerator` is the primary orchestrator for dictionary generation. When `Generate`
-is called, it resolves input file paths using `GlobMatcher`, loads entries from each file via
+`DictionaryGenerator` is a static class that orchestrates dictionary generation. The `Generate`
+static method resolves input file paths using `GlobMatcher`, loads entries from each file via
 `YamlDictionaryLoader`, detects conflicts with `ConflictDetector`, formats output with
 `MarkdownFormatter`, and writes the result to the output file or stdout.
 
 #### Data Model
 
-`DictionaryGenerator` is a concrete class with no persistent instance state. All state is
+`DictionaryGenerator` is a static class with no instance state. All state is
 local to each `Generate` call.
 
 #### Methods

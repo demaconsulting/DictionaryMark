@@ -185,8 +185,7 @@ internal static class Program
         // If input patterns are specified, run dictionary generation
         if (context.InputPatterns.Count > 0)
         {
-            var generator = new Dictionary.DictionaryGenerator();
-            generator.Generate(context);
+            Dictionary.DictionaryGenerator.Generate(context);
             return;
         }
 
