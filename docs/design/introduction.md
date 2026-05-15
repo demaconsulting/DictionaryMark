@@ -104,7 +104,6 @@ Each software item in the structure above has corresponding artifacts in paralle
 - Source code: `src/{System}/.../{Item}.cs` (PascalCase for C#)
 - Tests: `test/{System}.Tests/.../{Item}Tests.cs` (PascalCase for C#)
 - Review-sets: defined in `.reviewmark.yaml`
-- User guide: `docs/user_guide/{system-name}.md`
 
 ## References
 

@@ -11,6 +11,11 @@ sections:
           consistent patterns for interpreting flags, values, and defaults.
         children:
           - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Context-VersionFlag
+          - DictionaryMark-Context-HelpFlag
+          - DictionaryMark-Context-ValidateFlag
+          - DictionaryMark-Context-ResultsFlag
+          - DictionaryMark-Context-DepthFlag
         tests:
           - CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
           - CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits

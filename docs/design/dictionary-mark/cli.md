@@ -47,4 +47,5 @@ the property it sets, and its default value.
 
 The CLI subsystem is consumed by `Program`, which creates a `Context` instance and passes it
 to all downstream subsystems (`Validation`, `DictionaryGenerator`). The CLI subsystem has no
-dependency on other DictionaryMark subsystems.
+behavioral dependency on other DictionaryMark subsystems, but `Context` references
+Dictionary types (`OutputFormat`, `SortOrder`) for shared option values.

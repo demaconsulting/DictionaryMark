@@ -113,6 +113,10 @@ is 0.
   Program_Run_WithShortHelpFlag_DisplaysUsage,
   Program_Run_WithQuestionMarkFlag_DisplaysUsage
 - **`DictionaryMark-Program-Validate`**: Program_Run_WithValidateFlag_RunsValidation
-- **`DictionaryMark-Program-ExitCode`**: Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode
+- **`DictionaryMark-Program-ExitCode`**: Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode,
+  Program_Run_WithVersionFlag_DisplaysVersionOnly,
+  Program_Run_WithHelpFlag_DisplaysUsageInformation,
+  Program_Run_WithValidateFlag_RunsValidation,
+  Program_Run_NoArguments_DisplaysDefaultBehavior
 - **`DictionaryMark-Program-GenerateDictionary`**: Program_Run_WithInputPatterns_InvokesDictionaryGeneration
 - **`DictionaryMark-Program-NoInputHint`**: Program_Run_NoArguments_DisplaysDefaultBehavior

@@ -36,6 +36,7 @@ sections:
         children:
           - DictionaryMark-Formatter-Bullets
           - DictionaryMark-Formatter-Table
+          - DictionaryMark-Formatter-SectionHeading
           - DictionaryMark-Formatter-Sorting
           - DictionaryMark-Formatter-Deduplication
         tests:
