@@ -76,12 +76,12 @@ by `Math.Clamp`, pipe characters in term or definition values are silently escap
 
 #### Dependencies
 
-| Dependency        | Role                                                                              |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `DictionaryEntry` | Dictionary subsystem data model — input type carrying term and definition strings. |
+| Dependency        | Role                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `DictionaryEntry` | Dictionary subsystem data model — input type carrying term and definition strings.   |
 | `MarkdownOptions` | Dictionary subsystem data model — options bag controlling format, sort, and heading. |
-| `OutputFormat`    | Dictionary subsystem enum — selects bullet-list vs table rendering.               |
-| `SortOrder`       | Dictionary subsystem enum — selects file-order vs alphabetical sort.              |
+| `OutputFormat`    | Dictionary subsystem enum — selects bullet-list vs table rendering.                  |
+| `SortOrder`       | Dictionary subsystem enum — selects file-order vs alphabetical sort.                 |
 
 #### Callers
 

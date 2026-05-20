@@ -14,14 +14,14 @@ cross-platform-consistent matching behavior backed by the real file system.
 DictionaryMark uses the following APIs from the `Microsoft.Extensions.FileSystemGlobbing`
 and `Microsoft.Extensions.FileSystemGlobbing.Abstractions` namespaces:
 
-| Type / Member                        | Usage                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------ |
-| `Matcher`                            | Configured with one or more include patterns and executed against a base directory. |
-| `Matcher.AddInclude(string)`         | Registers a relative glob pattern for inclusion.                         |
-| `Matcher.Execute(DirectoryInfoBase)` | Executes matching against the supplied directory and returns results.    |
-| `PatternMatchingResult.Files`        | Enumerates matched file entries, each providing a relative path.         |
+| Type / Member                        | Usage                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `Matcher`                            | Configured with one or more include patterns and executed against a base directory.             |
+| `Matcher.AddInclude(string)`         | Registers a relative glob pattern for inclusion.                                                |
+| `Matcher.Execute(DirectoryInfoBase)` | Executes matching against the supplied directory and returns results.                           |
+| `PatternMatchingResult.Files`        | Enumerates matched file entries, each providing a relative path.                                |
 | `FilePatternMatch.Path`              | The relative path of a matched file, combined with the base directory to form an absolute path. |
-| `DirectoryInfoWrapper`               | Wraps a `System.IO.DirectoryInfo` instance as the base for matching.     |
+| `DirectoryInfoWrapper`               | Wraps a `System.IO.DirectoryInfo` instance as the base for matching.                            |
 
 Features not used: exclude patterns, `Matcher.Match` static helpers, custom `IFileSystem`
 implementations, and file attribute filtering.

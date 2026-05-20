@@ -91,11 +91,11 @@ Otherwise, writes a hint directing the user to `--input` and `--help` (`Dictiona
 
 ### Dependencies
 
-| Dependency            | Role                                                        |
-| --------------------- | ----------------------------------------------------------- |
+| Dependency            | Role                                                                         |
+| --------------------- | ---------------------------------------------------------------------------- |
 | `Context`             | CLI subsystem — provides parsed flags, output channels, and exit code state. |
-| `Validation`          | SelfTest subsystem — invoked when `--validate` is specified. |
-| `DictionaryGenerator` | Dictionary subsystem — invoked when `--input` patterns are specified. |
+| `Validation`          | SelfTest subsystem — invoked when `--validate` is specified.                 |
+| `DictionaryGenerator` | Dictionary subsystem — invoked when `--input` patterns are specified.        |
 
 ### Callers
 

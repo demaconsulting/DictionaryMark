@@ -50,7 +50,7 @@ File.WriteAllText(filePath, "key: value");
 `Runner` is a static helper that launches an external process, captures its
 combined stdout and stderr, and returns the exit code.
 
-#### Rationale
+#### Runner Rationale
 
 Integration tests need to run the DictionaryMark tool as a real operating-system
 process to verify end-to-end behaviour. Without a shared helper, every test
@@ -71,7 +71,7 @@ important correctness properties:
   string, so no shell parsing occurs and argument values cannot inject extra
   commands or flags.
 
-#### Usage
+#### Runner Usage
 
 Tests call `Runner.Run` as a static method and check the returned exit code:
 
@@ -89,7 +89,7 @@ Assert.Matches(@"\d+\.\d+\.\d+", output);
 A non-zero exit code indicates that the process reported a failure; the
 `output` string contains whatever the program wrote to stdout or stderr.
 
-#### Members
+#### Runner Members
 
 - **`Run(out string output, string program, params string[] arguments)`**:
   Launches `program` with the supplied `arguments`, waits for the process to

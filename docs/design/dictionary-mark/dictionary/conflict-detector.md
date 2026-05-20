@@ -52,8 +52,8 @@ when no conflicts exist.
 
 #### Dependencies
 
-| Dependency        | Role                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------- |
+| Dependency        | Role                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
 | `DictionaryEntry` | Dictionary subsystem data model — carries the term and definition strings scanned for conflicts. |
 
 #### Callers

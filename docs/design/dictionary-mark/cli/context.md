@@ -73,12 +73,12 @@ base class library types (`Console`, `StreamWriter`) for I/O.
 
 #### Dependencies
 
-| Dependency       | Role                                                                           |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `OutputFormat`   | Dictionary subsystem enum — type of the parsed `--format` flag value.         |
-| `SortOrder`      | Dictionary subsystem enum — type of the parsed `--sort` flag value.           |
-| `Console`        | .NET BCL — stdout and stderr output channels.                                  |
-| `StreamWriter`   | .NET BCL — optional log file channel opened when `--log` is specified.        |
+| Dependency     | Role                                                                   |
+| -------------- | ---------------------------------------------------------------------- |
+| `OutputFormat` | Dictionary subsystem enum — type of the parsed `--format` flag value.  |
+| `SortOrder`    | Dictionary subsystem enum — type of the parsed `--sort` flag value.    |
+| `Console`      | .NET BCL — stdout and stderr output channels.                          |
+| `StreamWriter` | .NET BCL — optional log file channel opened when `--log` is specified. |
 
 #### Callers
 

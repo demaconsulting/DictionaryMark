@@ -90,13 +90,13 @@ and `.xml` (JUnit format). Calls `context.WriteError` for unsupported extensions
 
 #### Dependencies
 
-| Dependency                         | Role                                                                                      |
-| ---------------------------------- | ----------------------------------------------------------------------------------------- |
-| `Context`                          | CLI subsystem — provides output channels (`WriteLine`, `WriteError`) and `ResultsFile` path. |
-| `Program`                          | Program unit — `Program.Run` is invoked by each test method to exercise the full tool path. |
-| `PathHelpers`                      | Utilities subsystem — `SafePathCombine` builds safe log-file paths within temporary directories. |
-| `DemaConsulting.TestResults`       | OTS package — `TestResults` and `TestResult` types accumulate self-test outcomes.         |
-| `TrxSerializer` / `JUnitSerializer` | OTS package — serialize the result set to TRX or JUnit XML when `ResultsFile` is set.   |
+| Dependency                          | Role                                                                                             |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `Context`                           | CLI subsystem — provides output channels (`WriteLine`, `WriteError`) and `ResultsFile` path.     |
+| `Program`                           | Program unit — `Program.Run` is invoked by each test method to exercise the full tool path.      |
+| `PathHelpers`                       | Utilities subsystem — `SafePathCombine` builds safe log-file paths within temporary directories. |
+| `DemaConsulting.TestResults`        | OTS package — `TestResults` and `TestResult` types accumulate self-test outcomes.                |
+| `TrxSerializer` / `JUnitSerializer` | OTS package — serialize the result set to TRX or JUnit XML when `ResultsFile` is set.            |
 
 #### Callers
 

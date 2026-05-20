@@ -52,23 +52,23 @@ generated. The five error cases are:
 
 #### Interactions
 
-| Dependency              | Role                                                                   |
-| ----------------------- | ---------------------------------------------------------------------- |
-| `Context`               | Provides input patterns, output options, output channel, and exit code.|
-| `GlobMatcher`           | Resolves input file patterns to concrete file paths.                   |
-| `YamlDictionaryLoader`  | Loads flat YAML key-value pairs from each input file.                  |
-| `ConflictDetector`      | Detects term conflicts across entries from different files.            |
-| `MarkdownFormatter`     | Formats deduplicated entries as a Markdown string.                     |
+| Dependency             | Role                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `Context`              | Provides input patterns, output options, output channel, and exit code. |
+| `GlobMatcher`          | Resolves input file patterns to concrete file paths.                    |
+| `YamlDictionaryLoader` | Loads flat YAML key-value pairs from each input file.                   |
+| `ConflictDetector`     | Detects term conflicts across entries from different files.             |
+| `MarkdownFormatter`    | Formats deduplicated entries as a Markdown string.                      |
 
 #### Dependencies
 
-| Dependency             | Role                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------- |
+| Dependency             | Role                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------- |
 | `Context`              | CLI subsystem — provides input patterns, output options, output channel, and exit code. |
-| `GlobMatcher`          | Utilities subsystem — resolves glob patterns to concrete file paths.            |
-| `YamlDictionaryLoader` | Dictionary subsystem unit — loads flat YAML key-value pairs from each file.    |
-| `ConflictDetector`     | Dictionary subsystem unit — detects term conflicts across loaded entries.       |
-| `MarkdownFormatter`    | Dictionary subsystem unit — formats deduplicated entries as a Markdown string.  |
+| `GlobMatcher`          | Utilities subsystem — resolves glob patterns to concrete file paths.                    |
+| `YamlDictionaryLoader` | Dictionary subsystem unit — loads flat YAML key-value pairs from each file.             |
+| `ConflictDetector`     | Dictionary subsystem unit — detects term conflicts across loaded entries.               |
+| `MarkdownFormatter`    | Dictionary subsystem unit — formats deduplicated entries as a Markdown string.          |
 
 #### Callers
 

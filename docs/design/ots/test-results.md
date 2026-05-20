@@ -17,14 +17,14 @@ that CI pipelines and test dashboards can consume.
 DictionaryMark uses the following APIs from the `DemaConsulting.TestResults` and
 `DemaConsulting.TestResults.IO` namespaces:
 
-| Type / Member                              | Usage                                                                  |
-| ------------------------------------------ | ---------------------------------------------------------------------- |
-| `DemaConsulting.TestResults.TestResults`   | Container for the full set of self-validation test results.            |
-| `TestResults.Name`                         | Set to `"DictionaryMark Self-Validation"` to label the result set.     |
-| `TestResults.Add(TestResult)`              | Records the outcome of each individual self-test.                      |
-| `DemaConsulting.TestResults.TestResult`    | Represents the pass/fail outcome of a single named test.               |
-| `TestResults.IO.TrxSerializer`             | Serializes the result set to TRX format when the output path ends in `.trx`. |
-| `TestResults.IO.JUnitSerializer`           | Serializes the result set to JUnit XML when the output path ends in `.xml`. |
+| Type / Member                            | Usage                                                                        |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `DemaConsulting.TestResults.TestResults` | Container for the full set of self-validation test results.                  |
+| `TestResults.Name`                       | Set to `"DictionaryMark Self-Validation"` to label the result set.           |
+| `TestResults.Add(TestResult)`            | Records the outcome of each individual self-test.                            |
+| `DemaConsulting.TestResults.TestResult`  | Represents the pass/fail outcome of a single named test.                     |
+| `TestResults.IO.TrxSerializer`           | Serializes the result set to TRX format when the output path ends in `.trx`. |
+| `TestResults.IO.JUnitSerializer`         | Serializes the result set to JUnit XML when the output path ends in `.xml`.  |
 
 Features not used: result filtering, merging multiple result sets, custom serialization formats,
 and parallel test scheduling primitives.

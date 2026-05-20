@@ -53,8 +53,8 @@ Returns a sorted, deduplicated list of absolute file paths matching the supplied
 
 #### Dependencies
 
-| Dependency                                    | Role                                                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Dependency                                      | Role                                                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `Microsoft.Extensions.FileSystemGlobbing` (OTS) | `Matcher` and `DirectoryInfoWrapper` APIs used to evaluate glob patterns against the file system. |
 
 #### Callers

@@ -60,10 +60,10 @@ reports them via `context.WriteError`, and returns without generating output.
 
 #### Dependencies
 
-| Dependency        | Role                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------ |
+| Dependency        | Role                                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
 | `YamlDotNet`      | OTS package — `YamlStream`, `YamlMappingNode`, and `YamlScalarNode` APIs used to parse the YAML input file. |
-| `DictionaryEntry` | Dictionary subsystem data model — output type constructed for each valid key-value pair. |
+| `DictionaryEntry` | Dictionary subsystem data model — output type constructed for each valid key-value pair.                    |
 
 #### Callers
 
