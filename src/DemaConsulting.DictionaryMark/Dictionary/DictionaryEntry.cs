@@ -28,8 +28,8 @@ public sealed class DictionaryEntry
     /// <summary>
     ///     Initializes a new instance of the <see cref="DictionaryEntry"/> class.
     /// </summary>
-    /// <param name="term">The dictionary term. Stored directly; null is accepted.</param>
-    /// <param name="definition">The term definition. Stored directly; null is accepted.</param>
+    /// <param name="term">The dictionary term. Must not be null.</param>
+    /// <param name="definition">The term definition. Must not be null.</param>
     public DictionaryEntry(string term, string definition)
     {
         Term = term;
