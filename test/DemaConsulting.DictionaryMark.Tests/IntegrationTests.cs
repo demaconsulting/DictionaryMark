@@ -607,9 +607,10 @@ public class IntegrationTests
         // Arrange: (none - constructor initializes _dllPath)
 
         // Act: run the tool with an unrecognized argument; capture stdout separately
-        Runner.Run(out var stdout, out var _, "dotnet", _dllPath, "--invalid-flag");
+        var exitCode = Runner.Run(out var stdout, out var _, "dotnet", _dllPath, "--invalid-flag");
 
-        // Assert: stdout is empty - no markdown output should be emitted on the error path
+        // Assert: exit is non-zero and stdout is empty - no markdown output should be emitted on the error path
+        Assert.NotEqual(0, exitCode);
         Assert.True(string.IsNullOrWhiteSpace(stdout),
             $"Expected no markdown output on stdout, but got: {stdout}");
     }

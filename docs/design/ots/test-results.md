@@ -1,6 +1,6 @@
 ## DemaConsulting.TestResults Integration Design
 
-DemaConsulting.TestResults is a shared package produced by the DemaConsulting program that
+DemaConsulting.TestResults is an off-the-shelf (OTS) package produced by DemaConsulting that
 provides structured test result collection and serialization to TRX and JUnit XML formats.
 DictionaryMark uses it in the SelfTest subsystem to record and export self-validation results.
 

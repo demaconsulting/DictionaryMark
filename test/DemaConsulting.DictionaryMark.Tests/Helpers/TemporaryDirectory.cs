@@ -55,6 +55,8 @@ internal sealed class TemporaryDirectory : IDisposable
     /// </exception>
     public string GetFilePath(string fileName)
     {
+        ArgumentNullException.ThrowIfNull(fileName);
+
         if (fileName.Contains(Path.DirectorySeparatorChar) ||
             fileName.Contains(Path.AltDirectorySeparatorChar))
         {
