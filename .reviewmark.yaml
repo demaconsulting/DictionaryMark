@@ -202,6 +202,15 @@ reviews:
       - "src/**/Utilities/PathHelpers.cs"
       - "test/**/Utilities/PathHelpersTests.cs"
 
+  - id: DictionaryMark-Utilities-TemporaryDirectory
+    title: Review of DictionaryMark Utilities TemporaryDirectory unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml"
+      - "docs/design/dictionary-mark/utilities/temporary-directory.md"
+      - "docs/verification/dictionary-mark/utilities/temporary-directory.md"
+      - "src/**/Utilities/TemporaryDirectory.cs"
+      - "test/**/Utilities/TemporaryDirectoryTests.cs"
+
   # OTS Items
   - id: OTS-BuildMark
     title: Review of BuildMark OTS verification evidence

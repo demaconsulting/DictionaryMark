@@ -32,3 +32,18 @@ sections:
           - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
           - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
           - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+
+      - id: DictionaryMark-Utilities-TempDirectory
+        title: The Utilities subsystem shall provide a disposable temporary directory facility for use by self-test and test
+          code.
+        justification: |
+          A shared TemporaryDirectory utility prevents both production self-test code and
+          test infrastructure from duplicating directory-lifecycle management and ensures
+          consistent cleanup behaviour across all consumers.
+        children:
+          - DictionaryMark-TemporaryDirectory-DirectoryCreation
+          - DictionaryMark-TemporaryDirectory-FilePathResolution
+          - DictionaryMark-TemporaryDirectory-TraversalRejection
+          - DictionaryMark-TemporaryDirectory-Disposal
+        tests:
+          - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories

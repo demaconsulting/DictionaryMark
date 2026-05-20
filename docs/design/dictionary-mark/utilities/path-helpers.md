@@ -64,5 +64,10 @@ It uses only `System.IO.Path` from the .NET base class library for path string n
 
 #### Callers
 
-`Validation` calls `PathHelpers.SafePathCombine` to construct safe file paths within temporary
-directories when preparing log files and YAML input files for each self-test scenario.
+`TemporaryDirectory` calls `PathHelpers.SafePathCombine` on construction (to build the
+unique directory path) and in `GetFilePath` (to enforce the directory boundary for each
+caller-supplied relative path).
+
+`Validation` (self-test subsystem) previously called `PathHelpers.SafePathCombine` directly;
+it now uses `TemporaryDirectory.GetFilePath`, which delegates to `SafePathCombine`
+internally.

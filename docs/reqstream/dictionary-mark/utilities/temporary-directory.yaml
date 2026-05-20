@@ -1,0 +1,49 @@
+---
+# DictionaryMark TemporaryDirectory Unit Requirements
+
+sections:
+  - title: TemporaryDirectory Unit Requirements
+    requirements:
+      - id: DictionaryMark-TemporaryDirectory-DirectoryCreation
+        title: The TemporaryDirectory class shall create a unique temporary directory under the current working directory
+          on construction.
+        justification: |
+          Using Environment.CurrentDirectory as the base — rather than Path.GetTempPath() —
+          avoids the macOS /tmp → /private/tmp symlink issue that causes path-comparison
+          failures. A GUID-derived name guarantees uniqueness so concurrent test runs do not
+          collide.
+        tests:
+          - TemporaryDirectory_Constructor_CreatesDirectory
+          - TemporaryDirectory_Constructor_CreatesUniqueDirectories
+
+      - id: DictionaryMark-TemporaryDirectory-FilePathResolution
+        title: The TemporaryDirectory class shall resolve relative paths to absolute paths within the temporary directory,
+          creating any required intermediate subdirectories.
+        justification: |
+          Callers need a safe way to obtain a full path for a file that may be nested
+          arbitrarily deep within the temporary directory. Auto-creating intermediate
+          subdirectories removes boilerplate from every caller.
+        tests:
+          - TemporaryDirectory_GetFilePath_SimpleFile_ReturnsPathUnderDirectory
+          - TemporaryDirectory_GetFilePath_NestedPath_CreatesIntermediateDirectories
+
+      - id: DictionaryMark-TemporaryDirectory-TraversalRejection
+        title: The TemporaryDirectory class shall reject relative paths that escape the temporary directory boundary with
+          an ArgumentException.
+        justification: |
+          GetFilePath delegates to PathHelpers.SafePathCombine, which enforces the
+          boundary. Surfacing ArgumentException ensures callers receive a clear diagnostic
+          if an invalid path is supplied.
+        tests:
+          - TemporaryDirectory_GetFilePath_TraversalAttempt_ThrowsArgumentException
+
+      - id: DictionaryMark-TemporaryDirectory-Disposal
+        title: The TemporaryDirectory class shall delete the temporary directory and all its contents on disposal, and shall
+          not throw if the directory no longer exists.
+        justification: |
+          Automatic cleanup prevents accumulation of temporary artefacts after a test run
+          or self-test execution. Suppressing cleanup errors ensures disposal does not mask
+          the original outcome or break using blocks.
+        tests:
+          - TemporaryDirectory_Dispose_DeletesDirectory
+          - TemporaryDirectory_Dispose_AlreadyDeleted_DoesNotThrow
