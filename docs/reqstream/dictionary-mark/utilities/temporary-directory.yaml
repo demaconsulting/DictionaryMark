@@ -5,16 +5,18 @@ sections:
   - title: TemporaryDirectory Unit Requirements
     requirements:
       - id: DictionaryMark-TemporaryDirectory-DirectoryCreation
-        title: The TemporaryDirectory class shall create a unique temporary directory under the current working directory
-          on construction.
+        title: The TemporaryDirectory class shall create a unique temporary directory on construction, under the supplied
+          base directory when provided, or under the current working directory when no base directory is supplied.
         justification: |
-          Using Environment.CurrentDirectory as the base — rather than Path.GetTempPath() —
-          avoids the macOS /tmp → /private/tmp symlink issue that causes path-comparison
-          failures. A GUID-derived name guarantees uniqueness so concurrent test runs do not
-          collide.
+          The constructor supports an optional base directory so callers can control placement
+          when needed. When omitted, using Environment.CurrentDirectory as the default base —
+          rather than Path.GetTempPath() — avoids the macOS /tmp → /private/tmp symlink issue
+          that causes path-comparison failures. A GUID-derived name guarantees uniqueness so
+          concurrent test runs do not collide.
         tests:
           - TemporaryDirectory_Constructor_CreatesDirectory
           - TemporaryDirectory_Constructor_CreatesUniqueDirectories
+          - TemporaryDirectory_Constructor_WithBaseDirectory_CreatesDirectoryUnderBase
 
       - id: DictionaryMark-TemporaryDirectory-FilePathResolution
         title: The TemporaryDirectory class shall resolve relative paths to absolute paths within the temporary directory,
