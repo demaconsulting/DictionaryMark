@@ -80,13 +80,13 @@ and `.xml` (JUnit format). Calls `context.WriteError` for unsupported extensions
 
 #### Interactions
 
-| Dependency        | Role                                                            |
-| ----------------- | --------------------------------------------------------------- |
-| `Context`         | Provides output channels and the optional results file path.    |
-| `Program`         | Exercised by each self-test to validate real tool behavior.     |
-| `PathHelpers`     | Used to build safe paths for temporary log files.               |
-| `TrxSerializer`   | Serializes results to TRX format when `.trx` extension is used. |
-| `JUnitSerializer` | Serializes results to JUnit XML when `.xml` extension is used.  |
+| Dependency           | Role                                                             |
+| -------------------- | ---------------------------------------------------------------- |
+| `Context`            | Provides output channels and the optional results file path.     |
+| `Program`            | Exercised by each self-test to validate real tool behavior.      |
+| `TemporaryDirectory` | Creates temporary folders and safe paths for self-test files.    |
+| `TrxSerializer`      | Serializes results to TRX format when `.trx` extension is used.  |
+| `JUnitSerializer`    | Serializes results to JUnit XML when `.xml` extension is used.   |
 
 #### Dependencies
 
@@ -94,7 +94,7 @@ and `.xml` (JUnit format). Calls `context.WriteError` for unsupported extensions
 | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `Context`                           | CLI subsystem — provides output channels (`WriteLine`, `WriteError`) and `ResultsFile` path.     |
 | `Program`                           | Program unit — `Program.Run` is invoked by each test method to exercise the full tool path.      |
-| `PathHelpers`                       | Utilities subsystem — `SafePathCombine` builds safe log-file paths within temporary directories. |
+| `TemporaryDirectory`                | Utilities subsystem — creates temp folders and resolves safe self-test file paths.               |
 | `DemaConsulting.TestResults`        | OTS package — `TestResults` and `TestResult` types accumulate self-test outcomes.                |
 | `TrxSerializer` / `JUnitSerializer` | OTS package — serialize the result set to TRX or JUnit XML when `ResultsFile` is set.            |
 

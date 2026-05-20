@@ -57,6 +57,34 @@ public class TemporaryDirectoryTests
     }
 
     /// <summary>
+    ///     Test that the constructor can create the directory under a caller-supplied base path.
+    /// </summary>
+    [Fact]
+    public void TemporaryDirectory_Constructor_WithBaseDirectory_CreatesDirectoryUnderBase()
+    {
+        // Arrange
+        var baseDirectory = Path.GetTempPath();
+
+        // Act
+        using var tmpDir = new TemporaryDirectory(baseDirectory);
+
+        // Assert
+        var relativePath = Path.GetRelativePath(baseDirectory, tmpDir.DirectoryPath);
+        Assert.DoesNotContain("..", relativePath, StringComparison.Ordinal);
+        Assert.False(Path.IsPathRooted(relativePath));
+    }
+
+    /// <summary>
+    ///     Test that the constructor rejects an empty base directory.
+    /// </summary>
+    [Fact]
+    public void TemporaryDirectory_Constructor_WhitespaceBaseDirectory_ThrowsArgumentException()
+    {
+        // Act + Assert
+        Assert.Throws<ArgumentException>(() => new TemporaryDirectory(" "));
+    }
+
+    /// <summary>
     ///     Test that GetFilePath returns a path located under the temporary directory.
     /// </summary>
     [Fact]

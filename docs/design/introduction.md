@@ -33,6 +33,7 @@ This document covers the detailed design of the following subsystems and softwar
 - **Utilities** subsystem
   - **GlobMatcher** - file-matching via glob patterns (`Utilities/GlobMatcher.cs`)
   - **PathHelpers** - safe path combination utilities (`Utilities/PathHelpers.cs`)
+  - **TemporaryDirectory** - disposable temporary directory helper (`Utilities/TemporaryDirectory.cs`)
 
 The following topics are out of scope:
 
@@ -63,7 +64,8 @@ DictionaryMark (System)
 │   └── Validation (Unit)
 ├── Utilities (Subsystem)
 │   ├── GlobMatcher (Unit)
-│   └── PathHelpers (Unit)
+│   ├── PathHelpers (Unit)
+│   └── TemporaryDirectory (Unit)
 └── OTS Dependencies
     ├── YamlDotNet (OTS)
     ├── Microsoft.Extensions.FileSystemGlobbing (OTS)
@@ -95,7 +97,8 @@ src/DemaConsulting.DictionaryMark/
 │   └── Validation.cs                   - self-validation test runner
 └── Utilities/
     ├── GlobMatcher.cs                  - file-matching via glob patterns
-    └── PathHelpers.cs                  - safe path combination utilities
+    ├── PathHelpers.cs                  - safe path combination utilities
+    └── TemporaryDirectory.cs           - disposable temporary directory helper
 ```
 
 The test project mirrors the same layout under `test/DemaConsulting.DictionaryMark.Tests/`.

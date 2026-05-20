@@ -25,8 +25,8 @@ times in the same process.
   optional `ResultsFile` path.
 - `Program.Run(Context)` (Program unit) — called internally during each self-test to exercise
   the full tool execution path with a crafted argument array.
-- `PathHelpers.SafePathCombine` (Utilities subsystem) — combines temporary directory paths with
-  test file names while enforcing the path-traversal security boundary.
+- `TemporaryDirectory` (Utilities subsystem) — creates per-test temporary folders and safely
+  resolves file paths via `GetFilePath`.
 - `DemaConsulting.TestResults` (OTS) — collects `TestResult` objects and serializes them to TRX
   or JUnit XML when `context.ResultsFile` is set.
 
@@ -36,7 +36,7 @@ times in the same process.
 sequentially (`RunVersionTest`, `RunHelpTest`, `RunBulletGenerationTest`,
 `RunTableGenerationTest`, `RunCustomHeadersTest`, `RunConflictDetectionTest`). Each test method:
 
-1. Creates a temporary directory via `Path.GetTempPath` / `PathHelpers.SafePathCombine`.
+1. Creates a temporary directory via `TemporaryDirectory(Path.GetTempPath())`.
 2. Constructs a string-array argument list and an in-memory `Context` (using `--silent`).
 3. Calls `Program.Run(context)` to exercise the tool.
 4. Asserts expected output or exit-code behavior; records a `Passed` or `Failed` result.
@@ -70,9 +70,9 @@ within the same process without any reset or re-initialization step.
 The SelfTest subsystem is invoked by `Program.Run` when `context.Validate` is `true`. It
 depends on:
 
-| Dependency    | Role                                                         |
-| ------------- | ------------------------------------------------------------ |
-| `Context`     | Provides output channels and the optional results file path. |
-| `Program`     | Called internally during self-tests to exercise tool logic.  |
-| `PathHelpers` | Used to safely combine temporary directory and file paths.   |
-| `TestResults` | Collects test outcomes for optional file-based reporting.    |
+| Dependency           | Role                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `Context`            | Provides output channels and the optional results file path.      |
+| `Program`            | Called internally during self-tests to exercise tool logic.       |
+| `TemporaryDirectory` | Creates temporary folders and safe file paths for each self-test. |
+| `TestResults`        | Collects test outcomes for optional file-based reporting.         |

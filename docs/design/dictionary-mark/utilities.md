@@ -4,11 +4,12 @@ The Utilities subsystem provides shared helper functionality.
 
 ### Overview
 
-The Utilities subsystem contains two stateless utility units: `GlobMatcher`, which resolves
-glob patterns to sorted, deduplicated file-path lists, and `PathHelpers`, which enforces a
-path-traversal security boundary when combining a trusted base path with a caller-supplied
-relative path. Neither unit depends on any other DictionaryMark subsystem; both are consumed
-by other subsystems.
+The Utilities subsystem contains three helper units: `GlobMatcher`, which resolves glob patterns
+to sorted, deduplicated file-path lists; `PathHelpers`, which enforces a path-traversal security
+boundary when combining a trusted base path with a caller-supplied relative path; and
+`TemporaryDirectory`, a disposable helper for creating and cleaning up temporary working folders.
+None of these units depends on any other DictionaryMark subsystem, and they are consumed by other
+subsystems.
 
 ### Interfaces
 
@@ -23,6 +24,13 @@ by other subsystems.
   Throws `ArgumentNullException` when either argument is null; throws `ArgumentException`
   when the resolved path escapes the base directory or an absolute path is supplied as
   `relativePath`.
+- `TemporaryDirectory.TemporaryDirectory(string? baseDirectory = null)` — creates a uniquely
+  named temporary directory under `baseDirectory` (or `Environment.CurrentDirectory` when not
+  provided). Throws `ArgumentException` for invalid base-directory input and
+  `InvalidOperationException` when directory creation fails.
+- `TemporaryDirectory.GetFilePath(string relativePath)` — returns a safe file path inside the
+  temporary directory and creates any required intermediate directories.
+- `TemporaryDirectory.Dispose()` — best-effort recursive cleanup of the temporary directory.
 
 **Consumed from other items:**
 

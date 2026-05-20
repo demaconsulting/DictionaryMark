@@ -125,7 +125,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var logFile = tempDir.GetFilePath("version-test.log");
 
             // Build command line arguments
@@ -193,7 +193,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var logFile = tempDir.GetFilePath("help-test.log");
 
             // Build command line arguments
@@ -261,7 +261,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var inputFile = tempDir.GetFilePath("input.yaml");
             var outputFile = tempDir.GetFilePath("output.md");
 
@@ -321,7 +321,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var inputFile = tempDir.GetFilePath("input.yaml");
             var outputFile = tempDir.GetFilePath("output.md");
 
@@ -381,7 +381,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var inputFile = tempDir.GetFilePath("input.yaml");
             var outputFile = tempDir.GetFilePath("output.md");
 
@@ -445,7 +445,7 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
             var fileA = tempDir.GetFilePath("a.yaml");
             var fileB = tempDir.GetFilePath("b.yaml");
 

@@ -24,11 +24,8 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///     A disposable temporary directory that is automatically deleted when disposed.
 /// </summary>
 /// <remarks>
-///     The temporary directory is created under <see cref="Environment.CurrentDirectory"/>
-///     rather than <see cref="Path.GetTempPath()"/>. This avoids OS symlink issues such as
-///     <c>/tmp</c> resolving to <c>/private/tmp</c> on macOS, which can cause
-///     path-comparison failures when the OS returns the real (resolved) path instead
-///     of the symlink path used to construct it.
+///     Callers may supply a base directory to control where temporary files are created.
+///     If omitted, <see cref="Environment.CurrentDirectory"/> is used.
 /// </remarks>
 internal sealed class TemporaryDirectory : IDisposable
 {
@@ -39,16 +36,28 @@ internal sealed class TemporaryDirectory : IDisposable
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="TemporaryDirectory"/> class,
-    ///     creating a uniquely-named subdirectory under <see cref="Environment.CurrentDirectory"/>.
+    ///     creating a uniquely-named subdirectory under the supplied base directory.
     /// </summary>
+    /// <param name="baseDirectory">
+    ///     Base directory used to create the temporary directory. When <see langword="null"/>,
+    ///     <see cref="Environment.CurrentDirectory"/> is used.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when <paramref name="baseDirectory"/> is provided as an empty or whitespace-only string.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the temporary directory cannot be created due to an
     ///     <see cref="IOException"/>, <see cref="UnauthorizedAccessException"/>, or
     ///     <see cref="ArgumentException"/> from the underlying file-system call.
     /// </exception>
-    public TemporaryDirectory()
+    public TemporaryDirectory(string? baseDirectory = null)
     {
-        var effectiveBase = Environment.CurrentDirectory;
+        if (baseDirectory != null && string.IsNullOrWhiteSpace(baseDirectory))
+        {
+            throw new ArgumentException("Base directory must not be empty or whitespace.", nameof(baseDirectory));
+        }
+
+        var effectiveBase = baseDirectory ?? Environment.CurrentDirectory;
         DirectoryPath = PathHelpers.SafePathCombine(effectiveBase, $"tmp-{Guid.NewGuid():N}");
 
         // Create the directory and surface any failure as InvalidOperationException so
@@ -100,8 +109,8 @@ internal sealed class TemporaryDirectory : IDisposable
     /// <remarks>
     ///     <see cref="IOException"/> and <see cref="UnauthorizedAccessException"/> are
     ///     intentionally suppressed during disposal. Cleanup failures are non-fatal: the
-    ///     operating system or the user's temp-folder maintenance process will eventually
-    ///     reclaim the directory, and allowing an exception to escape from
+    ///     directory may remain in the configured base path until removed manually, and allowing
+    ///     an exception to escape from
     ///     <c>Dispose</c> would break <c>using</c> blocks and mask the original outcome.
     /// </remarks>
     public void Dispose()
