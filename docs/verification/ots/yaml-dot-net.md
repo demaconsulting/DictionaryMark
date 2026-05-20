@@ -13,7 +13,7 @@ exercise all required YamlDotNet APIs through normal class-level calls.
 
 ### Qualification Evidence
 
-YamlDotNet is verified indirectly by the `YamlDictionaryLoaderTests` unit tests.Each
+YamlDotNet is verified indirectly by the `YamlDictionaryLoaderTests` unit tests. Each
 scenario drives `YamlDictionaryLoader.Load` with a specific YAML input and asserts the
 expected outcome. Because `YamlDictionaryLoader` delegates all parsing to YamlDotNet,
 correct test outcomes constitute evidence that the required YamlDotNet APIs function as

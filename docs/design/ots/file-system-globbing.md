@@ -49,8 +49,9 @@ absolute paths via `Path.GetFullPath` before being added to the results set.
   `ArgumentException` when any individual pattern is null or empty — both are checked before
   invoking any FileSystemGlobbing APIs.
 - File-system errors encountered during glob execution (e.g., inaccessible directories)
-  propagate as-is from `Matcher.Execute` to `DictionaryGenerator`, which catches them as
-  `ArgumentException` and reports them via `context.WriteError`.
+  propagate as-is from `Matcher.Execute`. `DictionaryGenerator` only catches `ArgumentException`
+  around `GlobMatcher.GetFiles`, so non-argument exceptions continue to `Program.Main` as
+  unexpected exceptions.
 - Patterns that match no files produce an empty `PatternMatchingResult.Files` collection;
   `GlobMatcher` treats this as a normal (non-error) outcome and returns an empty list to
   its caller.
@@ -60,6 +61,6 @@ absolute paths via `Path.GetFullPath` before being added to the results set.
 - Relative patterns are always resolved relative to `Environment.CurrentDirectory` at the
   time of the call; no alternative base directory can be configured.
 - The deduplication set uses `StringComparer.OrdinalIgnoreCase`, so on case-sensitive file
-  systems (Linux) two paths that differ only in case are treated as distinct files but will
-  be merged into a single entry.
+  systems (Linux) two paths that differ only in case are still treated as the same key and
+  are merged into a single entry.
 - Only `AddInclude` is used; exclude patterns are not supported in the current design.

@@ -16,7 +16,7 @@ FileSystemGlobbing APIs through normal class-level calls.
 
 ### Qualification Evidence
 
-FileSystemGlobbing is verified indirectly by the `GlobMatcherTests` unit tests.Each scenario
+FileSystemGlobbing is verified indirectly by the `GlobMatcherTests` unit tests. Each scenario
 drives `GlobMatcher.GetFiles` with a specific pattern or file-system state and asserts the
 expected result. Because `GlobMatcher` delegates all glob execution to FileSystemGlobbing,
 correct test outcomes constitute evidence that the required FileSystemGlobbing APIs function as

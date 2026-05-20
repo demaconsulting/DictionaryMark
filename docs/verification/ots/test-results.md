@@ -15,7 +15,7 @@ normal class-level calls.
 
 ### Qualification Evidence
 
-DemaConsulting.TestResults is verified indirectly by the `ValidationTests` unit tests.Each
+DemaConsulting.TestResults is verified indirectly by the `ValidationTests` unit tests. Each
 scenario drives `Validation.Run` with a specific context configuration and asserts the expected
 result-file content or error behaviour. Because `Validation` delegates all result accumulation
 and serialization to DemaConsulting.TestResults, correct test outcomes constitute evidence that

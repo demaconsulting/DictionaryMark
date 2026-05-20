@@ -27,6 +27,9 @@ input-files:
   - docs/design/dictionary-mark/utilities/glob-matcher.md
   - docs/design/dictionary-mark/utilities/path-helpers.md
   - docs/design/ots.md
+  - docs/design/ots/file-system-globbing.md
+  - docs/design/ots/test-results.md
+  - docs/design/ots/yaml-dot-net.md
 template: template.html
 table-of-contents: true
 number-sections: true

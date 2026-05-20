@@ -50,8 +50,8 @@ if (child.Value is not YamlScalarNode valueNode) { throw ... }
 ### Error Handling
 
 - YAML parse exceptions (e.g., `YamlException`) thrown by `YamlStream.Load` propagate
-  unchanged to `DictionaryGenerator`, which catches them as `InvalidOperationException`
-  and reports them via `context.WriteError`.
+  unchanged through `YamlDictionaryLoader` and `DictionaryGenerator`. They are not caught
+  in those units and therefore reach `Program.Main` as unexpected exceptions.
 - Structural violations (non-mapping root, non-scalar keys or values, duplicate keys) are
   detected by `YamlDictionaryLoader` and thrown as `InvalidOperationException` with a
   descriptive message identifying the file and offending element.
