@@ -4,7 +4,7 @@ This document describes the unit-level verification design for the `MarkdownForm
 It defines test scenarios, dependency usage, and requirement coverage for
 `MarkdownFormatterTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `MarkdownFormatter` is verified with unit tests in `MarkdownFormatterTests.cs`. Tests
 construct `DictionaryEntry` arrays and `MarkdownOptions` objects with controlled settings,
@@ -16,6 +16,16 @@ invoke `MarkdownFormatter.Format`, and assert on the content and ordering of the
 | ----------------- | --------------------------------------------------------------- |
 | `DictionaryEntry` | Constructed inline with test term/definition values.            |
 | `MarkdownOptions` | Constructed with controlled format, sort, and heading settings. |
+
+#### Test Environment
+
+N/A - standard test environment.
+
+#### Acceptance Criteria
+
+All unit tests in `MarkdownFormatterTests.cs` pass; all requirements listed in the Requirements
+Coverage section have at least one passing test scenario; no tests may be skipped or marked as
+expected failures.
 
 #### Test Scenarios
 

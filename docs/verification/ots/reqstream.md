@@ -1,6 +1,8 @@
 ## ReqStream Verification
 
 This document provides the verification evidence for the `ReqStream` OTS software item.
+Requirements for this OTS item are defined in the ReqStream OTS Software Requirements document
+(`docs/reqstream/ots/reqstream.yaml`).
 
 ### Required Functionality
 
@@ -10,7 +12,7 @@ exits with a non-zero code if any requirement lacks test evidence, making unprov
 build-breaking condition. A successful pipeline run with `--enforce` proves all requirements are
 covered and that ReqStream is functioning.
 
-### Verification Approach
+### Qualification Evidence
 
 ReqStream is verified by two complementary layers of evidence. First, the CI pipeline runs
 `reqstream --validate --results artifacts/reqstream-self-validation.trx`, which exercises
@@ -24,6 +26,11 @@ subsequent Pandoc step would fail, breaking the CI build. Additionally, `--enfor
 non-zero if any requirement lacks test evidence, which would also fail the build. A passing
 CI build proves ReqStream correctly processed the project's real requirements and found
 complete test coverage.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -82,3 +89,7 @@ deliberate issues.
 
 - **`DictionaryMark-OTS-ReqStream`**: ReqStream_RequirementsProcessing, ReqStream_TraceMatrix,
   ReqStream_ReportExport, ReqStream_TagsFiltering, ReqStream_EnforcementMode, ReqStream_Lint
+
+### Suitability Conclusion
+
+Based on the evidence above, ReqStream is considered suitable for use in the DictionaryMark CI pipeline.

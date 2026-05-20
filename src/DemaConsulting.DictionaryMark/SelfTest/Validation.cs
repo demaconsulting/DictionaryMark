@@ -31,7 +31,10 @@ namespace DemaConsulting.DictionaryMark.SelfTest;
 /// </summary>
 internal static partial class Validation
 {
+    /// <summary>Argument string for the --silent flag passed to self-test sub-invocations.</summary>
     private const string SilentArg = "--silent";
+
+    /// <summary>Argument string for the --input flag passed to self-test sub-invocations.</summary>
     private const string InputArg = "--input";
     /// <summary>
     ///     Runs self-validation tests and optionally writes results to a file.

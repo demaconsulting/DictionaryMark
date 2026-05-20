@@ -4,7 +4,7 @@ The `GlobMatcher` class resolves file paths from glob patterns using
 `Microsoft.Extensions.FileSystemGlobbing`. It returns a sorted, deduplicated list of
 absolute file paths matching the supplied patterns.
 
-#### Overview
+#### Purpose
 
 `GlobMatcher.GetFiles` processes each pattern in turn:
 
@@ -23,7 +23,7 @@ files but will be merged into a single entry by the deduplicator.
 
 `GlobMatcher` is a `static` class with no instance state.
 
-#### Methods
+#### Key Methods
 
 ##### GetFiles(IEnumerable\<string\> patterns) → IReadOnlyList\<string\>
 
@@ -34,8 +34,31 @@ Returns a sorted, deduplicated list of absolute file paths matching the supplied
 - `ArgumentNullException` - when `patterns` is null.
 - `ArgumentException` - when any pattern is null or empty.
 
+#### Error Handling
+
+`GlobMatcher` throws exceptions for invalid input; non-matching patterns produce no error:
+
+- `ArgumentNullException` — thrown when `patterns` is null; the caller must supply a non-null
+  enumerable.
+- `ArgumentException` — thrown when any individual pattern is null or empty; the caller must
+  validate pattern values before passing them.
+- **No matches** — an empty result list is returned silently; the caller (`DictionaryGenerator`)
+  is responsible for checking the result and reporting the "no files found" condition.
+
 #### Interactions
 
 | Dependency                                | Role                                                    |
 | ----------------------------------------- | ------------------------------------------------------- |
 | `Microsoft.Extensions.FileSystemGlobbing` | `Matcher` and `DirectoryInfoWrapper` for glob matching. |
+
+#### Dependencies
+
+| Dependency                                    | Role                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `Microsoft.Extensions.FileSystemGlobbing` (OTS) | `Matcher` and `DirectoryInfoWrapper` APIs used to evaluate glob patterns against the file system. |
+
+#### Callers
+
+`DictionaryGenerator.Generate` calls `GlobMatcher.GetFiles(context.InputPatterns)` as the
+first step of the pipeline to resolve user-supplied glob patterns to a sorted, deduplicated
+list of concrete file paths.

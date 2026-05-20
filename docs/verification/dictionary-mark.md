@@ -30,7 +30,7 @@ The integration tests drive DictionaryMark through its real command-line interfa
 no interface simulation or mocking at the system level. Temporary YAML input files are
 created inline within each test to control input data precisely.
 
-## End-to-End Test Scenarios
+## System-Level Test Scenarios
 
 The following scenarios cover the complete system behavior from argument parsing through
 output generation:
@@ -55,6 +55,8 @@ output generation:
 - Validation results (TRX): writes TRX-format test results file.
 - Validation results (JUnit XML): writes JUnit XML-format test results file.
 - Error handling: returns non-zero exit code for unrecognized arguments.
+- Error handling message: writes the unrecognized argument to stderr.
+- Error handling no output: writes no Markdown output on unrecognized argument errors.
 
 ## Requirements Coverage
 
@@ -81,6 +83,8 @@ output generation:
 | DictionaryMark-System-HeadingDepth | DictionaryMark_Generate_SectionWithDepth_OutputsHeading |
 | DictionaryMark-System-ValidateResults-TRX | DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile |
 | DictionaryMark-System-ValidateResults-XML | DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile |
+| DictionaryMark-System-ErrorHandling-Message | DictionaryMark_UnrecognizedArgument_WritesErrorToStderr |
+| DictionaryMark-System-ErrorHandling-NoOutput | DictionaryMark_UnrecognizedArgument_WritesNoMarkdownOutput |
 
 ## Acceptance Criteria
 

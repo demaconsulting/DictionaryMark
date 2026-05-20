@@ -63,6 +63,8 @@ reviews:
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
+      - "docs/design/ots.md"
+      - "docs/design/ots/*.md"
       - "docs/verification/introduction.md"
       - "docs/verification/ots.md"
 
@@ -260,3 +262,21 @@ reviews:
     paths:
       - "docs/reqstream/ots/xunit.yaml"
       - "docs/verification/ots/xunit.md"
+
+  - id: OTS-YamlDotNet
+    title: Review of YamlDotNet OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/yaml-dot-net.yaml"
+      - "docs/verification/ots/yaml-dot-net.md"
+
+  - id: OTS-FileSystemGlobbing
+    title: Review of FileSystemGlobbing OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/file-system-globbing.yaml"
+      - "docs/verification/ots/file-system-globbing.md"
+
+  - id: OTS-TestResults
+    title: Review of TestResults OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/test-results.yaml"
+      - "docs/verification/ots/test-results.md"

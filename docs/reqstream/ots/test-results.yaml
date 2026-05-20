@@ -1,0 +1,26 @@
+---
+# DemaConsulting.TestResults OTS Software Requirements
+#
+# Requirements for the DemaConsulting.TestResults test result recording and serialization functionality.
+
+sections:
+  - title: OTS Software Requirements
+    sections:
+      - title: TestResults Requirements
+        requirements:
+          - id: DictionaryMark-OTS-TestResults
+            title: DemaConsulting.TestResults shall accumulate self-validation test outcomes and serialize them to TRX or
+              JUnit XML output files.
+            justification: |
+              DemaConsulting.DictionaryMark uses DemaConsulting.TestResults in the Validation unit
+              to record per-test outcomes via TestResults and TestResult, and to serialize the
+              collected results to TRX format via TrxSerializer or JUnit XML format via
+              JUnitSerializer from the DemaConsulting.TestResults.IO namespace. Correct result
+              accumulation and serialization is verified indirectly by the ValidationTests unit
+              tests, which exercise all required TestResults APIs through normal class-level calls.
+            tags: [ots]
+            tests:
+              - Validation_Run_WithTrxResultsFile_WritesTrxFile
+              - Validation_Run_WithXmlResultsFile_WritesXmlFile
+              - Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile
+              - Validation_Run_WithSilentContext_PrintsSummary

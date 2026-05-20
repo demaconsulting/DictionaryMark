@@ -4,7 +4,7 @@ The `Context` class handles command-line argument parsing and program output for
 It is the primary interface between the user's command-line invocation and the tool's internal
 logic.
 
-#### Overview
+#### Purpose
 
 `Context` is created once per tool invocation via the `Create` factory method. It parses the
 argument list using the inner `ArgumentParser` helper, opens any requested log file, and exposes
@@ -30,7 +30,7 @@ file - through its `WriteLine` and `WriteError` methods.
 - `SortBy` (`SortOrder`) — Sort order (FileOrder or Alphabetical); via `--sort`. Default is FileOrder.
 - `ExitCode` (`int`) — `1` if `_hasErrors`; `0` otherwise.
 
-#### Methods
+#### Key Methods
 
 ##### Create(string[] args)
 
@@ -53,9 +53,38 @@ and to `_logWriter` (if open).
 
 Disposes `_logWriter` and sets it to `null`.
 
+#### Error Handling
+
+`Context` signals errors in two ways:
+
+- **Construction errors** — `Create` throws `ArgumentException` when an argument is unrecognised
+  or is missing its required value, and `InvalidOperationException` when the specified log file
+  cannot be opened. The caller (`Program.Main`) is expected to catch both exception types.
+- **Runtime errors** — `WriteError` does not throw; it records the error message to stderr and
+  the log file, and sets `_hasErrors = true` so that `ExitCode` returns 1. No exception is raised
+  at the point of the error.
+
 #### Interactions
 
 `Context` uses `OutputFormat` and `SortOrder` types from the Dictionary subsystem to represent
 the parsed `--format` and `--sort` flag values respectively. Apart from these type references,
 `Context` has no behavioral dependency on other DictionaryMark subsystems. It uses only .NET
 base class library types (`Console`, `StreamWriter`) for I/O.
+
+#### Dependencies
+
+| Dependency       | Role                                                                           |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `OutputFormat`   | Dictionary subsystem enum — type of the parsed `--format` flag value.         |
+| `SortOrder`      | Dictionary subsystem enum — type of the parsed `--sort` flag value.           |
+| `Console`        | .NET BCL — stdout and stderr output channels.                                  |
+| `StreamWriter`   | .NET BCL — optional log file channel opened when `--log` is specified.        |
+
+#### Callers
+
+`Program.Main` creates a `Context` instance via `Context.Create(args)` once per invocation and
+passes it to `Program.Run`. `Validation` creates additional short-lived `Context` instances
+(with `--silent`) during each self-test to capture tool output without writing to the console.
+`DictionaryGenerator.Generate` and `Validation.Run` each receive the `Context` instance as a
+parameter and call its `WriteLine`, `WriteError`, and property accessors throughout their
+execution.

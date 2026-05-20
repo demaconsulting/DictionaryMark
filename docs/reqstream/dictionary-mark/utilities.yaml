@@ -4,17 +4,26 @@
 sections:
   - title: Utilities Subsystem Requirements
     requirements:
-      - id: DictionaryMark-Utilities-Subsystem
-        title: >-
-          The Utilities subsystem shall provide shared file-matching utilities and
-          path-safety enforcement to prevent path-traversal vulnerabilities.
+      - id: DictionaryMark-Utilities-FileMatching
+        title: The Utilities subsystem shall provide shared file-matching utilities.
         justification: |
-          Shared utilities prevent duplication and ensure consistent behavior across all
-          tool subsystems. Path-safety enforcement in PathHelpers prevents directory-
-          traversal attacks when combining base paths with caller-supplied relative paths.
+          Shared file-matching utilities prevent duplication and ensure consistent glob
+          pattern resolution across all tool subsystems.
         children:
           - DictionaryMark-GlobMatcher-GetFiles
-          - DictionaryMark-GlobMatcher-Validation
+          - DictionaryMark-GlobMatcher-NullCollectionRejection
+          - DictionaryMark-GlobMatcher-InvalidPatternRejection
+        tests:
+          - UtilitiesSubsystem_GlobMatcher_ResolvesFiles
+
+      - id: DictionaryMark-Utilities-PathSafety
+        title: >-
+          The Utilities subsystem shall enforce path-safety to prevent path-traversal
+          vulnerabilities.
+        justification: |
+          Path-safety enforcement in PathHelpers prevents directory-traversal attacks
+          when combining base paths with caller-supplied relative paths.
+        children:
           - DictionaryMark-PathHelpers-SafePathCombine
           - DictionaryMark-PathHelpers-NullValidation
           - DictionaryMark-PathHelpers-TraversalValidation
@@ -23,4 +32,3 @@ sections:
           - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
           - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
           - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
-          - UtilitiesSubsystem_GlobMatcher_ResolvesFiles

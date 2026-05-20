@@ -9,7 +9,7 @@ writes a versions markdown document included in the release artifacts. It runs i
 pipeline that produces the TRX test results, so a successful pipeline run is evidence that
 VersionMark executed without error.
 
-### Verification Approach
+### Qualification Evidence
 
 VersionMark is verified by two complementary layers of evidence. First, the CI pipeline runs
 `versionmark --validate --results *.trx` in each build job, exercising VersionMark's built-in
@@ -22,6 +22,11 @@ compiled by Pandoc. If VersionMark failed to produce the versions document, the 
 compilation would be incomplete. WeasyPrint renders the result to PDF and FileAssert asserts
 its content (`WeasyPrint_BuildNotesPdf`). A CI build failure at any step is evidence that
 VersionMark did not execute correctly.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -63,3 +68,7 @@ deliberate errors.
 
 - **`DictionaryMark-OTS-VersionMark`**: VersionMark_CapturesVersions, VersionMark_GeneratesMarkdownReport,
   VersionMark_LintPassesForValidConfig, VersionMark_LintReportsErrorsForInvalidConfig
+
+### Suitability Conclusion
+
+Based on the evidence above, VersionMark is considered suitable for use in the DictionaryMark CI pipeline.

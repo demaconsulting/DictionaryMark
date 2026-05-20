@@ -46,3 +46,15 @@ sections:
         tests:
           - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
           - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
+
+      - id: DictionaryMark-Dictionary-Generation
+        title: The Dictionary subsystem shall orchestrate the end-to-end dictionary generation pipeline.
+        justification: |
+          Orchestration is needed to coordinate file loading, conflict detection, and output
+          formatting into a single coherent generation operation.
+        children:
+          - DictionaryMark-DictionaryGenerator-FileLoading
+          - DictionaryMark-DictionaryGenerator-ConflictReporting
+          - DictionaryMark-DictionaryGenerator-OutputRouting
+        tests:
+          - DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown

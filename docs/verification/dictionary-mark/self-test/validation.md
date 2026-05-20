@@ -3,7 +3,7 @@
 This document describes the unit-level verification design for the `Validation` unit. It
 defines test scenarios, dependency usage, and requirement coverage for `ValidationTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `Validation` is verified with unit tests in `ValidationTests.cs`. Tests create `Context`
 instances in silent mode (with optional log files) to avoid console noise, invoke
@@ -15,6 +15,17 @@ instances in silent mode (with optional log files) to avoid console noise, invok
 | ----------- | ------------------------------------------------------------------------------------------- |
 | `Context`   | Created from argument arrays; exit code and log output are asserted.                        |
 | File system | Temporary log and results files created via `TemporaryDirectory` to verify written content. |
+
+#### Test Environment
+
+N/A - standard test environment. Tests that write log or results files use `TemporaryDirectory`
+for automatic cleanup.
+
+#### Acceptance Criteria
+
+All unit tests in `ValidationTests.cs` pass; all requirements listed in the Requirements
+Coverage section have at least one passing test scenario; no tests may be skipped or marked as
+expected failures.
 
 #### Test Scenarios
 

@@ -3,20 +3,23 @@
 This document describes the system-level design of DictionaryMark, a .NET tool
 that reads YAML dictionary files and generates Markdown output in bullet or table format.
 
-## System Architecture
+## Architecture
+
+### System Architecture
 
 DictionaryMark is a command-line application that processes YAML files containing
 term-definition pairs and produces formatted Markdown output. The system consists
 of four primary subsystems: Cli, SelfTest, Dictionary, and Utilities.
 
-## Major Components
+### Major Components
 
-- **CLI Subsystem** - Command-line argument parsing and user interface management
+- **Program** — Entry point and execution orchestrator; creates the Context, dispatches to Dictionary generation or self-validation, writes output, and returns the exit code.
+- **Cli Subsystem** - Command-line argument parsing and user interface management
 - **Dictionary Subsystem** - YAML loading, conflict detection, and Markdown formatting
 - **Utilities Subsystem** - Shared file-matching utilities via glob patterns
 - **SelfTest Subsystem** - Automated validation framework
 
-## Component Interactions
+### Component Interactions
 
 The Program unit acts as the system orchestrator:
 
@@ -34,17 +37,35 @@ DictionaryMark exposes a single external interface — its command-line argument
 - **Help Display**: `-?`, `-h`, `--help`
 - **Silent Mode**: `--silent`
 - **Self-Validation**: `--validate`
-- **Results Output**: `--results <file>`
 - **Logging**: `--log <file>`
 - **Input Files**: `-i`, `--input <pattern>` (repeatable)
 - **Output File**: `-o`, `--output <file>`
 - **Format**: `-f`, `--format <bullets|table>`
 - **Section Heading**: `-s`, `--section <text>`
 - **Term Header**: `--term-header <text>`
-- **Definition Header**: `--def-header <text>`
+- **Definition Header**: `--def-header <text>` / `--definition-header <text>`
 - **Sort Order**: `--sort <file|alpha>`
 - **Heading Depth**: `--depth <n>`
-- **Validation Results**: `--result <file>` (alias for `--results`)
+- **Results File**: `--results <file>` / `--result <file>`
+
+## Dependencies
+
+DictionaryMark depends on three runtime OTS packages:
+
+- **YamlDotNet**: used for YAML parsing in `YamlDictionaryLoader` — see *YamlDotNet Integration Design*
+- **Microsoft.Extensions.FileSystemGlobbing**: used for glob-pattern file matching in `GlobMatcher` — see
+  *FileSystemGlobbing Integration Design*
+- **DemaConsulting.TestResults**: used for structured test-result reporting in `Validation` — see
+  *TestResults Integration Design*
+
+## Risk Control Measures
+
+DictionaryMark is a development tool with no patient-safety or safety-critical risk classification. No
+software-item segregation is required by the applicable risk framework.
+
+The one security boundary in the system is path-traversal prevention: caller-supplied file paths are
+validated by `PathHelpers.SafePathCombine` before any file-system operation combines a base directory
+with an untrusted relative path. This boundary is enforced entirely within the Utilities subsystem.
 
 ## Error Handling
 
@@ -82,3 +103,17 @@ Data moves through the system in two phases: input processing and output generat
 ### Output Processing
 
 1. **Formatted Markdown** → Written to output file or stdout
+
+## Design Constraints
+
+- **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS). No platform-specific
+  APIs are used in the core logic; `GlobMatcher` normalizes path separators internally.
+- **Target frameworks**: net8.0, net9.0, net10.0. The tool is packaged and distributed as a .NET global
+  tool (`PackAsTool`).
+- **Input size**: no enforced limit on the number of YAML files or entries. Performance is bounded by
+  available memory and I/O throughput.
+- **Output size**: no enforced limit. Output is buffered in memory as a string before writing.
+- **Encoding**: all file I/O uses UTF-8 without BOM (default for `File.WriteAllText` and
+  `StreamReader` on .NET).
+- **Exit-code contract**: exit code 0 means no errors were recorded; exit code 1 means at least one
+  error was written via `context.WriteError`. No other exit codes are produced by the tool itself.

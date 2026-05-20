@@ -14,6 +14,11 @@ This user guide covers:
 - Command-line options reference
 - Practical examples for various scenarios
 
+## References
+
+- [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)
+- [.NET SDK](https://dotnet.microsoft.com/download)
+
 # Continuous Compliance
 
 This project follows the
@@ -221,14 +226,14 @@ The following command-line options are supported:
 | `--silent`                            | Suppress console output                                            |
 | `--validate`                          | Run self-validation                                                |
 | `--results <file>`, `--result <file>` | Write validation results to file (TRX or JUnit format)             |
-| `--depth <#>`                         | Set heading depth for markdown output (default: 1)                 |
+| `--depth <n>`                         | Set heading depth for markdown output (default: 1)                 |
 | `--log <file>`                        | Write output to log file                                           |
 | `-i`, `--input <pattern>`             | Input YAML file or glob pattern (repeatable)                       |
 | `-o`, `--output <file>`               | Output Markdown file (default: stdout)                             |
 | `-f`, `--format <format>`             | Output format: `bullets` (default) or `table`                      |
 | `-s`, `--section <heading>`           | Section heading text                                               |
 | `--term-header <header>`              | Term column header for table format (default: `Term`)              |
-| `--def-header <header>`               | Definition column header for table format (default: `Definition`)  |
+| `--def-header <header>`, `--definition-header <header>` | Definition column header for table format (default: `Definition`)  |
 | `--sort <order>`                      | Sort order: `file` (default) or `alpha`                            |
 
 # Examples

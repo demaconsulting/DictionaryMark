@@ -3,6 +3,47 @@
 The Dictionary subsystem handles loading, validating, and formatting dictionary entries.
 It is orchestrated by `DictionaryGenerator`, which chains the three specialist units in sequence.
 
+### Overview
+
+The Dictionary subsystem contains four units: `DictionaryGenerator` (pipeline orchestrator),
+`YamlDictionaryLoader` (YAML file reader), `ConflictDetector` (cross-file conflict validator),
+and `MarkdownFormatter` (output renderer). Its boundary spans everything from resolving input
+file paths through formatting the final Markdown string. The subsystem also defines three
+supporting value types — `DictionaryEntry`, `MarkdownOptions`, and the `OutputFormat` and
+`SortOrder` enums — which are shared with the CLI subsystem.
+
+### Interfaces
+
+**Exposed to the rest of the system:**
+
+- `DictionaryGenerator.Generate(Context context)` — the single public entry point; runs the
+  full pipeline using settings from `context` and writes output.
+- `OutputFormat` enum — shared with the CLI subsystem as the type of `context.Format`.
+- `SortOrder` enum — shared with the CLI subsystem as the type of `context.SortBy`.
+
+**Consumed from other items:**
+
+- `Context` (CLI subsystem) — provides `InputPatterns`, `OutputFile`, `Format`, `SortBy`,
+  `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `WriteError`, and
+  `WriteLine`.
+- `GlobMatcher.GetFiles` (Utilities subsystem) — resolves glob patterns to file paths.
+- `YamlDotNet` (OTS) — used by `YamlDictionaryLoader` to parse YAML streams.
+
+### Design
+
+`DictionaryGenerator.Generate` drives the pipeline in five steps:
+
+1. Call `GlobMatcher.GetFiles(context.InputPatterns)` to resolve all input file paths; return
+   early on `ArgumentException` or when no files are found.
+2. For each file, call `YamlDictionaryLoader.Load(file)` to produce a `DictionaryEntry` list;
+   return early on `IOException` or `InvalidOperationException`.
+3. Call `ConflictDetector.Detect(allEntries)` to find terms with conflicting definitions; report
+   each conflict via `context.WriteError` and return early if any are found.
+4. Construct a `MarkdownOptions` bag from `context` properties and call
+   `MarkdownFormatter.Format(allEntries, options)` to produce the Markdown string.
+5. Write the string to `context.OutputFile` (via `File.WriteAllText`) or to stdout (via
+   `context.WriteLine`).
+
 ### Data Model
 
 - `DictionaryEntry` — Immutable pair of `Term` (`string`) and `Definition` (`string`).

@@ -21,7 +21,7 @@
 using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
 
-namespace DemaConsulting.DictionaryMark.Tests;
+namespace DemaConsulting.DictionaryMark.Tests.Utilities;
 
 /// <summary>
 ///     Subsystem tests for the Utilities subsystem covering PathHelpers integration workflows.

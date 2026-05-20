@@ -4,7 +4,7 @@ This document describes the unit-level verification design for the `DictionaryGe
 It defines test scenarios, dependency usage, and requirement coverage for
 `DictionaryGeneratorTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `DictionaryGenerator` is verified with unit tests in `DictionaryGeneratorTests.cs`. Tests
 create temporary YAML files with controlled content, invoke `DictionaryGenerator.Generate`,
@@ -16,6 +16,17 @@ and assert on captured console output, exit codes, and error messages.
 | ----------- | ----------------------------------------------------------------------- |
 | File system | Temporary YAML files written with controlled content for each test.     |
 | `Context`   | Created from controlled argument arrays to drive each test scenario.    |
+
+#### Test Environment
+
+N/A - standard test environment. Tests write temporary YAML files using `TemporaryDirectory`
+for automatic cleanup.
+
+#### Acceptance Criteria
+
+All unit tests in `DictionaryGeneratorTests.cs` pass; all requirements listed in the
+Requirements Coverage section have at least one passing test scenario; no tests may be skipped
+or marked as expected failures.
 
 #### Test Scenarios
 

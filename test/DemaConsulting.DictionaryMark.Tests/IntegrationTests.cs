@@ -234,33 +234,24 @@ public class IntegrationTests
     public void DictionaryMark_LogFlag_Provided_WritesOutputToFile()
     {
         // Arrange: temporary log file path
-        var logFile = Path.GetTempFileName();
+        using var tmpDir = new TemporaryDirectory();
+        var logFile = tmpDir.GetFilePath("output.log");
 
-        try
-        {
-            // Act: run the tool with log flag
-            var exitCode = Runner.Run(
-                out var output,
-                "dotnet",
-                _dllPath,
-                "--log",
-                logFile);
+        // Act: run the tool with log flag
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet",
+            _dllPath,
+            "--log",
+            logFile);
 
-            // Assert: log file is created and contains tool output; console output matches
-            Assert.Equal(0, exitCode);
-            Assert.True(File.Exists(logFile), "Log file was not created");
+        // Assert: log file is created and contains tool output; console output matches
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(logFile), "Log file was not created");
 
-            var logContent = File.ReadAllText(logFile);
-            Assert.Contains("DictionaryMark version", logContent);
-            Assert.Contains("DictionaryMark version", output);
-        }
-        finally
-        {
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
-        }
+        var logContent = File.ReadAllText(logFile);
+        Assert.Contains("DictionaryMark version", logContent);
+        Assert.Contains("DictionaryMark version", output);
     }
 
     /// <summary>
@@ -452,6 +443,24 @@ public class IntegrationTests
         Assert.Contains("Conflict", output);
     }
 
+    /// <summary>Test that DictionaryMark returns a non-zero exit code when conflicting entries are detected.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ConflictingEntries_ExitCodeIsNonZero()
+    {
+        // Arrange: two input files with conflicting definitions for the same term
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile1 = tmpDir.GetFilePath("conflict1.yaml");
+        var tmpFile2 = tmpDir.GetFilePath("conflict2.yaml");
+        File.WriteAllText(tmpFile1, "SDK: Software Development Kit\n");
+        File.WriteAllText(tmpFile2, "SDK: System Development Kit\n");
+
+        // Act: run the tool with both conflicting input files
+        var exitCode = Runner.Run(out var _, "dotnet", _dllPath, "--input", tmpFile1, "--input", tmpFile2);
+
+        // Assert: exit code is explicitly non-zero to confirm conflict detection triggers failure
+        Assert.NotEqual(0, exitCode);
+    }
+
     /// <summary>Test that DictionaryMark outputs a section heading when --section is specified.</summary>
     [Fact]
     public void DictionaryMark_Generate_WithSectionHeading_OutputsHeading()
@@ -571,5 +580,37 @@ public class IntegrationTests
         var entryIndex = output.IndexOf("\n- ", StringComparison.Ordinal);
         Assert.True(headingIndex >= 0, "Expected '### My Section' heading in output");
         Assert.True(entryIndex > headingIndex, "Expected section heading to appear before generated entries");
+    }
+
+    /// <summary>
+    ///     Test that an unrecognized argument causes an error message written to stderr.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_UnrecognizedArgument_WritesErrorToStderr()
+    {
+        // Arrange: (none - constructor initializes _dllPath)
+
+        // Act: run the tool with an unrecognized argument; capture stderr separately
+        var exitCode = Runner.Run(out var _, out var stderr, "dotnet", _dllPath, "--invalid-flag");
+
+        // Assert: non-zero exit code and error message present on stderr
+        Assert.NotEqual(0, exitCode);
+        Assert.False(string.IsNullOrWhiteSpace(stderr), "Expected an error message on stderr but got none");
+    }
+
+    /// <summary>
+    ///     Test that an unrecognized argument produces no markdown output on stdout.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_UnrecognizedArgument_WritesNoMarkdownOutput()
+    {
+        // Arrange: (none - constructor initializes _dllPath)
+
+        // Act: run the tool with an unrecognized argument; capture stdout separately
+        Runner.Run(out var stdout, out var _, "dotnet", _dllPath, "--invalid-flag");
+
+        // Assert: stdout is empty - no markdown output should be emitted on the error path
+        Assert.True(string.IsNullOrWhiteSpace(stdout),
+            $"Expected no markdown output on stdout, but got: {stdout}");
     }
 }

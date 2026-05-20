@@ -1,0 +1,27 @@
+---
+# FileSystemGlobbing OTS Software Requirements
+#
+# Requirements for the Microsoft.Extensions.FileSystemGlobbing file-path glob matching functionality.
+
+sections:
+  - title: OTS Software Requirements
+    sections:
+      - title: FileSystemGlobbing Requirements
+        requirements:
+          - id: DictionaryMark-OTS-FileSystemGlobbing
+            title: FileSystemGlobbing shall resolve user-supplied glob patterns to concrete file paths.
+            justification: |
+              DemaConsulting.DictionaryMark uses Microsoft.Extensions.FileSystemGlobbing in
+              GlobMatcher to match relative and absolute glob patterns against the file system via
+              Matcher, Matcher.AddInclude, Matcher.Execute, PatternMatchingResult.Files,
+              FilePatternMatch.Path, and DirectoryInfoWrapper. Correct pattern resolution is
+              verified indirectly by the GlobMatcherTests unit tests, which exercise all required
+              FileSystemGlobbing APIs through normal class-level calls.
+            tags: [ots]
+            tests:
+              - GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
+              - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty
+              - GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
+              - GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty
+              - GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
+              - GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults

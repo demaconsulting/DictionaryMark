@@ -10,11 +10,16 @@ project. It discovers and runs all test methods and writes TRX result files that
 reporting and requirements traceability. Passing tests confirm the framework is functioning
 correctly.
 
-### Verification Approach
+### Qualification Evidence
 
 xUnit is verified by self-validation evidence from the CI pipeline. Each scenario names a specific
 test method that xUnit must discover, execute, and record in a TRX result file. A passing pipeline
 run for all scenarios constitutes evidence that both requirements are satisfied.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -101,3 +106,7 @@ summary even when the context is configured for silent operation.
   Context_Create_LogFlag_OpensLogFile, Context_Create_UnknownArgument_ThrowsArgumentException,
   PathHelpers_SafePathCombine_ValidPaths_CombinesCorrectly,
   Program_Run_WithVersionFlag_DisplaysVersionOnly, Validation_Run_WithSilentContext_PrintsSummary
+
+### Suitability Conclusion
+
+Based on the evidence above, xUnit is considered suitable for use in the DictionaryMark CI pipeline.

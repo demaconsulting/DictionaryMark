@@ -50,7 +50,21 @@ internal sealed class TemporaryDirectory : IDisposable
     /// </summary>
     /// <param name="fileName">The file name (no path separators).</param>
     /// <returns>The combined full path.</returns>
-    public string GetFilePath(string fileName) => Path.Combine(DirectoryPath, fileName);
+    /// <exception cref="ArgumentException">
+    ///     Thrown when <paramref name="fileName"/> contains a directory separator character.
+    /// </exception>
+    public string GetFilePath(string fileName)
+    {
+        if (fileName.Contains(Path.DirectorySeparatorChar) ||
+            fileName.Contains(Path.AltDirectorySeparatorChar))
+        {
+            throw new ArgumentException(
+                $"The file name must not contain path separator characters, but was: '{fileName}'",
+                nameof(fileName));
+        }
+
+        return Path.Combine(DirectoryPath, fileName);
+    }
 
     /// <summary>
     ///     Deletes the temporary directory and all its contents.

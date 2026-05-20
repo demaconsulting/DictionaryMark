@@ -18,13 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
 
 /// <summary>
 ///     Subsystem tests for the Dictionary subsystem covering YAML loading, conflict detection,
-///     and Markdown formatting integration.
+///     Markdown formatting, and end-to-end generation pipeline integration.
 /// </summary>
 [Collection("Sequential")]
 public class DictionarySubsystemTests
@@ -35,31 +37,22 @@ public class DictionarySubsystemTests
     [Fact]
     public void DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown()
     {
-        var tmpFile = Path.GetTempFileName() + ".yaml";
-        try
+        // Arrange: YAML file with two entries; bullet-list output format
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\nCI: Continuous Integration\n");
+        var options = new MarkdownOptions
         {
-            // Arrange
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\nCI: Continuous Integration\n");
-            var options = new MarkdownOptions
-            {
-                Format = OutputFormat.Bullets
-            };
+            Format = OutputFormat.Bullets
+        };
 
-            // Act
-            var entries = YamlDictionaryLoader.Load(tmpFile);
-            var result = MarkdownFormatter.Format(entries, options);
+        // Act: load entries and format as Markdown
+        var entries = YamlDictionaryLoader.Load(tmpFile);
+        var result = MarkdownFormatter.Format(entries, options);
 
-            // Assert
-            Assert.Contains("- **API**: Application Programming Interface", result);
-            Assert.Contains("- **CI**: Continuous Integration", result);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: both entries are rendered as bullet list items
+        Assert.Contains("- **API**: Application Programming Interface", result);
+        Assert.Contains("- **CI**: Continuous Integration", result);
     }
 
     /// <summary>
@@ -68,32 +61,23 @@ public class DictionarySubsystemTests
     [Fact]
     public void DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown()
     {
-        var tmpFile = Path.GetTempFileName() + ".yaml";
-        try
+        // Arrange: YAML file with one entry; table output format
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
+        var options = new MarkdownOptions
         {
-            // Arrange
-            File.WriteAllText(tmpFile, "API: Application Programming Interface\n");
-            var options = new MarkdownOptions
-            {
-                Format = OutputFormat.Table
-            };
+            Format = OutputFormat.Table
+        };
 
-            // Act
-            var entries = YamlDictionaryLoader.Load(tmpFile);
-            var result = MarkdownFormatter.Format(entries, options);
+        // Act: load entries and format as Markdown table
+        var entries = YamlDictionaryLoader.Load(tmpFile);
+        var result = MarkdownFormatter.Format(entries, options);
 
-            // Assert
-            Assert.Contains("| Term |", result);
-            Assert.Contains("| API |", result);
-            Assert.Contains("Application Programming Interface", result);
-        }
-        finally
-        {
-            if (File.Exists(tmpFile))
-            {
-                File.Delete(tmpFile);
-            }
-        }
+        // Assert: table header and entry row are present
+        Assert.Contains("| Term |", result);
+        Assert.Contains("| API |", result);
+        Assert.Contains("Application Programming Interface", result);
     }
 
     /// <summary>
@@ -102,35 +86,55 @@ public class DictionarySubsystemTests
     [Fact]
     public void DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts()
     {
-        var tmpFile1 = Path.GetTempFileName() + ".yaml";
-        var tmpFile2 = Path.GetTempFileName() + ".yaml";
+        // Arrange: two YAML files each defining the same term with different definitions
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile1 = tmpDir.GetFilePath("first.yaml");
+        var tmpFile2 = tmpDir.GetFilePath("second.yaml");
+        File.WriteAllText(tmpFile1, "API: Application Programming Interface\n");
+        File.WriteAllText(tmpFile2, "API: Advanced Peripheral Interface\n");
+
+        // Act: load both files and run conflict detection
+        var entries1 = YamlDictionaryLoader.Load(tmpFile1);
+        var entries2 = YamlDictionaryLoader.Load(tmpFile2);
+        var allEntries = entries1.Concat(entries2).ToList();
+        var conflicts = ConflictDetector.Detect(allEntries);
+
+        // Assert: conflict list is non-empty and references the conflicting term
+        Assert.NotEmpty(conflicts);
+        Assert.Contains(conflicts, c => c.Contains("API", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    ///     Test that the dictionary subsystem orchestrates the end-to-end generation pipeline,
+    ///     loading YAML entries and producing Markdown output.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown()
+    {
+        // Arrange: YAML file with two entries; redirect stdout to capture generated output
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(tmpFile, "API: Application Programming Interface\nCI: Continuous Integration\n");
+        var originalOut = Console.Out;
         try
         {
-            // Arrange
-            File.WriteAllText(tmpFile1, "API: Application Programming Interface\n");
-            File.WriteAllText(tmpFile2, "API: Advanced Peripheral Interface\n");
+            using var outWriter = new StringWriter();
+            Console.SetOut(outWriter);
+            using var context = Context.Create(["--input", tmpFile]);
 
-            // Act
-            var entries1 = YamlDictionaryLoader.Load(tmpFile1);
-            var entries2 = YamlDictionaryLoader.Load(tmpFile2);
-            var allEntries = entries1.Concat(entries2).ToList();
-            var conflicts = ConflictDetector.Detect(allEntries);
+            // Act: invoke the full generation pipeline end-to-end
+            DictionaryGenerator.Generate(context);
 
-            // Assert
-            Assert.NotEmpty(conflicts);
-            Assert.Contains(conflicts, c => c.Contains("API", StringComparison.OrdinalIgnoreCase));
+            // Assert: generated output contains both entries; exit code indicates success
+            var output = outWriter.ToString();
+            Assert.Contains("API", output);
+            Assert.Contains("CI", output);
+            Assert.Equal(0, context.ExitCode);
         }
         finally
         {
-            if (File.Exists(tmpFile1))
-            {
-                File.Delete(tmpFile1);
-            }
-
-            if (File.Exists(tmpFile2))
-            {
-                File.Delete(tmpFile2);
-            }
+            // Restore original stdout regardless of test outcome
+            Console.SetOut(originalOut);
         }
     }
 }

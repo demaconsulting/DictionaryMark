@@ -11,7 +11,7 @@ sections:
           troubleshooting and compatibility verification.
         children:
           - DictionaryMark-Program-Version
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
         tests:
           - DictionaryMark_VersionFlag_Provided_OutputsVersion
 
@@ -22,7 +22,7 @@ sections:
           external resources.
         children:
           - DictionaryMark-Program-Help
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
         tests:
           - DictionaryMark_HelpFlag_Provided_OutputsUsageInformation
 
@@ -44,7 +44,7 @@ sections:
           cluttering output logs when only the exit code is needed.
         children:
           - DictionaryMark-Cli-OutputManagement
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
         tests:
           - DictionaryMark_SilentFlag_Provided_SuppressesOutput
 
@@ -54,7 +54,7 @@ sections:
           Provides persistent logging for debugging and compliance audit trails.
         children:
           - DictionaryMark-Cli-OutputManagement
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
         tests:
           - DictionaryMark_LogFlag_Provided_WritesOutputToFile
 
@@ -64,10 +64,30 @@ sections:
           A non-zero exit code enables CI/CD pipelines to detect and surface
           misconfiguration failures automatically.
         children:
-          - DictionaryMark-Context-InvalidArgs
+          - DictionaryMark-Cli-ErrorOutput
           - DictionaryMark-Program-ExitCode
         tests:
           - DictionaryMark_UnknownArgument_Provided_ReturnsError
+
+      - id: DictionaryMark-System-ErrorHandling-Message
+        title: The tool shall write an error message identifying the unrecognized argument to stderr when an unrecognized
+          argument is provided.
+        justification: |
+          Clear error messages help users diagnose misconfiguration quickly.
+        children:
+          - DictionaryMark-Cli-ErrorOutput
+        tests:
+          - DictionaryMark_UnrecognizedArgument_WritesErrorToStderr
+
+      - id: DictionaryMark-System-ErrorHandling-NoOutput
+        title: The tool shall not write any Markdown content when an unrecognized argument is provided.
+        justification: |
+          Suppressing Markdown output on argument error prevents partial content
+          from being written to downstream pipeline stages.
+        children:
+          - DictionaryMark-Cli-ErrorOutput
+        tests:
+          - DictionaryMark_UnrecognizedArgument_WritesNoMarkdownOutput
 
       - id: DictionaryMark-System-GenerateBullets
         title: The tool shall generate a Markdown bullet list from YAML dictionary files.
@@ -77,8 +97,7 @@ sections:
         children:
           - DictionaryMark-Program-GenerateDictionary
           - DictionaryMark-Dictionary-MarkdownFormatting
-          - DictionaryMark-DictionaryGenerator-FileLoading
-          - DictionaryMark-DictionaryGenerator-OutputRouting
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
 
@@ -99,7 +118,7 @@ sections:
           Writing to a file enables integration with documentation pipelines that
           consume generated Markdown files.
         children:
-          - DictionaryMark-DictionaryGenerator-OutputRouting
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_WithOutputFile_WritesFile
 
@@ -111,8 +130,8 @@ sections:
           Glob pattern support allows users to specify wildcard input patterns rather
           than enumerating individual files, enabling flexible batch processing.
         children:
-          - DictionaryMark-GlobMatcher-GetFiles
-          - DictionaryMark-DictionaryGenerator-FileLoading
+          - DictionaryMark-Utilities-FileMatching
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_GlobInput_ProcessesMatches
 
@@ -124,8 +143,8 @@ sections:
           Supporting multiple input files allows users to compose dictionaries from
           separate source files without manual pre-processing.
         children:
-          - DictionaryMark-Context-ArgumentParsing
-          - DictionaryMark-DictionaryGenerator-FileLoading
+          - DictionaryMark-Cli-ArgumentParsing
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_MultipleInputs_MergesEntries
 
@@ -137,7 +156,7 @@ sections:
           message so they can identify and resolve the conflict.
         children:
           - DictionaryMark-Dictionary-ConflictDetection
-          - DictionaryMark-DictionaryGenerator-ConflictReporting
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_ConflictingEntries_ReportsError
 
@@ -149,7 +168,7 @@ sections:
           published silently.
         children:
           - DictionaryMark-Program-ExitCode
-          - DictionaryMark-DictionaryGenerator-ConflictReporting
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_ConflictingEntries_ReportsError
 
@@ -159,7 +178,7 @@ sections:
           Section headings allow generated dictionaries to be embedded within larger
           documentation pages without requiring manual post-processing by the user.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_WithSectionHeading_OutputsHeading
@@ -172,7 +191,7 @@ sections:
           Customizable column headers allow users to adapt generated tables to domain
           vocabularies (e.g., "Word", "Abbreviation") without modifying the output file.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_WithTermHeader_OutputsCustomHeader
@@ -185,7 +204,7 @@ sections:
           Customizable definition column headers allow users to tailor generated tables
           to their documentation context without post-processing the output.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_WithDefHeader_OutputsCustomHeader
@@ -197,7 +216,7 @@ sections:
           quickly in large dictionaries, regardless of the order terms appear in the
           source YAML files.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_WithSortAlpha_OutputsAlphabeticOrder
@@ -210,7 +229,7 @@ sections:
           Preserving file-encounter order gives users predictable output when
           the order of entries within source files is intentional.
         children:
-          - DictionaryMark-Context-ArgumentParsing
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_DefaultSort_PreservesFileOrder
@@ -223,7 +242,7 @@ sections:
           Configurable heading depth allows generated sections to be nested within
           existing document hierarchies without conflicting with surrounding headings.
         children:
-          - DictionaryMark-Context-DepthFlag
+          - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
         tests:
           - DictionaryMark_Generate_SectionWithDepth_OutputsHeading
@@ -236,7 +255,7 @@ sections:
           TRX format is widely used in MSTest-compatible toolchains and CI pipelines,
           enabling structured test evidence consumption without parsing console output.
         children:
-          - DictionaryMark-Validation-TrxOutput
+          - DictionaryMark-SelfTest-Subsystem
         tests:
           - DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile
 
@@ -248,6 +267,6 @@ sections:
           JUnit XML is the most widely supported test results interchange format,
           enabling integration with a broad range of CI/CD and reporting tools.
         children:
-          - DictionaryMark-Validation-JUnitOutput
+          - DictionaryMark-SelfTest-Subsystem
         tests:
           - DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile

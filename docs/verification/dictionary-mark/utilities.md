@@ -2,7 +2,7 @@
 
 This document describes subsystem-level verification for the Utilities subsystem.
 
-### Verification Approach
+### Verification Strategy
 
 The Utilities subsystem is verified through subsystem integration tests in
 `UtilitiesSubsystemTests.cs` that exercise `GlobMatcher` and `PathHelpers` together.
@@ -14,6 +14,17 @@ unit in isolation.
 - **`GlobMatcher`**: Invoked directly to test pattern resolution and deduplication.
 - **`PathHelpers`**: Invoked directly to test path combination and traversal rejection.
 - **File system**: Temporary directories created via `TemporaryDirectory` to provide real file-system fixtures.
+
+### Test Environment
+
+N/A - standard test environment. Tests use `TemporaryDirectory` to create real file-system
+fixtures for glob pattern matching and path combination scenarios.
+
+### Acceptance Criteria
+
+All Utilities subsystem tests in `UtilitiesSubsystemTests.cs` pass; all requirements listed
+in the Requirements Coverage section have at least one passing test scenario; no tests may be
+skipped or marked as expected failures.
 
 ### Test Scenarios
 
@@ -55,4 +66,8 @@ base directory, then `Directory.CreateDirectory` is called with those paths.
 
 ### Requirements Coverage
 
-- **`DictionaryMark-Utilities-Subsystem`**: All `UtilitiesSubsystem_*` tests.
+- **`DictionaryMark-Utilities-FileMatching`**: `UtilitiesSubsystem_GlobMatcher_ResolvesFiles`.
+- **`DictionaryMark-Utilities-PathSafety`**: `UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly`,
+  `UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException`,
+  `UtilitiesSubsystem_AbsolutePathRejection_ThrowsException`,
+  `UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories`.

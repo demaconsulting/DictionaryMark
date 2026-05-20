@@ -40,8 +40,8 @@ sections:
           - MarkdownFormatter_Format_DuplicateEntries_DeduplicatesKeepingFirst
 
       - id: DictionaryMark-Formatter-SectionHeading
-        title: The MarkdownFormatter class shall emit a configurable section heading before the entries when a
-          section heading is specified.
+        title: The MarkdownFormatter class shall emit a configurable section heading before the entries when a section heading
+          is specified.
         justification: |
           Section headings allow the generated Markdown to be inserted into a larger document
           at a consistent heading level without manual post-processing.

@@ -4,6 +4,49 @@ The CLI subsystem handles command-line argument parsing and program output for D
 It is the primary interface between the user's command-line invocation and the tool's internal
 logic.
 
+### Overview
+
+The CLI subsystem contains one unit, `Context`, which encapsulates all argument-parsing logic
+and both output channels (console and log file). Its boundaries span: parsing `string[]` args
+into typed properties, opening an optional log file, routing normal output through `WriteLine`,
+routing errors through `WriteError`, and exposing the derived `ExitCode`. All other subsystems
+communicate with the rest of the system exclusively through a `Context` instance; the CLI
+subsystem has no dependency on DictionaryMark subsystems other than referencing the
+`OutputFormat` and `SortOrder` enums from the Dictionary subsystem.
+
+### Interfaces
+
+**Exposed to the rest of the system:**
+
+- `Context.Create(string[] args)` — factory method; returns a fully initialized `Context`.
+- `context.Version`, `context.Help`, `context.Silent`, `context.Validate` — parsed boolean flags.
+- `context.InputPatterns`, `context.OutputFile`, `context.Format`, `context.SortBy`,
+  `context.SectionHeading`, `context.TermHeader`, `context.DefinitionHeader`,
+  `context.HeadingDepth`, `context.ResultsFile` — parsed option values.
+- `context.WriteLine(string)` — writes a line to stdout and the log file.
+- `context.WriteError(string)` — writes an error to stderr in red, sets the error flag, and
+  writes to the log file.
+- `context.ExitCode` — derived from the internal error flag: 0 (no errors) or 1.
+
+**Consumed from other items:**
+
+- `OutputFormat` and `SortOrder` enums from the Dictionary subsystem — used as property types
+  for `context.Format` and `context.SortBy`.
+
+### Design
+
+`Context` is created once per invocation by `Program.Main` calling `Context.Create(args)`. The
+factory delegates to the private nested `ArgumentParser`, which processes `args` sequentially
+in a `while` loop: each recognized flag sets a property; unrecognized flags throw
+`ArgumentException`. After parsing, `Context.Create` copies the results into a new `Context`
+instance (init-only properties) and opens the log file if `--log` was specified.
+
+Output routing uses two public methods: `WriteLine` writes to `Console.Out` (unless `Silent`)
+and to `_logWriter` (if open); `WriteError` additionally sets `_hasErrors = true` and writes
+to `Console.Error` in red (unless `Silent`). `ExitCode` derives its value purely from `_hasErrors`, so the exit
+code cannot be reset once an error has been recorded. `Context` implements `IDisposable` to
+close the log `StreamWriter` on disposal.
+
 ### Context
 
 Created once per tool invocation via the `Context.Create` factory method. It parses the

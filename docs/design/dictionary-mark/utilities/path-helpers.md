@@ -3,7 +3,7 @@
 The `PathHelpers` class provides safe path-combination utilities that enforce a security
 boundary, preventing path-traversal attacks when joining caller-supplied path components.
 
-#### Overview
+#### Purpose
 
 `PathHelpers.SafePathCombine` combines a base path with a relative path and verifies that
 the resolved result remains within the base directory:
@@ -24,7 +24,7 @@ No file-system I/O is performed; only string-level path normalization is applied
 
 `PathHelpers` is a `static` class with no instance state.
 
-#### Methods
+#### Key Methods
 
 ##### SafePathCombine(string basePath, string relativePath) -> string
 
@@ -39,6 +39,30 @@ Combines `basePath` and `relativePath` and returns the result when it stays with
 - `NotSupportedException` - when a supplied path contains an unsupported format.
 - `PathTooLongException` - when the combined or resolved path exceeds the maximum length.
 
+#### Error Handling
+
+`SafePathCombine` throws exceptions for all error conditions; no error is silently swallowed:
+
+- `ArgumentNullException` — when `basePath` or `relativePath` is null.
+- `ArgumentException` — when the resolved combined path escapes the base directory (path-traversal
+  attempt), or when a supplied path string is otherwise invalid.
+- `NotSupportedException` — when a supplied path contains a format not supported by the current
+  platform.
+- `PathTooLongException` — when the combined or resolved path exceeds the system-defined maximum
+  length.
+
+Callers are expected to catch these exceptions and handle or report them appropriately.
+
 #### Interactions
 
 `PathHelpers` has no external dependencies; it uses only `System.IO.Path` from the .NET BCL.
+
+#### Dependencies
+
+`PathHelpers` has no dependencies on other DictionaryMark units, subsystems, or OTS packages.
+It uses only `System.IO.Path` from the .NET base class library for path string normalization.
+
+#### Callers
+
+`Validation` calls `PathHelpers.SafePathCombine` to construct safe file paths within temporary
+directories when preparing log files and YAML input files for each self-test scenario.
