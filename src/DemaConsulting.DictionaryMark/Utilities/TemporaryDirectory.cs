@@ -30,7 +30,7 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 internal sealed class TemporaryDirectory : IDisposable
 {
     /// <summary>
-    ///     Gets the full path to the temporary directory.
+    ///     Gets the path to the temporary directory.
     /// </summary>
     public string DirectoryPath { get; }
 
@@ -74,14 +74,14 @@ internal sealed class TemporaryDirectory : IDisposable
     }
 
     /// <summary>
-    ///     Returns the full path to a file within the temporary directory,
+    ///     Returns the path to a file within the temporary directory,
     ///     creating any required intermediate subdirectories.
     /// </summary>
     /// <param name="relativePath">
     ///     A relative path (file name or subdirectory/file) within the temporary directory.
     ///     Must not be <see langword="null"/>.
     /// </param>
-    /// <returns>The combined full path within the temporary directory.</returns>
+    /// <returns>The combined path within the temporary directory.</returns>
     /// <exception cref="ArgumentNullException">
     ///     Thrown when <paramref name="relativePath"/> is <see langword="null"/>.
     /// </exception>

@@ -97,7 +97,14 @@ public class TemporaryDirectoryTests
         var filePath = tmpDir.GetFilePath("output.md");
 
         // Assert
-        Assert.StartsWith(tmpDir.DirectoryPath, filePath, StringComparison.OrdinalIgnoreCase);
+        var fullDirectoryPath = Path.GetFullPath(tmpDir.DirectoryPath);
+        var fullFilePath = Path.GetFullPath(filePath);
+        var relativePath = Path.GetRelativePath(fullDirectoryPath, fullFilePath);
+        var escapesDirectory = relativePath.Equals("..", StringComparison.Ordinal) ||
+                               relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal) ||
+                               relativePath.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
+        Assert.False(Path.IsPathRooted(relativePath));
+        Assert.False(escapesDirectory);
         Assert.EndsWith("output.md", filePath, StringComparison.OrdinalIgnoreCase);
     }
 

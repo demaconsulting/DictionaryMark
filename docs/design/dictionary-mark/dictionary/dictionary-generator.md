@@ -72,6 +72,6 @@ generated. The five error cases are:
 
 #### Callers
 
-`Program.RunToolLogic` instantiates `DictionaryGenerator` and calls `Generate(context)` when
+`Program.RunToolLogic` calls `DictionaryGenerator.Generate(context)` when
 `context.InputPatterns` is non-empty. `Generate` is the sole public entry point of the
 Dictionary subsystem pipeline.
