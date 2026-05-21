@@ -10,11 +10,16 @@ build pipeline. FileAssert validates that each generated HTML file exists, has a
 contains a valid HTML title element, and includes expected document content. Passing FileAssert
 assertions for each document type proves Pandoc executed correctly and produced meaningful output.
 
-### Verification Approach
+### Qualification Evidence
 
 Pandoc is verified by self-validation evidence from the CI pipeline. Each scenario is a FileAssert
 assertion that runs after Pandoc converts a specific Markdown document to HTML. A passing pipeline
 run for all scenarios constitutes evidence that the requirement is satisfied.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -85,3 +90,7 @@ a valid HTML title element, and includes expected document content.
 
 - **`DictionaryMark-OTS-Pandoc`**: Pandoc_BuildNotesHtml, Pandoc_CodeQualityHtml, Pandoc_ReviewPlanHtml,
   Pandoc_ReviewReportHtml, Pandoc_DesignHtml, Pandoc_VerificationHtml, Pandoc_UserGuideHtml
+
+### Suitability Conclusion
+
+Based on the evidence above, Pandoc is considered suitable for use in the DictionaryMark CI pipeline.

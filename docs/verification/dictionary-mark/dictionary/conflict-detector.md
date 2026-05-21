@@ -4,7 +4,7 @@ This document describes the unit-level verification design for the `ConflictDete
 It defines test scenarios, dependency usage, and requirement coverage for
 `ConflictDetectorTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `ConflictDetector` is verified with unit tests in `ConflictDetectorTests.cs`. Tests construct
 `DictionaryEntry` arrays with controlled term and definition values, invoke
@@ -15,6 +15,16 @@ It defines test scenarios, dependency usage, and requirement coverage for
 | Dependency        | Usage in Tests                                       |
 | ----------------- | ---------------------------------------------------- |
 | `DictionaryEntry` | Constructed inline with test term/definition values. |
+
+#### Test Environment
+
+N/A - standard test environment.
+
+#### Acceptance Criteria
+
+All unit tests in `ConflictDetectorTests.cs` pass; all requirements listed in the Requirements
+Coverage section have at least one passing test scenario; no tests may be skipped or marked as
+expected failures.
 
 #### Test Scenarios
 

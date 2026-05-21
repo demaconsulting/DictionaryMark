@@ -15,6 +15,7 @@ includes:
   - docs/reqstream/dictionary-mark/utilities.yaml
   - docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml
   - docs/reqstream/dictionary-mark/utilities/path-helpers.yaml
+  - docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml
   - docs/reqstream/dictionary-mark/platform-requirements.yaml
   - docs/reqstream/ots/xunit.yaml
   - docs/reqstream/ots/reqstream.yaml
@@ -26,3 +27,6 @@ includes:
   - docs/reqstream/ots/pandoc.yaml
   - docs/reqstream/ots/weasyprint.yaml
   - docs/reqstream/ots/fileassert.yaml
+  - docs/reqstream/ots/yaml-dot-net.yaml
+  - docs/reqstream/ots/file-system-globbing.yaml
+  - docs/reqstream/ots/test-results.yaml

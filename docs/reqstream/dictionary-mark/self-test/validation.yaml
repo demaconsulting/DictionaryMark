@@ -15,7 +15,7 @@ sections:
           - Validation_Run_NullContext_ThrowsArgumentNullException
 
       - id: DictionaryMark-Validation-VersionDisplay
-        title: The Validation unit shall include a self-test that verifies version display.
+        title: The Validation unit shall confirm that version display is functioning correctly in the deployment environment.
         justification: |
           Confirms the --version output path is functioning correctly in the
           deployment environment.
@@ -23,7 +23,7 @@ sections:
           - Validation_Run_WithSilentContext_VersionDisplayTestPasses
 
       - id: DictionaryMark-Validation-HelpDisplay
-        title: The Validation unit shall include a self-test that verifies help display.
+        title: The Validation unit shall confirm that help display is functioning correctly in the deployment environment.
         justification: |
           Confirms the --help output path is functioning correctly in the
           deployment environment.
@@ -31,7 +31,8 @@ sections:
           - Validation_Run_WithSilentContext_HelpDisplayTestPasses
 
       - id: DictionaryMark-Validation-BulletGeneration
-        title: The Validation unit shall include a self-test that verifies bullet-list generation from YAML input.
+        title: The Validation unit shall confirm that bullet-list generation from YAML input is functioning correctly in the
+          deployment environment.
         justification: |
           Confirms the core bullet-list output path is functioning correctly in the
           deployment environment.
@@ -39,7 +40,8 @@ sections:
           - Validation_Run_WithSilentContext_BulletGenerationTestPasses
 
       - id: DictionaryMark-Validation-TableGeneration
-        title: The Validation unit shall include a self-test that verifies Markdown table generation from YAML input.
+        title: The Validation unit shall confirm that Markdown table generation from YAML input is functioning correctly in
+          the deployment environment.
         justification: |
           Confirms the core table output path is functioning correctly in the
           deployment environment.
@@ -47,14 +49,16 @@ sections:
           - Validation_Run_WithSilentContext_TableGenerationTestPasses
 
       - id: DictionaryMark-Validation-CustomHeaders
-        title: The Validation unit shall include a self-test that verifies custom column headers in table output.
+        title: The Validation unit shall confirm that custom column headers in table output are applied correctly in the deployment
+          environment.
         justification: |
           Confirms that the --term-header and --def-header options are applied correctly.
         tests:
           - Validation_Run_WithSilentContext_CustomHeadersTestPasses
 
       - id: DictionaryMark-Validation-ConflictDetection
-        title: The Validation unit shall include a self-test that verifies conflicting definitions are detected.
+        title: The Validation unit shall confirm that cross-file conflict detection is functioning correctly in the deployment
+          environment.
         justification: |
           Confirms that cross-file conflict detection is functioning correctly in the
           deployment environment.

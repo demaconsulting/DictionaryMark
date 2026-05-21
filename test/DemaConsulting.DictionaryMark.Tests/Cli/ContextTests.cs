@@ -21,7 +21,7 @@
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
 
-namespace DemaConsulting.DictionaryMark.Tests;
+namespace DemaConsulting.DictionaryMark.Tests.Cli;
 
 /// <summary>
 ///     Unit tests for the Context class.

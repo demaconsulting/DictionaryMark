@@ -63,6 +63,8 @@ reviews:
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
+      - "docs/design/ots.md"
+      - "docs/design/ots/*.md"
       - "docs/verification/introduction.md"
       - "docs/verification/ots.md"
 
@@ -200,6 +202,15 @@ reviews:
       - "src/**/Utilities/PathHelpers.cs"
       - "test/**/Utilities/PathHelpersTests.cs"
 
+  - id: DictionaryMark-Utilities-TemporaryDirectory
+    title: Review of DictionaryMark Utilities TemporaryDirectory unit implementation
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml"
+      - "docs/design/dictionary-mark/utilities/temporary-directory.md"
+      - "docs/verification/dictionary-mark/utilities/temporary-directory.md"
+      - "src/**/Utilities/TemporaryDirectory.cs"
+      - "test/**/Utilities/TemporaryDirectoryTests.cs"
+
   # OTS Items
   - id: OTS-BuildMark
     title: Review of BuildMark OTS verification evidence
@@ -260,3 +271,24 @@ reviews:
     paths:
       - "docs/reqstream/ots/xunit.yaml"
       - "docs/verification/ots/xunit.md"
+
+  - id: OTS-YamlDotNet
+    title: Review of YamlDotNet OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/yaml-dot-net.yaml"
+      - "docs/design/ots/yaml-dot-net.md"
+      - "docs/verification/ots/yaml-dot-net.md"
+
+  - id: OTS-FileSystemGlobbing
+    title: Review of FileSystemGlobbing OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/file-system-globbing.yaml"
+      - "docs/design/ots/file-system-globbing.md"
+      - "docs/verification/ots/file-system-globbing.md"
+
+  - id: OTS-TestResults
+    title: Review of TestResults OTS verification evidence
+    paths:
+      - "docs/reqstream/ots/test-results.yaml"
+      - "docs/design/ots/test-results.md"
+      - "docs/verification/ots/test-results.md"

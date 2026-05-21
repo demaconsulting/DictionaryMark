@@ -10,7 +10,7 @@ a human-readable markdown document included in the release artifacts. It runs in
 pipeline that produces the TRX test results, so a successful pipeline run is evidence that SarifMark
 executed without error.
 
-### Verification Approach
+### Qualification Evidence
 
 SarifMark is verified by two complementary layers of evidence. First, the CI pipeline runs
 `sarifmark --validate --results artifacts/sarifmark-self-validation.trx`, which exercises
@@ -24,11 +24,16 @@ renders the result to PDF and FileAssert asserts the PDF contains expected conte
 (`WeasyPrint_CodeQualityPdf`). A CI build failure at any step is evidence that SarifMark did
 not produce the required output.
 
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
+
 ### Test Scenarios
 
 #### SarifMark_SarifReading
 
-**Scenario**: SarifMark is invoked with a CodeQL SARIF results file as input.
+**Scenario**: SarifMark is invoked with a representative SARIF results file as input.
 
 **Expected**: Exits 0 and successfully reads the SARIF content.
 
@@ -56,3 +61,7 @@ enforcement mode.
 
 - **`DictionaryMark-OTS-SarifMark`**: SarifMark_SarifReading, SarifMark_MarkdownReportGeneration
 - **`DictionaryMark-OTS-SarifMark-Enforcement`**: SarifMark_Enforcement
+
+### Suitability Conclusion
+
+Based on the evidence above, SarifMark is considered suitable for use in the DictionaryMark CI pipeline.

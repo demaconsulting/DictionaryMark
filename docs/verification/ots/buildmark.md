@@ -9,7 +9,7 @@ a markdown build-notes document included in the release artifacts. It runs as pa
 pipeline that produces the TRX test results, so a successful pipeline run is evidence that BuildMark
 executed without error.
 
-### Verification Approach
+### Qualification Evidence
 
 BuildMark is verified by two complementary layers of evidence. First, the CI pipeline runs
 `buildmark --validate --results artifacts/buildmark-self-validation.trx`, which exercises
@@ -21,6 +21,11 @@ file were absent or malformed, Pandoc would fail. WeasyPrint renders the HTML to
 artifact, and FileAssert asserts the PDF exists, has content, and contains expected text
 (`WeasyPrint_BuildNotesPdf`). A CI build failure at any step in this chain is evidence that
 BuildMark did not produce the required output.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 

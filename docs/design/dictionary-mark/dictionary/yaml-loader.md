@@ -3,7 +3,7 @@
 The `YamlDictionaryLoader` class loads dictionary entries from YAML files. It validates that
 the file contains a flat key-value mapping and rejects nested structures and duplicate keys.
 
-#### Overview
+#### Purpose
 
 `YamlDictionaryLoader.Load` reads and parses the YAML file, verifies the root node is a
 `YamlMappingNode`, and converts each key-value pair to a `DictionaryEntry`. It enforces
@@ -26,7 +26,7 @@ YAML file. It is immutable: all properties are set via the constructor and expos
 
 `DictionaryEntry` has no instance methods beyond those inherited from `object`.
 
-#### Methods
+#### Key Methods
 
 ##### Load(string filePath) → IReadOnlyList\<DictionaryEntry\>
 
@@ -39,9 +39,34 @@ Reads the file at `filePath`, parses the YAML, and returns the entries in file o
 - `InvalidOperationException` - when the YAML root is not a mapping, a key is non-scalar,
   a value is non-scalar (nested structure), or a duplicate key is found.
 
+#### Error Handling
+
+`YamlDictionaryLoader.Load` throws exceptions for all detectable error conditions:
+
+- `ArgumentNullException` — when `filePath` is null.
+- `IOException` — when the file cannot be read (e.g., not found, access denied).
+- `InvalidOperationException` — when the YAML root is not a mapping node, a key is non-scalar,
+  a value is non-scalar (nested structure), or a duplicate key is found within the same file.
+
+The caller (`DictionaryGenerator`) catches `IOException` and `InvalidOperationException`,
+reports them via `context.WriteError`, and returns without generating output.
+
 #### Interactions
 
 | Dependency        | Role                                               |
 | ----------------- | -------------------------------------------------- |
 | `YamlDotNet`      | Parses the YAML stream into a node representation. |
 | `DictionaryEntry` | Data type returned for each valid key-value pair.  |
+
+#### Dependencies
+
+| Dependency        | Role                                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| `YamlDotNet`      | OTS package — `YamlStream`, `YamlMappingNode`, and `YamlScalarNode` APIs used to parse the YAML input file. |
+| `DictionaryEntry` | Dictionary subsystem data model — output type constructed for each valid key-value pair.                    |
+
+#### Callers
+
+`DictionaryGenerator.Generate` calls `YamlDictionaryLoader.Load(filePath)` once per resolved
+input file in the pipeline's loading step. The returned `IReadOnlyList<DictionaryEntry>` from
+each call is accumulated into the full entry list for conflict detection.

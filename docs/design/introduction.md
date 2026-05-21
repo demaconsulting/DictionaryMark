@@ -24,11 +24,16 @@ This document covers the detailed design of the following subsystems and softwar
   - **YamlDictionaryLoader** - loads YAML flat-dictionary files (`Dictionary/YamlDictionaryLoader.cs`)
   - **ConflictDetector** - detects term conflicts across files (`Dictionary/ConflictDetector.cs`)
   - **MarkdownFormatter** - formats entries as Markdown (`Dictionary/MarkdownFormatter.cs`)
+  - **DictionaryEntry** - data model: term-definition pair (`Dictionary/DictionaryEntry.cs`)
+  - **MarkdownOptions** - data model: Markdown output options (`Dictionary/MarkdownOptions.cs`)
+  - **OutputFormat** - data model: output format enum (`Dictionary/OutputFormat.cs`)
+  - **SortOrder** - data model: sort order enum (`Dictionary/SortOrder.cs`)
 - **SelfTest** subsystem
   - **Validation** - self-validation test runner (`SelfTest/Validation.cs`)
 - **Utilities** subsystem
   - **GlobMatcher** - file-matching via glob patterns (`Utilities/GlobMatcher.cs`)
   - **PathHelpers** - safe path combination utilities (`Utilities/PathHelpers.cs`)
+  - **TemporaryDirectory** - disposable temporary directory helper (`Utilities/TemporaryDirectory.cs`)
 
 The following topics are out of scope:
 
@@ -50,12 +55,21 @@ DictionaryMark (System)
 │   ├── DictionaryGenerator (Unit)
 │   ├── YamlDictionaryLoader (Unit)
 │   ├── ConflictDetector (Unit)
-│   └── MarkdownFormatter (Unit)
+│   ├── MarkdownFormatter (Unit)
+│   ├── DictionaryEntry (Data Model)
+│   ├── MarkdownOptions (Data Model)
+│   ├── OutputFormat (Data Model)
+│   └── SortOrder (Data Model)
 ├── SelfTest (Subsystem)
 │   └── Validation (Unit)
-└── Utilities (Subsystem)
-    ├── GlobMatcher (Unit)
-    └── PathHelpers (Unit)
+├── Utilities (Subsystem)
+│   ├── GlobMatcher (Unit)
+│   ├── PathHelpers (Unit)
+│   └── TemporaryDirectory (Unit)
+└── OTS Dependencies
+    ├── YamlDotNet (OTS)
+    ├── Microsoft.Extensions.FileSystemGlobbing (OTS)
+    └── DemaConsulting.TestResults (OTS)
 ```
 
 Each unit is described in detail in its own chapter within this document.
@@ -74,12 +88,17 @@ src/DemaConsulting.DictionaryMark/
 │   ├── DictionaryGenerator.cs          - orchestrates dictionary generation
 │   ├── YamlDictionaryLoader.cs         - loads YAML flat-dictionary files
 │   ├── ConflictDetector.cs             - detects term conflicts across files
-│   └── MarkdownFormatter.cs            - formats entries as Markdown
+│   ├── MarkdownFormatter.cs            - formats entries as Markdown
+│   ├── DictionaryEntry.cs              - data model: term-definition pair
+│   ├── MarkdownOptions.cs              - data model: Markdown output options
+│   ├── OutputFormat.cs                 - data model: output format enum
+│   └── SortOrder.cs                    - data model: sort order enum
 ├── SelfTest/
 │   └── Validation.cs                   - self-validation test runner
 └── Utilities/
     ├── GlobMatcher.cs                  - file-matching via glob patterns
-    └── PathHelpers.cs                  - safe path combination utilities
+    ├── PathHelpers.cs                  - safe path combination utilities
+    └── TemporaryDirectory.cs           - disposable temporary directory helper
 ```
 
 The test project mirrors the same layout under `test/DemaConsulting.DictionaryMark.Tests/`.
@@ -96,14 +115,21 @@ Throughout this document:
 
 ## Companion Artifact Structure
 
-Each software item in the structure above has corresponding artifacts in parallel directory trees:
+Each local software item has corresponding artifacts in parallel directory trees:
 
 - Requirements: `docs/reqstream/{system-name}.yaml`, `docs/reqstream/{system-name}/.../{item}.yaml` (kebab-case)
 - Design docs: `docs/design/{system-name}.md`, `docs/design/{system-name}/.../{item}.md` (kebab-case)
 - Verification design: `docs/verification/{system-name}.md`, `docs/verification/{system-name}/.../{item}.md` (kebab-case)
 - Source code: `src/{System}/.../{Item}.cs` (PascalCase for C#)
 - Tests: `test/{System}.Tests/.../{Item}Tests.cs` (PascalCase for C#)
-- Review-sets: defined in `.reviewmark.yaml`
+
+OTS items have integration/usage design documentation parallel to system folders:
+
+- Requirements: `docs/reqstream/ots/{ots-name}.yaml`
+- Design: `docs/design/ots/{ots-name}.md`
+- Verification: `docs/verification/ots/{ots-name}.md`
+
+Review-sets: defined in `.reviewmark.yaml`
 
 ## References
 

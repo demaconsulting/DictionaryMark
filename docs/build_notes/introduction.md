@@ -4,18 +4,19 @@ This document contains the build notes for the DictionaryMark project.
 
 ## Purpose
 
-This report serves as a comprehensive record of changes and bug fixes for this
-release of DictionaryMark. It provides transparency about what has changed since the
-previous version and helps users understand the improvements and fixes included
-in this build.
+This document provides a record of the changes, new features, and bug fixes included
+in this release of DictionaryMark. It also records the versions of all tools used in
+the build pipeline, providing traceability between the software artifacts and the
+environment that produced them.
 
 ## Scope
 
 This build notes report covers:
 
-- Version information and commit details
-- Changes and new features implemented
+- Version information and commit details for this release
+- Changes and new features implemented since the previous version
 - Bugs fixed in this release
+- Versions of all tools used in the build and compliance pipeline
 
 ## Generation Source
 
@@ -31,3 +32,7 @@ This document is intended for:
 - Users evaluating what has changed in this release
 - Project stakeholders tracking progress
 - Contributors understanding recent changes
+
+## References
+
+- [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)

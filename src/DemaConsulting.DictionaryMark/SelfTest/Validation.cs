@@ -31,7 +31,10 @@ namespace DemaConsulting.DictionaryMark.SelfTest;
 /// </summary>
 internal static partial class Validation
 {
+    /// <summary>Argument string for the --silent flag passed to self-test sub-invocations.</summary>
     private const string SilentArg = "--silent";
+
+    /// <summary>Argument string for the --input flag passed to self-test sub-invocations.</summary>
     private const string InputArg = "--input";
     /// <summary>
     ///     Runs self-validation tests and optionally writes results to a file.
@@ -122,8 +125,8 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var logFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "version-test.log");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var logFile = tempDir.GetFilePath("version-test.log");
 
             // Build command line arguments
             var args = new List<string>
@@ -190,8 +193,8 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var logFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "help-test.log");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var logFile = tempDir.GetFilePath("help-test.log");
 
             // Build command line arguments
             var args = new List<string>
@@ -258,9 +261,9 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
-            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("input.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
 
             File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
 
@@ -318,9 +321,9 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
-            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("input.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
 
             File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}Beta: Second letter{Environment.NewLine}");
 
@@ -378,9 +381,9 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var inputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "input.yaml");
-            var outputFile = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "output.md");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("input.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
 
             File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}");
 
@@ -442,9 +445,9 @@ internal static partial class Validation
 
         try
         {
-            using var tempDir = new TemporaryDirectory();
-            var fileA = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "a.yaml");
-            var fileB = PathHelpers.SafePathCombine(tempDir.DirectoryPath, "b.yaml");
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var fileA = tempDir.GetFilePath("a.yaml");
+            var fileB = tempDir.GetFilePath("b.yaml");
 
             File.WriteAllText(fileA, $"Alpha: First letter{Environment.NewLine}");
             File.WriteAllText(fileB, $"Alpha: Different definition{Environment.NewLine}");
@@ -576,57 +579,4 @@ internal static partial class Validation
     /// <returns>A <see cref="Regex"/> that matches version strings.</returns>
     [GeneratedRegex(@"\b\d+\.\d+\.\d+")]
     private static partial Regex VersionPattern();
-
-    /// <summary>
-    ///     Represents a temporary directory that is automatically deleted when disposed.
-    /// </summary>
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        /// <summary>
-        ///     Gets the path to the temporary directory.
-        /// </summary>
-        public string DirectoryPath { get; }
-
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="TemporaryDirectory"/> class.
-        /// </summary>
-        public TemporaryDirectory()
-        {
-            DirectoryPath = PathHelpers.SafePathCombine(Path.GetTempPath(), $"dictionarymark_validation_{Guid.NewGuid()}");
-
-            try
-            {
-                Directory.CreateDirectory(DirectoryPath);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-            {
-                throw new InvalidOperationException($"Failed to create temporary directory: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        ///     Deletes the temporary directory and all its contents.
-        /// </summary>
-        /// <remarks>
-        ///     <see cref="IOException"/> and <see cref="UnauthorizedAccessException"/> are intentionally
-        ///     suppressed during disposal. Cleanup failures are non-fatal: the operating system or the
-        ///     user's temp-folder maintenance process will eventually reclaim the directory, and allowing
-        ///     an exception to escape from <c>Dispose</c> would break <c>using</c> blocks and mask the
-        ///     original test outcome.
-        /// </remarks>
-        public void Dispose()
-        {
-            try
-            {
-                if (Directory.Exists(DirectoryPath))
-                {
-                    Directory.Delete(DirectoryPath, true);
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Ignore cleanup errors during disposal
-            }
-        }
-    }
 }

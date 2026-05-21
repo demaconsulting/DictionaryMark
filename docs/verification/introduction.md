@@ -98,3 +98,9 @@ OTS items have parallel artifacts in:
 - Verification: `docs/verification/ots/{ots-name}.md` (kebab-case)
 
 Review-sets: defined in `.reviewmark.yaml`
+
+## References
+
+- DictionaryMark releases — <https://github.com/demaconsulting/DictionaryMark/releases> — compiled
+  verification design, design, and requirements documents are published as release artifacts on this
+  page.

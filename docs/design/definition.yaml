@@ -6,6 +6,7 @@ resource-path:
   - docs/design/dictionary-mark/dictionary
   - docs/design/dictionary-mark/self-test
   - docs/design/dictionary-mark/utilities
+  - docs/design/ots
   - docs/template
 
 input-files:
@@ -25,6 +26,10 @@ input-files:
   - docs/design/dictionary-mark/utilities.md
   - docs/design/dictionary-mark/utilities/glob-matcher.md
   - docs/design/dictionary-mark/utilities/path-helpers.md
+  - docs/design/ots.md
+  - docs/design/ots/file-system-globbing.md
+  - docs/design/ots/test-results.md
+  - docs/design/ots/yaml-dot-net.md
 template: template.html
 table-of-contents: true
 number-sections: true

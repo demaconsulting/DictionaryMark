@@ -28,3 +28,10 @@ This document is intended for:
 - Quality assurance teams validating requirements
 - Project stakeholders reviewing project scope
 - Users understanding the tool's capabilities
+
+## References
+
+- [REF-1] DictionaryMark Releases — [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)
+- [REF-2] YAML 1.2 Specification — <https://yaml.org/spec/1.2.2/>
+- [REF-3] .NET SDK Documentation — <https://learn.microsoft.com/dotnet/>
+- [REF-4] CommonMark Specification — <https://spec.commonmark.org/>

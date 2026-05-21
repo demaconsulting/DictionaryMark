@@ -39,3 +39,31 @@ sections:
           - dotnet10@DictionaryMark_TableGeneration
           - dotnet10@DictionaryMark_CustomHeaders
           - dotnet10@DictionaryMark_ConflictDetection
+
+      - id: DictionaryMark-Platform-Windows
+        title: The tool shall run on Windows operating systems.
+        justification: |
+          Windows is a primary target platform for enterprise .NET toolchains.
+          Integration tests on windows-latest confirm cross-platform compatibility
+          for users running the tool in Windows CI/CD environments.
+        tests:
+          - windows@DictionaryMark_VersionDisplay
+          - windows@DictionaryMark_HelpDisplay
+          - windows@DictionaryMark_BulletGeneration
+          - windows@DictionaryMark_TableGeneration
+          - windows@DictionaryMark_CustomHeaders
+          - windows@DictionaryMark_ConflictDetection
+
+      - id: DictionaryMark-Platform-Ubuntu
+        title: The tool shall run on Ubuntu operating systems.
+        justification: |
+          Ubuntu (Linux) is the dominant platform for CI/CD pipelines. Integration
+          tests on ubuntu-latest confirm the tool operates correctly in Linux-based
+          build and documentation generation workflows.
+        tests:
+          - ubuntu@DictionaryMark_VersionDisplay
+          - ubuntu@DictionaryMark_HelpDisplay
+          - ubuntu@DictionaryMark_BulletGeneration
+          - ubuntu@DictionaryMark_TableGeneration
+          - ubuntu@DictionaryMark_CustomHeaders
+          - ubuntu@DictionaryMark_ConflictDetection

@@ -1,6 +1,6 @@
 # Introduction
 
-This document contains the review plan for the DictionaryMark project.
+This document defines the formal code review plan for DictionaryMark.
 
 ## Purpose
 
@@ -31,3 +31,7 @@ This document is intended for:
 - Quality assurance teams validating review coverage
 - Project stakeholders reviewing compliance status
 - Auditors verifying that all required files have been reviewed
+
+## References
+
+- [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)

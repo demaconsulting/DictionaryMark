@@ -37,6 +37,23 @@ internal static class Runner
     /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
     public static int Run(out string output, string program, params string[] arguments)
     {
+        // Delegate to the overload that separates stdout and stderr, then merge them
+        var exitCode = Run(out var stdout, out var stderr, program, arguments);
+        output = stdout + stderr;
+        return exitCode;
+    }
+
+    /// <summary>
+    ///     Runs the specified program and captures its standard output and standard error separately.
+    /// </summary>
+    /// <param name="stdout">Program standard output.</param>
+    /// <param name="stderr">Program standard error.</param>
+    /// <param name="program">Program name or path.</param>
+    /// <param name="arguments">Program arguments.</param>
+    /// <returns>Program exit code.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
+    public static int Run(out string stdout, out string stderr, string program, params string[] arguments)
+    {
         // Construct the start information
         var startInfo = new ProcessStartInfo(program)
         {
@@ -56,17 +73,27 @@ internal static class Runner
         using var process = Process.Start(startInfo) ??
                             throw new InvalidOperationException("Failed to start process");
 
-        // Read output asynchronously to avoid buffer overflow
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
+        // Read stdout and stderr asynchronously to avoid buffer overflow
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
 
-        // Wait for the process to exit
-        process.WaitForExit();
+        // Wait for the process to exit with a 30-second timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        try
+        {
+            process.WaitForExitAsync(cts.Token).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* best effort */ }
+            stdout = string.Empty;
+            stderr = string.Empty;
+            throw new TimeoutException($"Process '{program}' did not exit within 30 seconds.");
+        }
 
-        // Combine stdout and stderr, save the output and return the exit code
-        var stdout = outputTask.GetAwaiter().GetResult();
-        var stderr = errorTask.GetAwaiter().GetResult();
-        output = stdout + stderr;
+        // Save each stream separately and return the exit code
+        stdout = stdoutTask.GetAwaiter().GetResult();
+        stderr = stderrTask.GetAwaiter().GetResult();
         return process.ExitCode;
     }
 }

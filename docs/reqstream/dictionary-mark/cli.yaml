@@ -15,6 +15,7 @@ sections:
           - DictionaryMark-Context-HelpFlag
           - DictionaryMark-Context-ValidateFlag
           - DictionaryMark-Context-ResultsFlag
+          - DictionaryMark-Context-ResultsFlagMissing
           - DictionaryMark-Context-DepthFlag
         tests:
           - CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
@@ -60,6 +61,9 @@ sections:
         justification: |
           Directing errors to stderr with a non-zero exit code follows POSIX conventions
           and allows calling scripts to detect and handle tool failures reliably.
+        children:
+          - DictionaryMark-Context-InvalidArgs
+          - DictionaryMark-Program-ExitCode
         tests:
           - CliSubsystem_ErrorOutput_ContextAndProgram_WritesErrorToStderr
           - CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero

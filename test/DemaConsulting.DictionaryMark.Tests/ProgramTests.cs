@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
-using DemaConsulting.DictionaryMark.Tests.Helpers;
+using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 

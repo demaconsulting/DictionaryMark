@@ -11,11 +11,16 @@ at least one page, and includes expected document content in the rendered text. 
 assertions for each document type proves WeasyPrint executed correctly and produced meaningful
 output.
 
-### Verification Approach
+### Qualification Evidence
 
 WeasyPrint is verified by self-validation evidence from the CI pipeline. Each scenario is a
 FileAssert assertion that runs after WeasyPrint converts a specific HTML document to PDF. A passing
 pipeline run for all scenarios constitutes evidence that the requirement is satisfied.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -87,3 +92,7 @@ at least one page, and includes expected document content.
 - **`DictionaryMark-OTS-WeasyPrint`**: WeasyPrint_BuildNotesPdf, WeasyPrint_CodeQualityPdf,
   WeasyPrint_ReviewPlanPdf, WeasyPrint_ReviewReportPdf, WeasyPrint_DesignPdf,
   WeasyPrint_VerificationPdf, WeasyPrint_UserGuidePdf
+
+### Suitability Conclusion
+
+Based on the evidence above, WeasyPrint is considered suitable for use in the DictionaryMark CI pipeline.

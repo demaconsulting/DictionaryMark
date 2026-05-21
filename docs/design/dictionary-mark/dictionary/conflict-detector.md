@@ -3,7 +3,7 @@
 The `ConflictDetector` class detects conflicts in dictionary entries where the same term
 (case-insensitive) has different definitions across files.
 
-#### Overview
+#### Purpose
 
 `ConflictDetector.Detect` iterates over the provided entries, tracking the first definition
 seen for each term. If a later entry has the same term but a different definition, a conflict
@@ -15,7 +15,7 @@ to suppress duplicate messages when more than two entries share the same conflic
 
 `ConflictDetector` is a `static` class with no instance state.
 
-#### Methods
+#### Key Methods
 
 ##### Detect(IEnumerable\<DictionaryEntry\> entries) → IReadOnlyList\<string\>
 
@@ -33,8 +33,31 @@ when no conflicts exist.
 
 **Throws:** `ArgumentNullException` - when `entries` is null.
 
+#### Error Handling
+
+`ConflictDetector.Detect` has one exceptional condition and one non-exceptional error path:
+
+- `ArgumentNullException` — thrown when `entries` is null; the caller must supply a non-null
+  enumerable.
+- **Conflict detection** — conflicts are not thrown as exceptions. Instead, one error message
+  string per conflicting term is appended to the return list. The caller (`DictionaryGenerator`)
+  iterates the returned list and calls `context.WriteError` for each message, then returns
+  without generating output.
+
 #### Interactions
 
 | Dependency        | Role                                                  |
 | ----------------- | ----------------------------------------------------- |
 | `DictionaryEntry` | Input data type carrying term and definition strings. |
+
+#### Dependencies
+
+| Dependency        | Role                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `DictionaryEntry` | Dictionary subsystem data model — carries the term and definition strings scanned for conflicts. |
+
+#### Callers
+
+`DictionaryGenerator.Generate` calls `ConflictDetector.Detect(allEntries)` after all YAML
+files have been loaded. It iterates the returned conflict message list and calls
+`context.WriteError` for each message, then returns early without generating output.

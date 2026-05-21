@@ -10,7 +10,7 @@ to produce a review plan and review report documenting file review coverage and 
 the same CI pipeline that produces the TRX test results, so a successful pipeline run is evidence
 that ReviewMark executed without error.
 
-### Verification Approach
+### Qualification Evidence
 
 ReviewMark is verified by two complementary layers of evidence. First, the CI pipeline runs
 `reviewmark --validate --results artifacts/reviewmark-self-validation.trx`, which exercises
@@ -23,6 +23,11 @@ Pandoc converts each to HTML; if either file were absent or malformed, Pandoc wo
 WeasyPrint renders both to PDF and FileAssert asserts their content
 (`WeasyPrint_ReviewPlanPdf`, `WeasyPrint_ReviewReportPdf`). A CI build failure at any step is
 evidence that ReviewMark did not produce the required review documents.
+
+### Regression Approach
+
+When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
+continue to pass before the update is accepted.
 
 ### Test Scenarios
 
@@ -94,3 +99,7 @@ issues.
 - **`DictionaryMark-OTS-ReviewMark`**: ReviewMark_ReviewPlanGeneration, ReviewMark_ReviewReportGeneration
 - **`DictionaryMark-OTS-ReviewMark-Operations`**: ReviewMark_IndexScan, ReviewMark_WorkingDirectoryOverride,
   ReviewMark_Enforce, ReviewMark_Elaborate, ReviewMark_Lint
+
+### Suitability Conclusion
+
+Based on the evidence above, ReviewMark is considered suitable for use in the DictionaryMark CI pipeline.

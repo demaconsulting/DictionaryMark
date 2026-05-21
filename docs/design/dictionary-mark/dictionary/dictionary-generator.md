@@ -3,7 +3,7 @@
 The `DictionaryGenerator` class orchestrates the full dictionary generation pipeline,
 coordinating file discovery, loading, conflict detection, formatting, and output.
 
-#### Overview
+#### Purpose
 
 `DictionaryGenerator` is a static class that orchestrates dictionary generation. The `Generate`
 static method resolves input file paths using `GlobMatcher`, loads entries from each file via
@@ -15,7 +15,7 @@ static method resolves input file paths using `GlobMatcher`, loads entries from 
 `DictionaryGenerator` is a static class with no instance state. All state is
 local to each `Generate` call.
 
-#### Methods
+#### Key Methods
 
 ##### Generate(Context context)
 
@@ -52,10 +52,26 @@ generated. The five error cases are:
 
 #### Interactions
 
-| Dependency              | Role                                                                   |
-| ----------------------- | ---------------------------------------------------------------------- |
-| `Context`               | Provides input patterns, output options, output channel, and exit code.|
-| `GlobMatcher`           | Resolves input file patterns to concrete file paths.                   |
-| `YamlDictionaryLoader`  | Loads flat YAML key-value pairs from each input file.                  |
-| `ConflictDetector`      | Detects term conflicts across entries from different files.            |
-| `MarkdownFormatter`     | Formats deduplicated entries as a Markdown string.                     |
+| Dependency             | Role                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `Context`              | Provides input patterns, output options, output channel, and exit code. |
+| `GlobMatcher`          | Resolves input file patterns to concrete file paths.                    |
+| `YamlDictionaryLoader` | Loads flat YAML key-value pairs from each input file.                   |
+| `ConflictDetector`     | Detects term conflicts across entries from different files.             |
+| `MarkdownFormatter`    | Formats deduplicated entries as a Markdown string.                      |
+
+#### Dependencies
+
+| Dependency             | Role                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `Context`              | CLI subsystem — provides input patterns, output options, output channel, and exit code. |
+| `GlobMatcher`          | Utilities subsystem — resolves glob patterns to concrete file paths.                    |
+| `YamlDictionaryLoader` | Dictionary subsystem unit — loads flat YAML key-value pairs from each file.             |
+| `ConflictDetector`     | Dictionary subsystem unit — detects term conflicts across loaded entries.               |
+| `MarkdownFormatter`    | Dictionary subsystem unit — formats deduplicated entries as a Markdown string.          |
+
+#### Callers
+
+`Program.RunToolLogic` calls `DictionaryGenerator.Generate(context)` when
+`context.InputPatterns` is non-empty. `Generate` is the sole public entry point of the
+Dictionary subsystem pipeline.

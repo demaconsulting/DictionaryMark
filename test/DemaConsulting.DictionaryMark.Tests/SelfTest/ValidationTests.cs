@@ -20,9 +20,9 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.SelfTest;
-using DemaConsulting.DictionaryMark.Tests.Helpers;
+using DemaConsulting.DictionaryMark.Utilities;
 
-namespace DemaConsulting.DictionaryMark.Tests;
+namespace DemaConsulting.DictionaryMark.Tests.SelfTest;
 
 /// <summary>
 ///     Unit tests for the Validation class.

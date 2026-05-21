@@ -3,7 +3,7 @@
 The `MarkdownFormatter` class formats dictionary entries as Markdown text, supporting both
 bullet-list and table output formats with optional section headings and sort order.
 
-#### Overview
+#### Purpose
 
 `MarkdownFormatter.Format` deduplicates entries (first occurrence wins, case-insensitive),
 optionally sorts alphabetically, and then renders the entries in the requested format.
@@ -22,7 +22,7 @@ Pipe characters in term and definition values are escaped for safe table cell re
 - `DefinitionHeader` (`string`) — Column header for the definition column in table format.
 - `HeadingDepth` (`int`) — Heading level (1–6) for the section heading; default 1.
 
-#### Methods
+#### Key Methods
 
 ##### Format(IReadOnlyList\<DictionaryEntry\> entries, MarkdownOptions options) → string
 
@@ -56,6 +56,15 @@ non-empty table.
 
 Replaces `|` with `\|` in a string for safe embedding in Markdown table cells.
 
+#### Error Handling
+
+`MarkdownFormatter.Format` throws `ArgumentNullException` when `entries` or `options` is null.
+These are programming errors; callers must supply non-null arguments.
+
+No other error conditions exist: heading depth values outside the range 1–6 are silently clamped
+by `Math.Clamp`, pipe characters in term or definition values are silently escaped by
+`EscapePipe`, and an empty entry list produces a valid `N/A` table row rather than an error.
+
 #### Interactions
 
 | Dependency        | Role                                                                   |
@@ -64,3 +73,18 @@ Replaces `|` with `\|` in a string for safe embedding in Markdown table cells.
 | `MarkdownOptions` | Carries the format, sort order, headers, and optional section heading. |
 | `OutputFormat`    | Enum selecting bullet-list vs table rendering.                         |
 | `SortOrder`       | Enum selecting file-order vs alphabetical sort.                        |
+
+#### Dependencies
+
+| Dependency        | Role                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `DictionaryEntry` | Dictionary subsystem data model — input type carrying term and definition strings.   |
+| `MarkdownOptions` | Dictionary subsystem data model — options bag controlling format, sort, and heading. |
+| `OutputFormat`    | Dictionary subsystem enum — selects bullet-list vs table rendering.                  |
+| `SortOrder`       | Dictionary subsystem enum — selects file-order vs alphabetical sort.                 |
+
+#### Callers
+
+`DictionaryGenerator.Generate` constructs a `MarkdownOptions` bag from the `Context`
+properties and calls `MarkdownFormatter.Format(allEntries, options)` as the fourth step of
+the pipeline, after conflict detection has confirmed no conflicts exist.

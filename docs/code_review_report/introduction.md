@@ -1,21 +1,15 @@
 # Introduction
 
-This document contains the review report for the DictionaryMark project.
+This document records the completed formal code reviews for DictionaryMark.
 
 ## Purpose
 
-This review report provides evidence that each review-set is current - the review
-evidence matches the current file fingerprints. It confirms that all formal reviews
-conducted for DictionaryMark remain valid for the current state of the
-reviewed files.
+To provide compliance evidence that all required review-sets have been reviewed
+and approved according to the project's review plan.
 
 ## Scope
 
-This review report covers:
-
-- Current review-set status (current, stale, or missing)
-- File fingerprints and review evidence matching
-- Review coverage verification
+This document covers all completed reviews for review-sets defined in `.reviewmark.yaml`.
 
 ## Generation Source
 
@@ -31,3 +25,7 @@ This document is intended for:
 - Quality assurance teams validating review currency
 - Project stakeholders reviewing compliance status
 - Auditors verifying that all reviews remain valid for the current release
+
+## References
+
+- [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)

@@ -42,16 +42,24 @@ sections:
 
       - id: DictionaryMark-Context-ResultsFlag
         title: >-
-          The Context class shall parse the --results/--result flag and set the
-          ResultsFile property; an ArgumentException shall be thrown when the value is
-          missing.
+          The Context shall accept a `--results` / `--result` flag specifying the path
+          to write validation results.
         justification: |
           The results file path must be captured so the self-validation subsystem can
           write structured output for CI/CD pipeline consumption.
         tests:
           - Context_Create_ResultsFlag_SetsResultsFile
-          - Context_Create_ResultsFlag_WithoutValue_ThrowsArgumentException
           - Context_Create_ResultAliasFlag_SetsResultsFile
+
+      - id: DictionaryMark-Context-ResultsFlagMissing
+        title: >-
+          The Context shall throw an exception when the `--results` / `--result` flag
+          is provided without a value.
+        justification: |
+          Providing a clear error when the flag value is missing prevents silent
+          misconfiguration and guides users to supply the required file path.
+        tests:
+          - Context_Create_ResultsFlag_WithoutValue_ThrowsArgumentException
           - Context_Create_ResultAliasFlag_WithoutValue_ThrowsArgumentException
 
       - id: DictionaryMark-Context-DepthFlag

@@ -33,3 +33,9 @@ This document is intended for:
 - Quality assurance teams reviewing code quality
 - Project stakeholders evaluating project health
 - Contributors understanding quality standards
+
+## References
+
+- [REF-1] [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)
+- [REF-2] SonarCloud Project Dashboard - <https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark>
+- [REF-3] .NET Code Analysis Documentation - <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview>

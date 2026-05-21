@@ -3,7 +3,7 @@
 This document describes the unit-level verification design for the `GlobMatcher` unit. It
 defines test scenarios, dependency usage, and requirement coverage for `GlobMatcherTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `GlobMatcher` is verified with unit tests in `GlobMatcherTests.cs`. Tests use temporary files
 and directories to exercise real file-system matching behavior. Directory-based tests use
@@ -13,6 +13,17 @@ and directories to exercise real file-system matching behavior. Directory-based 
 
 - **File system**: Temporary files and directories created via `TemporaryDirectory` (or
   `Path.GetTempFileName` for single-file tests) to verify matching behavior.
+
+#### Test Environment
+
+N/A - standard test environment. Tests use `TemporaryDirectory` to create real file-system
+fixtures for glob pattern matching.
+
+#### Acceptance Criteria
+
+All unit tests in `GlobMatcherTests.cs` pass; all requirements listed in the Requirements
+Coverage section have at least one passing test scenario; no tests may be skipped or marked as
+expected failures.
 
 #### Test Scenarios
 
@@ -82,5 +93,5 @@ contains a matching file.
   GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles,
   GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty,
   GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles.
-- **`DictionaryMark-GlobMatcher-Validation`**: GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException,
-  GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException.
+- **`DictionaryMark-GlobMatcher-NullCollectionRejection`**: GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException.
+- **`DictionaryMark-GlobMatcher-InvalidPatternRejection`**: GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException.

@@ -3,7 +3,7 @@
 This document describes the unit-level verification design for the `Context` unit. It defines
 the test scenarios, dependency usage, and requirement coverage for `ContextTests.cs`.
 
-#### Verification Approach
+#### Verification Strategy
 
 `Context` is verified with unit tests in `ContextTests.cs`. Tests create `Context` instances
 from controlled argument arrays and assert on property values, console output, log file content,
@@ -15,6 +15,17 @@ and exception types. Console streams are temporarily redirected for output asser
 | ----------- | -------------------------------------------------------------- |
 | `Console`   | Redirected to `StringWriter` to assert written output content. |
 | File system | Temporary files used to verify log file writing behavior.      |
+
+#### Test Environment
+
+N/A - standard test environment. Tests that write log or results files use `TemporaryDirectory`
+for automatic cleanup.
+
+#### Acceptance Criteria
+
+All unit tests in `ContextTests.cs` pass; all requirements listed in the Requirements Coverage
+section have at least one passing test scenario; no tests may be skipped or marked as expected
+failures.
 
 #### Test Scenarios
 

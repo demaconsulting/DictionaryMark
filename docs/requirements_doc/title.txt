@@ -1,5 +1,5 @@
 ---
-title: DictionaryMark Requirements
+title: DictionaryMark Requirements Document
 subtitle: Requirements Specification for DictionaryMark
 author: DEMA Consulting
 description: Requirements Specification for DictionaryMark

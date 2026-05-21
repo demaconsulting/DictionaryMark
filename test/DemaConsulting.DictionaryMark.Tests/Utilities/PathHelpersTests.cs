@@ -20,7 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Utilities;
 
-namespace DemaConsulting.DictionaryMark.Tests;
+namespace DemaConsulting.DictionaryMark.Tests.Utilities;
 
 /// <summary>
 ///     Tests for the PathHelpers class.

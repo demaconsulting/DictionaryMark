@@ -147,6 +147,11 @@ internal sealed class Context : IDisposable
     ///     Opens the log file for writing
     /// </summary>
     /// <param name="logFile">Log file path</param>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the file at <paramref name="logFile"/> cannot be opened for writing, wrapping
+    ///     any underlying file-system exception (e.g. <see cref="IOException"/>,
+    ///     <see cref="UnauthorizedAccessException"/>).
+    /// </exception>
     private void OpenLogFile(string logFile)
     {
         try

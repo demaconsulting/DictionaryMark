@@ -3,7 +3,7 @@
 This document describes the unit-level verification design for the `Program` unit. It defines
 the test scenarios, dependency usage, and requirement coverage for `Program.cs`.
 
-### Verification Approach
+### Verification Strategy
 
 `Program` is verified with unit tests defined in `ProgramTests.cs`. Because `Program` directly
 instantiates `Context` from real arguments and calls `Validation.Run` when needed, no mocking is
@@ -18,6 +18,17 @@ codes.
 | `Validation` | Used directly (not mocked) - called when the validate flag is set.       |
 
 No test doubles are introduced at the `Program` level; all collaborators execute their real logic.
+
+### Test Environment
+
+N/A - standard test environment. Tests that write temporary YAML input files use
+`TemporaryDirectory` for automatic cleanup.
+
+### Acceptance Criteria
+
+All unit tests in `ProgramTests.cs` pass; all requirements listed in the Requirements Coverage
+section have at least one passing test scenario; no tests may be skipped or marked as expected
+failures.
 
 ### Test Scenarios
 

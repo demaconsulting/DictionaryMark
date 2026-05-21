@@ -90,23 +90,24 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 ### Options
 
-| Option                    | Description                                              |
-| :------------------------ | :------------------------------------------------------- |
-| `-v, --version`           | Display version information                              |
-| `-?, -h, --help`          | Display help                                             |
-| `--silent`                | Suppress console output                                  |
-| `--validate`              | Run self-validation                                      |
-| `-i, --input <pattern>`   | Input YAML file or glob pattern (repeatable)             |
-| `-o, --output <file>`     | Output Markdown file (default: stdout)                   |
-| `-f, --format <format>`   | Output format: `bullets` (default) or `table`            |
-| `-s, --section <heading>` | Section heading text                                     |
-| `--term-header <header>`  | Term column header for table format (default: Term)      |
-| `--def-header <header>`   | Definition column header (default: Definition)           |
-| `--sort <order>`          | Sort order: `file` (default) or `alpha`                  |
-| `--log <file>`            | Write output to log file                                 |
-| `--results <file>`        | Write validation results (.trx or .xml)                  |
-| `--result <file>`         | Alias for `--results`                                    |
-| `--depth <n>`             | Set heading depth (default: 1)                           |
+| Option                         | Description                                         |
+| :----------------------------- | :-------------------------------------------------- |
+| `-v, --version`                | Display version information                         |
+| `-?, -h, --help`               | Display help                                        |
+| `--silent`                     | Suppress console output                             |
+| `--validate`                   | Run self-validation                                 |
+| `-i, --input <pattern>`        | Input YAML file or glob pattern (repeatable)        |
+| `-o, --output <file>`          | Output Markdown file (default: stdout)              |
+| `-f, --format <format>`        | Output format: `bullets` (default) or `table`       |
+| `-s, --section <heading>`      | Section heading text                                |
+| `--term-header <header>`       | Term column header for table format (default: Term) |
+| `--def-header <header>`        | Definition column header (default: Definition)      |
+| `--definition-header <header>` | Alias for `--def-header`                            |
+| `--sort <order>`               | Sort order: `file` (default) or `alpha`             |
+| `--log <file>`                 | Write output to log file                            |
+| `--results <file>`             | Write validation results (.trx or .xml)             |
+| `--result <file>`              | Alias for `--results`                               |
+| `--depth <n>`                  | Set heading depth (default: 1)                      |
 
 ### Quick Start Examples
 
@@ -209,6 +210,17 @@ The DictionaryMark repository itself follows these development practices:
   following the [Continuous Compliance](https://github.com/demaconsulting/ContinuousCompliance) methodology
 - ☁️ **SonarCloud Integration** - Quality gate and security analysis on every build
 - 🔗 **Requirements Traceability** - Requirements linked to passing tests with auto-generated trace matrix
+
+## Building
+
+```pwsh
+pwsh ./build.ps1
+```
+
+## User Guide
+
+The DictionaryMark User Guide is available on the
+[DictionaryMark releases page](https://github.com/demaconsulting/DictionaryMark/releases).
 
 ## Contributing
 
