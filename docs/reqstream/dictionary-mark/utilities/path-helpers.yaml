@@ -1,38 +1,46 @@
 ---
-# DictionaryMark PathHelpers Unit Requirements
+# DictionaryMark PathHelpers unit requirements
 
 sections:
-  - title: PathHelpers Unit Requirements
-    requirements:
-      - id: DictionaryMark-PathHelpers-SafePathCombine
-        title: The PathHelpers class shall safely combine paths, ensuring the result remains within the base directory.
-        justification: |
-          Combining user-supplied path components without validation creates path-traversal
-          vulnerabilities. SafePathCombine resolves both paths to absolute form and rejects
-          any combined path that escapes the base directory.
-        tests:
-          - PathHelpers_SafePathCombine_ValidPaths_CombinesCorrectly
-          - PathHelpers_SafePathCombine_CurrentDirectoryReference_CombinesCorrectly
-          - PathHelpers_SafePathCombine_NestedPaths_CombinesCorrectly
-          - PathHelpers_SafePathCombine_EmptyRelativePath_ReturnsBasePath
-          - PathHelpers_SafePathCombine_DotDotPrefixedName_CombinesCorrectly
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        sections:
+          - title: PathHelpers Requirements
+            requirements:
+              - id: DictionaryMark-PathHelpers-SafePathCombine
+                title: >-
+                  The PathHelpers class shall safely combine paths, ensuring the result remains
+                  within the base directory.
+                justification: |
+                  Combining user-supplied path components without validation creates path-traversal
+                  vulnerabilities. SafePathCombine resolves both paths to absolute form and rejects
+                  any combined path that escapes the base directory.
+                tests:
+                  - PathHelpers_SafePathCombine_ValidPaths_CombinesCorrectly
+                  - PathHelpers_SafePathCombine_CurrentDirectoryReference_CombinesCorrectly
+                  - PathHelpers_SafePathCombine_NestedPaths_CombinesCorrectly
+                  - PathHelpers_SafePathCombine_EmptyRelativePath_ReturnsBasePath
+                  - PathHelpers_SafePathCombine_DotDotPrefixedName_CombinesCorrectly
 
-      - id: DictionaryMark-PathHelpers-NullValidation
-        title: The PathHelpers class shall reject null inputs with ArgumentNullException.
-        justification: |
-          Null inputs must be rejected early with ArgumentNullException so callers can
-          identify and correct missing argument usage before any path logic is attempted.
-        tests:
-          - PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException
-          - PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException
+              - id: DictionaryMark-PathHelpers-NullValidation
+                title: The PathHelpers class shall reject null inputs with ArgumentNullException.
+                justification: |
+                  Null inputs must be rejected early with ArgumentNullException so callers can
+                  identify and correct missing argument usage before any path logic is attempted.
+                tests:
+                  - PathHelpers_SafePathCombine_NullBasePath_ThrowsArgumentNullException
+                  - PathHelpers_SafePathCombine_NullRelativePath_ThrowsArgumentNullException
 
-      - id: DictionaryMark-PathHelpers-TraversalValidation
-        title: The PathHelpers class shall reject path-traversal attempts and absolute relative paths with ArgumentException.
-        justification: |
-          Path-traversal attempts (double-dot segments, absolute relative paths) must be
-          rejected with clear exceptions so callers can identify and correct invalid usage
-          that could escape the intended base directory.
-        tests:
-          - PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException
-          - PathHelpers_SafePathCombine_DoubleDotsInMiddle_ThrowsArgumentException
-          - PathHelpers_SafePathCombine_AbsolutePath_ThrowsArgumentException
+              - id: DictionaryMark-PathHelpers-TraversalValidation
+                title: >-
+                  The PathHelpers class shall reject path-traversal attempts and rooted paths
+                  supplied as the relative path argument with ArgumentException.
+                justification: |
+                  Path-traversal attempts (double-dot segments, rooted paths supplied as the
+                  relative path argument) must be rejected with clear exceptions so callers can
+                  identify and correct invalid usage that could escape the intended base directory.
+                tests:
+                  - PathHelpers_SafePathCombine_PathTraversalWithDoubleDots_ThrowsArgumentException
+                  - PathHelpers_SafePathCombine_DoubleDotsInMiddle_ThrowsArgumentException
+                  - PathHelpers_SafePathCombine_AbsolutePath_ThrowsArgumentException

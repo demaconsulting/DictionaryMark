@@ -1,20 +1,11 @@
-### ConflictDetector Verification
+### ConflictDetector
 
-This document describes the unit-level verification design for the `ConflictDetector` unit.
-It defines test scenarios, dependency usage, and requirement coverage for
-`ConflictDetectorTests.cs`.
+#### Verification Approach
 
-#### Verification Strategy
-
-`ConflictDetector` is verified with unit tests in `ConflictDetectorTests.cs`. Tests construct
-`DictionaryEntry` arrays with controlled term and definition values, invoke
-`ConflictDetector.Detect`, and assert on the number and content of returned conflict messages.
-
-#### Dependencies
-
-| Dependency        | Usage in Tests                                       |
-| ----------------- | ---------------------------------------------------- |
-| `DictionaryEntry` | Constructed inline with test term/definition values. |
+`ConflictDetector` is a `static` class with no external dependencies beyond `DictionaryEntry`, which is a
+simple immutable data model with no side effects. Tests construct `DictionaryEntry` arrays inline with
+controlled term and definition values and pass them directly to `ConflictDetector.Detect`. No mocking or
+stubbing is required because all behavior is self-contained within the method.
 
 #### Test Environment
 
@@ -22,62 +13,40 @@ N/A - standard test environment.
 
 #### Acceptance Criteria
 
-All unit tests in `ConflictDetectorTests.cs` pass; all requirements listed in the Requirements
-Coverage section have at least one passing test scenario; no tests may be skipped or marked as
-expected failures.
+- All unit tests in `ConflictDetectorTests.cs` pass with zero failures.
+- No tests are skipped or marked as expected failures.
 
 #### Test Scenarios
 
-##### ConflictDetector_Detect_NoEntries_ReturnsEmpty
+**ConflictDetector_Detect_NoEntries_ReturnsEmpty**: Verifies that passing an empty entry collection to
+`Detect` produces an empty result list, confirming the base-case behavior when there is nothing to scan.
+This scenario is tested by `ConflictDetector_Detect_NoEntries_ReturnsEmpty`.
 
-**Scenario**: Empty entry collection passed to `Detect`.
+**ConflictDetector_Detect_UniqueTerms_ReturnsEmpty**: Verifies that two entries with distinct terms
+produce no conflict messages, confirming that the detector does not generate false positives when all
+terms are unique. This scenario is tested by `ConflictDetector_Detect_UniqueTerms_ReturnsEmpty`.
 
-**Expected**: Empty list returned.
+**ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty**: Verifies that two entries with the same term
+and the same definition produce no conflict messages, confirming that identical deduplication is
+explicitly allowed and is not treated as a conflict. This scenario is tested by
+`ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty`.
 
-##### ConflictDetector_Detect_UniqueTerms_ReturnsEmpty
+**ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict**: Verifies that two entries
+sharing the same term but with different definitions produce exactly one conflict message containing the
+term name, confirming the primary conflict-detection path. This scenario is tested by
+`ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict`.
 
-**Scenario**: Two entries with distinct terms.
+**ConflictDetector_Detect_CaseInsensitiveConflict_Detected**: Verifies that entries with the same term
+in different letter cases (e.g., `"term1"` and `"TERM1"`) but with different definitions are reported as
+conflicting, confirming that term comparison is case-insensitive. This scenario is tested by
+`ConflictDetector_Detect_CaseInsensitiveConflict_Detected`.
 
-**Expected**: Empty list returned.
+**ConflictDetector_Detect_MultipleConflicts_ReturnsAll**: Verifies that when two independent conflicting
+term pairs are present, both conflicts are reported, confirming that conflict detection is not limited to
+the first conflict found. This scenario is tested by
+`ConflictDetector_Detect_MultipleConflicts_ReturnsAll`.
 
-##### ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty
-
-**Scenario**: Two entries with identical term and identical definition.
-
-**Expected**: Empty list (same term + same definition is deduplication, not a conflict).
-
-##### ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict
-
-**Scenario**: Two entries with same term but different definitions.
-
-**Expected**: One conflict message containing the term name.
-
-##### ConflictDetector_Detect_CaseInsensitiveConflict_Detected
-
-**Scenario**: Two entries with `"term1"` and `"TERM1"` but different definitions.
-
-**Expected**: One conflict reported (case-insensitive comparison).
-
-##### ConflictDetector_Detect_MultipleConflicts_ReturnsAll
-
-**Scenario**: Four entries: two pairs of conflicting terms.
-
-**Expected**: Two conflict messages returned.
-
-##### ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException
-
-**Scenario**: `null` is passed as the `entries` argument.
-
-**Expected**: `ArgumentNullException` is thrown.
-
-#### Requirements Coverage
-
-- **`DictionaryMark-ConflictDetector-Detect`**: ConflictDetector_Detect_NoEntries_ReturnsEmpty,
-  ConflictDetector_Detect_UniqueTerms_ReturnsEmpty,
-  ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty,
-  ConflictDetector_Detect_SameTermDifferentDefinition_ReturnsConflict,
-  ConflictDetector_Detect_CaseInsensitiveConflict_Detected,
-  ConflictDetector_Detect_MultipleConflicts_ReturnsAll.
-- **`DictionaryMark-ConflictDetector-CaseInsensitive`**: ConflictDetector_Detect_CaseInsensitiveConflict_Detected.
-- **`DictionaryMark-ConflictDetector-Deduplication`**: ConflictDetector_Detect_ExactDuplicate_ReturnsEmpty.
-- **`DictionaryMark-ConflictDetector-NullRejection`**: ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException.
+**ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException**: Verifies that passing `null` as
+the `entries` argument causes `Detect` to throw `ArgumentNullException`, confirming that the method
+enforces a non-null precondition. This scenario is tested by
+`ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException`.

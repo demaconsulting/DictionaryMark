@@ -1,69 +1,84 @@
 ---
-# DictionaryMark Platform Requirements
+# DictionaryMark platform requirements
 
 sections:
-  - title: Platform Requirements
-    requirements:
-      - id: DictionaryMark-Platform-DotNet8
-        title: The tool shall run on .NET 8.0 (LTS).
-        justification: |
-          .NET 8.0 is the current long-term support release, ensuring broad compatibility.
-        tests:
-          - dotnet8@DictionaryMark_VersionDisplay
-          - dotnet8@DictionaryMark_HelpDisplay
-          - dotnet8@DictionaryMark_BulletGeneration
-          - dotnet8@DictionaryMark_TableGeneration
-          - dotnet8@DictionaryMark_CustomHeaders
-          - dotnet8@DictionaryMark_ConflictDetection
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Platform Requirements
+        requirements:
+          - id: DictionaryMark-Platform-DotNet8
+            title: The tool shall run on .NET 8.0 (LTS).
+            justification: |
+              .NET 8.0 is the current long-term support release, ensuring broad compatibility
+              for enterprise environments that standardize on LTS runtimes.
+            tests:
+              # Test source pattern "dotnet8@" ensures these tests ran on .NET 8.0.
+              # This filtering is necessary to prove .NET 8.0 runtime support.
+              - dotnet8@DictionaryMark_VersionDisplay
+              - dotnet8@DictionaryMark_HelpDisplay
+              - dotnet8@DictionaryMark_BulletGeneration
+              - dotnet8@DictionaryMark_TableGeneration
+              - dotnet8@DictionaryMark_CustomHeaders
+              - dotnet8@DictionaryMark_ConflictDetection
 
-      - id: DictionaryMark-Platform-DotNet9
-        title: The tool shall run on .NET 9.0.
-        justification: |
-          .NET 9.0 is the current standard release.
-        tests:
-          - dotnet9@DictionaryMark_VersionDisplay
-          - dotnet9@DictionaryMark_HelpDisplay
-          - dotnet9@DictionaryMark_BulletGeneration
-          - dotnet9@DictionaryMark_TableGeneration
-          - dotnet9@DictionaryMark_CustomHeaders
-          - dotnet9@DictionaryMark_ConflictDetection
+          - id: DictionaryMark-Platform-DotNet9
+            title: The tool shall run on .NET 9.0.
+            justification: |
+              .NET 9.0 is the current standard release, providing access to the latest
+              runtime improvements for teams that track non-LTS releases.
+            tests:
+              # Test source pattern "dotnet9@" ensures these tests ran on .NET 9.0.
+              # This filtering is necessary to prove .NET 9.0 runtime support.
+              - dotnet9@DictionaryMark_VersionDisplay
+              - dotnet9@DictionaryMark_HelpDisplay
+              - dotnet9@DictionaryMark_BulletGeneration
+              - dotnet9@DictionaryMark_TableGeneration
+              - dotnet9@DictionaryMark_CustomHeaders
+              - dotnet9@DictionaryMark_ConflictDetection
 
-      - id: DictionaryMark-Platform-DotNet10
-        title: The tool shall run on .NET 10.0.
-        justification: |
-          .NET 10.0 ensures forward compatibility with upcoming runtime versions.
-        tests:
-          - dotnet10@DictionaryMark_VersionDisplay
-          - dotnet10@DictionaryMark_HelpDisplay
-          - dotnet10@DictionaryMark_BulletGeneration
-          - dotnet10@DictionaryMark_TableGeneration
-          - dotnet10@DictionaryMark_CustomHeaders
-          - dotnet10@DictionaryMark_ConflictDetection
+          - id: DictionaryMark-Platform-DotNet10
+            title: The tool shall run on .NET 10.0.
+            justification: |
+              .NET 10.0 ensures forward compatibility with upcoming runtime versions,
+              allowing the tool to be used in environments that adopt new releases early.
+            tests:
+              # Test source pattern "dotnet10@" ensures these tests ran on .NET 10.0.
+              # This filtering is necessary to prove .NET 10.0 runtime support.
+              - dotnet10@DictionaryMark_VersionDisplay
+              - dotnet10@DictionaryMark_HelpDisplay
+              - dotnet10@DictionaryMark_BulletGeneration
+              - dotnet10@DictionaryMark_TableGeneration
+              - dotnet10@DictionaryMark_CustomHeaders
+              - dotnet10@DictionaryMark_ConflictDetection
 
-      - id: DictionaryMark-Platform-Windows
-        title: The tool shall run on Windows operating systems.
-        justification: |
-          Windows is a primary target platform for enterprise .NET toolchains.
-          Integration tests on windows-latest confirm cross-platform compatibility
-          for users running the tool in Windows CI/CD environments.
-        tests:
-          - windows@DictionaryMark_VersionDisplay
-          - windows@DictionaryMark_HelpDisplay
-          - windows@DictionaryMark_BulletGeneration
-          - windows@DictionaryMark_TableGeneration
-          - windows@DictionaryMark_CustomHeaders
-          - windows@DictionaryMark_ConflictDetection
+          - id: DictionaryMark-Platform-Windows
+            title: The tool shall run on Windows operating systems.
+            justification: |
+              Windows is a primary target platform for enterprise .NET toolchains.
+              Integration tests on windows-latest confirm cross-platform compatibility
+              for users running the tool in Windows CI/CD environments.
+            tests:
+              # Test source pattern "windows@" ensures these tests ran on Windows.
+              # This filtering is necessary to prove Windows OS functionality.
+              - windows@DictionaryMark_VersionDisplay
+              - windows@DictionaryMark_HelpDisplay
+              - windows@DictionaryMark_BulletGeneration
+              - windows@DictionaryMark_TableGeneration
+              - windows@DictionaryMark_CustomHeaders
+              - windows@DictionaryMark_ConflictDetection
 
-      - id: DictionaryMark-Platform-Ubuntu
-        title: The tool shall run on Ubuntu operating systems.
-        justification: |
-          Ubuntu (Linux) is the dominant platform for CI/CD pipelines. Integration
-          tests on ubuntu-latest confirm the tool operates correctly in Linux-based
-          build and documentation generation workflows.
-        tests:
-          - ubuntu@DictionaryMark_VersionDisplay
-          - ubuntu@DictionaryMark_HelpDisplay
-          - ubuntu@DictionaryMark_BulletGeneration
-          - ubuntu@DictionaryMark_TableGeneration
-          - ubuntu@DictionaryMark_CustomHeaders
-          - ubuntu@DictionaryMark_ConflictDetection
+          - id: DictionaryMark-Platform-Ubuntu
+            title: The tool shall run on Ubuntu operating systems.
+            justification: |
+              Ubuntu (Linux) is the dominant platform for CI/CD pipelines. Integration
+              tests on ubuntu-latest confirm the tool operates correctly in Linux-based
+              build and documentation generation workflows.
+            tests:
+              # Test source pattern "ubuntu@" ensures these tests ran on Linux.
+              # This filtering is necessary to prove Linux OS functionality.
+              - ubuntu@DictionaryMark_VersionDisplay
+              - ubuntu@DictionaryMark_HelpDisplay
+              - ubuntu@DictionaryMark_BulletGeneration
+              - ubuntu@DictionaryMark_TableGeneration
+              - ubuntu@DictionaryMark_CustomHeaders
+              - ubuntu@DictionaryMark_ConflictDetection

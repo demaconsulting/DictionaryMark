@@ -1,50 +1,52 @@
 # Introduction
 
-This document provides the detailed design for DictionaryMark, a .NET command-line
-application that reads YAML dictionary files and generates formatted Markdown output.
+DictionaryMark is a .NET command-line application that reads YAML dictionary files and generates
+formatted Markdown output as bullet lists or tables.
 
 ## Purpose
 
-The purpose of this document is to describe the internal design of each software unit that
-comprises DictionaryMark. It captures data models, algorithms, key methods, and
-inter-unit interactions at a level of detail sufficient for formal code review, compliance
-verification, and future maintenance. The document does not restate requirements; it explains
-how they are realized.
+This document defines the software design of DictionaryMark. It covers architectural design for the
+system and its subsystems, and detailed design for each software unit, including data models,
+algorithms, key methods, and inter-unit interactions. For off-the-shelf (OTS) components it covers
+integration and usage design only. The document does not restate requirements; it explains how they
+are realized.
+
+The intended audience is code reviewers, compliance auditors, and future maintainers.
 
 ## Scope
 
-This document covers the detailed design of the following subsystems and software units:
+This document covers the design of the following software items:
 
-- **DictionaryMark** - the system as a whole (`dictionary-mark.md`)
-- **Program** - entry point and execution orchestrator (`Program.cs`)
+- **DictionaryMark** — the system as a whole
+- **Program** — entry point and execution orchestrator
 - **Cli** subsystem
-  - **Context** - command-line argument parser and I/O owner (`Cli/Context.cs`)
+  - **Context** — command-line argument parser and I/O owner
 - **Dictionary** subsystem
-  - **DictionaryGenerator** - orchestrates dictionary generation (`Dictionary/DictionaryGenerator.cs`)
-  - **YamlDictionaryLoader** - loads YAML flat-dictionary files (`Dictionary/YamlDictionaryLoader.cs`)
-  - **ConflictDetector** - detects term conflicts across files (`Dictionary/ConflictDetector.cs`)
-  - **MarkdownFormatter** - formats entries as Markdown (`Dictionary/MarkdownFormatter.cs`)
-  - **DictionaryEntry** - data model: term-definition pair (`Dictionary/DictionaryEntry.cs`)
-  - **MarkdownOptions** - data model: Markdown output options (`Dictionary/MarkdownOptions.cs`)
-  - **OutputFormat** - data model: output format enum (`Dictionary/OutputFormat.cs`)
-  - **SortOrder** - data model: sort order enum (`Dictionary/SortOrder.cs`)
+  - **DictionaryGenerator** — orchestrates dictionary generation
+  - **YamlDictionaryLoader** — loads YAML flat-dictionary files
+  - **ConflictDetector** — detects term conflicts across files
+  - **MarkdownFormatter** — formats entries as Markdown
+  - **DictionaryEntry** — data model: term-definition pair
+  - **MarkdownOptions** — data model: Markdown output options
+  - **OutputFormat** — data model: output format enum
+  - **SortOrder** — data model: sort order enum
 - **SelfTest** subsystem
-  - **Validation** - self-validation test runner (`SelfTest/Validation.cs`)
+  - **Validation** — self-validation test runner
 - **Utilities** subsystem
-  - **GlobMatcher** - file-matching via glob patterns (`Utilities/GlobMatcher.cs`)
-  - **PathHelpers** - safe path combination utilities (`Utilities/PathHelpers.cs`)
-  - **TemporaryDirectory** - disposable temporary directory helper (`Utilities/TemporaryDirectory.cs`)
+  - **GlobMatcher** — file-matching via glob patterns
+  - **PathHelpers** — safe path combination utilities
+  - **TemporaryDirectory** — disposable temporary directory helper
 
-The following topics are out of scope:
+OTS dependencies covered:
 
-- External library internals
-- Build pipeline configuration
-- Deployment and packaging
+- **YamlDotNet** (OTS)
+- **Microsoft.Extensions.FileSystemGlobbing** (OTS)
+- **DemaConsulting.TestResults** (OTS)
+
+Out of scope: test projects, build pipeline configuration, deployment and packaging, and external
+library internals.
 
 ## Software Structure
-
-The following tree shows how the DictionaryMark software items are organized across the
-system, subsystem, and unit levels:
 
 ```text
 DictionaryMark (System)
@@ -56,10 +58,10 @@ DictionaryMark (System)
 │   ├── YamlDictionaryLoader (Unit)
 │   ├── ConflictDetector (Unit)
 │   ├── MarkdownFormatter (Unit)
-│   ├── DictionaryEntry (Data Model)
-│   ├── MarkdownOptions (Data Model)
-│   ├── OutputFormat (Data Model)
-│   └── SortOrder (Data Model)
+│   ├── DictionaryEntry (Unit)
+│   ├── MarkdownOptions (Unit)
+│   ├── OutputFormat (Unit)
+│   └── SortOrder (Unit)
 ├── SelfTest (Subsystem)
 │   └── Validation (Unit)
 ├── Utilities (Subsystem)
@@ -72,12 +74,7 @@ DictionaryMark (System)
     └── DemaConsulting.TestResults (OTS)
 ```
 
-Each unit is described in detail in its own chapter within this document.
-
 ## Folder Layout
-
-The source code folder structure mirrors the top-level subsystem breakdown above, giving
-reviewers an explicit navigation aid from design to code:
 
 ```text
 src/DemaConsulting.DictionaryMark/
@@ -99,40 +96,47 @@ src/DemaConsulting.DictionaryMark/
     ├── GlobMatcher.cs                  - file-matching via glob patterns
     ├── PathHelpers.cs                  - safe path combination utilities
     └── TemporaryDirectory.cs           - disposable temporary directory helper
+
+test/DemaConsulting.DictionaryMark.Tests/
+├── Cli/
+│   └── ContextTests.cs
+├── Dictionary/
+│   ├── DictionaryGeneratorTests.cs
+│   ├── YamlDictionaryLoaderTests.cs
+│   ├── ConflictDetectorTests.cs
+│   ├── MarkdownFormatterTests.cs
+│   └── ...
+├── SelfTest/
+│   └── ValidationTests.cs
+└── Utilities/
+    ├── GlobMatcherTests.cs
+    ├── PathHelpersTests.cs
+    └── TemporaryDirectoryTests.cs
 ```
-
-The test project mirrors the same layout under `test/DemaConsulting.DictionaryMark.Tests/`.
-
-## Document Conventions
-
-Throughout this document:
-
-- Class names, method names, property names, and file names appear in `monospace` font.
-- The word **shall** denotes a design constraint that the implementation must satisfy.
-- Section headings within each unit chapter follow a consistent structure: overview, data model,
-  methods/algorithms, and interactions with other units.
-- Text tables are used in preference to diagrams, which may not render in all PDF viewers.
 
 ## Companion Artifact Structure
 
 Each local software item has corresponding artifacts in parallel directory trees:
 
-- Requirements: `docs/reqstream/{system-name}.yaml`, `docs/reqstream/{system-name}/.../{item}.yaml` (kebab-case)
-- Design docs: `docs/design/{system-name}.md`, `docs/design/{system-name}/.../{item}.md` (kebab-case)
-- Verification design: `docs/verification/{system-name}.md`, `docs/verification/{system-name}/.../{item}.md` (kebab-case)
-- Source code: `src/{System}/.../{Item}.cs` (PascalCase for C#)
-- Tests: `test/{System}.Tests/.../{Item}Tests.cs` (PascalCase for C#)
+- Requirements: `docs/reqstream/dictionary-mark.yaml`,
+  `docs/reqstream/dictionary-mark/{subsystem}/{item}.yaml`
+- Design: `docs/design/dictionary-mark.md`,
+  `docs/design/dictionary-mark/{subsystem}/{item}.md`
+- Verification design: `docs/verification/dictionary-mark.md`,
+  `docs/verification/dictionary-mark/{subsystem}/{item}.md`
+- Source code: `src/DemaConsulting.DictionaryMark/{Subsystem}/{Item}.cs`
+- Tests: `test/DemaConsulting.DictionaryMark.Tests/{Subsystem}/{Item}Tests.cs`
 
-OTS items have integration/usage design documentation parallel to system folders:
+OTS items have integration and usage design documentation in parallel OTS folders:
 
 - Requirements: `docs/reqstream/ots/{ots-name}.yaml`
 - Design: `docs/design/ots/{ots-name}.md`
-- Verification: `docs/verification/ots/{ots-name}.md`
+- Verification design: `docs/verification/ots/{ots-name}.md`
 
-Review-sets: defined in `.reviewmark.yaml`
+Review-sets are defined in `.reviewmark.yaml`.
 
 ## References
 
-- [REF-1] YAML 1.2 Specification - <https://yaml.org/spec/1.2.2/>
-- [REF-2] .NET SDK Documentation - <https://learn.microsoft.com/dotnet/>
-- [REF-3] CommonMark Specification - <https://spec.commonmark.org/>
+- [REF-1] YAML 1.2 Specification — <https://yaml.org/spec/1.2.2/>
+- [REF-2] .NET SDK Documentation — <https://learn.microsoft.com/dotnet/>
+- [REF-3] CommonMark Specification — <https://spec.commonmark.org/>

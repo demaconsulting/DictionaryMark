@@ -1,13 +1,14 @@
 ---
-title: DictionaryMark Software Design Document
-subtitle: Generate Markdown Dictionaries from YAML
-author: DEMA Consulting
-description: Detailed design document for DictionaryMark
+title: "DictionaryMark Software Design Document"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Software Design Document for DictionaryMark"
 lang: en-US
 keywords:
-  - DictionaryMark
-  - .NET
-  - Command-Line Tool
   - Design
   - Software Design Document
+  - .NET
+  - YAML
+  - Markdown
+  - Command-Line Tool
 ---

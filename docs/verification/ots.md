@@ -1,7 +1,21 @@
-# Off-the-Shelf (OTS) Items
+# OTS Verification
 
 This document describes the verification approach for Off-the-Shelf (OTS) software items
-used by DictionaryMark.
+used by DictionaryMark. The following OTS items are covered:
+
+- **BuildMark**: `docs/verification/ots/buildmark.md`
+- **DemaConsulting.TestResults**: `docs/verification/ots/test-results.md`
+- **FileAssert**: `docs/verification/ots/fileassert.md`
+- **Microsoft.Extensions.FileSystemGlobbing**: `docs/verification/ots/file-system-globbing.md`
+- **Pandoc**: `docs/verification/ots/pandoc.md`
+- **ReqStream**: `docs/verification/ots/reqstream.md`
+- **ReviewMark**: `docs/verification/ots/reviewmark.md`
+- **SarifMark**: `docs/verification/ots/sarifmark.md`
+- **SonarMark**: `docs/verification/ots/sonarmark.md`
+- **VersionMark**: `docs/verification/ots/versionmark.md`
+- **WeasyPrint**: `docs/verification/ots/weasyprint.md`
+- **xUnit**: `docs/verification/ots/xunit.md`
+- **YamlDotNet**: `docs/verification/ots/yaml-dot-net.md`
 
 ## Verification Strategy
 
@@ -10,23 +24,13 @@ CI pipeline. Each OTS item has a dedicated requirements file under `docs/reqstre
 a verification document under `docs/verification/ots/`. Verification evidence is drawn from
 CI pipeline execution logs, self-validation output, and artifact assertions.
 
-## OTS Items
-
-The following OTS items are covered:
-
-- BuildMark: `docs/verification/ots/buildmark.md`
-- DemaConsulting.TestResults: `docs/verification/ots/test-results.md`
-- FileAssert: `docs/verification/ots/fileassert.md`
-- Microsoft.Extensions.FileSystemGlobbing: `docs/verification/ots/file-system-globbing.md`
-- Pandoc: `docs/verification/ots/pandoc.md`
-- ReqStream: `docs/verification/ots/reqstream.md`
-- ReviewMark: `docs/verification/ots/reviewmark.md`
-- SarifMark: `docs/verification/ots/sarifmark.md`
-- SonarMark: `docs/verification/ots/sonarmark.md`
-- VersionMark: `docs/verification/ots/versionmark.md`
-- WeasyPrint: `docs/verification/ots/weasyprint.md`
-- xUnit: `docs/verification/ots/xunit.md`
-- YamlDotNet: `docs/verification/ots/yaml-dot-net.md`
+Tools that ship with a built-in self-validation suite (BuildMark, FileAssert, ReqStream,
+ReviewMark, SarifMark, SonarMark, VersionMark, and WeasyPrint) are run with
+`--validate --results <trx-file>` in CI. The CI pipeline chains tool outputs through
+downstream validators (Pandoc → FileAssert → WeasyPrint → FileAssert → ReqStream), providing
+transitive evidence that each tool in the chain produced correct output. xUnit is verified by
+the CI test run itself; every test discovered, executed, and reported by xUnit provides
+evidence that the framework is functioning correctly.
 
 ## Qualification Evidence
 

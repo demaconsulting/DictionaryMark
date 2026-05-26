@@ -1,95 +1,49 @@
-## ReqStream Verification
+## ReqStream
 
-This document provides the verification evidence for the `ReqStream` OTS software item.
-Requirements for this OTS item are defined in the ReqStream OTS Software Requirements document
-(`docs/reqstream/ots/reqstream.yaml`).
+### Verification Approach
 
-### Required Functionality
-
-DemaConsulting.ReqStream processes requirements.yaml and the TRX test-result files to produce a
-requirements report, justifications document, and traceability matrix. When run with `--enforce`, it
-exits with a non-zero code if any requirement lacks test evidence, making unproven requirements a
-build-breaking condition. A successful pipeline run with `--enforce` proves all requirements are
-covered and that ReqStream is functioning.
-
-### Qualification Evidence
-
-ReqStream is verified by two complementary layers of evidence. First, the CI pipeline runs
-`reqstream --validate --results artifacts/reqstream-self-validation.trx`, which exercises
-ReqStream's built-in self-validation suite against internal test requirements and records
-results.
-
-Second, the pipeline invokes `reqstream --enforce` with `requirements.yaml` and all TRX
-test-evidence files accumulated during the build. ReqStream generates `requirements.md`,
-`justifications.md`, and `trace_matrix.md`. If ReqStream failed or produced no output, the
-subsequent Pandoc step would fail, breaking the CI build. Additionally, `--enforce` exits
-non-zero if any requirement lacks test evidence, which would also fail the build. A passing
-CI build proves ReqStream correctly processed the project's real requirements and found
-complete test coverage.
-
-### Regression Approach
-
-When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
-continue to pass before the update is accepted.
+DemaConsulting.ReqStream processes requirements YAML and TRX test-result files to produce a
+requirements report, justifications document, and traceability matrix. When run with `--enforce`,
+it exits with a non-zero code if any requirement lacks test evidence, making unproven requirements
+a build-breaking condition. ReqStream is verified by two complementary layers of evidence. First,
+the CI pipeline runs `reqstream --validate --results artifacts/reqstream-self-validation.trx`,
+exercising ReqStream's built-in self-validation suite against internal test requirements and
+recording results. Second, the pipeline invokes `reqstream --enforce` with `requirements.yaml` and
+all TRX test-evidence files accumulated during the build. If ReqStream failed or produced no
+output, the subsequent Pandoc step would fail, breaking the CI build. Additionally, `--enforce`
+exits non-zero if any requirement lacks test evidence, which would also fail the build. A passing
+CI build proves ReqStream correctly processed the project's real requirements and found complete
+test coverage. When this OTS dependency is updated, the full CI pipeline is re-executed and all
+test scenarios must continue to pass before the update is accepted.
 
 ### Test Scenarios
 
-#### ReqStream_RequirementsProcessing
+**ReqStream_RequirementsProcessing**: ReqStream self-validation loads and processes a set of
+requirements YAML files, verifying that ReqStream correctly parses requirements input. ReqStream is
+expected to correctly load and parse all requirements.
+This scenario is tested by `ReqStream_RequirementsProcessing`.
 
-**Scenario**: ReqStream self-validation loads and processes a set of requirements YAML files.
+**ReqStream_TraceMatrix**: ReqStream self-validation generates a trace matrix from requirements and
+TRX test results, verifying the traceability linking feature. ReqStream is expected to produce a
+correctly linked trace matrix.
+This scenario is tested by `ReqStream_TraceMatrix`.
 
-**Expected**: Correctly loads and parses all requirements.
+**ReqStream_ReportExport**: ReqStream self-validation exports a requirements report to a markdown
+file, verifying the report generation feature. ReqStream is expected to produce a correctly
+formatted requirements report.
+This scenario is tested by `ReqStream_ReportExport`.
 
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
+**ReqStream_TagsFiltering**: ReqStream self-validation filters requirements by tags, verifying that
+tag-based filtering returns only the matching subset of requirements. ReqStream is expected to
+return only requirements matching the specified tags.
+This scenario is tested by `ReqStream_TagsFiltering`.
 
-#### ReqStream_TraceMatrix
+**ReqStream_EnforcementMode**: ReqStream self-validation exercises enforcement mode where all
+requirements have test coverage, verifying that `--enforce` exits 0 when coverage is complete.
+ReqStream is expected to exit 0; it would exit non-zero if any requirement lacked coverage.
+This scenario is tested by `ReqStream_EnforcementMode`.
 
-**Scenario**: ReqStream self-validation generates a trace matrix from requirements and TRX test
-results.
-
-**Expected**: Produces a correctly linked trace matrix.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
-
-#### ReqStream_ReportExport
-
-**Scenario**: ReqStream self-validation exports a requirements report to a markdown file.
-
-**Expected**: Produces a correctly formatted requirements report.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
-
-#### ReqStream_TagsFiltering
-
-**Scenario**: ReqStream self-validation filters requirements by tags.
-
-**Expected**: Returns only requirements matching the specified tags.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
-
-#### ReqStream_EnforcementMode
-
-**Scenario**: ReqStream self-validation exercises enforcement mode where all requirements have test
-coverage.
-
-**Expected**: Exits 0; would exit non-zero if any requirement lacked coverage.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
-
-#### ReqStream_Lint
-
-**Scenario**: ReqStream self-validation exercises lint mode against a requirements file with
-deliberate issues.
-
-**Expected**: Correctly identifies and reports the issues.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReqStream`.
-
-### Requirements Coverage
-
-- **`DictionaryMark-OTS-ReqStream`**: ReqStream_RequirementsProcessing, ReqStream_TraceMatrix,
-  ReqStream_ReportExport, ReqStream_TagsFiltering, ReqStream_EnforcementMode, ReqStream_Lint
-
-### Suitability Conclusion
-
-Based on the evidence above, ReqStream is considered suitable for use in the DictionaryMark CI pipeline.
+**ReqStream_Lint**: ReqStream self-validation exercises lint mode against a requirements file with
+deliberate issues, verifying that ReqStream correctly identifies and reports requirements file
+problems. ReqStream is expected to correctly identify and report the issues.
+This scenario is tested by `ReqStream_Lint`.

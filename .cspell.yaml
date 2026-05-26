@@ -49,11 +49,9 @@ words:
   - versionmark
   - Weasyprint
   - yamlfix
-  - artefacts
-  - behaviour
-  - centralises
   - unopenable
-  - unrecognised
+  - Postconditions
+  - parameterless
 
 # Exclude common build artifacts, dependencies, and vendored third-party code
 ignorePaths:

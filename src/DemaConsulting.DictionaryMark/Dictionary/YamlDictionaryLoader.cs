@@ -25,16 +25,36 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 /// <summary>
 ///     Loads dictionary entries from YAML files.
 /// </summary>
+/// <remarks>
+///     Static utility class; all behavior is encapsulated in <see cref="Load"/>. Has no
+///     instance state. Enforces flat-mapping constraints and duplicate-key detection at
+///     load time so downstream consumers always receive validated, unambiguous data.
+/// </remarks>
 internal static class YamlDictionaryLoader
 {
     /// <summary>
     ///     Loads dictionary entries from a YAML file.
     /// </summary>
-    /// <param name="filePath">Path to the YAML file.</param>
-    /// <returns>List of dictionary entries in file order.</returns>
+    /// <remarks>
+    ///     Reads the entire file into memory before parsing so that I/O errors are reported
+    ///     immediately and the file handle is closed before any validation occurs. Only flat
+    ///     YAML mappings (scalar key → scalar value) are accepted; nested structures and
+    ///     sequences are rejected with <see cref="InvalidOperationException"/> so callers
+    ///     receive an actionable error rather than silently incorrect data. Duplicate-key
+    ///     detection is case-insensitive to prevent ambiguous lookups downstream.
+    ///     Stateless and thread-safe; has no side effects beyond reading the named file.
+    /// </remarks>
+    /// <param name="filePath">Absolute or relative path to the YAML file. Must not be null.</param>
+    /// <returns>
+    ///     Ordered, immutable list of <see cref="DictionaryEntry"/> objects in document order;
+    ///     empty when the file contains no entries.
+    /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
-    /// <exception cref="IOException">Thrown when the file cannot be read.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the YAML structure is not a flat key-value mapping or contains duplicate keys.</exception>
+    /// <exception cref="IOException">Thrown when the file cannot be read (file not found, access denied, etc.).</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the YAML root node is not a mapping, a key or value is non-scalar
+    ///     (nested structure), or a duplicate key is detected within the same file.
+    /// </exception>
     public static IReadOnlyList<DictionaryEntry> Load(string filePath)
     {
         // Validate input

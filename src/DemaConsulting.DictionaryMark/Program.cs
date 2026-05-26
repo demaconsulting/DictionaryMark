@@ -103,7 +103,9 @@ internal static class Program
     /// <summary>
     ///     Runs the program logic based on the provided context.
     /// </summary>
-    /// <param name="context">The context containing command line arguments and program state.</param>
+    /// <param name="context">
+    ///     The context containing command line arguments and program state. Must not be null.
+    /// </param>
     /// <remarks>
     ///     Dispatch is priority-ordered: version check first, then help, then self-validation,
     ///     then main tool logic. Only the highest-priority matching action is executed per invocation.
@@ -139,8 +141,12 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Prints the application banner.
+    ///     Writes the tool name, version, and copyright notice to the context output.
     /// </summary>
+    /// <remarks>
+    ///     Extracted into a separate method to keep the primary dispatch logic in <see cref="Run"/> uncluttered.
+    ///     Called for all dispatch paths except the version-only path, which suppresses the banner.
+    /// </remarks>
     /// <param name="context">The context for output.</param>
     private static void PrintBanner(Context context)
     {
@@ -150,8 +156,12 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Prints usage information.
+    ///     Writes the complete usage reference — all available flags and options — to the context output.
     /// </summary>
+    /// <remarks>
+    ///     Called when the help flag is active to give users an inline, self-contained usage reference
+    ///     without requiring access to external documentation.
+    /// </remarks>
     /// <param name="context">The context for output.</param>
     private static void PrintHelp(Context context)
     {
@@ -177,8 +187,13 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Runs the main tool logic.
+    ///     Implements the default dispatch path: delegates to <see cref="Dictionary.DictionaryGenerator"/>
+    ///     when input patterns are specified, or writes a usage hint when none are provided.
     /// </summary>
+    /// <remarks>
+    ///     Separates the two-branch default logic from <see cref="Run"/> so that each branch
+    ///     can be understood and tested independently.
+    /// </remarks>
     /// <param name="context">The context containing command line arguments and program state.</param>
     private static void RunToolLogic(Context context)
     {

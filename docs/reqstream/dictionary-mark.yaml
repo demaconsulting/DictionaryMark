@@ -1,8 +1,8 @@
 ---
-# DictionaryMark System-Level Requirements
+# DictionaryMark system-level requirements
 
 sections:
-  - title: System-Level Requirements
+  - title: DictionaryMark Requirements
     requirements:
       - id: DictionaryMark-System-Version
         title: The tool shall display version information when the version flag is provided.
@@ -70,8 +70,9 @@ sections:
           - DictionaryMark_UnknownArgument_Provided_ReturnsError
 
       - id: DictionaryMark-System-ErrorHandling-Message
-        title: The tool shall write an error message identifying the unrecognized argument to stderr when an unrecognized
-          argument is provided.
+        title: >-
+          The tool shall write an error message identifying the unrecognized argument
+          to stderr when an unrecognized argument is provided.
         justification: |
           Clear error messages help users diagnose misconfiguration quickly.
         children:
@@ -109,6 +110,7 @@ sections:
         children:
           - DictionaryMark-Program-GenerateDictionary
           - DictionaryMark-Dictionary-MarkdownFormatting
+          - DictionaryMark-Dictionary-Generation
         tests:
           - DictionaryMark_Generate_TableFormat_OutputsTable
 

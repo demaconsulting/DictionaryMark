@@ -1,77 +1,68 @@
-### DictionaryGenerator Design
-
-The `DictionaryGenerator` class orchestrates the full dictionary generation pipeline,
-coordinating file discovery, loading, conflict detection, formatting, and output.
+### DictionaryGenerator
 
 #### Purpose
 
-`DictionaryGenerator` is a static class that orchestrates dictionary generation. The `Generate`
-static method resolves input file paths using `GlobMatcher`, loads entries from each file via
-`YamlDictionaryLoader`, detects conflicts with `ConflictDetector`, formats output with
+`DictionaryGenerator` is a static class that orchestrates the full dictionary generation pipeline.
+The `Generate` static method resolves input file paths using `GlobMatcher`, loads entries from each
+file via `YamlDictionaryLoader`, detects conflicts with `ConflictDetector`, formats output with
 `MarkdownFormatter`, and writes the result to the output file or stdout.
 
 #### Data Model
 
-`DictionaryGenerator` is a static class with no instance state. All state is
-local to each `Generate` call.
+N/A - static class with no instance state.
 
 #### Key Methods
 
-##### Generate(Context context)
+**Generate**: Orchestrates the full generation pipeline.
 
-Orchestrates the full generation pipeline.
+- *Parameters*: `Context context` — provides input patterns, output path, format options, and output
+  channels.
+- *Returns*: `void`.
+- *Preconditions*: `context` is non-null.
+- *Postconditions*: Output written to file or stdout, or `context.WriteError` called and method
+  returned early on any error.
 
-**Processing steps:**
-
-1. Resolve input file paths — call `GlobMatcher.GetFiles(context.InputPatterns)`.
-2. Load entries — call `YamlDictionaryLoader.Load(filePath)` for each resolved file; collect all entries.
-3. Detect conflicts — call `ConflictDetector.Detect(entries)`; if any conflicts found, call
-   `context.WriteError` for each and return (no output generated).
-4. Format output — call `MarkdownFormatter.Format(entries, options)` where `options` is
-   constructed from `context` fields (`Format`, `SectionHeading`, `TermHeader`, `DefinitionHeader`,
-   `SortBy`, `HeadingDepth`).
-5. Write output — if `context.OutputFile` is set, write the formatted string to that file path;
-   otherwise write to `context.WriteLine`.
+Processing steps: (1) Resolve input file paths — call `GlobMatcher.GetFiles(context.InputPatterns)`;
+return early on `ArgumentException` or empty result. (2) Load entries — call
+`YamlDictionaryLoader.Load(filePath)` for each resolved file; accumulate all entries; return early
+on `IOException` or `InvalidOperationException`. (3) Detect conflicts — call
+`ConflictDetector.Detect(allEntries)`; if any conflicts found, call `context.WriteError` for each
+and return. (4) Format output — construct `MarkdownOptions` from context fields (`Format`,
+`SectionHeading`, `TermHeader`, `DefinitionHeader`, `SortBy`, `HeadingDepth`) and call
+`MarkdownFormatter.Format(allEntries, options)`. (5) Write output — if `context.OutputFile` is set,
+write via `File.WriteAllText`; otherwise write via `context.WriteLine`.
 
 #### Error Handling
 
 `Generate` applies an early-return-on-error strategy: each error condition calls
-`context.WriteError` (which sets the exit code to 1) and returns immediately, with no output
-generated. The five error cases are:
+`context.WriteError` (setting exit code to 1) and returns immediately.
 
-- **Invalid input pattern** — `ArgumentException` from `GlobMatcher.GetFiles`;
-  calls `context.WriteError("Error: Invalid input pattern: {message}")` and returns.
-- **No files found** — Empty list from `GlobMatcher.GetFiles`;
-  calls `context.WriteError("Error: No input files found matching the specified patterns.")` and returns.
-- **I/O error reading YAML** — `IOException` from `YamlDictionaryLoader.Load`;
-  calls `context.WriteError("Error: Failed to read file '{file}': {message}")` and returns.
+Five error cases:
+
+- **Invalid input pattern** — `ArgumentException` from `GlobMatcher.GetFiles`; reports
+  `"Error: Invalid input pattern: {message}"`.
+- **No files found** — empty list from `GlobMatcher.GetFiles`; reports
+  `"Error: No input files found matching the specified patterns."`.
+- **I/O error reading YAML** — `IOException` from `YamlDictionaryLoader.Load`; reports
+  `"Error: Failed to read file '{file}': {message}"`.
 - **Invalid YAML structure** — `InvalidOperationException` from `YamlDictionaryLoader.Load`;
-  calls `context.WriteError("Error: Invalid YAML in file '{file}': {message}")` and returns.
-- **I/O or access error writing output** — `IOException` or `UnauthorizedAccessException` from `File.WriteAllText`;
-  calls `context.WriteError("Error: Failed to write output file '{file}': {message}")` and returns.
-
-#### Interactions
-
-| Dependency             | Role                                                                    |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `Context`              | Provides input patterns, output options, output channel, and exit code. |
-| `GlobMatcher`          | Resolves input file patterns to concrete file paths.                    |
-| `YamlDictionaryLoader` | Loads flat YAML key-value pairs from each input file.                   |
-| `ConflictDetector`     | Detects term conflicts across entries from different files.             |
-| `MarkdownFormatter`    | Formats deduplicated entries as a Markdown string.                      |
+  reports `"Error: Invalid YAML in file '{file}': {message}"`.
+- **I/O or access error writing output** — `IOException` or `UnauthorizedAccessException` from
+  `File.WriteAllText`; reports `"Error: Failed to write output file '{file}': {message}"`.
 
 #### Dependencies
 
-| Dependency             | Role                                                                                    |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `Context`              | CLI subsystem — provides input patterns, output options, output channel, and exit code. |
-| `GlobMatcher`          | Utilities subsystem — resolves glob patterns to concrete file paths.                    |
-| `YamlDictionaryLoader` | Dictionary subsystem unit — loads flat YAML key-value pairs from each file.             |
-| `ConflictDetector`     | Dictionary subsystem unit — detects term conflicts across loaded entries.               |
-| `MarkdownFormatter`    | Dictionary subsystem unit — formats deduplicated entries as a Markdown string.          |
+- **Context** — CLI subsystem; provides input patterns, output options, output channel, and exit
+  code.
+- **GlobMatcher** — Utilities subsystem; resolves glob patterns to concrete file paths.
+- **YamlDictionaryLoader** — Dictionary subsystem unit; loads flat YAML key-value pairs from each
+  file.
+- **ConflictDetector** — Dictionary subsystem unit; detects term conflicts across loaded entries.
+- **MarkdownFormatter** — Dictionary subsystem unit; formats deduplicated entries as a Markdown
+  string.
 
 #### Callers
 
-`Program.RunToolLogic` calls `DictionaryGenerator.Generate(context)` when
-`context.InputPatterns` is non-empty. `Generate` is the sole public entry point of the
-Dictionary subsystem pipeline.
+- **Program.RunToolLogic** — calls `DictionaryGenerator.Generate(context)` when
+  `context.InputPatterns` is non-empty. `Generate` is the sole public entry point of the Dictionary
+  subsystem pipeline.

@@ -28,8 +28,6 @@ internal static class ConflictDetector
     /// <summary>
     ///     Detects conflicts among dictionary entries.
     /// </summary>
-    /// <param name="entries">The entries to check.</param>
-    /// <returns>List of conflict error messages (empty if no conflicts).</returns>
     /// <remarks>
     ///     Same term + same definition is NOT a conflict (it is a duplicate, which is allowed).
     ///     Same term + different definition IS a conflict.
@@ -38,6 +36,8 @@ internal static class ConflictDetector
     ///     in casing are treated as different definitions and constitute a conflict.
     ///     Thread-safe; all state is method-local.
     /// </remarks>
+    /// <param name="entries">The entries to check. Must not be null.</param>
+    /// <returns>List of conflict error messages (empty if no conflicts).</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries"/> is null.</exception>
     public static IReadOnlyList<string> Detect(IEnumerable<DictionaryEntry> entries)
     {

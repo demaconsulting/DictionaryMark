@@ -1,14 +1,13 @@
 ---
-title: DictionaryMark Code Quality Report
-subtitle: Code Quality Analysis Report
-author: DEMA Consulting
-description: Code Quality Analysis Report for DictionaryMark
+title: "DictionaryMark Code Quality Report"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Code Quality Report for DictionaryMark"
 lang: en-US
 keywords:
-  - DictionaryMark
   - Code Quality
   - Static Analysis
-  - Analysis
+  - DictionaryMark
   - .NET
-  - Documentation
+  - SonarCloud
 ---

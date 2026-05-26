@@ -1,7 +1,5 @@
 ---
-# VersionMark OTS Software Requirements
-#
-# Requirements for the VersionMark version tracking tool functionality.
+# VersionMark OTS requirements
 
 sections:
   - title: OTS Software Requirements
@@ -19,5 +17,15 @@ sections:
             tests:
               - VersionMark_CapturesVersions
               - VersionMark_GeneratesMarkdownReport
+          - id: DictionaryMark-OTS-VersionMark-Lint
+            title: VersionMark shall validate tool-version configuration files.
+            justification: |
+              DemaConsulting.VersionMark provides a lint mode that validates .versionmark.yaml
+              configuration files, reporting structural and semantic errors before capture or
+              publish operations are attempted. A successful lint pass confirms that the
+              configuration is well-formed; a lint failure correctly identifies configuration
+              problems.
+            tags: [ots]
+            tests:
               - VersionMark_LintPassesForValidConfig
               - VersionMark_LintReportsErrorsForInvalidConfig

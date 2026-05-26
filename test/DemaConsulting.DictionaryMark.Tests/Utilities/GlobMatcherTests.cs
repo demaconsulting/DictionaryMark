@@ -59,6 +59,28 @@ public class GlobMatcherTests
     }
 
     /// <summary>
+    ///     Test that rooted paths with dot segments return fully-qualified file paths.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_GetFiles_RootedPathWithDotSegments_ReturnsFullyQualifiedPath()
+    {
+        // Arrange:
+        using var tmpDir = new TemporaryDirectory();
+        var nestedDirectory = Path.Combine(tmpDir.DirectoryPath, "a", "b");
+        Directory.CreateDirectory(nestedDirectory);
+        var filePath = Path.Combine(nestedDirectory, "test.yaml");
+        File.WriteAllText(filePath, "key: value");
+        var pathWithDotSegments = Path.Combine(tmpDir.DirectoryPath, "a", ".", "b", "..", "b", "test.yaml");
+        var expected = Path.GetFullPath(pathWithDotSegments);
+
+        // Act:
+        var result = GlobMatcher.GetFiles([pathWithDotSegments]);
+
+        // Assert:
+        Assert.Contains(result, f => string.Equals(f, expected, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     ///     Test that a non-existent absolute path returns empty.
     /// </summary>
     [Fact]

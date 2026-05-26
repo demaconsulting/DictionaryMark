@@ -1,7 +1,5 @@
 ---
-# YamlDotNet OTS Software Requirements
-#
-# Requirements for the YamlDotNet YAML parsing library functionality.
+# YamlDotNet OTS requirements
 
 sections:
   - title: OTS Software Requirements
@@ -9,7 +7,9 @@ sections:
       - title: YamlDotNet Requirements
         requirements:
           - id: DictionaryMark-OTS-YamlDotNet
-            title: YamlDotNet shall parse YAML dictionary files into an in-memory node representation for key-value extraction.
+            title: >-
+              YamlDotNet shall parse YAML dictionary files into an in-memory node representation
+              for key-value extraction.
             justification: |
               DemaConsulting.DictionaryMark uses YamlDotNet in YamlDictionaryLoader to convert raw
               YAML file content into a structured node tree via YamlStream, YamlMappingNode, and

@@ -1,81 +1,44 @@
-### DictionaryGenerator Verification
+### DictionaryGenerator
 
-This document describes the unit-level verification design for the `DictionaryGenerator` unit.
-It defines test scenarios, dependency usage, and requirement coverage for
-`DictionaryGeneratorTests.cs`.
+#### Verification Approach
 
-#### Verification Strategy
-
-`DictionaryGenerator` is verified with unit tests in `DictionaryGeneratorTests.cs`. Tests
-create temporary YAML files with controlled content, invoke `DictionaryGenerator.Generate`,
-and assert on captured console output, exit codes, and error messages.
-
-#### Dependencies
-
-| Dependency  | Usage in Tests                                                          |
-| ----------- | ----------------------------------------------------------------------- |
-| File system | Temporary YAML files written with controlled content for each test.     |
-| `Context`   | Created from controlled argument arrays to drive each test scenario.    |
+`DictionaryGenerator` is a `static` class that orchestrates the full dictionary pipeline by coordinating
+`GlobMatcher`, `YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`. Tests supply a
+`Context` constructed from controlled argument arrays and write temporary YAML files to disk using
+`TemporaryDirectory`. Console standard output and standard error are redirected with `StringWriter`
+instances to capture generated output and error messages. All collaborating units (`GlobMatcher`,
+`YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`) run with their real implementations
+against real files; no mocking or stubbing is used.
 
 #### Test Environment
 
-N/A - standard test environment. Tests write temporary YAML files using `TemporaryDirectory`
-for automatic cleanup.
+Tests write temporary YAML files using `TemporaryDirectory` for automatic cleanup after each test. The
+test class is marked `[Collection("Sequential")]` to prevent concurrent Console stream redirection from
+interfering between tests. No other environment setup is required beyond the standard test runner.
 
 #### Acceptance Criteria
 
-All unit tests in `DictionaryGeneratorTests.cs` pass; all requirements listed in the
-Requirements Coverage section have at least one passing test scenario; no tests may be skipped
-or marked as expected failures.
+- All unit tests in `DictionaryGeneratorTests.cs` pass with zero failures.
+- No tests are skipped or marked as expected failures.
 
 #### Test Scenarios
 
-##### DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
+**DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout**: Verifies that `Generate` called with a
+single YAML input file writes formatted Markdown containing the entry term to standard output and exits
+with code 0, confirming the normal end-to-end pipeline execution. This scenario is tested by
+`DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout`.
 
-**Scenario**: `Generate` is called with a context that specifies a single temporary YAML file
-containing `"API: Application Programming Interface\n"`.
+**DictionaryGenerator_Generate_ConflictingEntries_ReportsError**: Verifies that when two input files
+define the same term with different definitions, `Generate` writes an error message to standard error,
+sets exit code 1, and produces no Markdown output, confirming the conflict-reporting early-exit path.
+This scenario is tested by `DictionaryGenerator_Generate_ConflictingEntries_ReportsError`.
 
-**Expected**: Standard output contains `"API"`; exit code is 0.
+**DictionaryGenerator_Generate_NoInputPatterns_ReportsError**: Verifies that when no `--input` flags
+are provided, `Generate` reports a "No input files found" error to standard error and sets exit code 1,
+confirming the empty-pattern error path. This scenario is tested by
+`DictionaryGenerator_Generate_NoInputPatterns_ReportsError`.
 
-**Requirement coverage**: `DictionaryMark-DictionaryGenerator-FileLoading`,
-`DictionaryMark-DictionaryGenerator-OutputRouting`.
-
-##### DictionaryGenerator_Generate_ConflictingEntries_ReportsError
-
-**Scenario**: `Generate` is called with a context specifying two YAML files that define the
-same term (`"API"`) with different definitions.
-
-**Expected**: Standard error contains `"Conflict: term 'API' has multiple definitions"`; exit
-code is 1; no Markdown output is written.
-
-**Requirement coverage**: `DictionaryMark-DictionaryGenerator-ConflictReporting`.
-
-##### DictionaryGenerator_Generate_NoInputPatterns_ReportsError
-
-**Scenario**: `Generate` is called with a context created from an empty argument array (no
-`--input` flags), so the input pattern list is empty.
-
-**Expected**: Standard error contains `"No input files found matching the specified patterns."`; exit code is 1.
-
-**Requirement coverage**: `DictionaryMark-DictionaryGenerator-FileLoading`.
-
-##### DictionaryGenerator_Generate_OutputFile_WritesToFile
-
-**Scenario**: `Generate` is called with a context specifying a single YAML input file and a
-temporary output file path.
-
-**Expected**: The output file is created and contains the formatted Markdown output (including
-`"API"`); exit code is 0.
-
-**Requirement coverage**: `DictionaryMark-DictionaryGenerator-OutputRouting`.
-
-#### Requirements Coverage
-
-- **`DictionaryMark-DictionaryGenerator-FileLoading`**:
-  DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout,
-  DictionaryGenerator_Generate_NoInputPatterns_ReportsError
-- **`DictionaryMark-DictionaryGenerator-ConflictReporting`**:
-  DictionaryGenerator_Generate_ConflictingEntries_ReportsError
-- **`DictionaryMark-DictionaryGenerator-OutputRouting`**:
-  DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout,
-  DictionaryGenerator_Generate_OutputFile_WritesToFile
+**DictionaryGenerator_Generate_OutputFile_WritesToFile**: Verifies that when an `--output` file path is
+specified, `Generate` creates the output file containing formatted Markdown and exits with code 0,
+confirming the file-output routing path as an alternative to writing to standard output. This scenario
+is tested by `DictionaryGenerator_Generate_OutputFile_WritesToFile`.

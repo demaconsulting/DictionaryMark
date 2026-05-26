@@ -1,14 +1,14 @@
 ---
-title: DictionaryMark Code Review Report
-subtitle: Code Review Report for DictionaryMark
-author: DEMA Consulting
-description: Code Review Report for DictionaryMark
+title: "DictionaryMark Code Review Report"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Code Review Report for DictionaryMark"
 lang: en-US
 keywords:
   - Code Review
   - DictionaryMark
-  - Review Report
-  - File Reviews
+  - YAML
+  - Markdown
   - .NET
   - Tool
 ---

@@ -1,90 +1,123 @@
-### Context Design
-
-The `Context` class handles command-line argument parsing and program output for DictionaryMark.
-It is the primary interface between the user's command-line invocation and the tool's internal
-logic.
+### Context
 
 #### Purpose
 
 `Context` is created once per tool invocation via the `Create` factory method. It parses the
 argument list using the inner `ArgumentParser` helper, opens any requested log file, and exposes
-the parsed flags as read-only properties. It also owns the two output channels - console and log
-file - through its `WriteLine` and `WriteError` methods.
+the parsed flags as read-only properties. It owns the two output channels — console and log file —
+through `WriteLine` and `WriteError`. It signals errors both at construction time (exceptions) and
+at runtime (via `_hasErrors` flag).
 
 #### Data Model
 
-- `_logWriter` (`StreamWriter?`) — Log file writer; `null` when logging is disabled.
-- `_hasErrors` (`bool`) — Set to `true` on the first `WriteError` call.
-- `Version` (`bool`) — `true` when `-v` or `--version` was passed.
-- `Help` (`bool`) — `true` when `-?`, `-h`, or `--help` was passed.
-- `Silent` (`bool`) — `true` when `--silent` was passed.
-- `Validate` (`bool`) — `true` when `--validate` was passed.
-- `ResultsFile` (`string?`) — Path supplied after `--results` or `--result`, or `null`.
-- `HeadingDepth` (`int`) — Heading depth for output; valid range 1–6 (default 1); via `--depth`.
-- `InputPatterns` (`List<string>`) — Input file patterns specified via `-i` or `--input` (repeatable).
-- `OutputFile` (`string?`) — Output file path via `-o` or `--output`; `null` means stdout.
-- `Format` (`OutputFormat`) — Output format (Bullets or Table); via `-f` or `--format`. Default is Bullets.
-- `SectionHeading` (`string?`) — Optional section heading text; via `-s` or `--section`.
-- `TermHeader` (`string`) — Term column header; via `--term-header`. Default is `"Term"`.
-- `DefinitionHeader` (`string`) — Definition column header; via `--def-header` or `--definition-header`. Default is `"Definition"`.
-- `SortBy` (`SortOrder`) — Sort order (FileOrder or Alphabetical); via `--sort`. Default is FileOrder.
-- `ExitCode` (`int`) — `1` if `_hasErrors`; `0` otherwise.
+**_logWriter**: `StreamWriter?` — Log file writer; `null` when logging is disabled. Disposed by
+`Dispose()`.
+
+**_hasErrors**: `bool` — Set to `true` on the first `WriteError` call; never reset. Invariant:
+once `true`, remains `true` for the lifetime of the instance.
+
+**Version**: `bool` — `true` when `-v` or `--version` was passed; default `false`.
+
+**Help**: `bool` — `true` when `-?`, `-h`, or `--help` was passed; default `false`.
+
+**Silent**: `bool` — `true` when `--silent` was passed; default `false`. When `true`, neither
+`WriteLine` nor `WriteError` writes to the console.
+
+**Validate**: `bool` — `true` when `--validate` was passed; default `false`.
+
+**ResultsFile**: `string?` — Path supplied after `--results` or `--result`; `null` when not
+specified.
+
+**HeadingDepth**: `int` — Heading depth for output; valid range 1–6; default 1; set via
+`--depth`.
+
+**InputPatterns**: `List<string>` — Input file patterns specified via `-i` or `--input`
+(repeatable); default empty list.
+
+**OutputFile**: `string?` — Output file path via `-o` or `--output`; `null` means stdout.
+
+**Format**: `OutputFormat` — Output format (`Bullets` or `Table`); set via `-f` or `--format`;
+default `Bullets`.
+
+**SectionHeading**: `string?` — Optional section heading text; set via `-s` or `--section`;
+`null` when not specified.
+
+**TermHeader**: `string` — Term column header; set via `--term-header`; default `"Term"`.
+
+**DefinitionHeader**: `string` — Definition column header; set via `--def-header` or
+`--definition-header`; default `"Definition"`.
+
+**SortBy**: `SortOrder` — Sort order; set via `--sort`; default `FileOrder`.
+
+**ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
 
 #### Key Methods
 
-##### Create(string[] args)
+**Create**: Factory method. Delegates to the private `ArgumentParser` helper to parse `args`, then
+opens the log file if `--log` was supplied.
 
-Factory method. Delegates to the private `ArgumentParser` helper and opens the log file if
-`--log` was supplied.
+- *Parameters*: `string[] args` — command-line arguments to parse.
+- *Returns*: `Context` — a fully initialized instance.
+- *Preconditions*: None.
+- *Postconditions*: Returns a fully initialized `Context`; all parsed properties are set; log file
+  is open if `--log` was specified.
 
-**Throws:** `ArgumentException` - when an unknown argument or missing value is encountered.
-`InvalidOperationException` - when a log file cannot be opened.
+Throws `ArgumentException` when an unknown argument or a flag missing its required value is
+encountered. Throws `InvalidOperationException` when the specified log file cannot be opened.
 
-##### WriteLine(string message)
+**WriteLine**: Writes `message` to `Console.Out` (unless `Silent` is `true`) and to `_logWriter`
+(if open).
 
-Writes `message` to `Console.Out` (unless `Silent`) and to `_logWriter` (if open).
+- *Parameters*: `string message` — text line to write.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Message written to console output and/or log file.
 
-##### WriteError(string message)
+**WriteError**: Sets `_hasErrors = true`, writes `message` to `Console.Error` in red (unless
+`Silent`), and to `_logWriter` (if open).
 
-Sets `_hasErrors = true`, writes `message` to `Console.Error` in red (unless `Silent`),
-and to `_logWriter` (if open).
+- *Parameters*: `string message` — error message to write.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: `_hasErrors` is `true`; `ExitCode` will return `1`; message written to stderr
+  and log.
 
-##### Dispose()
+**Dispose**: Disposes `_logWriter` and sets it to `null`.
 
-Disposes `_logWriter` and sets it to `null`.
+- *Parameters*: N/A — parameterless.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: `_logWriter` is disposed and set to `null`.
+
+The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; `--help` (`-h`,
+`-?`) → `Help`; `--silent` → `Silent`; `--validate` → `Validate`; `--log <file>` → log channel
+(default disabled); `--results <file>` / `--result <file>` → `ResultsFile`; `--depth <n>` →
+`HeadingDepth` (default 1); `--input <pattern>` (`-i`) → `InputPatterns` (repeatable);
+`--output <file>` (`-o`) → `OutputFile`; `--format <table|bullets>` (`-f`) → `Format` (default
+`Bullets`); `--section <heading>` (`-s`) → `SectionHeading`; `--term-header <text>` →
+`TermHeader` (default `"Term"`); `--def-header <text>` / `--definition-header <text>` →
+`DefinitionHeader` (default `"Definition"`); `--sort <file|alpha>` → `SortBy` (default
+`FileOrder`).
 
 #### Error Handling
 
-`Context` signals errors in two ways:
-
-- **Construction errors** — `Create` throws `ArgumentException` when an argument is unrecognised
-  or is missing its required value, and `InvalidOperationException` when the specified log file
-  cannot be opened. The caller (`Program.Main`) is expected to catch both exception types.
-- **Runtime errors** — `WriteError` does not throw; it records the error message to stderr and
-  the log file, and sets `_hasErrors = true` so that `ExitCode` returns 1. No exception is raised
-  at the point of the error.
-
-#### Interactions
-
-`Context` uses `OutputFormat` and `SortOrder` types from the Dictionary subsystem to represent
-the parsed `--format` and `--sort` flag values respectively. Apart from these type references,
-`Context` has no behavioral dependency on other DictionaryMark subsystems. It uses only .NET
-base class library types (`Console`, `StreamWriter`) for I/O.
+- Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized or
+  missing its required value; throws `InvalidOperationException` when the specified log file
+  cannot be opened. `Program.Main` is expected to catch both types.
+- Runtime errors: `WriteError` does not throw; it records the error message and sets
+  `_hasErrors = true` so that `ExitCode` returns 1. No exception is raised at the point of the
+  error.
 
 #### Dependencies
 
-| Dependency     | Role                                                                   |
-| -------------- | ---------------------------------------------------------------------- |
-| `OutputFormat` | Dictionary subsystem enum — type of the parsed `--format` flag value.  |
-| `SortOrder`    | Dictionary subsystem enum — type of the parsed `--sort` flag value.    |
-| `Console`      | .NET BCL — stdout and stderr output channels.                          |
-| `StreamWriter` | .NET BCL — optional log file channel opened when `--log` is specified. |
+- **OutputFormat** — Dictionary subsystem enum; type of the parsed `--format` flag value.
+- **SortOrder** — Dictionary subsystem enum; type of the parsed `--sort` flag value.
 
 #### Callers
 
-`Program.Main` creates a `Context` instance via `Context.Create(args)` once per invocation and
-passes it to `Program.Run`. `Validation` creates additional short-lived `Context` instances
-(with `--silent`) during each self-test to capture tool output without writing to the console.
-`DictionaryGenerator.Generate` and `Validation.Run` each receive the `Context` instance as a
-parameter and call its `WriteLine`, `WriteError`, and property accessors throughout their
-execution.
+- **Program.Main** — creates `Context` via `Context.Create(args)` once per invocation and passes
+  it to `Program.Run`.
+- **Validation** — creates additional short-lived `Context` instances (with `--silent`) during
+  each self-test.
+- **DictionaryGenerator.Generate** and **Validation.Run** — receive `Context` as a parameter and
+  call its methods throughout execution.

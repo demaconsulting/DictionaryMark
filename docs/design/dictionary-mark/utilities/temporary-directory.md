@@ -1,77 +1,84 @@
-### TemporaryDirectory Design
-
-The `TemporaryDirectory` class provides a disposable temporary directory that is
-automatically created on construction and deleted on disposal. It is used by both
-production self-test code (`Validation`) and by unit and integration test infrastructure.
+### TemporaryDirectory
 
 #### Purpose
 
-`TemporaryDirectory` encapsulates three responsibilities:
+`TemporaryDirectory` is an `internal sealed` class implementing `IDisposable` that encapsulates
+three responsibilities: (1) creating a uniquely-named temporary subdirectory on construction
+using `PathHelpers.SafePathCombine` and `Directory.CreateDirectory`; (2) resolving
+caller-supplied relative file paths within the directory safely via `GetFilePath`; (3) deleting
+the directory tree on disposal via `Directory.Delete(path, recursive: true)`, suppressing
+`IOException` and `UnauthorizedAccessException` so cleanup failures do not mask test outcomes.
 
-1. **Construction** — generates a uniquely-named subdirectory path using
-   `PathHelpers.SafePathCombine(effectiveBaseDirectory, "tmp-{guid}")` and calls
-   `Directory.CreateDirectory` to create it on disk. `effectiveBaseDirectory` is the caller-
-   supplied `baseDirectory` when provided, otherwise `Environment.CurrentDirectory`. The
-   default uses `Environment.CurrentDirectory` rather than `Path.GetTempPath()` to avoid the
-   macOS `/tmp` → `/private/tmp` symlink issue that causes path-comparison failures when the
-   OS returns the resolved path instead of the construction path.
-2. **File-path resolution** — `GetFilePath(relativePath)` delegates to
-   `PathHelpers.SafePathCombine` to enforce the directory boundary, then calls
-   `Directory.CreateDirectory` on the parent of the returned path so that any intermediate
-   subdirectories are created before the caller writes the file.
-3. **Disposal** — `Dispose` calls `Directory.Delete(path, recursive: true)` to remove the
-   directory tree. `IOException` and `UnauthorizedAccessException` are suppressed so that
-   cleanup failures do not mask the original test or self-test outcome.
+The base directory defaults to `Environment.CurrentDirectory` (not `Path.GetTempPath()`) to
+avoid the macOS `/tmp` → `/private/tmp` symlink issue that causes path-comparison failures when
+the OS returns the resolved path instead of the construction path.
 
 #### Data Model
 
-`TemporaryDirectory` is an `internal sealed` class implementing `IDisposable`. It holds a
-single `string` property `DirectoryPath` set on construction.
+**DirectoryPath**: `string` — The absolute path of the temporary directory created on
+construction. Read-only; set by the constructor. Invariant: the directory at this path exists for
+the lifetime of the object (until `Dispose` is called).
 
 #### Key Methods
 
-##### TemporaryDirectory(string? baseDirectory = null) constructor
+**TemporaryDirectory** *(constructor)*: Creates a uniquely-named subdirectory under
+`baseDirectory` when provided; otherwise under `Environment.CurrentDirectory`.
 
-Creates a uniquely-named subdirectory under `baseDirectory` when provided; otherwise under
-`Environment.CurrentDirectory`.
+- *Parameters*: `string? baseDirectory = null` — optional base directory; defaults to
+  `Environment.CurrentDirectory`.
+- *Returns*: N/A — constructor.
+- *Preconditions*: `baseDirectory`, if provided, must not be an empty or whitespace-only string.
+- *Postconditions*: A uniquely-named directory (named `tmp-{guid}`) exists on disk at
+  `DirectoryPath`.
 
-**Throws:**
+Throws `ArgumentException` — when `baseDirectory` is a non-null empty or whitespace-only string.
 
-- `InvalidOperationException` — wraps any `IOException`, `UnauthorizedAccessException`, or
-  `ArgumentException` raised by `Directory.CreateDirectory`.
+Throws `InvalidOperationException` — wraps any `IOException`, `UnauthorizedAccessException`, or
+`ArgumentException` raised by `Directory.CreateDirectory`.
 
-##### GetFilePath(string relativePath) → string
+**GetFilePath**: Returns the absolute path to a file within the temporary directory, creating
+intermediate subdirectories as needed.
 
-Returns the absolute path to a file within the temporary directory, creating intermediate
-subdirectories as needed.
+- *Parameters*: `string relativePath` — the relative path within the temporary directory.
+- *Returns*: `string` — the absolute path to the file location; intermediate directories are
+  created.
+- *Preconditions*: `relativePath` is non-null and does not escape the temporary directory
+  boundary.
+- *Postconditions*: All intermediate directories in the returned path exist on disk.
 
-**Throws:**
+Delegates to `PathHelpers.SafePathCombine(DirectoryPath, relativePath)` for boundary
+enforcement, then calls `Directory.CreateDirectory` on the parent of the returned path.
 
-- `ArgumentNullException` — when `relativePath` is null (from `PathHelpers.SafePathCombine`).
-- `ArgumentException` — when `relativePath` escapes the temporary directory boundary.
+**Dispose**: Deletes the temporary directory and all contents.
 
-##### Dispose()
-
-Deletes the temporary directory and all contents. `IOException` and
-`UnauthorizedAccessException` are suppressed.
+- *Parameters*: N/A — parameterless.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Best-effort — the temporary directory is deleted if accessible. `IOException`
+  and `UnauthorizedAccessException` are suppressed.
 
 #### Error Handling
 
-- Constructor failures surface as `InvalidOperationException` with a descriptive message.
-- `GetFilePath` propagates `ArgumentNullException` and `ArgumentException` from
+- Constructor throws `ArgumentException` directly when `baseDirectory` is a non-null
+  empty or whitespace-only string.
+- Constructor failures caused by file-system errors surface as `InvalidOperationException`
+  with a descriptive message, wrapping the underlying `IOException`, `UnauthorizedAccessException`,
+  or `ArgumentException` from `Directory.CreateDirectory`.
+- `GetFilePath` propagates `ArgumentNullException` (when `relativePath` is null) and
+  `ArgumentException` (when `relativePath` escapes the boundary) from
   `PathHelpers.SafePathCombine` unchanged.
-- `Dispose` silently suppresses I/O and access errors; cleanup failures are non-fatal.
+- `Dispose` silently suppresses `IOException` and `UnauthorizedAccessException`; cleanup failures
+  are non-fatal and do not propagate.
 
 #### Dependencies
 
-| Dependency    | Role                                                                             |
-| ------------- | -------------------------------------------------------------------------------- |
-| `PathHelpers` | `SafePathCombine` enforces the boundary between the temp dir and relative paths. |
+- **PathHelpers** — Utilities subsystem unit; `SafePathCombine` enforces the boundary between
+  the temp directory and caller-supplied relative paths.
 
 #### Callers
 
-`Validation` (self-test subsystem) uses `TemporaryDirectory` to create isolated working
-directories for each self-test scenario, obtaining file paths via `GetFilePath`.
-
-Test classes across the test suite use `TemporaryDirectory` as a `using`-scoped fixture to
-create and automatically clean up files needed by individual test cases.
+- **Validation** — creates `TemporaryDirectory` instances in `using` blocks for each self-test
+  scenario, obtaining file paths via `GetFilePath`.
+- Test classes in `test/DemaConsulting.DictionaryMark.Tests/` — use `TemporaryDirectory` as a
+  `using`-scoped fixture to create and automatically clean up files needed by individual test
+  cases.

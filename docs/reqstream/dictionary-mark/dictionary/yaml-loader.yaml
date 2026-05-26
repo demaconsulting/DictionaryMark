@@ -1,50 +1,54 @@
 ---
-# DictionaryMark YamlDictionaryLoader Unit Requirements
+# DictionaryMark YamlDictionaryLoader unit requirements
 
 sections:
-  - title: YamlDictionaryLoader Unit Requirements
-    requirements:
-      - id: DictionaryMark-YamlLoader-Load
-        title: The YamlDictionaryLoader class shall load flat YAML key-value mappings as dictionary entries.
-        justification: |
-          YAML is a human-friendly format for maintaining dictionary data. The loader must
-          handle flat mappings and report structural errors clearly.
-        tests:
-          - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
-          - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
-          - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Dictionary Requirements
+        sections:
+          - title: YamlDictionaryLoader Requirements
+            requirements:
+              - id: DictionaryMark-YamlLoader-Load
+                title: The YamlDictionaryLoader class shall load flat YAML key-value mappings as dictionary entries.
+                justification: |
+                  YAML is a human-friendly format for maintaining dictionary data. The loader must
+                  handle flat mappings and report structural errors clearly.
+                tests:
+                  - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
+                  - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
+                  - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
 
-      - id: DictionaryMark-YamlLoader-StructureErrors
-        title: The YamlDictionaryLoader class shall throw InvalidOperationException for non-flat YAML structures.
-        justification: |
-          Non-flat YAML (nested mappings, sequences) is not a valid dictionary format.
-          The loader must reject such structures with a clear error to help users fix invalid files.
-        tests:
-          - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
-          - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
+              - id: DictionaryMark-YamlLoader-StructureErrors
+                title: The YamlDictionaryLoader class shall throw InvalidOperationException for non-flat YAML structures.
+                justification: |
+                  Non-flat YAML (nested mappings, sequences) is not a valid dictionary format.
+                  The loader must reject such structures with a clear error to help users fix invalid files.
+                tests:
+                  - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
+                  - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
 
-      - id: DictionaryMark-YamlLoader-FileErrors
-        title: The YamlDictionaryLoader class shall throw IOException when the specified file cannot be read.
-        justification: |
-          Missing or inaccessible files are a common operational error. Propagating the
-          IOException allows callers to report a clear, actionable message to the user.
-        tests:
-          - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
+              - id: DictionaryMark-YamlLoader-FileErrors
+                title: The YamlDictionaryLoader class shall throw IOException when the specified file cannot be read.
+                justification: |
+                  Missing or inaccessible files are a common operational error. Propagating the
+                  IOException allows callers to report a clear, actionable message to the user.
+                tests:
+                  - YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException
 
-      - id: DictionaryMark-YamlLoader-NullInput
-        title: The YamlDictionaryLoader class shall throw ArgumentNullException when filePath is null.
-        justification: |
-          A null file path is a caller contract violation. Failing fast with ArgumentNullException
-          keeps the API contract explicit and prevents ambiguous downstream file-system errors.
-        tests:
-          - YamlDictionaryLoader_Load_NullFilePath_ThrowsArgumentNullException
+              - id: DictionaryMark-YamlLoader-NullInput
+                title: The YamlDictionaryLoader class shall throw ArgumentNullException when filePath is null.
+                justification: |
+                  A null file path is a caller contract violation. Failing fast with ArgumentNullException
+                  keeps the API contract explicit and prevents ambiguous downstream file-system errors.
+                tests:
+                  - YamlDictionaryLoader_Load_NullFilePath_ThrowsArgumentNullException
 
-      - id: DictionaryMark-YamlLoader-DuplicateKeys
-        title: >-
-          The YamlDictionaryLoader class shall throw InvalidOperationException when a YAML file
-          contains duplicate keys.
-        justification: |
-          Duplicate keys within a single file represent a data quality error. Detecting
-          them at load time prevents silent data loss or unpredictable behavior downstream.
-        tests:
-          - YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException
+              - id: DictionaryMark-YamlLoader-DuplicateKeys
+                title: >-
+                  The YamlDictionaryLoader class shall throw InvalidOperationException when a YAML file
+                  contains duplicate keys.
+                justification: |
+                  Duplicate keys within a single file represent a data quality error. Detecting
+                  them at load time prevents silent data loss or unpredictable behavior downstream.
+                tests:
+                  - YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException

@@ -1,10 +1,11 @@
 ---
-title: DictionaryMark User Guide
-subtitle: Generate Markdown Dictionaries from YAML
-author: DEMA Consulting
-description: User guide for DictionaryMark, a .NET CLI tool that generates Markdown dictionary files from YAML input.
+title: "DictionaryMark User Guide"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "User Guide for DictionaryMark"
 lang: en-US
 keywords:
+  - User Guide
   - DictionaryMark
   - .NET
   - Command-Line Tool

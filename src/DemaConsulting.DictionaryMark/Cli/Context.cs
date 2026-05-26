@@ -103,8 +103,14 @@ internal sealed class Context : IDisposable
     /// <summary>
     ///     Creates a Context instance from command-line arguments.
     /// </summary>
-    /// <param name="args">Command-line arguments.</param>
-    /// <returns>A new Context instance.</returns>
+    /// <remarks>
+    ///     Uses the factory pattern to keep the constructor private, preventing partial initialization. Parsing is
+    ///     delegated to the inner <c>ArgumentParser</c> helper so that validation and default-setting logic are
+    ///     isolated from the immutable <c>Context</c> properties. This separation means <c>Context</c> is always
+    ///     fully initialized or never created. Stateless after construction; thread-safe for concurrent reads.
+    /// </remarks>
+    /// <param name="args">Command-line arguments. Must not be null.</param>
+    /// <returns>A fully initialized <see cref="Context"/> with all parsed properties set.</returns>
     /// <exception cref="ArgumentException">Thrown when arguments are invalid.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the specified log file cannot be opened.</exception>
     public static Context Create(string[] args)
@@ -231,9 +237,10 @@ internal sealed class Context : IDisposable
         public SortOrder SortBy { get; private set; } = SortOrder.FileOrder;
 
         /// <summary>
-        ///     Parses command-line arguments
+        ///     Iterates over the argument list, dispatching each token to <see cref="ParseArgument"/> so that
+        ///     recognized flags set their corresponding properties and unknown flags throw immediately.
         /// </summary>
-        /// <param name="args">Command-line arguments.</param>
+        /// <param name="args">Command-line arguments. Must not be null.</param>
         public void ParseArguments(string[] args)
         {
             // Validate input
@@ -248,12 +255,13 @@ internal sealed class Context : IDisposable
         }
 
         /// <summary>
-        ///     Parses a single argument
+        ///     Handles a single recognized argument token, updating the appropriate property and returning the
+        ///     updated index so the caller can advance past any consumed value tokens.
         /// </summary>
         /// <param name="arg">Argument to parse</param>
         /// <param name="args">All arguments</param>
         /// <param name="index">Current index</param>
-        /// <returns>Updated index</returns>
+        /// <returns>Updated index after consuming this argument and any associated value.</returns>
         private int ParseArgument(string arg, string[] args, int index)
         {
             switch (arg)

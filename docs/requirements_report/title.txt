@@ -1,14 +1,14 @@
 ---
 title: DictionaryMark Trace Matrix
-subtitle: Requirements Traceability Matrix for DictionaryMark
+subtitle: YAML dictionary to Markdown formatter
 author: DEMA Consulting
-description: Requirements Traceability Matrix for DictionaryMark
+description: Trace Matrix for DictionaryMark
 lang: en-US
 keywords:
-  - DictionaryMark
-  - Trace Matrix
-  - Traceability
   - Requirements
-  - Testing
+  - Trace Matrix
+  - DictionaryMark
+  - YAML
+  - Markdown
   - .NET
 ---

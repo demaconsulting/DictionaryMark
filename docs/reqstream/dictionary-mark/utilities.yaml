@@ -1,49 +1,52 @@
 ---
-# DictionaryMark Utilities Subsystem Requirements
+# DictionaryMark Utilities subsystem requirements
 
 sections:
-  - title: Utilities Subsystem Requirements
-    requirements:
-      - id: DictionaryMark-Utilities-FileMatching
-        title: The Utilities subsystem shall provide shared file-matching utilities.
-        justification: |
-          Shared file-matching utilities prevent duplication and ensure consistent glob
-          pattern resolution across all tool subsystems.
-        children:
-          - DictionaryMark-GlobMatcher-GetFiles
-          - DictionaryMark-GlobMatcher-NullCollectionRejection
-          - DictionaryMark-GlobMatcher-InvalidPatternRejection
-        tests:
-          - UtilitiesSubsystem_GlobMatcher_ResolvesFiles
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        requirements:
+          - id: DictionaryMark-Utilities-FileMatching
+            title: The Utilities subsystem shall provide shared file-matching utilities.
+            justification: |
+              Shared file-matching utilities prevent duplication and ensure consistent glob
+              pattern resolution across all tool subsystems.
+            children:
+              - DictionaryMark-GlobMatcher-GetFiles
+              - DictionaryMark-GlobMatcher-NullCollectionRejection
+              - DictionaryMark-GlobMatcher-InvalidPatternRejection
+            tests:
+              - UtilitiesSubsystem_GlobMatcher_ResolvesFiles
 
-      - id: DictionaryMark-Utilities-PathSafety
-        title: >-
-          The Utilities subsystem shall enforce path-safety to prevent path-traversal
-          vulnerabilities.
-        justification: |
-          Path-safety enforcement in PathHelpers prevents directory-traversal attacks
-          when combining base paths with caller-supplied relative paths.
-        children:
-          - DictionaryMark-PathHelpers-SafePathCombine
-          - DictionaryMark-PathHelpers-NullValidation
-          - DictionaryMark-PathHelpers-TraversalValidation
-        tests:
-          - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
-          - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
-          - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
-          - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+          - id: DictionaryMark-Utilities-PathSafety
+            title: >-
+              The Utilities subsystem shall enforce path-safety to prevent path-traversal
+              vulnerabilities.
+            justification: |
+              Path-safety enforcement in PathHelpers prevents directory-traversal attacks
+              when combining base paths with caller-supplied relative paths.
+            children:
+              - DictionaryMark-PathHelpers-SafePathCombine
+              - DictionaryMark-PathHelpers-NullValidation
+              - DictionaryMark-PathHelpers-TraversalValidation
+            tests:
+              - UtilitiesSubsystem_PathResolutionWorkflow_ValidPaths_ResolvesCorrectly
+              - UtilitiesSubsystem_PathTraversalValidation_DangerousPaths_ThrowsException
+              - UtilitiesSubsystem_AbsolutePathRejection_ThrowsException
+              - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
 
-      - id: DictionaryMark-Utilities-TempDirectory
-        title: The Utilities subsystem shall provide a disposable temporary directory facility for use by self-test and test
-          code.
-        justification: |
-          A shared TemporaryDirectory utility prevents both production self-test code and
-          test infrastructure from duplicating directory-lifecycle management and ensures
-          consistent cleanup behaviour across all consumers.
-        children:
-          - DictionaryMark-TemporaryDirectory-DirectoryCreation
-          - DictionaryMark-TemporaryDirectory-FilePathResolution
-          - DictionaryMark-TemporaryDirectory-TraversalRejection
-          - DictionaryMark-TemporaryDirectory-Disposal
-        tests:
-          - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+          - id: DictionaryMark-Utilities-TempDirectory
+            title: >-
+              The Utilities subsystem shall provide a disposable temporary directory facility
+              for use by self-test and test code.
+            justification: |
+              A shared TemporaryDirectory utility prevents both production self-test code and
+              test infrastructure from duplicating directory-lifecycle management and ensures
+              consistent cleanup behavior across all consumers.
+            children:
+              - DictionaryMark-TemporaryDirectory-DirectoryCreation
+              - DictionaryMark-TemporaryDirectory-FilePathResolution
+              - DictionaryMark-TemporaryDirectory-TraversalRejection
+              - DictionaryMark-TemporaryDirectory-Disposal
+            tests:
+              - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories

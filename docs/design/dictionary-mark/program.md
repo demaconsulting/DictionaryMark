@@ -1,104 +1,89 @@
-## Program Design
-
-The `Program` class is the entry point for the DictionaryMark CLI tool. It parses command-line
-arguments via `Context`, dispatches to the appropriate subsystem, and returns an exit code.
+## Program
 
 ### Purpose
 
-`Program` provides two public members: the `Version` property (read from assembly attributes)
-and the `Main` entry point. `Main` delegates to `Run`, which performs priority-ordered dispatch.
-Expected exceptions (`ArgumentException`, `InvalidOperationException`) are caught and written to
-`stderr`; unexpected exceptions are re-thrown after logging.
-
-### Interfaces
-
-**Exposed to the rest of the system:**
-
-- `Program.Main(string[] args) → int` — application entry point; called by the .NET runtime.
-- `Program.Run(Context context)` — internal execution entry point; called by `Main` and also by
-  `Validation` during self-tests to exercise the full tool execution path.
-- `Program.Version` — `string` property exposing the assembly informational version; used by
-  `Run` when printing the banner and by self-tests to verify version output.
-
-**Consumed from other items:**
-
-- `Context.Create(string[] args)` (CLI subsystem) — factory used by `Main` to produce the
-  context that drives the rest of execution.
-- `Validation.Run(Context context)` (SelfTest subsystem) — invoked when `context.Validate`
-  is `true`.
-- `DictionaryGenerator.Generate(Context context)` (Dictionary subsystem) — invoked when
-  `context.InputPatterns` is non-empty.
+`Program` provides the application entry point (`Main`) and the internal execution entry point
+(`Run`). `Main` creates a `Context` from the CLI arguments, calls `Run`, and returns
+`context.ExitCode`. Expected exceptions (`ArgumentException`, `InvalidOperationException`) are
+caught in `Main` and mapped to exit code 1 without a stack trace. `Program.Version` reads the
+assembly informational version attribute, falling back to `AssemblyVersion` then `"0.0.0"`.
 
 ### Data Model
 
-| Field/Property | Type     | Description                                                                     |
-| -------------- | -------- | ------------------------------------------------------------------------------- |
-| `Version`      | `string` | Assembly informational version, falling back to `AssemblyVersion` or `"0.0.0"`. |
+**Version**: `string` — Assembly informational version string; read from the
+`AssemblyInformationalVersionAttribute`, falling back to `AssemblyVersionAttribute` then
+`"0.0.0"`. Not cached; the assembly attributes are re-read on every access. Callers that need
+the value more than once should store the result locally.
 
 ### Key Methods
 
-#### Main(string[] args) → int
+**Main**: Application entry point. Creates a `Context` from `args`, calls `Run(context)`, returns
+`context.ExitCode`. Catches `ArgumentException` and `InvalidOperationException` from
+`Context.Create`, writes to stderr, returns 1. Re-throws any other exception after writing to
+stderr.
 
-Entry point. Creates a `Context` from `args`, calls `Run`, and returns `context.ExitCode`.
-Catches `ArgumentException` and `InvalidOperationException`, writes to `stderr`, returns 1.
-Re-throws any other exception after writing to `stderr`.
+- *Parameters*: `string[] args` — command-line arguments passed by the .NET runtime.
+- *Returns*: `int` — exit code (0 = success, 1 = error).
+- *Preconditions*: None.
+- *Postconditions*: Returns 0 when no errors were recorded; returns 1 when any error was recorded
+  or an expected exception was caught.
 
-#### Run(Context context)
+**Run**: Internal execution entry point. Performs priority-ordered dispatch based on context flags.
 
-Priority-ordered dispatch:
+- *Parameters*: `Context context` — fully initialized context providing parsed flags and output
+  channels.
+- *Returns*: `void`.
+- *Preconditions*: `context` is non-null and fully initialized.
+- *Postconditions*: Appropriate subsystem has been invoked; any errors are recorded in `context`.
 
-1. `context.Version` → print version string only.
-2. Print banner (tool name + copyright).
-3. `context.Help` → print usage information.
-4. `context.Validate` → call `Validation.Run(context)`.
-5. Default → call `RunToolLogic(context)`.
+Processing steps: (1) If `context.Version` → print version string only and return. (2) Print
+banner (tool name + copyright). (3) If `context.Help` → print usage information and return.
+(4) If `context.Validate` → call `Validation.Run(context)` and return. (5) Default → call
+`RunToolLogic(context)`.
 
-#### PrintBanner(Context context) *(private)*
+**PrintBanner** *(private)*: Writes the `DictionaryMark version {Version}` banner and copyright
+notice to `context`.
 
-Writes the `DictionaryMark version {Version}` banner and copyright notice.
+- *Parameters*: `Context context` — output channel.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Banner written to context output.
 
-#### PrintHelp(Context context) *(private)*
+**PrintHelp** *(private)*: Writes the full usage and options text to `context`.
 
-Writes the full usage/options text to `context`.
+- *Parameters*: `Context context` — output channel.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Usage text written to context output.
 
-#### RunToolLogic(Context context) *(private)*
+**RunToolLogic** *(private)*: If `context.InputPatterns` is non-empty, calls
+`DictionaryGenerator.Generate(context)` directly (static method; no instance is created).
+Otherwise writes a hint directing the user to `--input` and `--help`.
 
-If `context.InputPatterns` is non-empty, creates a `DictionaryGenerator` and calls `Generate`
-(`DictionaryMark-Program-GenerateDictionary`).
-Otherwise, writes a hint directing the user to `--input` and `--help` (`DictionaryMark-Program-NoInputHint`).
+- *Parameters*: `Context context` — provides input patterns and output channels.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Dictionary generation attempted or hint written to output.
 
 ### Error Handling
 
-`Program` applies two layers of error handling:
+Two layers:
 
-- **Expected errors** — `ArgumentException` and `InvalidOperationException` propagating from
-  `Context.Create` (invalid arguments or unopenable log file) are caught in `Main`, written to
-  `stderr`, and mapped to exit code 1. No stack trace is emitted.
-- **Unexpected errors** — Any other exception is written to `stderr` and then re-thrown so the
-  .NET runtime can record it in event logs.
+1. Expected errors — `ArgumentException` and `InvalidOperationException` from `Context.Create`
+   caught in `Main`, written to stderr, mapped to exit code 1 (no stack trace).
+2. Unexpected errors — Any other exception written to stderr then re-thrown so the .NET runtime
+   can record it.
 
-`Run` itself does not throw; error conditions in the subsystems it dispatches to
-(`Validation`, `DictionaryGenerator`) are handled internally by those subsystems via
-`context.WriteError`, which sets `context.ExitCode` to 1 without throwing.
-
-### Interactions
-
-| Dependency            | Role                                                        |
-| --------------------- | ----------------------------------------------------------- |
-| `Context`             | Provides parsed flags, output methods, and exit code state. |
-| `Validation`          | Invoked when `--validate` is specified.                     |
-| `DictionaryGenerator` | Invoked when `--input` patterns are specified.              |
+`Run` itself does not throw; subsystem errors (`Validation`, `DictionaryGenerator`) are handled
+internally via `context.WriteError`.
 
 ### Dependencies
 
-| Dependency            | Role                                                                         |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `Context`             | CLI subsystem — provides parsed flags, output channels, and exit code state. |
-| `Validation`          | SelfTest subsystem — invoked when `--validate` is specified.                 |
-| `DictionaryGenerator` | Dictionary subsystem — invoked when `--input` patterns are specified.        |
+- **Context** — CLI subsystem; provides parsed flags, output channels, and exit code state.
+- **Validation** — SelfTest subsystem; invoked when `--validate` is specified.
+- **DictionaryGenerator** — Dictionary subsystem; invoked when `--input` patterns are specified.
 
 ### Callers
 
-`Program.Main` is the application entry point invoked by the .NET runtime. `Program.Run` is
-additionally called by `Validation` during each self-test to exercise the full tool execution
-path with a crafted argument array and in-process `Context`.
+`Program.Main` is called by the .NET runtime. `Program.Run` is also called by `Validation` during
+each self-test to exercise the full tool execution path with a crafted argument array.

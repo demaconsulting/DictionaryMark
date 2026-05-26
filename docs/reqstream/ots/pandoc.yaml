@@ -1,7 +1,5 @@
 ---
-# Pandoc OTS Software Requirements
-#
-# Requirements for the Pandoc document conversion tool functionality.
+# Pandoc OTS requirements
 
 sections:
   - title: OTS Software Requirements
@@ -11,11 +9,11 @@ sections:
           - id: DictionaryMark-OTS-Pandoc
             title: Pandoc shall convert Markdown documents to valid HTML.
             justification: |
-              Pandoc is required to convert Markdown documentation sources to HTML for
-              compliance reporting and CI publication in the DictionaryMark build pipeline.
-              Without Pandoc, the design, verification, user guide, review plan, review report,
-              code quality, and build notes documents cannot be rendered into their required
-              HTML output format used by downstream publication and PDF generation steps.
+              DemaConsulting.PandocTool converts Markdown documentation sources to HTML as part of
+              the documentation build pipeline. FileAssert validates that each generated HTML file
+              exists, has a non-trivial size, contains a valid HTML title element, and includes
+              expected document content. Passing FileAssert assertions for each document type proves
+              Pandoc executed correctly and produced meaningful output.
             tags: [ots]
             tests:
               - Pandoc_BuildNotesHtml

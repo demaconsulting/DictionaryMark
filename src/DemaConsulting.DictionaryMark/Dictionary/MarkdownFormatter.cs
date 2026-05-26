@@ -80,6 +80,8 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Formats entries as a bullet list.
     /// </summary>
+    /// <param name="sb">The output string builder to append to.</param>
+    /// <param name="entries">The deduplicated and sorted entries to format.</param>
     /// <remarks>
     ///     Each entry is emitted as a single line: <c>- **{Term}**: {Definition}</c>.
     ///     No escaping is applied in bullet format.
@@ -95,6 +97,9 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Formats entries as a Markdown table.
     /// </summary>
+    /// <param name="sb">The output string builder to append to.</param>
+    /// <param name="entries">The deduplicated and sorted entries to format.</param>
+    /// <param name="options">The formatting options providing column header names.</param>
     /// <remarks>
     ///     Emits a header row, an alignment row (<c>| :--- | :--- |</c>), and one data row per entry.
     ///     When the entry list is empty, a single <c>| N/A | N/A |</c> row is emitted in place of
@@ -122,6 +127,8 @@ internal static class MarkdownFormatter
     /// <summary>
     ///     Escapes pipe characters in Markdown table cells.
     /// </summary>
+    /// <param name="value">The string in which to escape pipe characters.</param>
+    /// <returns>The string with all pipe characters replaced by <c>\|</c>.</returns>
     /// <remarks>
     ///     Replaces each literal <c>|</c> with <c>\|</c> so that pipe characters in term or
     ///     definition values do not break the Markdown table structure.

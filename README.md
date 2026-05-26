@@ -1,5 +1,8 @@
 # DictionaryMark
 
+<!-- IMPORTANT: All links in this file must be absolute URLs.
+     This file is distributed in packages and relative links will not resolve. -->
+
 [![GitHub forks](https://img.shields.io/github/forks/demaconsulting/DictionaryMark?style=plastic)](https://github.com/demaconsulting/DictionaryMark/network/members)
 [![GitHub stars](https://img.shields.io/github/stars/demaconsulting/DictionaryMark?style=plastic)](https://github.com/demaconsulting/DictionaryMark/stargazers)
 [![GitHub contributors](https://img.shields.io/github/contributors/demaconsulting/DictionaryMark?style=plastic)](https://github.com/demaconsulting/DictionaryMark/graphs/contributors)
@@ -8,8 +11,6 @@
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=alert_status)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![Security](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=security_rating)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![NuGet](https://img.shields.io/nuget/v/DemaConsulting.DictionaryMark?style=plastic)](https://www.nuget.org/packages/DemaConsulting.DictionaryMark)
-
-Markdown Dictionary Generation Tool
 
 ## Overview
 
@@ -88,6 +89,10 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 ## Usage
 
+```bash
+dictionarymark --input glossary.yaml --format table --section "Glossary" --output docs/glossary.md
+```
+
 ### Options
 
 | Option                         | Description                                         |
@@ -107,9 +112,9 @@ dotnet tool update DemaConsulting.DictionaryMark
 | `--log <file>`                 | Write output to log file                            |
 | `--results <file>`             | Write validation results (.trx or .xml)             |
 | `--result <file>`              | Alias for `--results`                               |
-| `--depth <n>`                  | Set heading depth (default: 1)                      |
+| `--depth <n>`                  | Set heading depth (default: 1, range: 1–6)          |
 
-### Quick Start Examples
+### Examples
 
 **Generate a bullet list from a YAML dictionary:**
 
@@ -134,8 +139,6 @@ dictionarymark --input file1.yaml --input file2.yaml --sort alpha
 ```bash
 dictionarymark --input "terms/*.yaml" --format table --output docs/glossary.md
 ```
-
-### Example
 
 Given an input file `glossary.yaml`:
 
@@ -173,6 +176,43 @@ Or with `--format bullets`:
 - **SDK**: Software Development Kit
 ```
 
+## Building
+
+```pwsh
+pwsh ./build.ps1
+```
+
+## User Guide
+
+The DictionaryMark User Guide is available on the
+[DictionaryMark releases page](https://github.com/demaconsulting/DictionaryMark/releases).
+
+## Contributing
+
+Contributions are welcome! We appreciate your interest in improving DictionaryMark.
+
+Please see our [Contributing Guide](https://github.com/demaconsulting/DictionaryMark/blob/main/CONTRIBUTING.md) for
+development setup, coding standards, and submission guidelines. Also review our
+[Code of Conduct](https://github.com/demaconsulting/DictionaryMark/blob/main/CODE_OF_CONDUCT.md) for community
+guidelines.
+
+For bug reports, feature requests, and questions, please use
+[GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues).
+
+## License
+
+This project is licensed under the MIT License — see the
+[LICENSE](https://github.com/demaconsulting/DictionaryMark/blob/main/LICENSE) file for details.
+
+By contributing to this project, you agree that your contributions will be licensed under the MIT License.
+
+## Support
+
+- 🐛 **Report Bugs**: [GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues)
+- 💡 **Request Features**: [GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues)
+- ❓ **Ask Questions**: [GitHub Discussions](https://github.com/demaconsulting/DictionaryMark/discussions)
+- 🤝 **Contributing**: [Contributing Guide](https://github.com/demaconsulting/DictionaryMark/blob/main/CONTRIBUTING.md)
+
 ## Self-Validation
 
 DictionaryMark includes a built-in self-validation mode for use in regulated environments
@@ -203,50 +243,13 @@ On validation failure the tool will exit with a non-zero exit code.
 
 ## Project Practices
 
-The DictionaryMark repository itself follows these development practices:
+The DictionaryMark repository follows these development practices:
 
 - 🔍 **Linting Enforcement** - markdownlint, cspell, and yamllint enforced on every CI run
 - 📋 **Continuous Compliance** - Compliance evidence generated automatically on every CI run,
   following the [Continuous Compliance](https://github.com/demaconsulting/ContinuousCompliance) methodology
 - ☁️ **SonarCloud Integration** - Quality gate and security analysis on every build
 - 🔗 **Requirements Traceability** - Requirements linked to passing tests with auto-generated trace matrix
-
-## Building
-
-```pwsh
-pwsh ./build.ps1
-```
-
-## User Guide
-
-The DictionaryMark User Guide is available on the
-[DictionaryMark releases page](https://github.com/demaconsulting/DictionaryMark/releases).
-
-## Contributing
-
-Contributions are welcome! We appreciate your interest in improving DictionaryMark.
-
-Please see our [Contributing Guide](https://github.com/demaconsulting/DictionaryMark/blob/main/CONTRIBUTING.md) for
-development setup, coding standards, and submission guidelines. Also review our
-[Code of Conduct](https://github.com/demaconsulting/DictionaryMark/blob/main/CODE_OF_CONDUCT.md) for community
-guidelines.
-
-For bug reports, feature requests, and questions, please use
-[GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues).
-
-## License
-
-This project is licensed under the MIT License - see the
-[LICENSE](https://github.com/demaconsulting/DictionaryMark/blob/main/LICENSE) file for details.
-
-By contributing to this project, you agree that your contributions will be licensed under the MIT License.
-
-## Support
-
-- 🐛 **Report Bugs**: [GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues)
-- 💡 **Request Features**: [GitHub Issues](https://github.com/demaconsulting/DictionaryMark/issues)
-- ❓ **Ask Questions**: [GitHub Discussions](https://github.com/demaconsulting/DictionaryMark/discussions)
-- 🤝 **Contributing**: [Contributing Guide](https://github.com/demaconsulting/DictionaryMark/blob/main/CONTRIBUTING.md)
 
 ## Security
 

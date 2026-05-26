@@ -1,40 +1,42 @@
 ---
-# DictionaryMark GlobMatcher Unit Requirements
+# DictionaryMark GlobMatcher unit requirements
 
 sections:
-  - title: GlobMatcher Unit Requirements
-    requirements:
-      - id: DictionaryMark-GlobMatcher-GetFiles
-        title: The GlobMatcher shall resolve files matching the provided glob patterns and return a sorted, deduplicated list
-          of matching file paths.
-        justification: |
-          Glob patterns allow users to specify multiple input files concisely, supporting
-          workflows where dictionary files follow consistent naming conventions. Three
-          path forms are handled: absolute paths without wildcards (checked with
-          File.Exists), absolute paths with wildcards (matched from the deepest
-          non-wildcard ancestor directory), and relative patterns (matched against the
-          current directory). Output is sorted and deduplicated to produce deterministic
-          results regardless of pattern order.
-        tests:
-          - GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
-          - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty
-          - GlobMatcher_GetFiles_EmptyPatternList_ReturnsEmpty
-          - GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults
-          - GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
-          - GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty
-          - GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        sections:
+          - title: GlobMatcher Requirements
+            requirements:
+              - id: DictionaryMark-GlobMatcher-GetFiles
+                title: >-
+                  The GlobMatcher shall resolve files matching the provided glob patterns and return
+                  a sorted, deduplicated list of matching file paths.
+                justification: |
+                  Glob patterns allow users to specify multiple input files concisely, supporting
+                  workflows where dictionary files follow consistent naming conventions. Sorted and
+                  deduplicated output produces deterministic results regardless of pattern order or
+                  overlap between patterns.
+                tests:
+                  - GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
+                  - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty
+                  - GlobMatcher_GetFiles_EmptyPatternList_ReturnsEmpty
+                  - GlobMatcher_GetFiles_DuplicateAbsolutePaths_DeduplicatesResults
+                  - GlobMatcher_GetFiles_AbsolutePathGlobPattern_ReturnsMatchingFiles
+                  - GlobMatcher_GetFiles_AbsolutePathGlobPattern_NoMatches_ReturnsEmpty
+                  - GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles
 
-      - id: DictionaryMark-GlobMatcher-NullCollectionRejection
-        title: The GlobMatcher shall throw an exception when a null patterns collection is provided.
-        justification: |
-          Rejecting a null collection before iterating prevents NullReferenceException
-          and makes the contract explicit.
-        tests:
-          - GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException
+              - id: DictionaryMark-GlobMatcher-NullCollectionRejection
+                title: The GlobMatcher shall throw an exception when a null patterns collection is provided.
+                justification: |
+                  Rejecting a null collection before iterating prevents NullReferenceException
+                  and makes the contract explicit.
+                tests:
+                  - GlobMatcher_GetFiles_NullPatterns_ThrowsArgumentNullException
 
-      - id: DictionaryMark-GlobMatcher-InvalidPatternRejection
-        title: The GlobMatcher shall throw an exception when a null or empty pattern element is provided.
-        justification: |
-          Clear error messages help users identify invalid input patterns quickly.
-        tests:
-          - GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException
+              - id: DictionaryMark-GlobMatcher-InvalidPatternRejection
+                title: The GlobMatcher shall throw an exception when a null or empty pattern element is provided.
+                justification: |
+                  Clear error messages help users identify invalid input patterns quickly.
+                tests:
+                  - GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException

@@ -1,75 +1,68 @@
-## DictionaryMark Utilities Subsystem Design
-
-The Utilities subsystem provides shared helper functionality.
+## Utilities
 
 ### Overview
 
-The Utilities subsystem contains three helper units: `GlobMatcher`, which resolves glob patterns
-to sorted, deduplicated file-path lists; `PathHelpers`, which enforces a path-traversal security
-boundary when combining a trusted base path with a caller-supplied relative path; and
-`TemporaryDirectory`, a disposable helper for creating and cleaning up temporary working folders.
-None of these units depends on any other DictionaryMark subsystem, and they are consumed by other
-subsystems.
+The Utilities subsystem provides shared helper functionality consumed by other subsystems. It
+contains three units: `GlobMatcher`, which resolves glob patterns to sorted, deduplicated
+file-path lists; `PathHelpers`, which enforces a path-traversal security boundary when combining
+a trusted base path with a caller-supplied relative path; and `TemporaryDirectory`, a disposable
+helper for creating and cleaning up temporary working folders. None of these units depends on any
+other DictionaryMark subsystem.
 
 ### Interfaces
 
-**Exposed to the rest of the system:**
+**GlobMatcher.GetFiles**: Resolves glob patterns to file paths.
 
-- `GlobMatcher.GetFiles(IEnumerable<string> patterns)` — returns a sorted, deduplicated
-  `IReadOnlyList<string>` of absolute file paths matching the supplied glob patterns.
-  Throws `ArgumentNullException` when `patterns` is null; throws `ArgumentException` when
-  any pattern is null or empty.
-- `PathHelpers.SafePathCombine(string basePath, string relativePath)` — returns the result of
-  `Path.Combine(basePath, relativePath)`, guaranteed to remain within `basePath`.
-  Throws `ArgumentNullException` when either argument is null; throws `ArgumentException`
-  when the resolved path escapes the base directory or an absolute path is supplied as
-  `relativePath`.
-- `TemporaryDirectory.TemporaryDirectory(string? baseDirectory = null)` — creates a uniquely
-  named temporary directory under `baseDirectory` (or `Environment.CurrentDirectory` when not
-  provided). Throws `ArgumentException` for invalid base-directory input and
-  `InvalidOperationException` when directory creation fails.
-- `TemporaryDirectory.GetFilePath(string relativePath)` — returns a safe file path inside the
-  temporary directory and creates any required intermediate directories.
-- `TemporaryDirectory.Dispose()` — best-effort recursive cleanup of the temporary directory.
+- *Type*: In-process .NET public API
+- *Role*: Provider — `DictionaryGenerator` consumes this to resolve input patterns
+- *Contract*: `GetFiles(IEnumerable<string> patterns)` returns a sorted, deduplicated
+  `IReadOnlyList<string>` of absolute file paths. Throws `ArgumentNullException` when `patterns`
+  is null; throws `ArgumentException` when any pattern is null or empty.
+- *Constraints*: Results are sorted with `StringComparer.OrdinalIgnoreCase`.
 
-**Consumed from other items:**
+**PathHelpers.SafePathCombine**: Enforces path-traversal security boundary.
 
-- `Microsoft.Extensions.FileSystemGlobbing` (OTS) — `Matcher` and `DirectoryInfoWrapper` are
-  used by `GlobMatcher` to evaluate glob patterns against the file system.
+- *Type*: In-process .NET public API
+- *Role*: Provider — `TemporaryDirectory` consumes this to enforce directory boundaries
+- *Contract*: `SafePathCombine(string basePath, string relativePath)` returns the combined path,
+  guaranteed to remain within `basePath`. Throws `ArgumentNullException` when either argument is
+  null; throws `ArgumentException` when the resolved path escapes the base directory or an
+  absolute path is supplied as `relativePath`.
+- *Constraints*: No file-system I/O performed; string-level path normalization only.
+
+**TemporaryDirectory**: Disposable temporary directory helper.
+
+- *Type*: In-process .NET public API
+- *Role*: Provider — `Validation` consumes this for isolated per-test working directories
+- *Contract*: Constructor creates a uniquely-named temporary directory under `baseDirectory` (or
+  `Environment.CurrentDirectory` when not provided). `GetFilePath(string relativePath)` returns a
+  safe file path inside the directory and creates intermediate directories. `Dispose()` performs
+  best-effort recursive cleanup.
+- *Constraints*: Must be used in a `using` block; `IOException` and `UnauthorizedAccessException`
+  from `Dispose` are suppressed.
+
+**Microsoft.Extensions.FileSystemGlobbing**: OTS library consumed by `GlobMatcher`.
+
+- *Type*: In-process .NET public API (NuGet package)
+- *Role*: Consumer — `GlobMatcher` uses `Matcher` and `DirectoryInfoWrapper` for glob pattern
+  evaluation
+- *Contract*: `Matcher`, `DirectoryInfoWrapper`, `PatternMatchingResult.Files` APIs.
+- *Constraints*: See *Microsoft.Extensions.FileSystemGlobbing Integration Design*.
 
 ### Design
 
-`GlobMatcher.GetFiles` handles three path categories in order:
+The three units are independent helpers with no internal dependencies between them.
+`GlobMatcher.GetFiles` handles three path categories in order: (1) absolute path without
+wildcards — checks `File.Exists` directly; (2) absolute path with wildcards — extracts the
+deepest wildcard-free directory segment as the base, constructs a `Matcher` with the remaining
+relative pattern; (3) relative path — constructs a `Matcher` against `Environment.CurrentDirectory`.
+Results accumulate in a case-insensitive `HashSet<string>` for deduplication, then sorted before
+returning.
 
-1. **Absolute path, no wildcards** — checks `File.Exists`; adds if present.
-2. **Absolute path with wildcards** — extracts the deepest wildcard-free directory segment as
-   the base, constructs a `Matcher` with the remaining relative pattern, and executes it via
-   `DirectoryInfoWrapper`.
-3. **Relative path** — constructs a `Matcher` and executes it against
-   `Environment.CurrentDirectory`.
+`PathHelpers.SafePathCombine` calls `Path.Combine`, resolves both paths to absolute form via
+`Path.GetFullPath`, then calls `Path.GetRelativePath(base, combined)` and rejects the result if
+it starts with `..` or is itself rooted.
 
-Results are accumulated in a case-insensitive `HashSet<string>` to deduplicate, then sorted
-with `StringComparer.OrdinalIgnoreCase` before returning.
-
-`PathHelpers.SafePathCombine` calls `Path.Combine`, resolves both the base and the combined
-result to absolute form via `Path.GetFullPath`, then calls `Path.GetRelativePath(base,
-combined)` and rejects the result if it starts with `..` or is itself a rooted path.
-
-### GlobMatcher
-
-Resolves file paths from glob patterns using `Microsoft.Extensions.FileSystemGlobbing`.
-For absolute paths without wildcards, directly checks file existence.
-For absolute paths with wildcards, extracts the deepest wildcard-free directory segment as
-the glob base and uses `Matcher` with that base.
-For relative patterns, uses `Matcher` with the current directory as the base.
-Returns a sorted, deduplicated list of absolute file paths.
-`GlobMatcher.GetFiles` throws `ArgumentException` when a null or empty pattern is supplied.
-
-### PathHelpers
-
-Provides safe path-combination utilities that enforce a security boundary. `SafePathCombine`
-combines a base path with a caller-supplied relative path and rejects any result that escapes
-the base directory, preventing path-traversal attacks. No file-system I/O is performed.
-`PathHelpers.SafePathCombine` throws `ArgumentNullException` when either argument is `null`.
-`PathHelpers.SafePathCombine` throws `ArgumentException` when the resolved path would escape
-the base directory or when an absolute path is supplied as the relative argument.
+`TemporaryDirectory` composes these: its constructor uses `PathHelpers.SafePathCombine` to build
+the unique directory path, and `GetFilePath` delegates to `SafePathCombine` to enforce the
+boundary.
