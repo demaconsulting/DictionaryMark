@@ -26,7 +26,7 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 ///     Loads dictionary entries from YAML files.
 /// </summary>
 /// <remarks>
-///     Static utility class; all behaviour is encapsulated in <see cref="Load"/>. Has no
+///     Static utility class; all behavior is encapsulated in <see cref="Load"/>. Has no
 ///     instance state. Enforces flat-mapping constraints and duplicate-key detection at
 ///     load time so downstream consumers always receive validated, unambiguous data.
 /// </remarks>

@@ -33,8 +33,7 @@ internal static class Runner
     /// <remarks>
     ///     Delegates to the overload that captures stdout and stderr separately, then concatenates
     ///     them in that order (stdout first, stderr second). See that overload for details on
-    ///     deadlock-prevention and timeout behavior. Not thread-safe; do not share a single
-    ///     invocation across threads.
+    ///     deadlock-prevention and timeout behavior.
     /// </remarks>
     /// <param name="output">Program output (stdout concatenated before stderr).</param>
     /// <param name="program">Program name or path.</param>
@@ -57,7 +56,7 @@ internal static class Runner
     ///     Stdout and stderr are read concurrently on background tasks to prevent the OS pipe buffers
     ///     from filling and deadlocking the process. The process is given 30 seconds to exit; if it
     ///     does not exit in time it is forcibly terminated and a <see cref="TimeoutException"/> is
-    ///     thrown. Not thread-safe; do not share a single invocation across threads.
+    ///     thrown.
     /// </remarks>
     /// <param name="stdout">Program standard output.</param>
     /// <param name="stderr">Program standard error.</param>
