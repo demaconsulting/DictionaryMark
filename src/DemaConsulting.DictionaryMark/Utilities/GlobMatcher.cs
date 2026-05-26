@@ -72,7 +72,7 @@ internal static class GlobMatcher
             {
                 if (File.Exists(pattern))
                 {
-                    files.Add(pattern);
+                    files.Add(Path.GetFullPath(pattern));
                 }
 
                 continue;
