@@ -1,7 +1,5 @@
 ---
-# FileSystemGlobbing OTS Software Requirements
-#
-# Requirements for the Microsoft.Extensions.FileSystemGlobbing file-path glob matching functionality.
+# FileSystemGlobbing OTS requirements
 
 sections:
   - title: OTS Software Requirements

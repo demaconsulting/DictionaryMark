@@ -29,6 +29,10 @@ namespace DemaConsulting.DictionaryMark.Tests;
 [Collection("Sequential")]
 public class IntegrationTests
 {
+    /// <summary>
+    ///     Full path to the DictionaryMark DLL under test, resolved once in the constructor
+    ///     and reused by every test method.
+    /// </summary>
     private readonly string _dllPath;
 
     /// <summary>

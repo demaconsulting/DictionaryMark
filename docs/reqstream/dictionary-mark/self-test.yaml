@@ -1,27 +1,30 @@
 ---
-# DictionaryMark SelfTest Subsystem Requirements
+# DictionaryMark SelfTest subsystem requirements
 
 sections:
-  - title: SelfTest Subsystem Requirements
-    requirements:
-      - id: DictionaryMark-SelfTest-Subsystem
-        title: The SelfTest subsystem shall provide a mechanism to execute self-validation tests.
-        justification: |
-          Regulated environments require tool qualification evidence to demonstrate
-          that the tool functions correctly in its deployment environment.
-        children:
-          - DictionaryMark-Validation-Run
-          - DictionaryMark-Validation-VersionDisplay
-          - DictionaryMark-Validation-HelpDisplay
-          - DictionaryMark-Validation-BulletGeneration
-          - DictionaryMark-Validation-TableGeneration
-          - DictionaryMark-Validation-CustomHeaders
-          - DictionaryMark-Validation-ConflictDetection
-          - DictionaryMark-Validation-TrxOutput
-          - DictionaryMark-Validation-JUnitOutput
-          - DictionaryMark-Validation-UnsupportedExtension
-        tests:
-          - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
-          - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
-          - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
-          - SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults
+  - title: DictionaryMark Requirements
+    sections:
+      - title: SelfTest Requirements
+        requirements:
+          - id: DictionaryMark-SelfTest-Subsystem
+            title: The SelfTest subsystem shall provide a mechanism to execute self-validation tests.
+            justification: |
+              Regulated environments require tool qualification evidence to demonstrate
+              that the tool functions correctly in its deployment environment.
+            children:
+              - DictionaryMark-Validation-Run
+              - DictionaryMark-Validation-VersionDisplay
+              - DictionaryMark-Validation-HelpDisplay
+              - DictionaryMark-Validation-BulletGeneration
+              - DictionaryMark-Validation-TableGeneration
+              - DictionaryMark-Validation-CustomHeaders
+              - DictionaryMark-Validation-ConflictDetection
+              - DictionaryMark-Validation-TrxOutput
+              - DictionaryMark-Validation-JUnitOutput
+              - DictionaryMark-Validation-UnsupportedExtension
+            tests:
+              - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
+              - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults
+              - SelfTestSubsystem_ValidationWorkflow_WithJUnitFile_GeneratesResults
+              - SelfTestSubsystem_ValidationWorkflow_WithBothResultFiles_GeneratesBothResults
+              - SelfTestSubsystem_ValidationWorkflow_WithUnsupportedExtension_EmitsErrorAndNoFile

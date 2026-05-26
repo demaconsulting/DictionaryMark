@@ -1,63 +1,49 @@
-### ConflictDetector Design
-
-The `ConflictDetector` class detects conflicts in dictionary entries where the same term
-(case-insensitive) has different definitions across files.
+### ConflictDetector
 
 #### Purpose
 
-`ConflictDetector.Detect` iterates over the provided entries, tracking the first definition
-seen for each term. If a later entry has the same term but a different definition, a conflict
-is reported. Same term + same definition is treated as an allowed deduplication (not a
-conflict). Each conflicting term is reported at most once, using a separate `reported` HashSet
-to suppress duplicate messages when more than two entries share the same conflicting term.
+`ConflictDetector.Detect` iterates over all entries, tracking the first definition seen for each
+term (case-insensitive). If a later entry has the same term but a different definition
+(case-sensitive comparison), a conflict message is generated. Same term and same definition is
+treated as allowed deduplication. Each conflicting term is reported at most once, using a separate
+`reported` `HashSet` to suppress duplicate messages when more than two entries share the same
+conflicting term. `ConflictDetector` is a static class.
 
 #### Data Model
 
-`ConflictDetector` is a `static` class with no instance state.
+N/A - static class with no instance state.
 
 #### Key Methods
 
-##### Detect(IEnumerable\<DictionaryEntry\> entries) → IReadOnlyList\<string\>
+**Detect**: Scans all entries for terms that have two or more distinct definitions.
 
-Returns a list of conflict error messages (one per conflicting term). Returns an empty list
-when no conflicts exist.
+- *Parameters*: `IEnumerable<DictionaryEntry> entries` — all entries from all loaded YAML files.
+- *Returns*: `IReadOnlyList<string>` — list of human-readable conflict messages (one per conflicting
+  term); empty when no conflicts exist.
+- *Preconditions*: `entries` is non-null.
+- *Postconditions*: Returns a list with one message per conflicting term; same term and same
+  definition produces no message.
 
-**Remarks:**
-
-- Term comparison is case-insensitive.
-- Definition comparison is case-sensitive (ordinal); two definitions that differ only in casing
-  are treated as different definitions and constitute a conflict.
-- Same term + same definition → no conflict (deduplication allowed).
-- Same term + different definition → conflict (one message per term).
-- Thread-safe; all state is method-local.
-
-**Throws:** `ArgumentNullException` - when `entries` is null.
+Term comparison is case-insensitive; definition comparison is case-sensitive (ordinal). Uses a
+method-local dictionary mapping each term to its first-seen definition, and a method-local `HashSet`
+tracking already-reported terms to suppress duplicate messages. Thread-safe — all state is
+method-local.
 
 #### Error Handling
 
-`ConflictDetector.Detect` has one exceptional condition and one non-exceptional error path:
-
 - `ArgumentNullException` — thrown when `entries` is null; the caller must supply a non-null
   enumerable.
-- **Conflict detection** — conflicts are not thrown as exceptions. Instead, one error message
-  string per conflicting term is appended to the return list. The caller (`DictionaryGenerator`)
-  iterates the returned list and calls `context.WriteError` for each message, then returns
-  without generating output.
-
-#### Interactions
-
-| Dependency        | Role                                                  |
-| ----------------- | ----------------------------------------------------- |
-| `DictionaryEntry` | Input data type carrying term and definition strings. |
+- Conflicts are not thrown as exceptions; they are returned as strings in the result list. The
+  caller (`DictionaryGenerator`) iterates the list, calls `context.WriteError` for each message, and
+  returns early without generating output.
 
 #### Dependencies
 
-| Dependency        | Role                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `DictionaryEntry` | Dictionary subsystem data model — carries the term and definition strings scanned for conflicts. |
+- **DictionaryEntry** — Dictionary subsystem data model; carries the term and definition strings
+  scanned for conflicts.
 
 #### Callers
 
-`DictionaryGenerator.Generate` calls `ConflictDetector.Detect(allEntries)` after all YAML
-files have been loaded. It iterates the returned conflict message list and calls
-`context.WriteError` for each message, then returns early without generating output.
+- **DictionaryGenerator.Generate** — calls `ConflictDetector.Detect(allEntries)` after all YAML
+  files have been loaded; iterates the returned list and calls `context.WriteError` for each
+  message, then returns early without generating output.

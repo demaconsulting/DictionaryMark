@@ -1,13 +1,13 @@
 ---
 title: DictionaryMark Requirements Document
-subtitle: Requirements Specification for DictionaryMark
+subtitle: YAML dictionary to Markdown formatter
 author: DEMA Consulting
-description: Requirements Specification for DictionaryMark
+description: Requirements Document for DictionaryMark
 lang: en-US
 keywords:
   - DictionaryMark
   - Requirements
-  - Specification
   - .NET
-  - Command-Line Tool
+  - YAML
+  - Markdown
 ---

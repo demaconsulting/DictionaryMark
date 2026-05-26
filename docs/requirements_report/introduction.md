@@ -1,30 +1,16 @@
 # Introduction
 
-This document contains the requirements traceability matrix for the DictionaryMark project.
+This document provides the requirements Trace Matrix for DictionaryMark,
+mapping each requirement to its corresponding test evidence.
 
 ## Purpose
 
-The trace matrix provides traceability between requirements and test cases, ensuring that
-all requirements are validated through appropriate testing. This demonstrates that the
-DictionaryMark meets its specified requirements.
+To demonstrate that every requirement is covered by at least one passing test,
+providing compliance evidence for DictionaryMark.
 
 ## Scope
 
-This traceability matrix covers:
-
-- Mapping of requirements to test cases
-- Test execution results linked to requirements
-- Validation of requirement coverage
-- Platform-specific test execution
-
-## Audience
-
-This document is intended for:
-
-- Software developers working on DictionaryMark
-- Quality assurance teams validating requirements coverage
-- Project stakeholders reviewing test coverage
-- Auditors verifying requirements traceability
+This document covers all requirements in `docs/reqstream/` and their test evidence.
 
 ## References
 

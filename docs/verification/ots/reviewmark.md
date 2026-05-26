@@ -1,105 +1,54 @@
-## ReviewMark Verification
+## ReviewMark
 
-This document provides the verification evidence for the ReviewMark OTS software item. Requirements
-for this OTS item are defined in the ReviewMark OTS Software Requirements document.
-
-### Required Functionality
+### Verification Approach
 
 DemaConsulting.ReviewMark reads the `.reviewmark.yaml` configuration and the review evidence store
-to produce a review plan and review report documenting file review coverage and currency. It runs in
-the same CI pipeline that produces the TRX test results, so a successful pipeline run is evidence
-that ReviewMark executed without error.
-
-### Qualification Evidence
-
-ReviewMark is verified by two complementary layers of evidence. First, the CI pipeline runs
-`reviewmark --validate --results artifacts/reviewmark-self-validation.trx`, which exercises
-ReviewMark's built-in self-validation suite against test review configurations and records
-results for ReqStream.
-
-Second, the pipeline invokes ReviewMark to generate
-`docs/code_review_plan/generated/plan.md` and `docs/code_review_report/generated/report.md`.
-Pandoc converts each to HTML; if either file were absent or malformed, Pandoc would fail.
-WeasyPrint renders both to PDF and FileAssert asserts their content
-(`WeasyPrint_ReviewPlanPdf`, `WeasyPrint_ReviewReportPdf`). A CI build failure at any step is
-evidence that ReviewMark did not produce the required review documents.
-
-### Regression Approach
-
-When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
-continue to pass before the update is accepted.
+to produce a review plan and review report documenting file review coverage and currency. ReviewMark
+is verified by two complementary layers of evidence. First, the CI pipeline runs
+`reviewmark --validate --results artifacts/reviewmark-self-validation.trx`, exercising ReviewMark's
+built-in self-validation suite against test review configurations and recording results for
+ReqStream. Second, the pipeline invokes ReviewMark to generate
+`docs/code_review_plan/generated/plan.md` and `docs/code_review_report/generated/report.md`. Pandoc
+converts each to HTML; if either file were absent or malformed, Pandoc would fail. WeasyPrint
+renders both to PDF and FileAssert asserts their content. A CI build failure at any step is evidence
+that ReviewMark did not produce the required review documents. When this OTS dependency is updated,
+the full CI pipeline is re-executed and all test scenarios must continue to pass before the update
+is accepted.
 
 ### Test Scenarios
 
-#### ReviewMark_ReviewPlanGeneration
+**ReviewMark_ReviewPlanGeneration**: ReviewMark self-validation uses `--definition` and `--plan` to
+generate a review plan from a test configuration, verifying the plan generation feature. ReviewMark
+is expected to exit 0 and produce a non-empty review plan markdown file.
+This scenario is tested by `ReviewMark_ReviewPlanGeneration`.
 
-**Scenario**: ReviewMark self-validation uses `--definition` and `--plan` to generate a review plan
-from a test configuration.
+**ReviewMark_ReviewReportGeneration**: ReviewMark self-validation uses `--definition` and `--report`
+to generate a review report from a test configuration and evidence store, verifying the report
+generation feature. ReviewMark is expected to exit 0 and produce a non-empty review report.
+This scenario is tested by `ReviewMark_ReviewReportGeneration`.
 
-**Expected**: Exits 0 and produces a non-empty review plan markdown file.
+**ReviewMark_IndexScan**: ReviewMark self-validation uses `--index` to scan PDF evidence files and
+write an `index.json` catalog, verifying the evidence indexing feature. ReviewMark is expected to
+exit 0 and produce a correctly structured `index.json`.
+This scenario is tested by `ReviewMark_IndexScan`.
 
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark`.
+**ReviewMark_WorkingDirectoryOverride**: ReviewMark self-validation uses `--dir` to override the
+working directory for file operations, verifying that path resolution is correctly relative to the
+specified directory. ReviewMark is expected to exit 0 and resolve paths relative to the specified
+directory.
+This scenario is tested by `ReviewMark_WorkingDirectoryOverride`.
 
-#### ReviewMark_ReviewReportGeneration
+**ReviewMark_Enforce**: ReviewMark self-validation uses `--enforce` against a configuration with
+review issues, verifying that enforcement mode correctly detects and reports problems. ReviewMark is
+expected to exit with a non-zero exit code when review issues are present.
+This scenario is tested by `ReviewMark_Enforce`.
 
-**Scenario**: ReviewMark self-validation uses `--definition` and `--report` to generate a review
-report from a test configuration and evidence store.
+**ReviewMark_Elaborate**: ReviewMark self-validation uses `--elaborate` to print a Markdown
+elaboration of a named review set, verifying the review-set inspection feature. ReviewMark is
+expected to exit 0 and print the review-set ID, fingerprint, and file list.
+This scenario is tested by `ReviewMark_Elaborate`.
 
-**Expected**: Exits 0 and produces a non-empty review report.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark`.
-
-#### ReviewMark_IndexScan
-
-**Scenario**: ReviewMark self-validation uses `--index` to scan PDF evidence files and write an
-`index.json` catalogue.
-
-**Expected**: Exits 0 and produces a correctly structured `index.json`.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark-Operations`.
-
-#### ReviewMark_WorkingDirectoryOverride
-
-**Scenario**: ReviewMark self-validation uses `--dir` to override the working directory for file
-operations.
-
-**Expected**: Exits 0 and resolves paths relative to the specified directory.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark-Operations`.
-
-#### ReviewMark_Enforce
-
-**Scenario**: ReviewMark self-validation uses `--enforce` against a configuration with review
-issues.
-
-**Expected**: Exits with a non-zero exit code when review issues are present.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark-Operations`.
-
-#### ReviewMark_Elaborate
-
-**Scenario**: ReviewMark self-validation uses `--elaborate` to print a Markdown elaboration of a
-named review set.
-
-**Expected**: Exits 0 and prints the review-set ID, fingerprint, and file list.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark-Operations`.
-
-#### ReviewMark_Lint
-
-**Scenario**: ReviewMark self-validation uses `--lint` to validate a definition file and report
-issues.
-
-**Expected**: Correctly reports structural and semantic issues found in the test definition.
-
-**Requirement coverage**: `DictionaryMark-OTS-ReviewMark-Operations`.
-
-### Requirements Coverage
-
-- **`DictionaryMark-OTS-ReviewMark`**: ReviewMark_ReviewPlanGeneration, ReviewMark_ReviewReportGeneration
-- **`DictionaryMark-OTS-ReviewMark-Operations`**: ReviewMark_IndexScan, ReviewMark_WorkingDirectoryOverride,
-  ReviewMark_Enforce, ReviewMark_Elaborate, ReviewMark_Lint
-
-### Suitability Conclusion
-
-Based on the evidence above, ReviewMark is considered suitable for use in the DictionaryMark CI pipeline.
+**ReviewMark_Lint**: ReviewMark self-validation uses `--lint` to validate a definition file and
+report issues, verifying that structural and semantic problems are detected. ReviewMark is expected
+to correctly report structural and semantic issues found in the test definition.
+This scenario is tested by `ReviewMark_Lint`.

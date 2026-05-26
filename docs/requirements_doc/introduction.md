@@ -1,37 +1,18 @@
 # Introduction
 
-This document contains the requirements for the DictionaryMark project.
+This document lists all requirements for DictionaryMark.
 
 ## Purpose
 
-DictionaryMark is a reference implementation demonstrating best practices for DEMA Consulting
-.NET command-line tools. It provides a standardized approach to command-line argument parsing,
-self-validation, and comprehensive documentation generation.
+To provide a complete, traceable record of all requirements for DictionaryMark,
+including requirements at the system, subsystem, and unit levels, plus OTS and Shared Package requirements.
 
 ## Scope
 
-This requirements document covers:
-
-- Command-line interface and options
-- Self-validation framework
-- Test result output formats
-- Logging capabilities
-- Multi-platform support
-- Documentation generation
-- CI/CD integration
-
-## Audience
-
-This document is intended for:
-
-- Software developers working on DictionaryMark
-- Quality assurance teams validating requirements
-- Project stakeholders reviewing project scope
-- Users understanding the tool's capabilities
+This document covers all requirements defined in `docs/reqstream/` for DictionaryMark.
 
 ## References
 
-- [REF-1] DictionaryMark Releases — [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)
+- [REF-1] [DictionaryMark releases](https://github.com/demaconsulting/DictionaryMark/releases)
 - [REF-2] YAML 1.2 Specification — <https://yaml.org/spec/1.2.2/>
-- [REF-3] .NET SDK Documentation — <https://learn.microsoft.com/dotnet/>
-- [REF-4] CommonMark Specification — <https://spec.commonmark.org/>
+- [REF-3] CommonMark Specification — <https://spec.commonmark.org/>

@@ -1,20 +1,20 @@
-### Validation Verification
+### Validation
 
-This document describes the unit-level verification design for the `Validation` unit. It
-defines test scenarios, dependency usage, and requirement coverage for `ValidationTests.cs`.
+The `Validation` unit is verified with unit tests in `ValidationTests.cs`. Tests create
+`Context` instances in silent mode and invoke `Validation.Run`, asserting on exit codes, log
+file content, and results file content.
 
-#### Verification Strategy
+#### Verification Approach
 
-`Validation` is verified with unit tests in `ValidationTests.cs`. Tests create `Context`
-instances in silent mode (with optional log files) to avoid console noise, invoke
-`Validation.Run`, and assert on exit codes, log file content, and results file content.
+`Validation` is tested with its real dependencies. No mocking is applied:
 
-#### Dependencies
-
-| Dependency  | Usage in Tests                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------- |
-| `Context`   | Created from argument arrays; exit code and log output are asserted.                        |
-| File system | Temporary log and results files created via `TemporaryDirectory` to verify written content. |
+- **`Context`** — Created from argument arrays in silent mode to suppress console noise during
+  tests. Log files are captured via `TemporaryDirectory` to assert on written content and
+  summary lines.
+- **`Program`** — Exercised directly by `Validation.Run`, which calls `Program.Run` internally
+  for each self-test. The full tool execution path is exercised, not a stub.
+- **`TemporaryDirectory`** — Used by `Validation` itself during each self-test run, and also
+  used by the test infrastructure to hold log and results files for assertion.
 
 #### Test Environment
 
@@ -23,95 +23,64 @@ for automatic cleanup.
 
 #### Acceptance Criteria
 
-All unit tests in `ValidationTests.cs` pass; all requirements listed in the Requirements
-Coverage section have at least one passing test scenario; no tests may be skipped or marked as
-expected failures.
+- All unit tests in `ValidationTests.cs` pass with zero failures.
+- All requirements linked to the `Validation` unit have at least one passing test scenario.
+- No tests may be skipped or marked as expected failures.
 
 #### Test Scenarios
 
-##### Validation_Run_NullContext_ThrowsArgumentNullException
+**Validation_Run_NullContext_ThrowsArgumentNullException**: Verifies that calling
+`Validation.Run(null!)` throws `ArgumentNullException`, enforcing the precondition that a
+valid context must be supplied. This scenario is tested by
+`Validation_Run_NullContext_ThrowsArgumentNullException`.
 
-**Scenario**: `Validation.Run(null!)` is called.
+**Validation_Run_WithSilentContext_PrintsSummary**: Verifies that after `Validation.Run`
+completes, the log file contains "Total Tests:", "Passed:", and "Failed:", confirming that the
+summary block is always written. This scenario is tested by
+`Validation_Run_WithSilentContext_PrintsSummary`.
 
-**Expected**: `ArgumentNullException` is thrown.
+**Validation_Run_WithSilentContext_ExitCodeIsZero**: Verifies that `Validation.Run` completes
+with exit code 0 when all self-tests pass, confirming no spurious error conditions are
+introduced. This scenario is tested by `Validation_Run_WithSilentContext_ExitCodeIsZero`.
 
-##### Validation_Run_WithSilentContext_PrintsSummary
+**Validation_Run_WithSilentContext_VersionDisplayTestPasses**: Verifies that the version-display
+self-test passes by checking that the log file contains
+"DictionaryMark_VersionDisplay - Passed". This scenario is tested by
+`Validation_Run_WithSilentContext_VersionDisplayTestPasses`.
 
-**Scenario**: `Validation.Run` is called with a silent context that has a log file.
+**Validation_Run_WithSilentContext_HelpDisplayTestPasses**: Verifies that the help-display
+self-test passes by checking that the log file contains "DictionaryMark_HelpDisplay - Passed".
+This scenario is tested by `Validation_Run_WithSilentContext_HelpDisplayTestPasses`.
 
-**Expected**: Log file contains "Total Tests:", "Passed:", and "Failed:".
+**Validation_Run_WithSilentContext_BulletGenerationTestPasses**: Verifies that the bullet
+generation self-test passes by checking that the log file contains
+"DictionaryMark_BulletGeneration - Passed". This scenario is tested by
+`Validation_Run_WithSilentContext_BulletGenerationTestPasses`.
 
-##### Validation_Run_WithSilentContext_ExitCodeIsZero
+**Validation_Run_WithSilentContext_TableGenerationTestPasses**: Verifies that the table
+generation self-test passes by checking that the log file contains
+"DictionaryMark_TableGeneration - Passed". This scenario is tested by
+`Validation_Run_WithSilentContext_TableGenerationTestPasses`.
 
-**Scenario**: `Validation.Run` is called with `["--silent"]`.
+**Validation_Run_WithSilentContext_CustomHeadersTestPasses**: Verifies that the custom-headers
+self-test passes by checking that the log file contains
+"DictionaryMark_CustomHeaders - Passed". This scenario is tested by
+`Validation_Run_WithSilentContext_CustomHeadersTestPasses`.
 
-**Expected**: Exit code is 0.
+**Validation_Run_WithSilentContext_ConflictDetectionTestPasses**: Verifies that the conflict
+detection self-test passes by checking that the log file contains
+"DictionaryMark_ConflictDetection - Passed". This scenario is tested by
+`Validation_Run_WithSilentContext_ConflictDetectionTestPasses`.
 
-##### Validation_Run_WithSilentContext_VersionDisplayTestPasses
+**Validation_Run_WithTrxResultsFile_WritesTrxFile**: Verifies that when `--results` points to a
+`.trx` file, `Validation.Run` creates a valid TRX results file containing `"<TestRun"`. This
+scenario is tested by `Validation_Run_WithTrxResultsFile_WritesTrxFile`.
 
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
+**Validation_Run_WithXmlResultsFile_WritesXmlFile**: Verifies that when `--results` points to
+a `.xml` file, `Validation.Run` creates a valid JUnit XML results file containing
+`"<testsuites"`. This scenario is tested by `Validation_Run_WithXmlResultsFile_WritesXmlFile`.
 
-**Expected**: Log file contains "DictionaryMark_VersionDisplay - Passed".
-
-##### Validation_Run_WithSilentContext_HelpDisplayTestPasses
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
-
-**Expected**: Log file contains "DictionaryMark_HelpDisplay - Passed".
-
-##### Validation_Run_WithSilentContext_BulletGenerationTestPasses
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
-
-**Expected**: Log file contains "DictionaryMark_BulletGeneration - Passed".
-
-##### Validation_Run_WithSilentContext_TableGenerationTestPasses
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
-
-**Expected**: Log file contains "DictionaryMark_TableGeneration - Passed".
-
-##### Validation_Run_WithSilentContext_CustomHeadersTestPasses
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
-
-**Expected**: Log file contains "DictionaryMark_CustomHeaders - Passed".
-
-##### Validation_Run_WithSilentContext_ConflictDetectionTestPasses
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--log", logFile]`.
-
-**Expected**: Log file contains "DictionaryMark_ConflictDetection - Passed".
-
-##### Validation_Run_WithTrxResultsFile_WritesTrxFile
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--results", trxFile]`.
-
-**Expected**: TRX file is created and contains `"<TestRun"`.
-
-##### Validation_Run_WithXmlResultsFile_WritesXmlFile
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--results", xmlFile]`.
-
-**Expected**: XML file is created and contains `"<testsuites"`.
-
-##### Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile
-
-**Scenario**: `Validation.Run` is called with `["--silent", "--results", jsonFile]`.
-
-**Expected**: No results file created; exit code 1; log contains "Unsupported results file format".
-
-#### Requirements Coverage
-
-- **`DictionaryMark-Validation-Run`**: Validation_Run_WithSilentContext_PrintsSummary,
-  Validation_Run_WithSilentContext_ExitCodeIsZero,
-  Validation_Run_NullContext_ThrowsArgumentNullException.
-- **`DictionaryMark-Validation-VersionDisplay`**: Validation_Run_WithSilentContext_VersionDisplayTestPasses.
-- **`DictionaryMark-Validation-HelpDisplay`**: Validation_Run_WithSilentContext_HelpDisplayTestPasses.
-- **`DictionaryMark-Validation-BulletGeneration`**: Validation_Run_WithSilentContext_BulletGenerationTestPasses.
-- **`DictionaryMark-Validation-TableGeneration`**: Validation_Run_WithSilentContext_TableGenerationTestPasses.
-- **`DictionaryMark-Validation-CustomHeaders`**: Validation_Run_WithSilentContext_CustomHeadersTestPasses.
-- **`DictionaryMark-Validation-ConflictDetection`**: Validation_Run_WithSilentContext_ConflictDetectionTestPasses.
-- **`DictionaryMark-Validation-TrxOutput`**: Validation_Run_WithTrxResultsFile_WritesTrxFile.
-- **`DictionaryMark-Validation-JUnitOutput`**: Validation_Run_WithXmlResultsFile_WritesXmlFile.
-- **`DictionaryMark-Validation-UnsupportedExtension`**: Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile.
+**Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile**: Verifies that when `--results`
+points to a file with an unsupported extension (e.g. `.json`), no results file is created, exit
+code becomes 1, and the log contains "Unsupported results file format". This scenario is tested
+by `Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile`.

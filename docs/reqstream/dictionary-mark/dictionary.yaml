@@ -1,60 +1,62 @@
 ---
-# DictionaryMark Dictionary Subsystem Requirements
+# DictionaryMark Dictionary subsystem requirements
 
 sections:
-  - title: Dictionary Subsystem Requirements
-    requirements:
-      - id: DictionaryMark-Dictionary-YamlLoading
-        title: The Dictionary subsystem shall load dictionary entries from YAML files.
-        justification: |
-          YAML loading is the foundational step of the dictionary pipeline; all subsequent
-          processing depends on correctly parsed term-definition pairs.
-        children:
-          - DictionaryMark-YamlLoader-Load
-          - DictionaryMark-YamlLoader-StructureErrors
-          - DictionaryMark-YamlLoader-FileErrors
-          - DictionaryMark-YamlLoader-NullInput
-          - DictionaryMark-YamlLoader-DuplicateKeys
-        tests:
-          - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
-          - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Dictionary Requirements
+        requirements:
+          - id: DictionaryMark-Dictionary-YamlLoading
+            title: The Dictionary subsystem shall load dictionary entries from YAML files.
+            justification: |
+              YAML loading is the foundational step of the dictionary pipeline; all subsequent
+              processing depends on correctly parsed term-definition pairs.
+            children:
+              - DictionaryMark-YamlLoader-Load
+              - DictionaryMark-YamlLoader-StructureErrors
+              - DictionaryMark-YamlLoader-FileErrors
+              - DictionaryMark-YamlLoader-NullInput
+              - DictionaryMark-YamlLoader-DuplicateKeys
+            tests:
+              - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
+              - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
 
-      - id: DictionaryMark-Dictionary-ConflictDetection
-        title: The Dictionary subsystem shall detect and report conflicting definitions across input files.
-        justification: |
-          Conflict detection prevents incorrect documentation from being generated when the
-          same term has different definitions in different source files.
-        children:
-          - DictionaryMark-ConflictDetector-Detect
-          - DictionaryMark-ConflictDetector-CaseInsensitive
-          - DictionaryMark-ConflictDetector-Deduplication
-          - DictionaryMark-ConflictDetector-NullRejection
-        tests:
-          - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts
+          - id: DictionaryMark-Dictionary-ConflictDetection
+            title: The Dictionary subsystem shall detect and report conflicting definitions across input files.
+            justification: |
+              Conflict detection prevents incorrect documentation from being generated when the
+              same term has different definitions in different source files.
+            children:
+              - DictionaryMark-ConflictDetector-Detect
+              - DictionaryMark-ConflictDetector-CaseInsensitive
+              - DictionaryMark-ConflictDetector-Deduplication
+              - DictionaryMark-ConflictDetector-NullRejection
+            tests:
+              - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts
 
-      - id: DictionaryMark-Dictionary-MarkdownFormatting
-        title: The Dictionary subsystem shall format dictionary entries as Markdown output.
-        justification: |
-          Markdown formatting is the final output stage of the dictionary pipeline, converting
-          loaded and validated entries into the output format requested by the user.
-        children:
-          - DictionaryMark-Formatter-Bullets
-          - DictionaryMark-Formatter-Table
-          - DictionaryMark-Formatter-SectionHeading
-          - DictionaryMark-Formatter-Sorting
-          - DictionaryMark-Formatter-Deduplication
-        tests:
-          - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
-          - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
+          - id: DictionaryMark-Dictionary-MarkdownFormatting
+            title: The Dictionary subsystem shall format dictionary entries as Markdown output.
+            justification: |
+              Markdown formatting is the final output stage of the dictionary pipeline, converting
+              loaded and validated entries into the output format requested by the user.
+            children:
+              - DictionaryMark-Formatter-Bullets
+              - DictionaryMark-Formatter-Table
+              - DictionaryMark-Formatter-SectionHeading
+              - DictionaryMark-Formatter-Sorting
+              - DictionaryMark-Formatter-Deduplication
+            tests:
+              - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
+              - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
 
-      - id: DictionaryMark-Dictionary-Generation
-        title: The Dictionary subsystem shall orchestrate the end-to-end dictionary generation pipeline.
-        justification: |
-          Orchestration is needed to coordinate file loading, conflict detection, and output
-          formatting into a single coherent generation operation.
-        children:
-          - DictionaryMark-DictionaryGenerator-FileLoading
-          - DictionaryMark-DictionaryGenerator-ConflictReporting
-          - DictionaryMark-DictionaryGenerator-OutputRouting
-        tests:
-          - DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown
+          - id: DictionaryMark-Dictionary-Generation
+            title: The Dictionary subsystem shall orchestrate the end-to-end dictionary generation pipeline.
+            justification: |
+              Orchestration is needed to coordinate file loading, conflict detection, and output
+              formatting into a single coherent generation operation.
+            children:
+              - DictionaryMark-DictionaryGenerator-FileLoading
+              - DictionaryMark-DictionaryGenerator-ConflictReporting
+              - DictionaryMark-DictionaryGenerator-OutputRouting
+            tests:
+              - DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown

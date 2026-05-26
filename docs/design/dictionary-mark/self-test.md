@@ -1,78 +1,69 @@
-## SelfTest Subsystem Design
-
-The SelfTest subsystem provides self-validation functionality for DictionaryMark. It enables
-the tool to verify its own correct operation in the deployment environment, which is a
-requirement for tool qualification in regulated environments.
+## SelfTest
 
 ### Overview
 
-The SelfTest subsystem contains one unit, `Validation`, which implements the `--validate` CLI
-behavior. It runs a fixed suite of six in-process self-tests, collects results into a structured
-`TestResults` object, optionally serializes results to a file, and reports pass/fail counts via
-the `Context` output channels. `Validation` has no persistent state and is safe to call multiple
-times in the same process.
+The SelfTest subsystem provides self-validation functionality for DictionaryMark. It enables the
+tool to verify its own correct operation in the deployment environment, which is a requirement for
+tool qualification in regulated environments. The subsystem contains one unit, `Validation`, which
+implements the `--validate` CLI behavior. It runs a fixed suite of six in-process self-tests,
+collects results into a `TestResults` object, optionally serializes results to a file, and reports
+pass/fail counts. `Validation` has no persistent state and is safe to call multiple times in the
+same process.
 
 ### Interfaces
 
-**Exposed to the rest of the system:**
+**Validation.Run**: Static entry point for the self-validation suite.
 
-- `Validation.Run(Context context)` — static entry point; runs all self-tests and reports
-  results. Calls `context.WriteError` for each failed test, which sets `context.ExitCode` to 1.
+- *Type*: In-process .NET public API
+- *Role*: Provider — `Program.Run` invokes this when `--validate` is set
+- *Contract*: `Validation.Run(Context context)` runs all six self-tests, prints a summary, and
+  optionally writes a results file. Calls `context.WriteError` for each failed test, setting
+  `context.ExitCode` to 1.
+- *Constraints*: `context` must be non-null; throws `ArgumentNullException` otherwise.
 
-**Consumed from other items:**
+**Context**: Output and results file path from the Cli subsystem.
 
-- `Context` (CLI subsystem) — provides output channels (`WriteLine`, `WriteError`) and the
-  optional `ResultsFile` path.
-- `Program.Run(Context)` (Program unit) — called internally during each self-test to exercise
-  the full tool execution path with a crafted argument array.
-- `TemporaryDirectory` (Utilities subsystem) — creates per-test temporary folders and safely
-  resolves file paths via `GetFilePath`.
-- `DemaConsulting.TestResults` (OTS) — collects `TestResult` objects and serializes them to TRX
-  or JUnit XML when `context.ResultsFile` is set.
+- *Type*: In-process .NET public API
+- *Role*: Consumer — `Validation` calls `context.WriteLine`, `context.WriteError`, and reads
+  `context.ResultsFile`
+- *Contract*: `WriteLine(string)`, `WriteError(string)`, `ResultsFile` property (string? path to
+  results file).
+- *Constraints*: N/A
+
+**Program.Run**: Full tool execution entry point from the Program unit.
+
+- *Type*: In-process .NET public API
+- *Role*: Consumer — each self-test calls `Program.Run` with a crafted context to exercise the
+  full tool path
+- *Contract*: `Program.Run(Context context)` executes the tool with the supplied context.
+- *Constraints*: N/A
+
+**TemporaryDirectory**: Disposable temporary directory helper from the Utilities subsystem.
+
+- *Type*: In-process .NET public API
+- *Role*: Consumer — each self-test creates a `TemporaryDirectory` for isolated working files
+- *Contract*: Constructor creates a temp directory; `GetFilePath(string)` returns safe paths
+  inside it; `Dispose()` cleans up.
+- *Constraints*: Must be used in a `using` block to ensure cleanup.
+
+**DemaConsulting.TestResults**: OTS test result collection and serialization package.
+
+- *Type*: In-process .NET public API (NuGet package)
+- *Role*: Consumer — used to collect self-test outcomes and serialize to TRX or JUnit XML
+- *Contract*: `TestResults`, `TestResult`, `TrxSerializer`, `JUnitSerializer` APIs.
+- *Constraints*: See *DemaConsulting.TestResults Integration Design*.
 
 ### Design
 
 `Validation.Run` creates a `TestResults` collection, then calls six private test methods
-sequentially (`RunVersionTest`, `RunHelpTest`, `RunBulletGenerationTest`,
-`RunTableGenerationTest`, `RunCustomHeadersTest`, `RunConflictDetectionTest`). Each test method:
+sequentially: `RunVersionTest`, `RunHelpTest`, `RunBulletGenerationTest`,
+`RunTableGenerationTest`, `RunCustomHeadersTest`, `RunConflictDetectionTest`. Each test method:
 
-1. Creates a temporary directory via `TemporaryDirectory(Path.GetTempPath())`.
-2. Constructs a string-array argument list and an in-memory `Context` (using `--silent`).
+1. Creates a `TemporaryDirectory` scoped to the test.
+2. Constructs a string-array argument list and an in-memory `Context` (with `--silent`).
 3. Calls `Program.Run(context)` to exercise the tool.
-4. Asserts expected output or exit-code behavior; records a `Passed` or `Failed` result.
+4. Asserts expected output or exit-code behavior; records a `Passed` or `Failed` `TestResult`.
 
-After all tests, `Validation.Run` prints totals, calls `context.WriteError` for any failures,
-and writes the results file if `context.ResultsFile` is set (format inferred from extension).
-
-### Validation
-
-Executes a set of in-process self-tests and reports the results to the user via the `Context`
-output channels. Optionally writes results to a file in TRX or JUnit XML format. The
-self-tests cover the following categories of behavior:
-
-- **Version display** — runs `--version` and verifies the output contains a version string.
-- **Help display** — runs `--help` and verifies the output contains `Usage:` and `Options:`.
-- **Bullet-list generation** — runs the dictionary pipeline with `--format bullets` and
-  verifies the output contains the expected bold-term bullet entries.
-- **Markdown table generation** — runs the dictionary pipeline with `--format table` and
-  verifies the output contains the expected table header and entry rows.
-- **Custom column headers** — runs the dictionary pipeline with `--term-header` and
-  `--def-header` options and verifies custom header text appears in the output.
-- **Conflict detection** — runs the dictionary pipeline with two files that define the same
-  term differently and verifies the exit code is non-zero.
-
-`Validation.Run` is a stateless operation: it creates temporary directories and contexts
-internally and discards them after each test. It is safe to call sequentially multiple times
-within the same process without any reset or re-initialization step.
-
-### Interactions
-
-The SelfTest subsystem is invoked by `Program.Run` when `context.Validate` is `true`. It
-depends on:
-
-| Dependency           | Role                                                              |
-| -------------------- | ----------------------------------------------------------------- |
-| `Context`            | Provides output channels and the optional results file path.      |
-| `Program`            | Called internally during self-tests to exercise tool logic.       |
-| `TemporaryDirectory` | Creates temporary folders and safe file paths for each self-test. |
-| `TestResults`        | Collects test outcomes for optional file-based reporting.         |
+After all tests complete, `Validation.Run` prints pass/fail totals, calls `context.WriteError`
+for each failure, and writes the results file if `context.ResultsFile` is set (format inferred
+from extension: `.trx` for TRX, `.xml` for JUnit XML).

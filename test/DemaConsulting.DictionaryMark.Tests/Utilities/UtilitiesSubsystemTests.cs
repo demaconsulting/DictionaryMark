@@ -23,7 +23,9 @@ using DemaConsulting.DictionaryMark.Utilities;
 namespace DemaConsulting.DictionaryMark.Tests.Utilities;
 
 /// <summary>
-///     Subsystem tests for the Utilities subsystem covering PathHelpers integration workflows.
+///     Subsystem tests for the Utilities subsystem covering GlobMatcher file resolution,
+///     PathHelpers path-combination and traversal-prevention workflows, and TemporaryDirectory
+///     directory-creation integration.
 /// </summary>
 [Collection("Sequential")]
 public class UtilitiesSubsystemTests

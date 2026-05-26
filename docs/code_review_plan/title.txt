@@ -1,14 +1,13 @@
 ---
-title: DictionaryMark Code Review Plan
-subtitle: File Review Plan for DictionaryMark
-author: DEMA Consulting
-description: Code Review Plan for DictionaryMark
+title: "DictionaryMark Code Review Plan"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Code Review Plan for DictionaryMark"
 lang: en-US
 keywords:
   - Code Review
   - DictionaryMark
-  - Review Plan
-  - File Reviews
+  - YAML
+  - Markdown
   - .NET
-  - Tool
 ---

@@ -31,7 +31,7 @@ internal static class DictionaryGenerator
     /// <summary>
     ///     Generates Markdown output from YAML dictionary files.
     /// </summary>
-    /// <param name="context">The context containing command line arguments.</param>
+    /// <param name="context">The context containing input patterns, output options, and output channels. Must not be null.</param>
     /// <remarks>
     ///     Applies an early-return-on-error strategy: each error condition writes to
     ///     <c>context.WriteError</c> (which sets the exit code to 1) and returns immediately,

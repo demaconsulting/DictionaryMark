@@ -1,90 +1,92 @@
-### MarkdownFormatter Design
-
-The `MarkdownFormatter` class formats dictionary entries as Markdown text, supporting both
-bullet-list and table output formats with optional section headings and sort order.
+### MarkdownFormatter
 
 #### Purpose
 
-`MarkdownFormatter.Format` deduplicates entries (first occurrence wins, case-insensitive),
-optionally sorts alphabetically, and then renders the entries in the requested format.
-Pipe characters in term and definition values are escaped for safe table cell rendering.
+`MarkdownFormatter.Format` deduplicates entries (first occurrence wins, case-insensitive term
+comparison), optionally sorts alphabetically, and renders the entries in the requested format
+(bullet list or Markdown table). Pipe characters in term and definition values are escaped for safe
+table cell rendering. `MarkdownFormatter` is a static class.
 
 #### Data Model
 
-`MarkdownFormatter` is a `static` class with no instance state.
+N/A - static class with no instance state. Consumes `MarkdownOptions` with these fields (part of
+the Dictionary subsystem data model):
 
-`MarkdownFormatter` consumes `MarkdownOptions` with the following fields:
+**Format**: `OutputFormat` — selects `Bullets` or `Table` rendering.
 
-- `Format` (`OutputFormat`) — Selects bullet-list (`Bullets`) or table (`Table`) rendering.
-- `SortOrder` (`SortOrder`) — Selects file-order or alphabetical sort.
-- `SectionHeading` (`string?`) — Optional heading text; emitted before entries when non-empty.
-- `TermHeader` (`string`) — Column header for the term column in table format.
-- `DefinitionHeader` (`string`) — Column header for the definition column in table format.
-- `HeadingDepth` (`int`) — Heading level (1–6) for the section heading; default 1.
+**SortOrder**: `SortOrder` — selects `FileOrder` or `Alphabetical` sort.
+
+**SectionHeading**: `string?` — optional heading text; emitted before entries when non-empty.
+
+**TermHeader**: `string` — column header for the term column in table format.
+
+**DefinitionHeader**: `string` — column header for the definition column in table format.
+
+**HeadingDepth**: `int` — heading level (1–6) for the section heading; default 1.
 
 #### Key Methods
 
-##### Format(IReadOnlyList\<DictionaryEntry\> entries, MarkdownOptions options) → string
+**Format**: Returns the formatted Markdown string.
 
-Returns the formatted Markdown string.
+- *Parameters*: `IReadOnlyList<DictionaryEntry> entries` — raw entries (may contain duplicates);
+  `MarkdownOptions options` — format, sorting, heading, and header settings.
+- *Returns*: `string` — formatted Markdown (bullet list or table, with optional section heading).
+- *Preconditions*: `entries` and `options` are non-null.
+- *Postconditions*: Returns valid Markdown with all entries deduplicated; an empty entry list
+  produces a valid `N/A` table row (not an error).
 
-**Processing steps:**
+Processing: (1) Deduplicate — first occurrence of each term (case-insensitive) wins. (2) Sort —
+alphabetical when `options.SortOrder == Alphabetical`; otherwise preserve file order. (3) Emit
+optional section heading when `options.SectionHeading` is non-empty; heading level from
+`options.HeadingDepth` (1–6; values outside range clamped by `Math.Clamp`). (4) Render as bullet
+list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
 
-1. Deduplicate entries - first occurrence of each term (case-insensitive) wins.
-2. Sort - alphabetical by term when `options.SortOrder == Alphabetical`; otherwise preserve
-   file order.
-3. Emit optional section heading when `options.SectionHeading` is non-empty. The heading
-   level is derived from `options.HeadingDepth` (e.g., depth 1 produces `# {SectionHeading}`,
-   depth 2 produces `## {SectionHeading}`). Values outside the range 1–6 are clamped to that
-   range by `Math.Clamp` before the heading is emitted.
-4. Render as bullet list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
+**FormatBullets** *(private)*: Emits one `- **{Term}**: {Definition}` line per entry.
 
-**Throws:** `ArgumentNullException` - when `entries` or `options` is null.
+- *Parameters*: `StringBuilder sb` — output builder;
+  `IEnumerable<DictionaryEntry> entries` — deduplicated and sorted entries.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Bullet list entries appended to `sb`.
 
-##### FormatBullets *(private)*
+**FormatTable** *(private)*: Emits a Markdown table with a header row, alignment row
+(`| :--- | :--- |`), and one data row per entry. Uses `EscapePipe` on all term and definition
+values. When the entry list is empty, emits a single `| N/A | N/A |` row.
 
-Emits one `- **{Term}**: {Definition}` line per entry.
+- *Parameters*: `StringBuilder sb` — output builder;
+  `IEnumerable<DictionaryEntry> entries` — deduplicated and sorted entries;
+  `MarkdownOptions options` — provides `TermHeader` and `DefinitionHeader`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: Table (including header and alignment rows) appended to `sb`.
 
-##### FormatTable *(private)*
+**EscapePipe** *(private)*: Replaces `|` with `\|` in a string for safe embedding in Markdown table
+cells.
 
-Emits a Markdown table with a header row, alignment row (`| :--- | :--- |`), and one data
-row per entry. Uses `EscapePipe` on all term and definition values. When the entry list is
-empty, a single `| N/A | N/A |` row is emitted in place of data rows to produce a valid
-non-empty table.
-
-##### EscapePipe *(private)*
-
-Replaces `|` with `\|` in a string for safe embedding in Markdown table cells.
+- *Parameters*: `string value` — the string to escape.
+- *Returns*: `string` — the escaped string.
+- *Preconditions*: None.
+- *Postconditions*: All pipe characters in `value` are escaped.
 
 #### Error Handling
 
-`MarkdownFormatter.Format` throws `ArgumentNullException` when `entries` or `options` is null.
-These are programming errors; callers must supply non-null arguments.
-
-No other error conditions exist: heading depth values outside the range 1–6 are silently clamped
-by `Math.Clamp`, pipe characters in term or definition values are silently escaped by
-`EscapePipe`, and an empty entry list produces a valid `N/A` table row rather than an error.
-
-#### Interactions
-
-| Dependency        | Role                                                                   |
-| ----------------- | ---------------------------------------------------------------------- |
-| `DictionaryEntry` | Input data type carrying term and definition strings.                  |
-| `MarkdownOptions` | Carries the format, sort order, headers, and optional section heading. |
-| `OutputFormat`    | Enum selecting bullet-list vs table rendering.                         |
-| `SortOrder`       | Enum selecting file-order vs alphabetical sort.                        |
+- `ArgumentNullException` — thrown when `entries` or `options` is null; these are programming
+  errors.
+- Heading depth values outside 1–6 are silently clamped by `Math.Clamp`.
+- Pipe characters in values are silently escaped by `EscapePipe`.
+- An empty entry list produces a valid `N/A` table row rather than an error.
 
 #### Dependencies
 
-| Dependency        | Role                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `DictionaryEntry` | Dictionary subsystem data model — input type carrying term and definition strings.   |
-| `MarkdownOptions` | Dictionary subsystem data model — options bag controlling format, sort, and heading. |
-| `OutputFormat`    | Dictionary subsystem enum — selects bullet-list vs table rendering.                  |
-| `SortOrder`       | Dictionary subsystem enum — selects file-order vs alphabetical sort.                 |
+- **DictionaryEntry** — Dictionary subsystem data model; input type carrying term and definition
+  strings.
+- **MarkdownOptions** — Dictionary subsystem data model; options bag controlling format, sort, and
+  heading.
+- **OutputFormat** — Dictionary subsystem enum; selects bullet-list vs. table rendering.
+- **SortOrder** — Dictionary subsystem enum; selects file-order vs. alphabetical sort.
 
 #### Callers
 
-`DictionaryGenerator.Generate` constructs a `MarkdownOptions` bag from the `Context`
-properties and calls `MarkdownFormatter.Format(allEntries, options)` as the fourth step of
-the pipeline, after conflict detection has confirmed no conflicts exist.
+- **DictionaryGenerator.Generate** — constructs a `MarkdownOptions` bag from `Context` properties
+  and calls `MarkdownFormatter.Format(allEntries, options)` as the fourth step of the pipeline,
+  after conflict detection confirms no conflicts.

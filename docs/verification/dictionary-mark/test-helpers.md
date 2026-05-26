@@ -1,77 +1,28 @@
-## DictionaryMark Test Helpers Verification
+## TestHelpers
 
-This document describes the shared test helper utilities used across the
-DictionaryMark test suite.
+### Verification Approach
 
-### Purpose
+N/A - `TestHelpers` is test-only infrastructure, not a production software unit under
+verification. The `Runner` class in `test/DemaConsulting.DictionaryMark.Tests/Helpers/Runner.cs`
+provides a shared helper that launches DictionaryMark as an external operating-system process and
+returns the exit code. It exposes two overloads: one that captures stdout and stderr as separate
+strings, and a convenience overload that concatenates them (stdout before stderr) into a single
+string. Its correctness is demonstrated transitively: every integration test that calls `Runner.Run`
+and correctly asserts on process output or exit code implicitly proves that `Runner` launched the
+process, drained both output streams without deadlock, and returned the exit code faithfully. No
+dedicated tests exist for `Runner` itself.
 
-The `Helpers/` folder in the test project contains shared infrastructure
-used by multiple test classes. These helpers are not software units under
-verification themselves; they support the verification of other units by
-providing consistent, reliable test scaffolding.
+### Test Environment
 
-### Runner
+N/A - `TestHelpers` is test-only infrastructure.
 
-`Runner` is a static helper that launches an external process, captures its
-combined stdout and stderr, and returns the exit code.
+### Acceptance Criteria
 
-#### Runner Rationale
+N/A - `TestHelpers` is test-only infrastructure and carries no independent verification
+requirements. Its reliability is demonstrated by the passing integration tests in
+`IntegrationTests.cs` that depend on it.
 
-Integration tests need to run the DictionaryMark tool as a real operating-system
-process to verify end-to-end behaviour. Without a shared helper, every test
-class would duplicate the same `ProcessStartInfo` setup, redirection wiring, and
-output-reading logic. `Runner` centralises this boilerplate and enforces three
-important correctness properties:
+### Test Scenarios
 
-- **Consistent output capture**: stdout and stderr are both redirected and
-  concatenated, so assertions can inspect the full program output in one string.
-- **Buffer-deadlock prevention**: both streams are drained asynchronously (via
-  `ReadToEndAsync`) *before* `WaitForExit` is called. Reading from a redirected
-  stream synchronously after the process has tried to write more than the OS
-  pipe buffer can hold would cause the child to block on a write and the parent
-  to block on `WaitForExit`, resulting in a deadlock. Starting both reads
-  concurrently avoids this.
-- **Shell-injection prevention**: arguments are added one at a time through
-  `ProcessStartInfo.ArgumentList` rather than being concatenated into a command
-  string, so no shell parsing occurs and argument values cannot inject extra
-  commands or flags.
-
-#### Runner Usage
-
-Tests call `Runner.Run` as a static method and check the returned exit code:
-
-```csharp
-var exitCode = Runner.Run(
-    out var output,
-    "dotnet",
-    _dllPath,
-    "--version");
-
-Assert.Equal(0, exitCode);
-Assert.Matches(@"\d+\.\d+\.\d+", output);
-```
-
-A non-zero exit code indicates that the process reported a failure; the
-`output` string contains whatever the program wrote to stdout or stderr.
-
-#### Runner Members
-
-- **`Run(out string output, string program, params string[] arguments)`**:
-  Launches `program` with the supplied `arguments`, waits for the process to
-  exit, and returns the integer exit code.
-  - `output`: receives the concatenation of stdout and stderr once the process
-    exits.
-  - `program`: the executable name or full path (e.g. `"dotnet"`).
-  - `arguments`: zero or more argument strings added individually to
-    `ProcessStartInfo.ArgumentList`; no shell quoting or escaping is applied.
-  - **Return value**: the process exit code — `0` conventionally indicates
-    success; any other value indicates failure.
-  - Throws `InvalidOperationException` if `Process.Start` returns `null`.
-  - Throws `TimeoutException` if the process does not exit within 30 seconds.
-
-### Adoption Across the Test Suite
-
-`Runner` is used by the following test classes:
-
-- **`IntegrationTests.cs`**: Launches `dotnet` with the DictionaryMark DLL path
-  and various arguments to exercise the tool at the system boundary.
+N/A - `TestHelpers` is test-only infrastructure. All scenarios that exercise the tool via
+`Runner` are defined in `IntegrationTests.cs` under the system-level verification.

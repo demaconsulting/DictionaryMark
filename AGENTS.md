@@ -1,6 +1,8 @@
 # Project Overview
 
-- **name**: DictionaryMark
+- **project-name**: DictionaryMark
+- **organization**: DEMA Consulting
+- **project-tagline**: YAML dictionary to Markdown formatter
 - **description**: A .NET command-line tool that reads YAML dictionary files and generates formatted Markdown output as bullet lists or tables
 - **languages**: C#
 - **technologies**: .NET 8/9/10, YamlDotNet, Microsoft.Extensions.FileSystemGlobbing, DemaConsulting.TestResults
@@ -24,6 +26,11 @@
 └── test/
     └── DemaConsulting.DictionaryMark.Tests/
 ```
+
+# Language and Spelling (ALL Agents)
+
+Always use **US English** spelling in all output (code, comments, documentation,
+commit messages, and reports).
 
 # Reference Template
 
@@ -70,7 +77,6 @@ from `.github/standards/`. Use this matrix to determine which to load:
 - **Verification docs**: `software-items.md`, `verification-documentation.md`, `technical-documentation.md`
 - **Review configuration**: `software-items.md`, `reviewmark-usage.md`
 - **Any documentation**: `technical-documentation.md`
-- **Structural audit**: `template-sync` agent
 
 Load only the standards relevant to your specific task scope.
 
@@ -85,6 +91,7 @@ Delegate to specialized agents only for specific scenarios:
 - **Formal feature implementation** (complex, multi-step) → Call the implementation agent
 - **Formal bug resolution** (complex debugging, systematic fixes) → Call the implementation agent
 - **Formal reviews** (compliance verification, detailed analysis) → Call the formal-review agent
+- **Structural audit**: (repository layout vs. template) → Call the template-sync agent
 
 # Agent Reporting (Specialized Agents Must Follow)
 

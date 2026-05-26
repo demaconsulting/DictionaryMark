@@ -1,7 +1,5 @@
 ---
-# ReqStream OTS Software Requirements
-#
-# Requirements for the ReqStream requirements traceability tool functionality.
+# ReqStream OTS requirements
 
 sections:
   - title: OTS Software Requirements
@@ -10,8 +8,8 @@ sections:
         requirements:
           - id: DictionaryMark-OTS-ReqStream
             title: >-
-              ReqStream shall process requirements, generate traceability artefacts, and enforce that
-              every requirement is linked to passing test evidence.
+              ReqStream shall process requirements, generate traceability artifacts, and enforce
+              that every requirement is linked to passing test evidence.
             justification: |
               DemaConsulting.ReqStream processes requirements.yaml and the TRX test-result files to
               produce a requirements report, justifications document, and traceability matrix. It

@@ -34,6 +34,8 @@ public class TemporaryDirectoryTests
     [Fact]
     public void TemporaryDirectory_Constructor_CreatesDirectory()
     {
+        // Arrange: no setup required; the constructor performs all creation
+
         // Act
         using var tmpDir = new TemporaryDirectory();
 
@@ -48,6 +50,8 @@ public class TemporaryDirectoryTests
     [Fact]
     public void TemporaryDirectory_Constructor_CreatesUniqueDirectories()
     {
+        // Arrange: no setup required; uniqueness is a property of construction
+
         // Act
         using var tmpDir1 = new TemporaryDirectory();
         using var tmpDir2 = new TemporaryDirectory();
@@ -80,6 +84,8 @@ public class TemporaryDirectoryTests
     [Fact]
     public void TemporaryDirectory_Constructor_WhitespaceBaseDirectory_ThrowsArgumentException()
     {
+        // Arrange: whitespace-only string is the boundary case to reject
+
         // Act + Assert
         Assert.Throws<ArgumentException>(() => new TemporaryDirectory(" "));
     }

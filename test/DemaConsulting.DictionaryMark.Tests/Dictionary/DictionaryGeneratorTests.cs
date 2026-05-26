@@ -63,7 +63,7 @@ public class DictionaryGeneratorTests
     [Fact]
     public void DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout()
     {
-        // Arrange
+        // Arrange: create a temporary YAML file with one entry; redirect stdout to capture generated output
         using var tmpDir = new TemporaryDirectory();
         var tmpFile = tmpDir.GetFilePath("input.yaml");
         var originalOut = Console.Out;
@@ -95,7 +95,7 @@ public class DictionaryGeneratorTests
     [Fact]
     public void DictionaryGenerator_Generate_ConflictingEntries_ReportsError()
     {
-        // Arrange
+        // Arrange: two YAML files defining the same term with different definitions; redirect stderr to capture error
         using var tmpDir = new TemporaryDirectory();
         var tmpFile1 = tmpDir.GetFilePath("first.yaml");
         var tmpFile2 = tmpDir.GetFilePath("second.yaml");

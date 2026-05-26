@@ -1,58 +1,60 @@
 ---
-# DictionaryMark Program Unit Requirements
+# DictionaryMark Program unit requirements
 
 sections:
-  - title: Program Unit Requirements
-    requirements:
-      - id: DictionaryMark-Program-Version
-        title: The Program unit shall display version information when the version flag is set.
-        justification: |
-          Provides users with the tool version for troubleshooting and compatibility checks.
-        tests:
-          - Program_Run_WithVersionFlag_DisplaysVersionOnly
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Program Requirements
+        requirements:
+          - id: DictionaryMark-Program-Version
+            title: The Program unit shall display version information when the version flag is set.
+            justification: |
+              Provides users with the tool version for troubleshooting and compatibility checks.
+            tests:
+              - Program_Run_WithVersionFlag_DisplaysVersionOnly
 
-      - id: DictionaryMark-Program-Help
-        title: The Program unit shall display usage information when the help flag is set.
-        justification: |
-          Users need access to inline documentation for available flags and usage patterns.
-        tests:
-          - Program_Run_WithHelpFlag_DisplaysUsageInformation
+          - id: DictionaryMark-Program-Help
+            title: The Program unit shall display usage information when the help flag is set.
+            justification: |
+              Users need access to inline documentation for available flags and usage patterns.
+            tests:
+              - Program_Run_WithHelpFlag_DisplaysUsageInformation
 
-      - id: DictionaryMark-Program-Validate
-        title: The Program unit shall run self-validation when the validate flag is set.
-        justification: |
-          Allows the tool to verify its own correct operation in the deployment environment.
-        tests:
-          - Program_Run_WithValidateFlag_RunsValidation
+          - id: DictionaryMark-Program-Validate
+            title: The Program unit shall run self-validation when the validate flag is set.
+            justification: |
+              Allows the tool to verify its own correct operation in the deployment environment.
+            tests:
+              - Program_Run_WithValidateFlag_RunsValidation
 
-      - id: DictionaryMark-Program-GenerateDictionary
-        title: >-
-          The Program unit shall invoke dictionary generation when input patterns are
-          specified and no action flag overrides it.
-        justification: |
-          When invoked without a version, help, or validate flag and input patterns are
-          provided, the tool must perform its primary function of dictionary generation.
-        tests:
-          - Program_Run_WithInputPatterns_InvokesDictionaryGeneration
+          - id: DictionaryMark-Program-GenerateDictionary
+            title: >-
+              The Program unit shall invoke dictionary generation when input patterns are
+              specified and no action flag overrides it.
+            justification: |
+              When invoked without a version, help, or validate flag and input patterns are
+              provided, the tool must perform its primary function of dictionary generation.
+            tests:
+              - Program_Run_WithInputPatterns_InvokesDictionaryGeneration
 
-      - id: DictionaryMark-Program-NoInputHint
-        title: The Program unit shall display a usage hint when neither action flag nor input patterns are set.
-        justification: |
-          When invoked without any action flag or input patterns, the tool must guide the
-          user toward correct usage by displaying a helpful hint.
-        tests:
-          - Program_Run_NoArguments_DisplaysDefaultBehavior
+          - id: DictionaryMark-Program-NoInputHint
+            title: The Program unit shall display a usage hint when neither action flag nor input patterns are set.
+            justification: |
+              When invoked without any action flag or input patterns, the tool must guide the
+              user toward correct usage by displaying a helpful hint.
+            tests:
+              - Program_Run_NoArguments_DisplaysDefaultBehavior
 
-      - id: DictionaryMark-Program-ExitCode
-        title: >-
-          The Program unit shall return exit code 0 on success and exit code 1 when an
-          expected error occurs.
-        justification: |
-          A deterministic exit code contract enables CI/CD pipelines to detect failures
-          automatically without parsing output text.
-        tests:
-          - Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode
-          - Program_Run_WithVersionFlag_DisplaysVersionOnly
-          - Program_Run_WithHelpFlag_DisplaysUsageInformation
-          - Program_Run_WithValidateFlag_RunsValidation
-          - Program_Run_NoArguments_DisplaysDefaultBehavior
+          - id: DictionaryMark-Program-ExitCode
+            title: >-
+              The Program unit shall return exit code 0 on success and exit code 1 when an
+              expected error occurs.
+            justification: |
+              A deterministic exit code contract enables CI/CD pipelines to detect failures
+              automatically without parsing output text.
+            tests:
+              - Program_Main_WithInvalidArgs_ReturnsNonZeroExitCode
+              - Program_Run_WithVersionFlag_DisplaysVersionOnly
+              - Program_Run_WithHelpFlag_DisplaysUsageInformation
+              - Program_Run_WithValidateFlag_RunsValidation
+              - Program_Run_NoArguments_DisplaysDefaultBehavior

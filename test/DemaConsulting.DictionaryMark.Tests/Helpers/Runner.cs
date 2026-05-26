@@ -30,11 +30,18 @@ internal static class Runner
     /// <summary>
     ///     Runs the specified program and captures its output.
     /// </summary>
-    /// <param name="output">Program output (stdout and stderr combined).</param>
+    /// <remarks>
+    ///     Delegates to the overload that captures stdout and stderr separately, then concatenates
+    ///     them in that order (stdout first, stderr second). See that overload for details on
+    ///     deadlock-prevention and timeout behavior. Not thread-safe; do not share a single
+    ///     invocation across threads.
+    /// </remarks>
+    /// <param name="output">Program output (stdout concatenated before stderr).</param>
     /// <param name="program">Program name or path.</param>
     /// <param name="arguments">Program arguments.</param>
     /// <returns>Program exit code.</returns>
     /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
+    /// <exception cref="TimeoutException">Thrown when the process does not exit within 30 seconds.</exception>
     public static int Run(out string output, string program, params string[] arguments)
     {
         // Delegate to the overload that separates stdout and stderr, then merge them
@@ -46,12 +53,19 @@ internal static class Runner
     /// <summary>
     ///     Runs the specified program and captures its standard output and standard error separately.
     /// </summary>
+    /// <remarks>
+    ///     Stdout and stderr are read concurrently on background tasks to prevent the OS pipe buffers
+    ///     from filling and deadlocking the process. The process is given 30 seconds to exit; if it
+    ///     does not exit in time it is forcibly terminated and a <see cref="TimeoutException"/> is
+    ///     thrown. Not thread-safe; do not share a single invocation across threads.
+    /// </remarks>
     /// <param name="stdout">Program standard output.</param>
     /// <param name="stderr">Program standard error.</param>
     /// <param name="program">Program name or path.</param>
     /// <param name="arguments">Program arguments.</param>
     /// <returns>Program exit code.</returns>
     /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
+    /// <exception cref="TimeoutException">Thrown when the process does not exit within 30 seconds.</exception>
     public static int Run(out string stdout, out string stderr, string program, params string[] arguments)
     {
         // Construct the start information

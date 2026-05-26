@@ -23,6 +23,11 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 /// <summary>
 ///     Represents a single dictionary entry with a term and its definition.
 /// </summary>
+/// <remarks>
+///     Immutable value type; once constructed, Term and Definition cannot change. Both properties
+///     are guaranteed non-null because the constructor rejects null arguments. Thread-safe for
+///     concurrent reads; no shared mutable state.
+/// </remarks>
 public sealed class DictionaryEntry
 {
     /// <summary>
@@ -30,15 +35,20 @@ public sealed class DictionaryEntry
     /// </summary>
     /// <param name="term">The dictionary term. Must not be null.</param>
     /// <param name="definition">The term definition. Must not be null.</param>
+    /// <exception cref="ArgumentNullException">
+    ///     Thrown when <paramref name="term"/> or <paramref name="definition"/> is null.
+    /// </exception>
     public DictionaryEntry(string term, string definition)
     {
+        ArgumentNullException.ThrowIfNull(term);
+        ArgumentNullException.ThrowIfNull(definition);
         Term = term;
         Definition = definition;
     }
 
-    /// <summary>Gets the term.</summary>
+    /// <summary>Gets the term; never null.</summary>
     public string Term { get; }
 
-    /// <summary>Gets the definition.</summary>
+    /// <summary>Gets the definition; never null.</summary>
     public string Definition { get; }
 }

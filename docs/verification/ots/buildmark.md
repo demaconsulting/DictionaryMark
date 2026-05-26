@@ -1,81 +1,42 @@
-## BuildMark Verification
+## BuildMark
 
-This document provides the verification evidence for the `BuildMark` OTS software item.
-
-### Required Functionality
+### Verification Approach
 
 DemaConsulting.BuildMark queries the GitHub API to capture workflow run details and renders them as
-a markdown build-notes document included in the release artifacts. It runs as part of the same CI
-pipeline that produces the TRX test results, so a successful pipeline run is evidence that BuildMark
-executed without error.
-
-### Qualification Evidence
-
-BuildMark is verified by two complementary layers of evidence. First, the CI pipeline runs
-`buildmark --validate --results artifacts/buildmark-self-validation.trx`, which exercises
-BuildMark's built-in self-validation suite against mock data and records results for ReqStream.
-
-Second, the pipeline invokes BuildMark with live GitHub Actions metadata to generate
-`docs/build_notes/generated/build_notes.md`. Pandoc then converts this file to HTML; if the
-file were absent or malformed, Pandoc would fail. WeasyPrint renders the HTML to a PDF/A
-artifact, and FileAssert asserts the PDF exists, has content, and contains expected text
-(`WeasyPrint_BuildNotesPdf`). A CI build failure at any step in this chain is evidence that
-BuildMark did not produce the required output.
-
-### Regression Approach
-
-When this OTS dependency is updated, the full CI pipeline is re-executed. All test scenarios must
-continue to pass before the update is accepted.
+a markdown build-notes document included in the release artifacts. BuildMark is verified by two
+complementary layers of evidence. First, the CI pipeline runs
+`buildmark --validate --results artifacts/buildmark-self-validation.trx`, exercising BuildMark's
+built-in self-validation suite against mock data and recording results for ReqStream. Second, the
+pipeline invokes BuildMark with live GitHub Actions metadata to generate
+`docs/build_notes/generated/build_notes.md`. Pandoc converts this file to HTML; WeasyPrint renders
+the HTML to a PDF artifact; and FileAssert asserts the PDF exists, has content, and contains
+expected text. A CI build failure at any step is evidence that BuildMark did not produce the
+required output. When this OTS dependency is updated, the full CI pipeline is re-executed and all
+test scenarios must continue to pass before the update is accepted.
 
 ### Test Scenarios
 
-#### BuildMark_MarkdownReportGeneration
+**BuildMark_MarkdownReportGeneration**: A CI pipeline run triggers BuildMark with live GitHub
+Actions metadata, verifying that BuildMark produces a build-notes document from real pipeline data.
+BuildMark is expected to exit without error and produce a non-empty markdown build-notes document in
+the release artifacts. This scenario is verified by a successful CI pipeline execution.
 
-**Scenario**: A CI pipeline run triggers BuildMark with live GitHub Actions metadata.
+**BuildMark_GitIntegration**: BuildMark self-validation reads version tags and commits from a mock
+Git history, verifying that BuildMark correctly processes Git metadata. BuildMark is expected to
+exit 0 and correctly read version tags and commit history.
+This scenario is tested by `BuildMark_GitIntegration`.
 
-**Expected**: BuildMark exits without error and produces a non-empty markdown build-notes document
-in the release artifacts.
+**BuildMark_IssueTracking**: BuildMark self-validation processes mock GitHub issues and pull
+requests, verifying that BuildMark correctly fetches and handles issue-tracking data. BuildMark is
+expected to exit 0 and correctly fetch and process mock issues and pull requests.
+This scenario is tested by `BuildMark_IssueTracking`.
 
-**Requirement coverage**: `DictionaryMark-OTS-BuildMark`.
+**BuildMark_KnownIssuesReporting**: BuildMark self-validation includes open bugs in the generated
+report when requested, verifying the known-issues reporting feature. BuildMark is expected to exit 0
+and correctly include known issues in the output.
+This scenario is tested by `BuildMark_KnownIssuesReporting`.
 
-#### BuildMark_GitIntegration
-
-**Scenario**: BuildMark self-validation reads version tags and commits from a mock Git history.
-
-**Expected**: Exits 0 and correctly reads version tags and commit history.
-
-**Requirement coverage**: `DictionaryMark-OTS-BuildMark`.
-
-#### BuildMark_IssueTracking
-
-**Scenario**: BuildMark self-validation processes mock GitHub issues and pull requests.
-
-**Expected**: Exits 0 and correctly fetches and processes mock issues and pull requests.
-
-**Requirement coverage**: `DictionaryMark-OTS-BuildMark`.
-
-#### BuildMark_KnownIssuesReporting
-
-**Scenario**: BuildMark self-validation includes open bugs in the generated report when requested.
-
-**Expected**: Exits 0 and correctly includes known issues.
-
-**Requirement coverage**: `DictionaryMark-OTS-BuildMark`.
-
-#### BuildMark_RulesRouting
-
-**Scenario**: BuildMark self-validation assigns mock items to report sections based on label and
-type rules.
-
-**Expected**: Exits 0 and correctly routes items to the expected sections.
-
-**Requirement coverage**: `DictionaryMark-OTS-BuildMark`.
-
-### Requirements Coverage
-
-- **`DictionaryMark-OTS-BuildMark`**: BuildMark_MarkdownReportGeneration, BuildMark_GitIntegration,
-  BuildMark_IssueTracking, BuildMark_KnownIssuesReporting, BuildMark_RulesRouting
-
-### Suitability Conclusion
-
-Based on the evidence above, BuildMark is considered suitable for use in the DictionaryMark CI pipeline.
+**BuildMark_RulesRouting**: BuildMark self-validation assigns mock items to report sections based on
+label and type rules, verifying the rules-based routing feature. BuildMark is expected to exit 0 and
+correctly route items to the expected sections.
+This scenario is tested by `BuildMark_RulesRouting`.

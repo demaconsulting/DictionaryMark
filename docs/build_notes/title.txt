@@ -1,14 +1,13 @@
 ---
-title: DictionaryMark Build Notes
-subtitle: Build Notes
-author: DEMA Consulting
-description: Build notes for DictionaryMark
+title: "DictionaryMark Build Notes"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Build Notes for DictionaryMark"
 lang: en-US
 keywords:
-  - DictionaryMark
   - Build Notes
-  - Release Notes
   - C#
   - .NET
-  - Documentation
+  - YAML
+  - Markdown
 ---

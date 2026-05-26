@@ -1,8 +1,8 @@
-## DemaConsulting.TestResults Integration Design
+## DemaConsulting.TestResults
 
-DemaConsulting.TestResults is an off-the-shelf (OTS) package produced by DemaConsulting that
-provides structured test result collection and serialization to TRX and JUnit XML formats.
-DictionaryMark uses it in the SelfTest subsystem to record and export self-validation results.
+DemaConsulting.TestResults is an OTS package produced by DemaConsulting that provides structured
+test result collection and serialization to TRX and JUnit XML formats. DictionaryMark uses it
+exclusively in `Validation` to record and export self-validation results.
 
 ### Purpose
 
@@ -17,14 +17,17 @@ that CI pipelines and test dashboards can consume.
 DictionaryMark uses the following APIs from the `DemaConsulting.TestResults` and
 `DemaConsulting.TestResults.IO` namespaces:
 
-| Type / Member                            | Usage                                                                        |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `DemaConsulting.TestResults.TestResults` | Container for the full set of self-validation test results.                  |
-| `TestResults.Name`                       | Set to `"DictionaryMark Self-Validation"` to label the result set.           |
-| `TestResults.Add(TestResult)`            | Records the outcome of each individual self-test.                            |
-| `DemaConsulting.TestResults.TestResult`  | Represents the pass/fail outcome of a single named test.                     |
-| `TestResults.IO.TrxSerializer`           | Serializes the result set to TRX format when the output path ends in `.trx`. |
-| `TestResults.IO.JUnitSerializer`         | Serializes the result set to JUnit XML when the output path ends in `.xml`.  |
+- **`DemaConsulting.TestResults.TestResults`** — container for the full set of self-validation results
+- **`TestResults.Name`** — set to `"DictionaryMark Self-Validation"` to label the result set
+- **`TestResults.Results.Add(TestResult)`** — records the outcome of each individual self-test
+- **`DemaConsulting.TestResults.TestResult`** — represents the outcome of a single named test;
+  properties used: `Name`, `ClassName`, `CodeBase`, `Outcome`, `Duration`
+- **`DemaConsulting.TestResults.TestOutcome`** — enum with `Passed` and `Failed` values used to
+  set `TestResult.Outcome`
+- **`TestResults.IO.TrxSerializer`** — serializes the result set to a TRX-format string when the
+  output path extension is `.trx`
+- **`TestResults.IO.JUnitSerializer`** — serializes the result set to a JUnit XML-format string
+  when the output path extension is `.xml`
 
 Features not used: result filtering, merging multiple result sets, custom serialization formats,
 and parallel test scheduling primitives.
@@ -40,38 +43,42 @@ var testResults = new DemaConsulting.TestResults.TestResults
     Name = "DictionaryMark Self-Validation"
 };
 RunVersionTest(context, testResults);
-RunHelpTest(context, testResults);
 // ... additional tests ...
 ```
 
-Each private test method adds one result entry after executing the test scenario:
+Each private test method creates a `TestResult`, sets `test.Outcome` to `TestOutcome.Passed` or
+`TestOutcome.Failed`, then delegates to `FinalizeTestResult`, which records the elapsed duration
+and appends the entry to the collection:
 
 ```csharp
-testResults.Add(new TestResult { Name = "...", Passed = true/false, ... });
+test.Duration = DateTime.UtcNow - startTime;
+testResults.Results.Add(test);
 ```
 
-After all tests complete, `WriteResultsFile` selects the appropriate serializer based on the
-file extension of `context.ResultsFile` and writes the collected results:
+After all tests complete, `WriteResultsFile` determines the appropriate serializer by inspecting
+the lowercased file extension of `context.ResultsFile`. Each serializer returns a formatted string
+that is then written to disk via `File.WriteAllText`:
 
 ```csharp
-if (context.ResultsFile.EndsWith(".trx"))   TrxSerializer.Serialize(testResults, path);
-if (context.ResultsFile.EndsWith(".xml"))   JUnitSerializer.Serialize(testResults, path);
+var extension = Path.GetExtension(context.ResultsFile).ToLowerInvariant();
+if (extension == ".trx")        content = TrxSerializer.Serialize(testResults);
+else if (extension == ".xml")   content = JUnitSerializer.Serialize(testResults);
+File.WriteAllText(context.ResultsFile, content);
 ```
 
 ### Error Handling
 
-- Serialization errors from `TrxSerializer` or `JUnitSerializer` are not explicitly caught
-  within `WriteResultsFile`; file-system exceptions propagate to `Validation.Run`, which
-  does not catch them either, allowing them to propagate to `Program.Main` where they are
-  handled as unexpected exceptions.
-- An unsupported file extension (not `.trx` or `.xml`) causes `WriteResultsFile` to call
-  `context.WriteError` with an appropriate message, setting the exit code to 1 without
-  throwing an exception.
+`WriteResultsFile` wraps all serialization and file-write operations in a `try/catch (Exception)`
+block. Serialization failures from `TrxSerializer` or `JUnitSerializer` and file-system errors
+from `File.WriteAllText` are both caught within `WriteResultsFile`; the exception message is
+forwarded to `context.WriteError`, which sets the exit code to 1, and no exception propagates to
+`Validation.Run`. An unsupported file extension causes `WriteResultsFile` to call
+`context.WriteError` with an appropriate message without entering the try/catch path.
 
 ### Design Constraints
 
-- `TrxSerializer` and `JUnitSerializer` are consumed from `DemaConsulting.TestResults.IO`;
-  the exact serialization format is determined by the advertised contract of that package,
-  not re-implemented locally.
-- The consuming repository does not replicate the internal design of `DemaConsulting.TestResults`;
-  only the advertised public API is referenced here.
+- `TrxSerializer` and `JUnitSerializer` are consumed from `DemaConsulting.TestResults.IO`; the
+  exact serialization format is determined by the advertised contract of that package, not
+  reimplemented locally.
+- The internal design of `DemaConsulting.TestResults` is not replicated here; only the advertised
+  public API is referenced.

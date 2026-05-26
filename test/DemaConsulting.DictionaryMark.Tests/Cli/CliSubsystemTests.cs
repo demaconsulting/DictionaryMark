@@ -295,7 +295,7 @@ public class CliSubsystemTests
         // Assert: log file is written with version output
         Assert.True(File.Exists(logFile), "Log file should be created at specified path");
         var logContent = File.ReadAllText(logFile);
-        Assert.False(string.IsNullOrWhiteSpace(logContent), "Log file should contain version output");
+        Assert.Contains(Program.Version, logContent);
     }
 
     /// <summary>

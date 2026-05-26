@@ -1,13 +1,13 @@
 ---
-title: DictionaryMark Verification Design Document
-subtitle: Generate Markdown Dictionaries from YAML
-author: DEMA Consulting
-description: Verification design document for DictionaryMark
+title: "DictionaryMark Verification Design Document"
+subtitle: "YAML dictionary to Markdown formatter"
+author: "DEMA Consulting"
+description: "Verification Design Document for DictionaryMark"
 lang: en-US
 keywords:
+  - Verification
+  - Testing
   - DictionaryMark
   - .NET
   - Command-Line Tool
-  - Verification
-  - Verification Design Document
 ---

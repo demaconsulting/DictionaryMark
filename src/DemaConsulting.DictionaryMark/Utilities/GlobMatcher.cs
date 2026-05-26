@@ -31,10 +31,28 @@ internal static class GlobMatcher
     /// <summary>
     ///     Gets files matching the specified glob patterns.
     /// </summary>
-    /// <param name="patterns">Glob patterns to match against.</param>
-    /// <returns>Sorted, deduplicated list of matching file paths.</returns>
+    /// <remarks>
+    ///     Resolves absolute paths without wildcards directly via <see cref="File.Exists"/>. For absolute
+    ///     paths with wildcards, extracts the non-wildcard base directory and applies the remaining glob
+    ///     pattern using <c>Microsoft.Extensions.FileSystemGlobbing</c>. Relative patterns are resolved
+    ///     against <see cref="Environment.CurrentDirectory"/> at the time of the call; this method is not
+    ///     thread-safe if <see cref="Environment.CurrentDirectory"/> is changed concurrently from another
+    ///     thread. File-system I/O is performed; exceptions from the underlying globbing library propagate
+    ///     to the caller.
+    /// </remarks>
+    /// <param name="patterns">
+    ///     Collection of file path patterns to resolve. Patterns may be absolute or relative, with or
+    ///     without wildcard characters (<c>*</c>, <c>?</c>). Must not be null; each element must be
+    ///     non-null and non-empty.
+    /// </param>
+    /// <returns>
+    ///     Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths matching the
+    ///     supplied patterns; an empty list when no patterns produce a match.
+    /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="patterns"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when a pattern is null or empty.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when any element of <paramref name="patterns"/> is null or empty.
+    /// </exception>
     public static IReadOnlyList<string> GetFiles(IEnumerable<string> patterns)
     {
         // Validate input

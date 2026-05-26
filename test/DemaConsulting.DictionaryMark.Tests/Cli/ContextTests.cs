@@ -510,7 +510,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_InputFlag_AddsPattern()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--input", "*.yaml"]);
+
+        // Assert: verify expected behavior
         Assert.Single(context.InputPatterns);
         Assert.Equal("*.yaml", context.InputPatterns[0]);
     }
@@ -519,7 +522,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_ShortInputFlag_AddsPattern()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["-i", "*.yaml"]);
+
+        // Assert: verify expected behavior
         Assert.Single(context.InputPatterns);
         Assert.Equal("*.yaml", context.InputPatterns[0]);
     }
@@ -528,7 +534,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_MultipleInputFlags_AddsAllPatterns()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--input", "file1.yaml", "--input", "file2.yaml"]);
+
+        // Assert: verify expected behavior
         Assert.Equal(2, context.InputPatterns.Count);
     }
 
@@ -536,7 +545,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_OutputFlag_SetsOutputFile()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--output", "output.md"]);
+
+        // Assert: verify expected behavior
         Assert.Equal("output.md", context.OutputFile);
     }
 
@@ -544,7 +556,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_FormatFlag_Table_SetsTableFormat()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--format", "table"]);
+
+        // Assert: verify expected behavior
         Assert.Equal(OutputFormat.Table, context.Format);
     }
 
@@ -552,7 +567,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_FormatFlag_Bullets_SetsBulletsFormat()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--format", "bullets"]);
+
+        // Assert: verify expected behavior
         Assert.Equal(OutputFormat.Bullets, context.Format);
     }
 
@@ -560,7 +578,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_SectionFlag_SetsSectionHeading()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--section", "Glossary"]);
+
+        // Assert: verify expected behavior
         Assert.Equal("Glossary", context.SectionHeading);
     }
 
@@ -568,7 +589,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_TermHeaderFlag_SetsTermHeader()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--term-header", "Word"]);
+
+        // Assert: verify expected behavior
         Assert.Equal("Word", context.TermHeader);
     }
 
@@ -576,7 +600,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_DefinitionHeaderFlag_SetsDefinitionHeader()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--def-header", "Meaning"]);
+
+        // Assert: verify expected behavior
         Assert.Equal("Meaning", context.DefinitionHeader);
     }
 
@@ -584,7 +611,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_SortFlag_Alpha_SetsAlphabetical()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--sort", "alpha"]);
+
+        // Assert: verify expected behavior
         Assert.Equal(SortOrder.Alphabetical, context.SortBy);
     }
 
@@ -592,7 +622,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_SortFlag_File_SetsFileOrder()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create(["--sort", "file"]);
+
+        // Assert: verify expected behavior
         Assert.Equal(SortOrder.FileOrder, context.SortBy);
     }
 
@@ -600,6 +633,7 @@ public class ContextTests
     [Fact]
     public void Context_Create_InputFlag_WithoutValue_ThrowsArgumentException()
     {
+        // Act & Assert: missing value causes ArgumentException mentioning the flag name
         var exception = Assert.Throws<ArgumentException>(() => Context.Create(["--input"]));
         Assert.Contains("--input", exception.Message);
     }
@@ -608,6 +642,7 @@ public class ContextTests
     [Fact]
     public void Context_Create_OutputFlag_WithoutValue_ThrowsArgumentException()
     {
+        // Act & Assert: missing value causes ArgumentException mentioning the flag name
         var exception = Assert.Throws<ArgumentException>(() => Context.Create(["--output"]));
         Assert.Contains("--output", exception.Message);
     }
@@ -616,6 +651,7 @@ public class ContextTests
     [Fact]
     public void Context_Create_FormatFlag_InvalidValue_ThrowsArgumentException()
     {
+        // Act & Assert: unrecognized format value causes ArgumentException
         Assert.Throws<ArgumentException>(() => Context.Create(["--format", "invalid"]));
     }
 
@@ -623,6 +659,7 @@ public class ContextTests
     [Fact]
     public void Context_Create_SortFlag_InvalidValue_ThrowsArgumentException()
     {
+        // Act & Assert: unrecognized sort value causes ArgumentException
         Assert.Throws<ArgumentException>(() => Context.Create(["--sort", "invalid"]));
     }
 
@@ -630,7 +667,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_NoInputFlag_InputPatternsEmpty()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create([]);
+
+        // Assert: verify expected behavior
         Assert.Empty(context.InputPatterns);
     }
 
@@ -638,7 +678,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_NoOutputFlag_OutputFileNull()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create([]);
+
+        // Assert: verify expected behavior
         Assert.Null(context.OutputFile);
     }
 
@@ -646,7 +689,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_DefaultFormat_IsBullets()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create([]);
+
+        // Assert: verify expected behavior
         Assert.Equal(OutputFormat.Bullets, context.Format);
     }
 
@@ -654,9 +700,10 @@ public class ContextTests
     [Fact]
     public void Context_Create_DefaultSort_IsFileOrder()
     {
+        // Act: execute the operation being tested
         using var context = Context.Create([]);
+
+        // Assert: verify expected behavior
         Assert.Equal(SortOrder.FileOrder, context.SortBy);
     }
 }
-
-

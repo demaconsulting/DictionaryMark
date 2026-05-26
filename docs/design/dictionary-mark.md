@@ -1,119 +1,97 @@
-# DictionaryMark System Design
+# DictionaryMark
 
-This document describes the system-level design of DictionaryMark, a .NET tool
-that reads YAML dictionary files and generates Markdown output in bullet or table format.
+DictionaryMark is a .NET command-line application that reads YAML dictionary files containing
+term-definition pairs and produces formatted Markdown output as bullet lists or tables.
 
 ## Architecture
 
-### System Architecture
+DictionaryMark is organized into four subsystems and one top-level Program unit.
 
-DictionaryMark is a command-line application that processes YAML files containing
-term-definition pairs and produces formatted Markdown output. The system consists
-of four primary subsystems: Cli, SelfTest, Dictionary, and Utilities.
+```mermaid
+graph TD
+    Program --> Cli
+    Program --> Dictionary
+    Program --> SelfTest
+    Program --> Utilities
+    Dictionary --> Utilities
+    SelfTest --> Utilities
+```
 
-### Major Components
+**Program** is the entry point and execution orchestrator. It creates a `Context` from the
+command-line arguments, dispatches to version display, help display, self-validation, or
+Dictionary generation based on the parsed flags, and returns the exit code.
 
-- **Program** — Entry point and execution orchestrator; creates the Context, dispatches to Dictionary generation or self-validation, writes output, and returns the exit code.
-- **Cli Subsystem** - Command-line argument parsing and user interface management
-- **Dictionary Subsystem** - YAML loading, conflict detection, and Markdown formatting
-- **Utilities Subsystem** - Shared file-matching utilities via glob patterns
-- **SelfTest Subsystem** - Automated validation framework
+**Cli Subsystem** contains `Context`, which handles all command-line argument parsing and owns
+the output streams for logging and results.
 
-### Component Interactions
+**Dictionary Subsystem** contains `YamlDictionaryLoader`, `ConflictDetector`, `MarkdownFormatter`,
+`DictionaryGenerator`, and supporting data-model types. It reads YAML files, detects term
+conflicts, and renders Markdown output.
 
-The Program unit acts as the system orchestrator:
+**SelfTest Subsystem** contains `Validation`, which runs in-process self-tests when the user
+invokes the tool with `--validate`.
 
-1. **Initialization Phase** - Program creates Context from CLI subsystem to parse arguments
-2. **Execution Phase** - Program delegates to Dictionary subsystem for generation
-3. **Output Phase** - All subsystems use Context for consistent output and logging
+**Utilities Subsystem** contains `GlobMatcher`, `PathHelpers`, and `TemporaryDirectory`, providing
+shared file-matching and path-safety services consumed by the Dictionary and SelfTest subsystems.
 
 ## External Interfaces
 
-DictionaryMark exposes a single external interface — its command-line argument list.
+DictionaryMark exposes a single external interface: its command-line argument list.
 
-### Command-Line Interface
+**Command-Line Interface**: The tool is invoked from a terminal with flags that control input
+selection, output formatting, and operational mode.
 
-- **Version Query**: `-v`, `--version`
-- **Help Display**: `-?`, `-h`, `--help`
-- **Silent Mode**: `--silent`
-- **Self-Validation**: `--validate`
-- **Logging**: `--log <file>`
-- **Input Files**: `-i`, `--input <pattern>` (repeatable)
-- **Output File**: `-o`, `--output <file>`
-- **Format**: `-f`, `--format <bullets|table>`
-- **Section Heading**: `-s`, `--section <text>`
-- **Term Header**: `--term-header <text>`
-- **Definition Header**: `--def-header <text>` / `--definition-header <text>`
-- **Sort Order**: `--sort <file|alpha>`
-- **Heading Depth**: `--depth <n>`
-- **Results File**: `--results <file>` / `--result <file>`
+- *Type*: Command-line interface
+- *Role*: Provider
+- *Contract*: Accepts the following flags: `-v`/`--version` (version query), `-?`/`-h`/`--help`
+  (help display), `--silent` (suppress output), `--validate` (self-validation), `--log <file>`
+  (write log), `-i`/`--input <pattern>` (input file pattern, repeatable), `-o`/`--output <file>`
+  (output file), `-f`/`--format <bullets|table>` (output format), `-s`/`--section <text>`
+  (section heading), `--term-header <text>` (term column header),
+  `--def-header`/`--definition-header <text>` (definition column header),
+  `--sort <file|alpha>` (sort order), `--depth <n>` (heading depth), and
+  `--results`/`--result <file>` (results file). Returns exit code 0 on success, 1 on error.
+- *Constraints*: Input patterns are resolved relative to the working directory at invocation
+  time. All file I/O uses UTF-8 encoding without BOM.
 
 ## Dependencies
 
-DictionaryMark depends on three runtime OTS packages:
-
 - **YamlDotNet**: used for YAML parsing in `YamlDictionaryLoader` — see *YamlDotNet Integration Design*
-- **Microsoft.Extensions.FileSystemGlobbing**: used for glob-pattern file matching in `GlobMatcher` — see
-  *FileSystemGlobbing Integration Design*
-- **DemaConsulting.TestResults**: used for structured test-result reporting in `Validation` — see
-  *TestResults Integration Design*
+- **Microsoft.Extensions.FileSystemGlobbing**: used for glob-pattern file matching in `GlobMatcher` —
+  see *FileSystemGlobbing Integration Design*
+- **DemaConsulting.TestResults**: used for structured test-result reporting in `Validation` —
+  see *TestResults Integration Design*
 
 ## Risk Control Measures
 
-DictionaryMark is a development tool with no patient-safety or safety-critical risk classification. No
-software-item segregation is required by the applicable risk framework.
+N/A — DictionaryMark is a development tool with no patient-safety or safety-critical risk
+classification. No software-item segregation is required by the applicable risk framework.
 
-The one security boundary in the system is path-traversal prevention: caller-supplied file paths are
-validated by `PathHelpers.SafePathCombine` before any file-system operation combines a base directory
-with an untrusted relative path. This boundary is enforced entirely within the Utilities subsystem.
-
-## Error Handling
-
-DictionaryMark reports errors via stderr and signals failure through a non-zero exit code.
-
-### Unrecognized Argument Handling
-
-When an unrecognized argument is supplied on the command line, the tool:
-
-1. Writes an error message that names the unrecognized argument to **stderr**.
-2. Exits with a **non-zero exit code** (1).
-
-No Markdown output is generated when an argument error occurs.
-
-### Conflict Detection Behavior
-
-When conflicting definitions are detected across input files, the tool:
-
-1. Writes an error message identifying the conflicting term to **stderr** via
-   `context.WriteError`, setting the internal error flag.
-2. Returns a **non-zero exit code** (1) derived from the error flag.
-
-Conflict errors are reported before any Markdown output is written.
+The one security boundary in the system is path-traversal prevention: caller-supplied file paths
+are validated by `PathHelpers.SafePathCombine` before any file-system operation combines a base
+directory with an untrusted relative path. This boundary is enforced entirely within the Utilities
+subsystem.
 
 ## Data Flow
 
-Data moves through the system in two phases: input processing and output generation.
-
-### Input Processing
-
-1. **YAML files** → YamlDictionaryLoader reads flat key-value mappings
-2. **Entries** → ConflictDetector checks for term conflicts across files
-3. **Validated entries** → MarkdownFormatter generates output
-
-### Output Processing
-
-1. **Formatted Markdown** → Written to output file or stdout
+1. The user invokes the tool; `Program.Main` creates a `Context` from the command-line arguments.
+2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
+   `context.HeadingDepth` controls the Markdown heading level of the validation report header.
+3. For each `--input` pattern, `GlobMatcher.GetFiles` resolves the pattern to concrete file paths.
+4. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list.
+5. `ConflictDetector.Detect` scans the combined entry list; any duplicate term is reported via
+   `context.WriteError` and halts further output generation.
+6. `MarkdownFormatter.Format` renders the validated entries as a Markdown string.
+7. The formatted Markdown is written to the file specified by `--output`, or to stdout if no
+   output file was specified.
 
 ## Design Constraints
 
-- **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS). No platform-specific
-  APIs are used in the core logic; `GlobMatcher` normalizes path separators internally.
-- **Target frameworks**: net8.0, net9.0, net10.0. The tool is packaged and distributed as a .NET global
-  tool (`PackAsTool`).
-- **Input size**: no enforced limit on the number of YAML files or entries. Performance is bounded by
-  available memory and I/O throughput.
-- **Output size**: no enforced limit. Output is buffered in memory as a string before writing.
-- **Encoding**: all file I/O uses UTF-8 without BOM (default for `File.WriteAllText` and
-  `StreamReader` on .NET).
-- **Exit-code contract**: exit code 0 means no errors were recorded; exit code 1 means at least one
-  error was written via `context.WriteError`. No other exit codes are produced by the tool itself.
+- **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS); no
+  platform-specific APIs are used in core logic.
+- **Target frameworks**: net8.0, net9.0, net10.0; distributed as a .NET global tool (`PackAsTool`).
+- **Input size**: no enforced limit on the number of YAML files or entries.
+- **Output size**: no enforced limit; formatted output is buffered in memory before writing.
+- **Encoding**: all file I/O uses UTF-8 without BOM.
+- **Exit-code contract**: exit code 0 means no errors recorded; exit code 1 means at least one
+  error was written via `context.WriteError`.
