@@ -446,6 +446,8 @@ jobs:
           dotnet-version: 10.x
 
       - name: Install npm dependencies
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
         run: npm install
 
       - name: Set browser path for Mermaid (Windows)
