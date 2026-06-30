@@ -24,12 +24,12 @@ produces test result files. A TRX results file with correctly classified pass an
 expected.
 This scenario is tested by `FileAssert_Results`.
 
-**FileAssert_Exists**: FileAssert self-validation exercises a test configuration using a glob
+**FileAssert_File**: FileAssert self-validation exercises a test configuration using a glob
 pattern to assert file existence, verifying that FileAssert correctly detects present files. The
 assertion is expected to pass when the specified file is present.
-This scenario is tested by `FileAssert_Exists`.
+This scenario is tested by `FileAssert_File`.
 
-**FileAssert_Contains**: FileAssert self-validation exercises a test configuration using a
+**FileAssert_Text**: FileAssert self-validation exercises a test configuration using a
 `contains` assertion to verify file content, verifying that FileAssert correctly checks file
 content. The assertion is expected to pass when the specified content is present.
-This scenario is tested by `FileAssert_Contains`.
+This scenario is tested by `FileAssert_Text`.
