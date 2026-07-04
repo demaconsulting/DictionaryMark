@@ -48,31 +48,12 @@ library internals.
 
 ## Software Structure
 
-```text
-DictionaryMark (System)
-├── Program (Unit)
-├── Cli (Subsystem)
-│   └── Context (Unit)
-├── Dictionary (Subsystem)
-│   ├── DictionaryGenerator (Unit)
-│   ├── YamlDictionaryLoader (Unit)
-│   ├── ConflictDetector (Unit)
-│   ├── MarkdownFormatter (Unit)
-│   ├── DictionaryEntry (Unit)
-│   ├── MarkdownOptions (Unit)
-│   ├── OutputFormat (Unit)
-│   └── SortOrder (Unit)
-├── SelfTest (Subsystem)
-│   └── Validation (Unit)
-├── Utilities (Subsystem)
-│   ├── GlobMatcher (Unit)
-│   ├── PathHelpers (Unit)
-│   └── TemporaryDirectory (Unit)
-└── OTS Dependencies
-    ├── YamlDotNet (OTS)
-    ├── Microsoft.Extensions.FileSystemGlobbing (OTS)
-    └── DemaConsulting.TestResults (OTS)
-```
+The software structure is modeled in SysML2 under `docs/sysml2/` and rendered to the
+diagram below by SysML2Tools as part of the build pipeline. AI agents should query the
+SysML2 model directly (see `docs/sysml2/system.sysml` for the stable entry point) rather
+than parsing this diagram or the prose below.
+
+![Software Structure](software-structure.svg)
 
 ## Folder Layout
 

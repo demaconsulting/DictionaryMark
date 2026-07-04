@@ -480,7 +480,7 @@ jobs:
           dotnet versionmark --capture --job-id "build-docs" \
             --output "artifacts/versionmark-build-docs.json" -- \
             dotnet git node npm pandoc weasyprint sarifmark sonarmark reqstream \
-            buildmark versionmark reviewmark fileassert
+            buildmark versionmark reviewmark fileassert sysml2tools
           echo "✓ Tool versions captured"
 
       # === PREPARE DOCUMENT OUTPUT ===
@@ -738,6 +738,20 @@ jobs:
       - name: Create design output directory
         shell: bash
         run: mkdir -p docs/design/generated
+
+      - name: Render Software Structure diagram with SysML2Tools
+        run: >
+          dotnet sysml2tools render
+          --output docs/design/generated
+          --format svg
+          --auto
+          docs/sysml2/system.sysml
+          docs/sysml2/dictionary-mark.sysml
+          docs/sysml2/ots.sysml
+
+      - name: Rename Software Structure diagram to stable filename
+        shell: bash
+        run: mv docs/design/generated/*View.svg docs/design/generated/software-structure.svg
 
       - name: Generate Design HTML with Pandoc
         shell: bash
