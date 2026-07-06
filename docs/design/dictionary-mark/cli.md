@@ -1,5 +1,7 @@
 ## Cli
 
+![Cli Subsystem Structure](CliView.svg)
+
 ### Overview
 
 The Cli subsystem handles command-line argument parsing and program output for DictionaryMark. It

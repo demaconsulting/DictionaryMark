@@ -1,5 +1,7 @@
 ### YamlDictionaryLoader
 
+![Dictionary Subsystem Structure](DictionaryView.svg)
+
 #### Purpose
 
 `YamlDictionaryLoader.Load` reads and parses a YAML file, verifies the root node is a

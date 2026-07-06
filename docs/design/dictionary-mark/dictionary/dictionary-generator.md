@@ -1,5 +1,7 @@
 ### DictionaryGenerator
 
+![Dictionary Subsystem Structure](DictionaryView.svg)
+
 #### Purpose
 
 `DictionaryGenerator` is a static class that orchestrates the full dictionary generation pipeline.

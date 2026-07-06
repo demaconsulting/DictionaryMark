@@ -1,5 +1,7 @@
 ### GlobMatcher
 
+![Utilities Subsystem Structure](UtilitiesView.svg)
+
 #### Purpose
 
 `GlobMatcher.GetFiles` resolves a list of glob patterns to a sorted, deduplicated list of

@@ -739,19 +739,15 @@ jobs:
         shell: bash
         run: mkdir -p docs/design/generated
 
-      - name: Render Software Structure diagram with SysML2Tools
+      - name: Render Software Structure diagrams with SysML2Tools
         run: >
           dotnet sysml2tools render
           --output docs/design/generated
           --format svg
-          --auto
           docs/sysml2/system.sysml
           docs/sysml2/dictionary-mark.sysml
           docs/sysml2/ots.sysml
-
-      - name: Rename Software Structure diagram to stable filename
-        shell: bash
-        run: mv docs/design/generated/*View.svg docs/design/generated/software-structure.svg
+          docs/sysml2/views/design-views.sysml
 
       - name: Generate Design HTML with Pandoc
         shell: bash

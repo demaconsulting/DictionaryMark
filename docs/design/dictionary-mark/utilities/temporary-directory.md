@@ -1,5 +1,7 @@
 ### TemporaryDirectory
 
+![Utilities Subsystem Structure](UtilitiesView.svg)
+
 #### Purpose
 
 `TemporaryDirectory` is an `internal sealed` class implementing `IDisposable` that encapsulates

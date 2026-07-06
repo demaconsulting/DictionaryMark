@@ -1,5 +1,7 @@
 ## Utilities
 
+![Utilities Subsystem Structure](UtilitiesView.svg)
+
 ### Overview
 
 The Utilities subsystem provides shared helper functionality consumed by other subsystems. It

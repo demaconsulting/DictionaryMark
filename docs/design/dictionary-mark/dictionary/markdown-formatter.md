@@ -1,5 +1,7 @@
 ### MarkdownFormatter
 
+![Dictionary Subsystem Structure](DictionaryView.svg)
+
 #### Purpose
 
 `MarkdownFormatter.Format` deduplicates entries (first occurrence wins, case-insensitive term

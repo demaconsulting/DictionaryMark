@@ -7,15 +7,7 @@ term-definition pairs and produces formatted Markdown output as bullet lists or 
 
 DictionaryMark is organized into four subsystems and one top-level Program unit.
 
-```mermaid
-graph TD
-    Program --> Cli
-    Program --> Dictionary
-    Program --> SelfTest
-    Program --> Utilities
-    Dictionary --> Utilities
-    SelfTest --> Utilities
-```
+![System Structure](DictionaryMarkView.svg)
 
 **Program** is the entry point and execution orchestrator. It creates a `Context` from the
 command-line arguments, dispatches to version display, help display, self-validation, or

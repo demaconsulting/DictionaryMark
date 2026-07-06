@@ -115,7 +115,7 @@ if (-not $skipDotnetTools) {
     dotnet reviewmark --lint
     if ($LASTEXITCODE -ne 0) { $lintError = $true }
 
-    dotnet sysml2tools lint docs/sysml2/system.sysml docs/sysml2/dictionary-mark.sysml docs/sysml2/ots.sysml
+    dotnet sysml2tools lint docs/sysml2/system.sysml docs/sysml2/dictionary-mark.sysml docs/sysml2/ots.sysml docs/sysml2/views/design-views.sysml
     if ($LASTEXITCODE -ne 0) { $lintError = $true }
 }
 
