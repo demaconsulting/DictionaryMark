@@ -1,5 +1,7 @@
 ### Context
 
+![Cli Subsystem Structure](CliView.svg)
+
 #### Purpose
 
 `Context` is created once per tool invocation via the `Create` factory method. It parses the
@@ -10,10 +12,10 @@ at runtime (via `_hasErrors` flag).
 
 #### Data Model
 
-**_logWriter**: `StreamWriter?` — Log file writer; `null` when logging is disabled. Disposed by
+**\_logWriter**: `StreamWriter?` — Log file writer; `null` when logging is disabled. Disposed by
 `Dispose()`.
 
-**_hasErrors**: `bool` — Set to `true` on the first `WriteError` call; never reset. Invariant:
+**\_hasErrors**: `bool` — Set to `true` on the first `WriteError` call; never reset. Invariant:
 once `true`, remains `true` for the lifetime of the instance.
 
 **Version**: `bool` — `true` when `-v` or `--version` was passed; default `false`.

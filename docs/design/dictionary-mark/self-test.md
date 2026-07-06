@@ -1,5 +1,7 @@
 ## SelfTest
 
+![SelfTest Subsystem Structure](SelfTestView.svg)
+
 ### Overview
 
 The SelfTest subsystem provides self-validation functionality for DictionaryMark. It enables the

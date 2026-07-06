@@ -1,5 +1,7 @@
 ### Validation
 
+![SelfTest Subsystem Structure](SelfTestView.svg)
+
 #### Purpose
 
 `Validation.Run` prints a system information header, executes six fixed in-process self-tests,

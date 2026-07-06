@@ -1,5 +1,7 @@
 ### PathHelpers
 
+![Utilities Subsystem Structure](UtilitiesView.svg)
+
 #### Purpose
 
 `PathHelpers.SafePathCombine` combines a base path with a relative path and verifies that the

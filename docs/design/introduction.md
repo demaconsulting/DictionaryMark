@@ -15,104 +15,42 @@ The intended audience is code reviewers, compliance auditors, and future maintai
 
 ## Scope
 
-This document covers the design of the following software items:
+Local items:
 
-- **DictionaryMark** — the system as a whole
-- **Program** — entry point and execution orchestrator
-- **Cli** subsystem
-  - **Context** — command-line argument parser and I/O owner
-- **Dictionary** subsystem
-  - **DictionaryGenerator** — orchestrates dictionary generation
-  - **YamlDictionaryLoader** — loads YAML flat-dictionary files
-  - **ConflictDetector** — detects term conflicts across files
-  - **MarkdownFormatter** — formats entries as Markdown
-  - **DictionaryEntry** — data model: term-definition pair
-  - **MarkdownOptions** — data model: Markdown output options
-  - **OutputFormat** — data model: output format enum
-  - **SortOrder** — data model: sort order enum
-- **SelfTest** subsystem
-  - **Validation** — self-validation test runner
-- **Utilities** subsystem
-  - **GlobMatcher** — file-matching via glob patterns
-  - **PathHelpers** — safe path combination utilities
-  - **TemporaryDirectory** — disposable temporary directory helper
+- **DictionaryMark**: system, subsystem, and unit design.
 
-OTS dependencies covered:
+OTS items:
 
-- **YamlDotNet** (OTS)
-- **Microsoft.Extensions.FileSystemGlobbing** (OTS)
-- **DemaConsulting.TestResults** (OTS)
+- **YamlDotNet**: integration and usage design.
+- **Microsoft.Extensions.FileSystemGlobbing**: integration and usage design.
+- **DemaConsulting.TestResults**: integration and usage design.
 
 Out of scope: test projects, build pipeline configuration, deployment and packaging, and external
 library internals.
 
 ## Software Structure
 
-```text
-DictionaryMark (System)
-├── Program (Unit)
-├── Cli (Subsystem)
-│   └── Context (Unit)
-├── Dictionary (Subsystem)
-│   ├── DictionaryGenerator (Unit)
-│   ├── YamlDictionaryLoader (Unit)
-│   ├── ConflictDetector (Unit)
-│   ├── MarkdownFormatter (Unit)
-│   ├── DictionaryEntry (Unit)
-│   ├── MarkdownOptions (Unit)
-│   ├── OutputFormat (Unit)
-│   └── SortOrder (Unit)
-├── SelfTest (Subsystem)
-│   └── Validation (Unit)
-├── Utilities (Subsystem)
-│   ├── GlobMatcher (Unit)
-│   ├── PathHelpers (Unit)
-│   └── TemporaryDirectory (Unit)
-└── OTS Dependencies
-    ├── YamlDotNet (OTS)
-    ├── Microsoft.Extensions.FileSystemGlobbing (OTS)
-    └── DemaConsulting.TestResults (OTS)
-```
+The software structure is modeled in SysML2 under `docs/sysml2/` and rendered to the
+diagram below by SysML2Tools as part of the build pipeline. AI agents should query the
+SysML2 model directly (see `docs/sysml2/system.sysml` for the stable entry point) rather
+than parsing this diagram or the prose below.
+
+![Software Structure](SoftwareStructureView.svg)
 
 ## Folder Layout
 
-```text
-src/DemaConsulting.DictionaryMark/
-├── Program.cs                          - entry point and execution orchestrator
-├── Cli/
-│   └── Context.cs                      - command-line argument parser and I/O owner
-├── Dictionary/
-│   ├── DictionaryGenerator.cs          - orchestrates dictionary generation
-│   ├── YamlDictionaryLoader.cs         - loads YAML flat-dictionary files
-│   ├── ConflictDetector.cs             - detects term conflicts across files
-│   ├── MarkdownFormatter.cs            - formats entries as Markdown
-│   ├── DictionaryEntry.cs              - data model: term-definition pair
-│   ├── MarkdownOptions.cs              - data model: Markdown output options
-│   ├── OutputFormat.cs                 - data model: output format enum
-│   └── SortOrder.cs                    - data model: sort order enum
-├── SelfTest/
-│   └── Validation.cs                   - self-validation test runner
-└── Utilities/
-    ├── GlobMatcher.cs                  - file-matching via glob patterns
-    ├── PathHelpers.cs                  - safe path combination utilities
-    └── TemporaryDirectory.cs           - disposable temporary directory helper
-
-test/DemaConsulting.DictionaryMark.Tests/
-├── Cli/
-│   └── ContextTests.cs
-├── Dictionary/
-│   ├── DictionaryGeneratorTests.cs
-│   ├── YamlDictionaryLoaderTests.cs
-│   ├── ConflictDetectorTests.cs
-│   ├── MarkdownFormatterTests.cs
-│   └── ...
-├── SelfTest/
-│   └── ValidationTests.cs
-└── Utilities/
-    ├── GlobMatcherTests.cs
-    ├── PathHelpersTests.cs
-    └── TemporaryDirectoryTests.cs
-```
+- **src/** - source files and projects
+  - **DemaConsulting.DictionaryMark/** - DictionaryMark system source
+    - **Cli/** - Cli subsystem
+    - **Dictionary/** - Dictionary subsystem
+    - **SelfTest/** - SelfTest subsystem
+    - **Utilities/** - Utilities subsystem
+- **test/** - test projects
+  - **DemaConsulting.DictionaryMark.Tests/** - DictionaryMark test source
+    - **Cli/** - Cli subsystem tests
+    - **Dictionary/** - Dictionary subsystem tests
+    - **SelfTest/** - SelfTest subsystem tests
+    - **Utilities/** - Utilities subsystem tests
 
 ## Companion Artifact Structure
 

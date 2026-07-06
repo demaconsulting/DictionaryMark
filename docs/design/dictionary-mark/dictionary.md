@@ -1,5 +1,7 @@
 ## Dictionary
 
+![Dictionary Subsystem Structure](DictionaryView.svg)
+
 ### Overview
 
 The Dictionary subsystem handles loading, validating, and formatting dictionary entries. It contains

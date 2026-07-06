@@ -1,5 +1,7 @@
 ### ConflictDetector
 
+![Dictionary Subsystem Structure](DictionaryView.svg)
+
 #### Purpose
 
 `ConflictDetector.Detect` iterates over all entries, tracking the first definition seen for each

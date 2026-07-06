@@ -42,14 +42,22 @@ This repository follows a reference template for structure and file conventions.
 
 # Codebase Navigation (ALL Agents)
 
-When working with source code, design, or requirements artifacts, read
-`docs/design/introduction.md` first. It provides the software structure,
-folder layout, and companion artifact locations. Use it as the primary map
-before searching the filesystem.
+When working with source code, design, or requirements artifacts, query the SysML2
+model under `docs/sysml2/` first, using the `sysml2tools-query` skill (see
+`.github/skills/sysml2tools-query/SKILL.md`). Start from the stable entry point
+`docs/sysml2/system.sysml` (`part def System`) to learn the project's real
+qualified name, then use `sysml2tools query describe/hierarchy/uses/used-by/impact`
+to understand purpose and relationships before opening source files.
+
+Read `docs/design/introduction.md` for the human-facing rendering of the same
+model (a diagram generated from `docs/sysml2/` by the build pipeline), folder
+layout, and companion artifact locations. Use it as a secondary map, or as a
+fallback when the SysML2 model is stale or doesn't yet cover the area you need.
 
 # Key Configuration Files
 
 - **`.config/dotnet-tools.json`** - Local tool manifest for Continuous Compliance tools
+- **`docs/sysml2/`** - SysML2 architecture model; see `.github/skills/sysml2tools-query/SKILL.md`
 - **`.editorconfig`** - Code formatting rules
 - **`.clang-format`** - C/C++ formatting (if applicable)
 - **`.cspell.yaml`** - Spell-check configuration and technical term dictionary

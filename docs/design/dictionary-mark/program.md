@@ -1,5 +1,7 @@
 ## Program
 
+![System Structure](DictionaryMarkView.svg)
+
 ### Purpose
 
 `Program` provides the application entry point (`Main`) and the internal execution entry point
