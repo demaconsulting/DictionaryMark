@@ -27,60 +27,88 @@ evidence-source:
   type: url
   location: https://raw.githubusercontent.com/demaconsulting/DictionaryMark/reviews/index.json
 
+# Context included for all reviews.
+context:
+  - "docs/design/introduction.md"
+
 # Review sets following hierarchical scope principles.
 # Each review-set focuses on a single compliance question with manageable file counts.
 reviews:
-  # Purpose
+  # Purpose Review (only one per repository)
   - id: Purpose
-    title: Review of user-facing capabilities and system promises
+    title: Review that README and User Guide are Coherent and Complete
+    context:
+      - "!docs/design/introduction.md"
     paths:
       - "README.md"
       - "docs/user_guide/**/*.md"
-      - "docs/reqstream/dictionary-mark.yaml"
-      - "docs/design/introduction.md"
-      - "docs/design/dictionary-mark.md"
 
-  # DictionaryMark - Specials
+  # Decomposition Review (only one per repository)
+  - id: Decomposition
+    title: Review that DictionaryMark Decomposition Addresses the Stated Purpose
+    context:
+      - "README.md"
+      - "docs/user_guide/**/*.md"
+    paths:
+      - "requirements.yaml"
+      - "docs/design/introduction.md"
+      - "docs/sysml2/**/*.sysml"
+
+  # DictionaryMark-Architecture Review (one per system)
   - id: DictionaryMark-Architecture
-    title: Review of DictionaryMark system architecture and operational validation
+    title: Review that DictionaryMark Architecture Satisfies Requirements
+    context:
+      - "README.md"
+      - "docs/user_guide/**/*.md"
     paths:
       - "docs/reqstream/dictionary-mark.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
-      - "docs/sysml2/**/*.sysml"
+      - "docs/verification/introduction.md"
       - "docs/verification/dictionary-mark.md"
+      - "docs/verification/dictionary-mark/test-helpers.md"
       - "test/**/IntegrationTests.cs"
       - "test/**/AssemblyInfo.cs"
-
-  - id: DictionaryMark-TestHelpers
-    title: Review of DictionaryMark shared test helper utilities
-    paths:
-      - "docs/verification/dictionary-mark/test-helpers.md"
       - "test/**/Helpers/*.cs"
 
+  # DictionaryMark-Design Review (one per system)
   - id: DictionaryMark-Design
-    title: Review of DictionaryMark architectural and design consistency
-    paths:
+    title: Review that DictionaryMark Design is Consistent and Complete
+    context:
       - "docs/reqstream/dictionary-mark.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/platform-requirements.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
       - "docs/design/ots.md"
-      - "docs/design/ots/*.md"
+
+  # DictionaryMark-Verification Review (one per system)
+  - id: DictionaryMark-Verification
+    title: Review that DictionaryMark Verification is Consistent and Complete
+    context:
+      - "docs/reqstream/dictionary-mark.yaml"
+    paths:
       - "docs/verification/introduction.md"
+      - "docs/verification/dictionary-mark.md"
+      - "docs/verification/dictionary-mark/**/*.md"
       - "docs/verification/ots.md"
 
+  # DictionaryMark-AllRequirements Review (one per system)
   - id: DictionaryMark-AllRequirements
-    title: Review of All DictionaryMark requirements quality and traceability
-    paths:
-      - "requirements.yaml"
+    title: Review that All DictionaryMark Requirements are Complete
+    context:
+      - "docs/design/dictionary-mark.md"
       - "docs/reqstream/dictionary-mark.yaml"
+    paths:
       - "docs/reqstream/dictionary-mark/**/*.yaml"
-      - "docs/reqstream/ots/*.yaml"
 
-  # DictionaryMark - Program
+  # DictionaryMark-Program Review (unit directly under the system)
   - id: DictionaryMark-Program
-    title: Review of DictionaryMark Program unit implementation
+    title: Review that DictionaryMark Program Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/program.yaml"
       - "docs/design/dictionary-mark/program.md"
@@ -88,17 +116,26 @@ reviews:
       - "src/**/Program.cs"
       - "test/**/ProgramTests.cs"
 
-  # DictionaryMark - Cli
+  # DictionaryMark-Cli Review (subsystem)
   - id: DictionaryMark-Cli
-    title: Review of DictionaryMark Cli subsystem architecture and interfaces
+    title: Review that DictionaryMark Cli Satisfies Subsystem Requirements
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/cli.yaml"
       - "docs/design/dictionary-mark/cli.md"
       - "docs/verification/dictionary-mark/cli.md"
       - "test/**/Cli/CliSubsystemTests.cs"
 
+  # DictionaryMark-Cli-Context Review (unit under a subsystem)
   - id: DictionaryMark-Cli-Context
-    title: Review of DictionaryMark Cli Context unit implementation
+    title: Review that DictionaryMark Cli Context Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/cli.md"
+      - "docs/reqstream/dictionary-mark/cli.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/cli/context.yaml"
       - "docs/design/dictionary-mark/cli/context.md"
@@ -106,17 +143,26 @@ reviews:
       - "src/**/Cli/Context.cs"
       - "test/**/Cli/ContextTests.cs"
 
-  # DictionaryMark - SelfTest
+  # DictionaryMark-SelfTest Review (subsystem)
   - id: DictionaryMark-SelfTest
     title: Review that DictionaryMark SelfTest Satisfies Subsystem Requirements
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/self-test.yaml"
       - "docs/design/dictionary-mark/self-test.md"
       - "docs/verification/dictionary-mark/self-test.md"
       - "test/**/SelfTest/SelfTestSubsystemTests.cs"
 
+  # DictionaryMark-SelfTest-Validation Review (unit under a subsystem)
   - id: DictionaryMark-SelfTest-Validation
-    title: Review of DictionaryMark SelfTest Validation unit implementation
+    title: Review that DictionaryMark SelfTest Validation Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/self-test.md"
+      - "docs/reqstream/dictionary-mark/self-test.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/self-test/validation.yaml"
       - "docs/design/dictionary-mark/self-test/validation.md"
@@ -124,18 +170,26 @@ reviews:
       - "src/**/SelfTest/Validation.cs"
       - "test/**/SelfTest/ValidationTests.cs"
 
-  # DictionaryMark - Dictionary
+  # DictionaryMark-Dictionary Review (subsystem)
   - id: DictionaryMark-Dictionary
     title: Review that DictionaryMark Dictionary Satisfies Subsystem Requirements
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/dictionary.yaml"
       - "docs/design/dictionary-mark/dictionary.md"
       - "docs/verification/dictionary-mark/dictionary.md"
-      - "test/**/Dictionary/DictionaryGeneratorTests.cs"
       - "test/**/Dictionary/DictionarySubsystemTests.cs"
 
+  # DictionaryMark-Dictionary-YamlLoader Review (unit under a subsystem)
   - id: DictionaryMark-Dictionary-YamlLoader
-    title: Review of DictionaryMark Dictionary YamlDictionaryLoader unit implementation
+    title: Review that DictionaryMark Dictionary YamlLoader Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/dictionary/yaml-loader.yaml"
       - "docs/design/dictionary-mark/dictionary/yaml-loader.md"
@@ -145,8 +199,14 @@ reviews:
       - "test/**/Dictionary/DictionaryEntryTests.cs"
       - "test/**/Dictionary/YamlDictionaryLoaderTests.cs"
 
+  # DictionaryMark-Dictionary-ConflictDetector Review (unit under a subsystem)
   - id: DictionaryMark-Dictionary-ConflictDetector
-    title: Review of DictionaryMark Dictionary ConflictDetector unit implementation
+    title: Review that DictionaryMark Dictionary ConflictDetector Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/dictionary/conflict-detector.yaml"
       - "docs/design/dictionary-mark/dictionary/conflict-detector.md"
@@ -154,8 +214,14 @@ reviews:
       - "src/**/Dictionary/ConflictDetector.cs"
       - "test/**/Dictionary/ConflictDetectorTests.cs"
 
+  # DictionaryMark-Dictionary-MarkdownFormatter Review (unit under a subsystem)
   - id: DictionaryMark-Dictionary-MarkdownFormatter
-    title: Review of DictionaryMark Dictionary MarkdownFormatter unit implementation
+    title: Review that DictionaryMark Dictionary MarkdownFormatter Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/dictionary/markdown-formatter.yaml"
       - "docs/design/dictionary-mark/dictionary/markdown-formatter.md"
@@ -166,8 +232,14 @@ reviews:
       - "src/**/Dictionary/MarkdownFormatter.cs"
       - "test/**/Dictionary/MarkdownFormatterTests.cs"
 
+  # DictionaryMark-Dictionary-Generator Review (unit under a subsystem)
   - id: DictionaryMark-Dictionary-Generator
-    title: Review of DictionaryMark Dictionary DictionaryGenerator unit implementation
+    title: Review that DictionaryMark Dictionary Generator Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/dictionary.md"
+      - "docs/reqstream/dictionary-mark/dictionary.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml"
       - "docs/design/dictionary-mark/dictionary/dictionary-generator.md"
@@ -175,17 +247,26 @@ reviews:
       - "src/**/Dictionary/DictionaryGenerator.cs"
       - "test/**/Dictionary/DictionaryGeneratorTests.cs"
 
-  # DictionaryMark - Utilities
+  # DictionaryMark-Utilities Review (subsystem)
   - id: DictionaryMark-Utilities
     title: Review that DictionaryMark Utilities Satisfies Subsystem Requirements
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/utilities.yaml"
       - "docs/design/dictionary-mark/utilities.md"
       - "docs/verification/dictionary-mark/utilities.md"
       - "test/**/Utilities/UtilitiesSubsystemTests.cs"
 
+  # DictionaryMark-Utilities-GlobMatcher Review (unit under a subsystem)
   - id: DictionaryMark-Utilities-GlobMatcher
-    title: Review of DictionaryMark Utilities GlobMatcher unit implementation
+    title: Review that DictionaryMark Utilities GlobMatcher Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml"
       - "docs/design/dictionary-mark/utilities/glob-matcher.md"
@@ -193,19 +274,29 @@ reviews:
       - "src/**/Utilities/GlobMatcher.cs"
       - "test/**/Utilities/GlobMatcherTests.cs"
 
+  # DictionaryMark-Utilities-PathHelpers Review (unit under a subsystem)
   - id: DictionaryMark-Utilities-PathHelpers
-    title: Review of DictionaryMark Utilities PathHelpers unit implementation
+    title: Review that DictionaryMark Utilities PathHelpers Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/utilities/path-helpers.yaml"
-      - "docs/design/dictionary-mark/utilities.md"
       - "docs/design/dictionary-mark/utilities/path-helpers.md"
-      - "docs/verification/dictionary-mark/utilities.md"
       - "docs/verification/dictionary-mark/utilities/path-helpers.md"
       - "src/**/Utilities/PathHelpers.cs"
       - "test/**/Utilities/PathHelpersTests.cs"
 
+  # DictionaryMark-Utilities-TemporaryDirectory Review (unit under a subsystem)
   - id: DictionaryMark-Utilities-TemporaryDirectory
-    title: Review of DictionaryMark Utilities TemporaryDirectory unit implementation
+    title: Review that DictionaryMark Utilities TemporaryDirectory Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml"
       - "docs/design/dictionary-mark/utilities/temporary-directory.md"
@@ -215,81 +306,81 @@ reviews:
 
   # OTS Items
   - id: OTS-BuildMark
-    title: Review of BuildMark OTS verification evidence
+    title: Review that BuildMark Provides Required Functionality
     paths:
       - "docs/reqstream/ots/buildmark.yaml"
       - "docs/verification/ots/buildmark.md"
 
   - id: OTS-FileAssert
-    title: Review of FileAssert OTS verification evidence
+    title: Review that FileAssert Provides Required Functionality
     paths:
       - "docs/reqstream/ots/fileassert.yaml"
       - "docs/verification/ots/fileassert.md"
 
   - id: OTS-Pandoc
-    title: Review of Pandoc OTS verification evidence
+    title: Review that Pandoc Provides Required Functionality
     paths:
       - "docs/reqstream/ots/pandoc.yaml"
       - "docs/verification/ots/pandoc.md"
 
   - id: OTS-ReqStream
-    title: Review of ReqStream OTS verification evidence
+    title: Review that ReqStream Provides Required Functionality
     paths:
       - "docs/reqstream/ots/reqstream.yaml"
       - "docs/verification/ots/reqstream.md"
 
   - id: OTS-ReviewMark
-    title: Review of ReviewMark OTS verification evidence
+    title: Review that ReviewMark Provides Required Functionality
     paths:
       - "docs/reqstream/ots/reviewmark.yaml"
       - "docs/verification/ots/reviewmark.md"
 
   - id: OTS-SarifMark
-    title: Review of SarifMark OTS verification evidence
+    title: Review that SarifMark Provides Required Functionality
     paths:
       - "docs/reqstream/ots/sarifmark.yaml"
       - "docs/verification/ots/sarifmark.md"
 
   - id: OTS-SonarMark
-    title: Review of SonarMark OTS verification evidence
+    title: Review that SonarMark Provides Required Functionality
     paths:
       - "docs/reqstream/ots/sonarmark.yaml"
       - "docs/verification/ots/sonarmark.md"
 
   - id: OTS-VersionMark
-    title: Review of VersionMark OTS verification evidence
+    title: Review that VersionMark Provides Required Functionality
     paths:
       - "docs/reqstream/ots/versionmark.yaml"
       - "docs/verification/ots/versionmark.md"
 
   - id: OTS-WeasyPrint
-    title: Review of WeasyPrint OTS verification evidence
+    title: Review that WeasyPrint Provides Required Functionality
     paths:
       - "docs/reqstream/ots/weasyprint.yaml"
       - "docs/verification/ots/weasyprint.md"
 
   - id: OTS-xUnit
-    title: Review of xUnit OTS verification evidence
+    title: Review that xUnit Provides Required Functionality
     paths:
       - "docs/reqstream/ots/xunit.yaml"
       - "docs/verification/ots/xunit.md"
 
   - id: OTS-YamlDotNet
-    title: Review of YamlDotNet OTS verification evidence
+    title: Review that YamlDotNet Provides Required Functionality
     paths:
       - "docs/reqstream/ots/yaml-dot-net.yaml"
       - "docs/design/ots/yaml-dot-net.md"
       - "docs/verification/ots/yaml-dot-net.md"
 
   - id: OTS-FileSystemGlobbing
-    title: Review of FileSystemGlobbing OTS verification evidence
+    title: Review that FileSystemGlobbing Provides Required Functionality
     paths:
       - "docs/reqstream/ots/file-system-globbing.yaml"
       - "docs/design/ots/file-system-globbing.md"
       - "docs/verification/ots/file-system-globbing.md"
 
   - id: OTS-TestResults
-    title: Review of TestResults OTS verification evidence
+    title: Review that TestResults Provides Required Functionality
     paths:
       - "docs/reqstream/ots/test-results.yaml"
       - "docs/design/ots/test-results.md"
