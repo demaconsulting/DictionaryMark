@@ -8,21 +8,39 @@ sections:
         requirements:
           - id: DictionaryMark-OTS-ReqStream
             title: >-
-              ReqStream shall process requirements, generate traceability artifacts, and enforce
-              that every requirement is linked to passing test evidence.
+              ReqStream shall process requirements.yaml and TRX test-result files to generate
+              traceability artifacts.
             justification: |
               DemaConsulting.ReqStream processes requirements.yaml and the TRX test-result files to
               produce a requirements report, justifications document, and traceability matrix. It
-              supports tag-based filtering to scope report output, and lint validation to catch YAML
-              and ID errors before generating reports. When run with --enforce, it exits with a
-              non-zero code if any requirement lacks test evidence, making unproven requirements a
-              build-breaking condition. A successful pipeline run with --enforce proves all
-              requirements are covered and that ReqStream is functioning.
+              supports tag-based filtering to scope report output. A successful pipeline run that
+              produces these artifacts proves ReqStream is correctly processing requirements and
+              test evidence.
             tags: [ots]
             tests:
               - ReqStream_RequirementsProcessing
               - ReqStream_TraceMatrix
               - ReqStream_ReportExport
               - ReqStream_TagsFiltering
+          - id: DictionaryMark-OTS-ReqStream-Enforcement
+            title: >-
+              ReqStream shall enforce that every requirement is linked to passing test evidence.
+            justification: |
+              When run with --enforce, ReqStream exits with a non-zero code if any requirement
+              lacks test evidence, making unproven requirements a build-breaking condition. A
+              successful pipeline run with --enforce proves this enforcement gate is functioning.
+            tags: [ots]
+            tests:
               - ReqStream_EnforcementMode
+          - id: DictionaryMark-OTS-ReqStream-Lint
+            title: >-
+              ReqStream shall validate requirements.yaml and report YAML and ID errors via lint
+              validation.
+            justification: |
+              ReqStream's lint mode catches YAML syntax and requirement ID errors before report
+              generation, providing early feedback on malformed requirements files. A successful
+              lint run against valid input, and a correctly reported failure against invalid
+              input, prove this feature is functioning.
+            tags: [ots]
+            tests:
               - ReqStream_Lint

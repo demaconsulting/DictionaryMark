@@ -17,19 +17,50 @@ sections:
             tests:
               - ReviewMark_ReviewPlanGeneration
               - ReviewMark_ReviewReportGeneration
-          - id: DictionaryMark-OTS-ReviewMark-Operations
-            title: >-
-              ReviewMark shall support index scanning, enforcement, elaboration,
-              lint, and directory override operations.
+          - id: DictionaryMark-OTS-ReviewMark-IndexScan
+            title: ReviewMark shall scan PDF evidence into an index catalog.
             justification: |
-              In addition to document generation, ReviewMark provides operational commands used
-              in the CI pipeline: scanning PDF evidence into an index catalog, enforcing review
-              currency, elaborating review-set details for agent use, validating the configuration
-              file, and overriding the working directory for file resolution.
+              ReviewMark's index scan operation reads PDF review evidence and records it in an
+              index catalog, which is the source of currency data used by enforcement and
+              elaboration. A successful pipeline run that populates the index catalog proves
+              this feature is functioning.
             tags: [ots]
             tests:
               - ReviewMark_IndexScan
-              - ReviewMark_WorkingDirectoryOverride
+          - id: DictionaryMark-OTS-ReviewMark-Enforce
+            title: ReviewMark shall enforce review currency against the configured review-sets.
+            justification: |
+              ReviewMark's enforcement mode fails the build when a review-set's files have
+              changed since the last recorded review evidence, making stale reviews a
+              build-breaking condition. A successful enforcement run against current evidence
+              proves this feature is functioning.
+            tags: [ots]
+            tests:
               - ReviewMark_Enforce
+          - id: DictionaryMark-OTS-ReviewMark-Elaborate
+            title: ReviewMark shall elaborate review-set details for agent use.
+            justification: |
+              ReviewMark's elaborate command resolves a review-set's context and file list from
+              the configuration, providing the information formal-review agents need to scope
+              their review without re-parsing the configuration file themselves.
+            tags: [ots]
+            tests:
               - ReviewMark_Elaborate
+          - id: DictionaryMark-OTS-ReviewMark-Lint
+            title: ReviewMark shall validate the .reviewmark.yaml configuration file.
+            justification: |
+              ReviewMark's lint mode validates the structure of .reviewmark.yaml, catching
+              configuration errors before they affect enforcement or report generation.
+            tags: [ots]
+            tests:
               - ReviewMark_Lint
+          - id: DictionaryMark-OTS-ReviewMark-WorkingDirectoryOverride
+            title: ReviewMark shall support overriding the working directory for file resolution.
+            justification: |
+              ReviewMark's working-directory override option allows file paths in the
+              configuration to be resolved relative to a directory other than the process's
+              current directory, supporting invocation from CI steps with a different working
+              directory.
+            tags: [ots]
+            tests:
+              - ReviewMark_WorkingDirectoryOverride
