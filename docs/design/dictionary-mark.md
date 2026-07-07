@@ -48,11 +48,11 @@ selection, output formatting, and operational mode.
 
 ## Dependencies
 
-- **YamlDotNet**: used for YAML parsing in `YamlDictionaryLoader` — see *YamlDotNet Integration Design*
+- **YamlDotNet**: used for YAML parsing in `YamlDictionaryLoader` — see *YamlDotNet*
 - **Microsoft.Extensions.FileSystemGlobbing**: used for glob-pattern file matching in `GlobMatcher` —
-  see *FileSystemGlobbing Integration Design*
+  see *FileSystemGlobbing*
 - **DemaConsulting.TestResults**: used for structured test-result reporting in `Validation` —
-  see *TestResults Integration Design*
+  see *DemaConsulting.TestResults*
 
 ## Risk Control Measures
 

@@ -37,7 +37,7 @@ commit messages, and reports).
 
 This repository follows a reference template for structure and file conventions.
 
-- **Template URL**: `https://github.com/demaconsulting/Agents/raw/refs/heads/template`
+- **template-url**: `https://github.com/demaconsulting/Agents/raw/refs/heads/template`
 - **Repository map**: `{template-url}/repository-map.md`
 - **Template files**: `{template-url}/{file-path}` for files described in the map
 
@@ -53,7 +53,6 @@ yet cover something.
 # Key Configuration Files
 
 - **`.config/dotnet-tools.json`** - Local tool manifest for Continuous Compliance tools
-- **`docs/sysml2/`** - SysML2 architecture model; see `.github/skills/sysml2tools-query/SKILL.md`
 - **`.editorconfig`** - Code formatting rules
 - **`.clang-format`** - C/C++ formatting (if applicable)
 - **`.cspell.yaml`** - Spell-check configuration and technical term dictionary
@@ -64,6 +63,7 @@ yet cover something.
 - **`package.json`** - Node.js dependencies for formatting tools
 - **`requirements.yaml`** - Root requirements file with includes
 - **`pip-requirements.txt`** - Python dependencies for yamllint and yamlfix
+- **`docs/sysml2/`** - SysML2 architecture model; authoritative source for software structure
 - **`fix.ps1`** - Applies all auto-fixers silently (dotnet format, markdown, YAML). Always exits 0.
 - **`build.ps1`** - Builds the solution and runs all tests.
 
@@ -91,12 +91,15 @@ The default agent should handle simple, straightforward tasks directly.
 Delegate to specialized agents only for specific scenarios:
 
 - **Pre-PR lint cleanup** (fix all lint issues before pull request) → Call the lint-fix agent
-- **Light development work** (small fixes, simple features) → Call the developer agent
+- **Scoped fixes with no new user-visible behavior** (PR review comments, doc
+  corrections, known bug fixes with defined root cause) → Call the developer agent
 - **Light quality checking** (basic validation) → Call the quality agent
-- **Formal feature implementation** (complex, multi-step) → Call the implementation agent
-- **Formal bug resolution** (complex debugging, systematic fixes) → Call the implementation agent
+- **Any change introducing new user-visible behavior** (features, enhancements,
+  new commands or options) → Call the implementation agent
+- **Formal bug resolution** (complex debugging, unknown root cause) → Call the implementation agent
 - **Formal reviews** (compliance verification, detailed analysis) → Call the formal-review agent
 - **Structural audit**: (repository layout vs. template) → Call the template-sync agent
+- **Implementation planning only** (review a plan before committing to implementation) → Call the planning agent
 
 # Agent Reporting (Specialized Agents Must Follow)
 
@@ -105,16 +108,16 @@ Specialized agents MUST generate a completion report:
 1. Save to `.agent-logs/{agent-name}-{subject}-{unique-id}.md`
    where `{subject}` is a kebab-case task summary (max 5 words) and
    `{unique-id}` is a short unique suffix (e.g., 8-char hex or timestamp)
-2. Start with `**Result**: (SUCCEEDED|FAILED)` as the first metadata field
+2. Start with `**Result**: (SUCCEEDED|FAILED|INCOMPLETE)` as the first metadata field
 3. Include the agent-specific report sections defined in each agent's prompt
 4. Return the summary to the caller
 
 Result semantics for orchestrator decision-making:
 
-- **SUCCEEDED**: Work completed and all applicable quality gates met
+- **SUCCEEDED**: Work completed and all quality gates applicable to that agent's scope met
 - **FAILED**: Work could not be completed or quality gates not met
 - **INCOMPLETE**: Work cannot proceed without information only the user can
-  provide (implementation agent only)
+  provide (implementation, planning, and template-sync agents)
 
 # Formatting (After Making Changes)
 
