@@ -32,8 +32,8 @@ library internals.
 
 The software structure is modeled in SysML2 under `docs/sysml2/` and rendered to the
 diagram below by SysML2Tools as part of the build pipeline. AI agents should query the
-SysML2 model directly (see `docs/sysml2/system.sysml` for the stable entry point) rather
-than parsing this diagram or the prose below.
+SysML2 model directly (see the `sysml2tools-query` skill) rather than parsing this
+diagram or the prose below.
 
 ![Software Structure](SoftwareStructureView.svg)
 

@@ -115,8 +115,15 @@ if (-not $skipDotnetTools) {
     dotnet reviewmark --lint
     if ($LASTEXITCODE -ne 0) { $lintError = $true }
 
-    dotnet sysml2tools lint docs/sysml2/system.sysml docs/sysml2/dictionary-mark.sysml docs/sysml2/ots.sysml docs/sysml2/views/design-views.sysml
-    if ($LASTEXITCODE -ne 0) { $lintError = $true }
+    # Files still containing the TEMPLATE-DIRECTIVE marker are un-customized scaffold and
+    # are skipped so file adds/renames need no manual list maintenance here.
+    $sysmlFiles = Get-ChildItem -Path docs/sysml2 -Recurse -Filter *.sysml -ErrorAction SilentlyContinue |
+        Where-Object { (Get-Content $_.FullName -Raw) -notmatch 'TEMPLATE-DIRECTIVE' } |
+        ForEach-Object { $_.FullName }
+    if ($sysmlFiles) {
+        dotnet sysml2tools lint @sysmlFiles
+        if ($LASTEXITCODE -ne 0) { $lintError = $true }
+    }
 }
 
 # [PROJECT-SPECIFIC] Add additional dotnet tool lint checks here.

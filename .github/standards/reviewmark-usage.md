@@ -52,6 +52,9 @@ needs-review:
   - "requirements.yaml"        # Root requirements file
   - "docs/reqstream/**/*.yaml" # Requirements files
 
+  # Include the SysML2 architecture model
+  - "docs/sysml2/**/*.sysml"   # SysML2 model files
+
   # Include critical documentation files
   - "README.md"                                 # Root level README
   - "docs/user_guide/**/*.md"                   # User guide
@@ -121,6 +124,7 @@ Reviews system architecture and operational validation:
   - System requirements: `docs/reqstream/{system-name}.yaml`
   - Design introduction: `docs/design/introduction.md`
   - System design: `docs/design/{system-name}.md`
+  - SysML2 model: `docs/sysml2/**/*.sysml`
   - Verification introduction: `docs/verification/introduction.md`
   - System verification design: `docs/verification/{system-name}.md`
   - System integration tests: `test/{SystemName}.Tests/{SystemName}Tests.{ext}`

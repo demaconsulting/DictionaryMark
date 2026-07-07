@@ -21,6 +21,8 @@ Delegate each group to a sub-agent.
 # Work Groups
 
 - **Root config files** - all non-collection files at the repository root
+- **`docs/sysml2/`** - SysML2 model files and rendered views (root-level flat folder,
+  not a Pandoc collection)
 - **One group per flat `docs/` folder** - e.g. `docs/build_notes/`, `docs/user_guide/`
 - **One group per system subtree** in `docs/design/`, `docs/verification/`, `docs/reqstream/` -
   each subtree and all its descendants is one group
