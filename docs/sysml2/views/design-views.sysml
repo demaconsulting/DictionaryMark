@@ -6,31 +6,25 @@
 package DictionaryMark {
     view SoftwareStructureView {
         expose DictionaryMark;
-        render asTreeDiagram;
     }
 
     view DictionaryMarkView {
         expose DictionaryMarkSystem;
-        render asTreeDiagram;
     }
 
     view CliView {
         expose CliSubsystem;
-        render asTreeDiagram;
     }
 
     view DictionaryView {
         expose DictionarySubsystem;
-        render asTreeDiagram;
     }
 
     view SelfTestView {
         expose SelfTestSubsystem;
-        render asTreeDiagram;
     }
 
     view UtilitiesView {
         expose UtilitiesSubsystem;
-        render asTreeDiagram;
     }
 }
