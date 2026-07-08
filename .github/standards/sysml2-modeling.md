@@ -28,32 +28,95 @@ why it exists, and what it depends on.
 
 ```text
 docs/sysml2/
-├── {system-name}.sysml           # one file per system: subsystems, units, doc comments
-├── ots.sysml                     # OTS dependency parts (optional; if OTS items exist)
-├── shared.sysml                  # Shared Package parts (optional; if Shared Packages exist)
+├── model/
+│   ├── {system-name}.sysml            # system-level part def only (no subsystems/units inline)
+│   ├── {system-name}/
+│   │   ├── {subsystem-name}.sysml     # subsystem part def; nests further for sub-subsystems
+│   │   └── {subsystem-name}/
+│   │       └── {unit-name}.sysml      # one file per unit
+│   ├── ots.sysml                      # OTS dependency parts (optional; if OTS items exist)
+│   └── shared.sysml                   # Shared Package parts (optional; if Shared Packages exist)
 └── views/
-    └── design-views.sysml        # named view usages rendered for the design document
+    └── design-views.sysml             # named view usages rendered for the design document
 ```
+
+`docs/sysml2/model/` mirrors the same folder shape as `docs/design/`, `docs/reqstream/`, and
+`docs/verification/` — one `.sysml` file per System/Subsystem/Unit, at the same nesting depth
+as that item's companion design/requirements/verification files. This keeps each file small
+and keeps PRs that touch one unit's model from producing unrelated diffs in unrelated units.
+`docs/sysml2/views/` is a sibling of `model/`, not nested inside it, so a single
+`docs/sysml2/model/**/*.sysml` glob never needs to exclude view files (`sysml2tools` has no
+exclude-glob syntax).
 
 There is no separate "stable entry point" file — a repository may contain multiple systems,
 so no single alias name would generalize. Agents discover the system(s) present by running
 `query list --kind "part def"` or `query find` (see the `sysml2tools-query` skill) over
-`docs/sysml2/*.sysml`, not by assuming a fixed name.
+`docs/sysml2/model/**/*.sysml`, not by assuming a fixed name.
 
 Always pass the full set of `.sysml` files (or an equivalent glob) to every `sysml2tools`
-invocation — the model spans multiple files and cross-references between them. Note:
-`sysml2tools` does not expand `*` glob patterns itself; either let the shell expand an
-unquoted wildcard, or list files explicitly in scripts/CI.
+invocation — the model spans multiple files and cross-references between them; files sharing
+the same `package Name { ... }` merge into one namespace automatically with no `import`
+required, as long as all files are passed together. As of `sysml2tools` 0.1.0-beta.5,
+`lint` and `render` both expand `*`/`**` glob patterns internally (recursing correctly into
+subdirectories), so pass a single **quoted** glob string (e.g. `'docs/sysml2/**/*.sysml'`)
+and let the tool resolve it — do not rely on the shell to expand it, and do not quote-strip
+the pattern before it reaches the tool. Quoting keeps the behavior identical across
+PowerShell and bash, since neither shell needs to (or reliably does) expand `**` itself.
 
 ## Model Content
 
-- `{system-name}.sysml` defines one `part def` per System, Subsystem, and Unit, with a
-  `doc /* ... */` comment on each stating its purpose — mirroring what would otherwise be
-  written as prose in `docs/design/introduction.md`'s Software Structure section.
-- Subsystems nest as `part` usages inside their parent's `part def`, matching the Software
-  Item Hierarchy in `software-items.md`.
+- `{system-name}.sysml` defines one `part def` for the System only, with `part` usages
+  referencing its direct Subsystems/Units (defined in their own files, see below).
+- Each `{subsystem-name}.sysml` / `{unit-name}.sysml` defines exactly one `part def`, with a
+  `doc /* ... */` comment stating its purpose — mirroring what would otherwise be written as
+  prose in `docs/design/introduction.md`'s Software Structure section. Subsystem files add
+  `part` usages for their own direct children (nested subsystems or units), matching the
+  Software Item Hierarchy in `software-items.md`.
 - `ots.sysml` / `shared.sysml` define one `part def` per OTS item / Shared Package, referenced
   as `part` usages from the system(s) that depend on them.
+
+## Artifact-Location Comments
+
+Every System/Subsystem/Unit `part def` records where its companion artifacts live, as named
+`comment` elements — not `attribute`s (attribute values are not surfaced by `sysml2tools query
+describe`, even in JSON output; comments are). Comments have zero effect on rendered diagrams
+(verified: a part def with several comments attached renders with no extra nodes or size
+change) and are fully returned by `query describe`, in declaration order, as
+`Comment: ...` summary lines — this is how an agent gets every artifact location for a unit
+in a single query, without grepping the source tree.
+
+Use these comment names, in this order, when applicable to the item:
+
+```sysml
+part def {UnitName} {
+    doc /* One-line purpose statement. */
+
+    comment sourceRef /* Source: {path to the unit's source file} */
+    comment testRef /* Test: {path to the unit's test file} */
+    comment designRef /* Design: {path to the unit's design doc} */
+    comment verificationRef /* Verification: {path to the unit's verification doc} */
+    comment reqRef /* Requirements: {path to the unit's reqstream file} */
+}
+```
+
+Not every item has all five:
+
+- **Systems and Subsystems** have no `sourceRef` (no single source file represents a whole
+  system or subsystem) — use `testRef` for the subsystem-level test file when one exists.
+- **Units without a dedicated companion doc** (e.g. small data-model types documented inline
+  within their subsystem's design doc rather than in their own file) point `designRef` /
+  `verificationRef` / `reqRef` at the subsystem-level doc, with a short parenthetical note,
+  e.g. `/* Design: docs/design/{system}/{subsystem}.md (documented as a supporting value type) */`.
+- **Units without a dedicated test file** (exercised only indirectly through another unit's
+  tests) omit `testRef` entirely rather than pointing at an unrelated test file.
+- **OTS items** have no `sourceRef`/`testRef` (no local integration code); use `designRef`
+  (when the optional design doc exists) / `verificationRef` / `reqRef` only.
+
+This is prose-searchable metadata only — it is not a substitute for the authoritative
+requirements/design/verification artifacts, and it does not replace ReqStream as the
+requirements source of truth. (This repository currently keeps requirements traceability in
+ReqStream; a future migration to native SysML2 `requirement`/`satisfy` modeling is a separate,
+not-yet-scheduled change.)
 
 ## Views (`docs/sysml2/views/design-views.sysml`)
 
@@ -101,12 +164,15 @@ whichever produces a single coherent overview diagram.
 
 ## Diagram Embedding
 
-Render with:
+Render with a single quoted recursive glob for the model tree, plus the views file
+(`sysml2tools` 0.1.0-beta.5+ expands and recurses `**` internally, so no shell-side globbing
+or explicit per-file listing is needed):
 
 ```pwsh
 dotnet sysml2tools render `
-  docs/sysml2/{system-name}.sysml docs/sysml2/ots.sysml docs/sysml2/shared.sysml `
-  docs/sysml2/views/design-views.sysml --output docs/design/generated --format svg
+  --output docs/design/generated --format svg `
+  'docs/sysml2/model/**/*.sysml' `
+  'docs/sysml2/views/design-views.sysml'
 ```
 
 With multiple views declared and no `--view` flag, `sysml2tools` renders every declared view
@@ -127,13 +193,18 @@ subsection, e.g. `![{Name} Structure]({ViewName}.svg)`.
 
 ## Build and Lint Integration
 
-- `sysml2tools lint docs/sysml2/*.sysml` belongs in `lint.ps1`'s compliance-tools section,
-  **not** as a separate step in the CI design-document job — `lint.ps1` gates every later
-  job (including document generation) transitively, so linting the model there is both
-  earlier and non-duplicated.
+- `sysml2tools lint` belongs in `lint.ps1`'s compliance-tools section, **not** as a separate
+  step in the CI design-document job — `lint.ps1` gates every later job (including document
+  generation) transitively, so linting the model there is both earlier and non-duplicated.
+  Pass a single quoted recursive glob, e.g. `dotnet sysml2tools lint 'docs/sysml2/**/*.sysml'`
+  — `sysml2tools` (0.1.0-beta.5+) expands and recurses this itself, so no
+  `Get-ChildItem`/shell-side globbing is needed.
 - The CI design-document job renders the views (see the render command above) before running
   Pandoc, so generated SVGs exist before HTML generation. Rename/stable-filename workarounds
-  are unnecessary since view names are stable by definition.
+  are unnecessary since view names are stable by definition. Pass the model and views globs as
+  separate quoted arguments (e.g. `'docs/sysml2/model/**/*.sysml' 'docs/sysml2/views/design-views.sysml'`)
+  — plain PowerShell (the default shell) is sufficient; no `shell: bash`/`shopt -s globstar`
+  workaround is needed.
 - Add `sysml2tools` to `.config/dotnet-tools.json` (`demaconsulting.sysml2tools.tool`) and to
   `.versionmark.yaml`'s captured tool list.
 
@@ -148,7 +219,12 @@ sync.
 ## Quality Checks
 
 - [ ] Every System/Subsystem/Unit in `docs/design/introduction.md` has a matching `part def`
-  in `docs/sysml2/{system-name}.sysml` with a purpose `doc` comment
+  in its own file under `docs/sysml2/model/`, at the same folder depth as its companion
+  design/reqstream/verification files, with a purpose `doc` comment
+- [ ] Every Unit-level `part def` has `sourceRef`/`testRef`/`designRef`/`verificationRef`/
+  `reqRef` comments where applicable (see Artifact-Location Comments for documented
+  exceptions); System/Subsystem `part def`s have `testRef`/`designRef`/`verificationRef`/
+  `reqRef` but no `sourceRef`
 - [ ] `docs/sysml2/views/design-views.sysml` uses `view Name { expose ...; }` usages, not
   `view def` definitions
 - [ ] View names follow the `SoftwareStructureView` / `{SystemName}View` /
