@@ -1,7 +1,11 @@
 ---
-# Root requirements file - includes all system, unit, platform, and OTS requirements
+# Root requirements file - includes all system, unit, platform, quality, and OTS requirements
+root-tags:
+  - system
+  - quality
 includes:
   - docs/reqstream/dictionary-mark.yaml
+  - docs/reqstream/quality.yaml
   - docs/reqstream/dictionary-mark/program.yaml
   - docs/reqstream/dictionary-mark/cli.yaml
   - docs/reqstream/dictionary-mark/cli/context.yaml

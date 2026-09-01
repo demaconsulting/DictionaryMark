@@ -17,6 +17,8 @@ sections:
                   workflows where dictionary files follow consistent naming conventions. Sorted and
                   deduplicated output produces deterministic results regardless of pattern order or
                   overlap between patterns.
+                children:
+                  - DictionaryMark-OTS-FileSystemGlobbing
                 tests:
                   - GlobMatcher_GetFiles_ExistingAbsolutePath_ReturnsFile
                   - GlobMatcher_GetFiles_NonExistentAbsolutePath_ReturnsEmpty

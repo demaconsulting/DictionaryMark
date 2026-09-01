@@ -22,6 +22,7 @@ sections:
               - DictionaryMark-Validation-TrxOutput
               - DictionaryMark-Validation-JUnitOutput
               - DictionaryMark-Validation-UnsupportedExtension
+              - DictionaryMark-Utilities-TempDirectory
             tests:
               - SelfTestSubsystem_ValidationWorkflow_NoResultFiles_CompletesSuccessfully
               - SelfTestSubsystem_ValidationWorkflow_WithTrxFile_GeneratesResults

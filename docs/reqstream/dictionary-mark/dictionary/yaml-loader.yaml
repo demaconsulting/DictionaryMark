@@ -13,6 +13,8 @@ sections:
                 justification: |
                   YAML is a human-friendly format for maintaining dictionary data. The loader must
                   handle flat mappings and report structural errors clearly.
+                children:
+                  - DictionaryMark-OTS-YamlDotNet
                 tests:
                   - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
                   - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList

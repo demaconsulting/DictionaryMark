@@ -78,6 +78,7 @@ reviews:
       - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/platform-requirements.yaml"
+      - "docs/reqstream/quality.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
@@ -102,6 +103,7 @@ reviews:
       - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/**/*.yaml"
+      - "docs/reqstream/quality.yaml"
 
   # DictionaryMark-Program Review (unit directly under the system)
   - id: DictionaryMark-Program
