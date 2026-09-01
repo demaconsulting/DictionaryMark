@@ -1,5 +1,5 @@
 ---
-# Root requirements file - includes all system, unit, platform, and OTS requirements
+# Root requirements file - includes all system, unit, platform, quality, and OTS requirements
 root-tags:
   - system
   - quality
