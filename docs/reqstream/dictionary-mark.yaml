@@ -9,6 +9,7 @@ sections:
         justification: |
           Users need to quickly identify the version of the tool they are using for
           troubleshooting and compatibility verification.
+        tags: [system]
         children:
           - DictionaryMark-Program-Version
           - DictionaryMark-Cli-ArgumentParsing
@@ -20,6 +21,7 @@ sections:
         justification: |
           Users need access to command-line usage documentation without requiring
           external resources.
+        tags: [system]
         children:
           - DictionaryMark-Program-Help
           - DictionaryMark-Cli-ArgumentParsing
@@ -31,17 +33,31 @@ sections:
         justification: |
           Regulated environments require tool qualification evidence to demonstrate
           that the tool functions correctly in its deployment environment.
+        tags: [system]
         children:
           - DictionaryMark-Program-Validate
           - DictionaryMark-SelfTest-Subsystem
         tests:
           - DictionaryMark_ValidateFlag_Provided_RunsValidation
 
+      - id: DictionaryMark-System-NoInputHint
+        title: The tool shall display a usage hint when neither an action flag nor input patterns are provided.
+        justification: |
+          Invoking the tool with no arguments at all is a common first-run mistake. Displaying a
+          helpful hint toward correct usage, rather than silently exiting or doing nothing,
+          reduces user confusion without requiring the user to already know about --help.
+        tags: [system]
+        children:
+          - DictionaryMark-Program-NoInputHint
+        tests:
+          - DictionaryMark_NoArguments_Invoked_DisplaysBanner
+
       - id: DictionaryMark-System-Silent
         title: The tool shall suppress console output when the silent flag is provided.
         justification: |
           Enables automated scripts and CI/CD pipelines to run the tool without
           cluttering output logs when only the exit code is needed.
+        tags: [system]
         children:
           - DictionaryMark-Cli-OutputManagement
           - DictionaryMark-Cli-ArgumentParsing
@@ -52,6 +68,7 @@ sections:
         title: The tool shall write output to a log file when the log flag is provided.
         justification: |
           Provides persistent logging for debugging and compliance audit trails.
+        tags: [system]
         children:
           - DictionaryMark-Cli-OutputManagement
           - DictionaryMark-Cli-ArgumentParsing
@@ -63,6 +80,7 @@ sections:
         justification: |
           A non-zero exit code enables CI/CD pipelines to detect and surface
           misconfiguration failures automatically.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ErrorOutput
           - DictionaryMark-Program-ExitCode
@@ -75,6 +93,7 @@ sections:
           to stderr when an unrecognized argument is provided.
         justification: |
           Clear error messages help users diagnose misconfiguration quickly.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ErrorOutput
         tests:
@@ -85,6 +104,7 @@ sections:
         justification: |
           Suppressing Markdown output on argument error prevents partial content
           from being written to downstream pipeline stages.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ErrorOutput
         tests:
@@ -95,10 +115,12 @@ sections:
         justification: |
           The primary use case is generating a bullet-list dictionary from YAML input files
           for inclusion in documentation.
+        tags: [system]
         children:
           - DictionaryMark-Program-GenerateDictionary
           - DictionaryMark-Dictionary-MarkdownFormatting
           - DictionaryMark-Dictionary-Generation
+          - DictionaryMark-Dictionary-YamlLoading
         tests:
           - DictionaryMark_Generate_BulletsFormat_OutputsBulletList
 
@@ -107,10 +129,12 @@ sections:
         justification: |
           Table format provides an alternative presentation for users who prefer
           structured tabular layouts in their documentation.
+        tags: [system]
         children:
           - DictionaryMark-Program-GenerateDictionary
           - DictionaryMark-Dictionary-MarkdownFormatting
           - DictionaryMark-Dictionary-Generation
+          - DictionaryMark-Dictionary-YamlLoading
         tests:
           - DictionaryMark_Generate_TableFormat_OutputsTable
 
@@ -119,6 +143,7 @@ sections:
         justification: |
           Writing to a file enables integration with documentation pipelines that
           consume generated Markdown files.
+        tags: [system]
         children:
           - DictionaryMark-Dictionary-Generation
         tests:
@@ -131,6 +156,7 @@ sections:
         justification: |
           Glob pattern support allows users to specify wildcard input patterns rather
           than enumerating individual files, enabling flexible batch processing.
+        tags: [system]
         children:
           - DictionaryMark-Utilities-FileMatching
           - DictionaryMark-Dictionary-Generation
@@ -144,6 +170,7 @@ sections:
         justification: |
           Supporting multiple input files allows users to compose dictionaries from
           separate source files without manual pre-processing.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-Generation
@@ -156,6 +183,7 @@ sections:
           Conflicting definitions indicate data quality issues that must be resolved
           before publishing documentation. Users must be notified via an explicit error
           message so they can identify and resolve the conflict.
+        tags: [system]
         children:
           - DictionaryMark-Dictionary-ConflictDetection
           - DictionaryMark-Dictionary-Generation
@@ -168,6 +196,7 @@ sections:
           A non-zero exit code enables CI/CD pipelines to automatically detect and
           surface definition conflicts, preventing incorrect documentation from being
           published silently.
+        tags: [system]
         children:
           - DictionaryMark-Program-ExitCode
           - DictionaryMark-Dictionary-Generation
@@ -179,6 +208,7 @@ sections:
         justification: |
           Section headings allow generated dictionaries to be embedded within larger
           documentation pages without requiring manual post-processing by the user.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
@@ -192,6 +222,7 @@ sections:
         justification: |
           Customizable column headers allow users to adapt generated tables to domain
           vocabularies (e.g., "Word", "Abbreviation") without modifying the output file.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
@@ -205,6 +236,7 @@ sections:
         justification: |
           Customizable definition column headers allow users to tailor generated tables
           to their documentation context without post-processing the output.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
@@ -217,6 +249,7 @@ sections:
           Alphabetical ordering improves readability and enables users to locate entries
           quickly in large dictionaries, regardless of the order terms appear in the
           source YAML files.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
@@ -230,6 +263,7 @@ sections:
         justification: |
           Preserving file-encounter order gives users predictable output when
           the order of entries within source files is intentional.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
@@ -243,9 +277,11 @@ sections:
         justification: |
           Configurable heading depth allows generated sections to be nested within
           existing document hierarchies without conflicting with surrounding headings.
+        tags: [system]
         children:
           - DictionaryMark-Cli-ArgumentParsing
           - DictionaryMark-Dictionary-MarkdownFormatting
+          - DictionaryMark-Cli-HeadingDepth
         tests:
           - DictionaryMark_Generate_SectionWithDepth_OutputsHeading
 
@@ -256,8 +292,10 @@ sections:
         justification: |
           TRX format is widely used in MSTest-compatible toolchains and CI pipelines,
           enabling structured test evidence consumption without parsing console output.
+        tags: [system]
         children:
           - DictionaryMark-SelfTest-Subsystem
+          - DictionaryMark-Cli-ResultsFile
         tests:
           - DictionaryMark_ValidateWithTrxResults_Requested_GeneratesTrxFile
 
@@ -268,7 +306,28 @@ sections:
         justification: |
           JUnit XML is the most widely supported test results interchange format,
           enabling integration with a broad range of CI/CD and reporting tools.
+        tags: [system]
         children:
           - DictionaryMark-SelfTest-Subsystem
+          - DictionaryMark-Cli-ResultsFile
         tests:
           - DictionaryMark_ValidateWithXmlResults_Requested_GeneratesJUnitFile
+
+      - id: DictionaryMark-System-CrossPlatform
+        title: >-
+          The system shall run on supported operating systems and .NET runtime versions.
+        justification: |
+          Cross-platform support ensures the tool can be used in diverse development
+          environments including Windows and Ubuntu, and across the supported .NET LTS and
+          current releases. The CI matrix validates this on every build.
+          This requirement is satisfied by its children: each child carries source-filtered
+          test references from the CI matrix job, scoped to the specific platform or runtime
+          it represents. Satisfaction of all children constitutes complete evidence for this
+          system-level requirement.
+        tags: [system]
+        children:
+          - DictionaryMark-Platform-Windows
+          - DictionaryMark-Platform-Ubuntu
+          - DictionaryMark-Platform-DotNet8
+          - DictionaryMark-Platform-DotNet9
+          - DictionaryMark-Platform-DotNet10

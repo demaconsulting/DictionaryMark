@@ -48,5 +48,6 @@ sections:
               - DictionaryMark-TemporaryDirectory-FilePathResolution
               - DictionaryMark-TemporaryDirectory-TraversalRejection
               - DictionaryMark-TemporaryDirectory-Disposal
+              - DictionaryMark-Utilities-PathSafety
             tests:
               - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
