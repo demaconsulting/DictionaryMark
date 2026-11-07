@@ -14,6 +14,12 @@ qualification evidence is required. The project itself follows the Continuous Co
 ensuring that requirements traceability, quality analysis, and audit documentation are generated
 automatically on every CI run.
 
+The figure below shows how the pieces fit together: the `dictionarymark` command expands your input patterns,
+loads and merges the YAML dictionary files, and renders the terms as Markdown.
+
+![DictionaryMark architecture: YAML dictionary files flow through the Cli, Utilities, and Dictionary
+subsystems into a Markdown bullet list or table](architecture.svg)
+
 ## Scope
 
 This guide covers:

@@ -19,6 +19,9 @@ formatted Markdown output as either bullet lists or tables. It supports glob pat
 processing multiple files, detects conflicting definitions, and is designed for easy
 integration into documentation pipelines.
 
+![DictionaryMark architecture: YAML dictionary files flow through the Cli, Utilities, and Dictionary
+subsystems into a Markdown bullet list or table][architecture]
+
 ## Features
 
 - 📄 **YAML Dictionary Input** - Read term/definition pairs from YAML files
@@ -265,3 +268,5 @@ DictionaryMark is built with the following open-source projects:
 - [Microsoft.Extensions.FileSystemGlobbing](https://www.nuget.org/packages/Microsoft.Extensions.FileSystemGlobbing)
   \- Glob pattern matching for file system paths
 - [DemaConsulting.TestResults](https://github.com/demaconsulting/TestResults) - TRX and JUnit XML test results library
+
+[architecture]: https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/architecture.png
