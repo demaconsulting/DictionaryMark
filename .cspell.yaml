@@ -16,6 +16,7 @@ language: en
 words:
   - Blockquotes
   - buildmark
+  - canvasnet
   - buildtransitive
   - contentfiles
   - dcterms
