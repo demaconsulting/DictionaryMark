@@ -1,11 +1,16 @@
 package DictionaryMark {
+    private import SoftwareItemMetadata::*;
+
     part def DictionarySubsystem {
         doc /* Loads, validates, and formats dictionary data. */
 
-        comment testRef /* Test: test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionarySubsystemTests.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary.md */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary.yaml */
+        metadata info : SoftwareInfo {
+            description = "Loads, validates, and formats dictionary data.";
+            testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionarySubsystemTests.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
 
         part dictionaryGenerator : DictionaryGenerator;
         part yamlDictionaryLoader : YamlDictionaryLoader;
@@ -20,37 +25,49 @@ package DictionaryMark {
     part def DictionaryEntry {
         doc /* Data model: term-definition pair. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Dictionary/DictionaryEntry.cs */
-        comment testRef /* Test: test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryEntryTests.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary.md (documented as a supporting value type) */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary.yaml */
+        metadata info : SoftwareInfo {
+            description = "Data model: term-definition pair.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DictionaryEntry.cs");
+            testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryEntryTests.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
     }
 
     part def MarkdownOptions {
         doc /* Data model: Markdown output options. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Dictionary/MarkdownOptions.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary.md (documented as a supporting value type) */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary.yaml */
+        metadata info : SoftwareInfo {
+            description = "Data model: Markdown output options.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/MarkdownOptions.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
     }
 
     part def OutputFormat {
         doc /* Data model: output format enum. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Dictionary/OutputFormat.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary.md (documented as a supporting value type) */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary.yaml */
+        metadata info : SoftwareInfo {
+            description = "Data model: output format enum.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/OutputFormat.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
     }
 
     part def SortOrder {
         doc /* Data model: sort order enum. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Dictionary/SortOrder.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary.md (documented as a supporting value type) */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary.yaml */
+        metadata info : SoftwareInfo {
+            description = "Data model: sort order enum.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/SortOrder.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
     }
 }

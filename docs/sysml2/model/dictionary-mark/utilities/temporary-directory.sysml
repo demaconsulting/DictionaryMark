@@ -1,11 +1,16 @@
 package DictionaryMark {
+    private import SoftwareItemMetadata::*;
+
     part def TemporaryDirectory {
         doc /* Disposable temporary directory helper. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Utilities/TemporaryDirectory.cs */
-        comment testRef /* Test: test/DemaConsulting.DictionaryMark.Tests/Utilities/TemporaryDirectoryTests.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/utilities/temporary-directory.md */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/utilities/temporary-directory.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml */
+        metadata info : SoftwareInfo {
+            description = "Disposable temporary directory helper.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Utilities/TemporaryDirectory.cs");
+            testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Utilities/TemporaryDirectoryTests.cs");
+            designFiles = ("docs/design/dictionary-mark/utilities/temporary-directory.md");
+            verificationFiles = ("docs/verification/dictionary-mark/utilities/temporary-directory.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml");
+        }
     }
 }
