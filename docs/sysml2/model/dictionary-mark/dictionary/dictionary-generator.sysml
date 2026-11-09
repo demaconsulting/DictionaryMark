@@ -1,11 +1,16 @@
 package DictionaryMark {
+    private import SoftwareItemMetadata::*;
+
     part def DictionaryGenerator {
         doc /* Orchestrates dictionary generation. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/Dictionary/DictionaryGenerator.cs */
-        comment testRef /* Test: test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryGeneratorTests.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/dictionary/dictionary-generator.md */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/dictionary/dictionary-generator.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml */
+        metadata info : SoftwareInfo {
+            description = "Orchestrates dictionary generation.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DictionaryGenerator.cs");
+            testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryGeneratorTests.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary/dictionary-generator.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary/dictionary-generator.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml");
+        }
     }
 }

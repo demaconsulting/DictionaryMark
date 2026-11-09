@@ -1,4 +1,6 @@
 package DictionaryMark {
+    private import SoftwareItemMetadata::*;
+
     import OtsDependencies::*;
 
     doc
@@ -10,9 +12,12 @@ package DictionaryMark {
     part def DictionaryMarkSystem {
         doc /* The DictionaryMark system as a whole. */
 
-        comment designRef /* Design: docs/design/dictionary-mark.md */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark.yaml */
+        metadata info : SoftwareInfo {
+            description = "The DictionaryMark system as a whole.";
+            designFiles = ("docs/design/dictionary-mark.md");
+            verificationFiles = ("docs/verification/dictionary-mark.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark.yaml");
+        }
 
         part program : Program;
         part cli : CliSubsystem;

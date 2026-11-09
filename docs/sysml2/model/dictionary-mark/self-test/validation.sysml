@@ -1,11 +1,16 @@
 package DictionaryMark {
+    private import SoftwareItemMetadata::*;
+
     part def Validation {
         doc /* Self-validation test runner. */
 
-        comment sourceRef /* Source: src/DemaConsulting.DictionaryMark/SelfTest/Validation.cs */
-        comment testRef /* Test: test/DemaConsulting.DictionaryMark.Tests/SelfTest/ValidationTests.cs */
-        comment designRef /* Design: docs/design/dictionary-mark/self-test/validation.md */
-        comment verificationRef /* Verification: docs/verification/dictionary-mark/self-test/validation.md */
-        comment reqRef /* Requirements: docs/reqstream/dictionary-mark/self-test/validation.yaml */
+        metadata info : SoftwareInfo {
+            description = "Self-validation test runner.";
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/SelfTest/Validation.cs");
+            testFiles = ("test/DemaConsulting.DictionaryMark.Tests/SelfTest/ValidationTests.cs");
+            designFiles = ("docs/design/dictionary-mark/self-test/validation.md");
+            verificationFiles = ("docs/verification/dictionary-mark/self-test/validation.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/self-test/validation.yaml");
+        }
     }
 }

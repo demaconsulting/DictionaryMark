@@ -248,7 +248,7 @@ On validation failure the tool will exit with a non-zero exit code.
 
 The DictionaryMark repository follows these development practices:
 
-- 🔍 **Linting Enforcement** - markdownlint, cspell, and yamllint enforced on every CI run
+- 🔍 **Linting Enforcement** - markdownlint, TextLint, and yamllint enforced on every CI run
 - 📋 **Continuous Compliance** - Compliance evidence generated automatically on every CI run,
   following the [Continuous Compliance](https://github.com/demaconsulting/ContinuousCompliance) methodology
 - ☁️ **SonarCloud Integration** - Quality gate and security analysis on every build
@@ -259,7 +259,7 @@ The DictionaryMark repository follows these development practices:
 For security concerns and vulnerability reporting, please see our
 [Security Policy](https://github.com/demaconsulting/DictionaryMark/blob/main/SECURITY.md).
 
-## Acknowledgements
+## Acknowledgments
 
 DictionaryMark is built with the following open-source projects:
 
