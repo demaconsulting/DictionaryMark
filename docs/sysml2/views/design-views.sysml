@@ -5,7 +5,8 @@
 // 'render' - is what scopes the rendered diagram content.
 package DictionaryMark {
     view SoftwareStructureView {
-        expose DictionaryMark;
+        expose DictionaryMark::**;
+        render asInterconnectionDiagram;
     }
 
     view DictionaryMarkView {
