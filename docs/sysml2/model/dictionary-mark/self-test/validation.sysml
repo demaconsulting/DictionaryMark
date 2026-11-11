@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Self-validation test runner. */
 
         metadata info : SoftwareInfo {
-            description = "Self-validation test runner.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/SelfTest/Validation.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/SelfTest/ValidationTests.cs");
             designFiles = ("docs/design/dictionary-mark/self-test/validation.md");

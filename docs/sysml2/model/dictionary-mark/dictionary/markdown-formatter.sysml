@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Formats entries as Markdown. */
 
         metadata info : SoftwareInfo {
-            description = "Formats entries as Markdown.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/MarkdownFormatter.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/MarkdownFormatterTests.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary/markdown-formatter.md");

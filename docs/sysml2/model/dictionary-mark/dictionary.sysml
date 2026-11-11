@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Loads, validates, and formats dictionary data. */
 
         metadata info : SoftwareInfo {
-            description = "Loads, validates, and formats dictionary data.";
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionarySubsystemTests.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
             verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
@@ -26,7 +25,6 @@ package DictionaryMark {
         doc /* Data model: term-definition pair. */
 
         metadata info : SoftwareInfo {
-            description = "Data model: term-definition pair.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DictionaryEntry.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryEntryTests.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
@@ -39,7 +37,6 @@ package DictionaryMark {
         doc /* Data model: Markdown output options. */
 
         metadata info : SoftwareInfo {
-            description = "Data model: Markdown output options.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/MarkdownOptions.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
             verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
@@ -51,7 +48,6 @@ package DictionaryMark {
         doc /* Data model: output format enum. */
 
         metadata info : SoftwareInfo {
-            description = "Data model: output format enum.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/OutputFormat.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
             verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
@@ -63,7 +59,6 @@ package DictionaryMark {
         doc /* Data model: sort order enum. */
 
         metadata info : SoftwareInfo {
-            description = "Data model: sort order enum.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/SortOrder.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
             verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");

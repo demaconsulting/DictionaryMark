@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Command-line argument parser and I/O owner. */
 
         metadata info : SoftwareInfo {
-            description = "Command-line argument parser and I/O owner.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Cli/Context.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Cli/ContextTests.cs");
             designFiles = ("docs/design/dictionary-mark/cli/context.md");

@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Detects term conflicts across files. */
 
         metadata info : SoftwareInfo {
-            description = "Detects term conflicts across files.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/ConflictDetector.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/ConflictDetectorTests.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary/conflict-detector.md");
