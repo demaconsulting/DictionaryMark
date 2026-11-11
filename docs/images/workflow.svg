@@ -68,7 +68,7 @@
     <text x="790" y="30" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">4. Use it</text>
     <rect x="704" y="46" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
     <text x="790" y="70" font-size="14" font-weight="600" fill="#14532d" text-anchor="middle">Larger documents</text>
-    <text x="790" y="90" font-size="12" fill="#166534" text-anchor="middle">embed with --depth 1–6</text>
+    <text x="790" y="90" font-size="12" fill="#166534" text-anchor="middle">heading level via --depth</text>
     <rect x="704" y="114" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
     <text x="790" y="138" font-size="14" font-weight="600" fill="#14532d" text-anchor="middle">Docs pipeline</text>
     <text x="790" y="158" font-size="12" fill="#166534" text-anchor="middle">regenerate on every build</text>
