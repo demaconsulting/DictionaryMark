@@ -1,8 +1,10 @@
 ---
 resource-path:
   - docs/design
+  - docs/design/generated
   - docs/template
   - docs/images
+embed-resources: true
 
 input-files:
   - docs/design/title.txt
