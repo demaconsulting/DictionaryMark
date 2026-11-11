@@ -14,11 +14,13 @@ qualification evidence is required. The project itself follows the Continuous Co
 ensuring that requirements traceability, quality analysis, and audit documentation are generated
 automatically on every CI run.
 
-The figure below shows how the pieces fit together: the `dictionarymark` command expands your input patterns,
-loads and merges the YAML dictionary files, and renders the terms as Markdown.
+The workflow below shows how DictionaryMark is used: author YAML dictionary files, run the
+`dictionarymark` command from a shell or CI pipeline, and use the generated Markdown bullet list or
+table in larger documents, a documentation pipeline, or as a CI gate.
 
-![DictionaryMark architecture: YAML dictionary files flow through the Cli, Utilities, and Dictionary
-subsystems into a Markdown bullet list or table](architecture.svg)
+![DictionaryMark workflow: author YAML dictionary files, run dictionarymark with --input, --format and header
+options, get a Markdown bullet list or table, then embed it in documents, a docs pipeline or a CI
+gate](workflow.svg)
 
 ## Scope
 
@@ -29,7 +31,7 @@ This guide covers:
 - Usage examples for common scenarios, including glob patterns, custom headers, and sort order
 - Self-validation for regulated environments
 
-This guide assumes that the .NET SDK 8.0, 9.0, or 10.0 is installed on the target system.
+This guide assumes that the .NET SDK 10.0 or 11.0 is installed on the target system.
 
 ## References
 

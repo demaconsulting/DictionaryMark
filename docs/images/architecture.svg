@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
     </marker>
   </defs>
   <!-- Transparent canvas; a white rounded card keeps the diagram readable in light and dark themes -->
-  <rect x="14" y="16" width="875" height="495" rx="28" fill="#d5dce6"/>
-  <rect x="10" y="10" width="875" height="495" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="14" y="16" width="875" height="535" rx="28" fill="#d5dce6"/>
+  <rect x="10" y="10" width="875" height="535" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
 
   <g transform="translate(30,30)">
     <!-- Caller -->
@@ -17,63 +17,66 @@
     <text x="392" y="100" font-size="12" fill="#334155">--input, --format, --sort, --output ...</text>
 
     <!-- DictionaryMark frame -->
-    <rect x="150" y="122" width="460" height="328" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
+    <rect x="150" y="122" width="460" height="368" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
     <text x="166" y="148" font-size="14" font-weight="600" fill="#2563eb">DemaConsulting.DictionaryMark</text>
 
-    <!-- Cli -->
+    <!-- Program -->
     <rect x="170" y="162" width="420" height="52" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-    <text x="380" y="185" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Cli</text>
-    <text x="380" y="204" font-size="12" fill="#166534" text-anchor="middle">Parses flags, then dispatches to the requested action</text>
+    <text x="380" y="185" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Program</text>
+    <text x="380" y="204" font-size="12" fill="#166534" text-anchor="middle">Dispatches to version, help, self-validation, or dictionary generation</text>
 
-    <!-- Utilities and SelfTest -->
-    <rect x="170" y="230" width="200" height="72" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-    <text x="270" y="256" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">Utilities</text>
-    <text x="270" y="276" font-size="12" fill="#1e40af" text-anchor="middle">Expands glob patterns</text>
-    <text x="270" y="291" font-size="12" fill="#1e40af" text-anchor="middle">into input files</text>
-    <rect x="390" y="230" width="200" height="72" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-    <text x="490" y="256" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">SelfTest</text>
-    <text x="490" y="276" font-size="12" fill="#1e40af" text-anchor="middle">Built-in qualification</text>
-    <text x="490" y="291" font-size="12" fill="#1e40af" text-anchor="middle">tests (--validate)</text>
+    <!-- Cli, SelfTest and Utilities -->
+    <rect x="170" y="230" width="130" height="72" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="235" y="256" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">Cli</text>
+    <text x="235" y="276" font-size="12" fill="#1e40af" text-anchor="middle">Context: parsed</text>
+    <text x="235" y="291" font-size="12" fill="#1e40af" text-anchor="middle">flags and output</text>
+    <rect x="315" y="230" width="130" height="72" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="380" y="256" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">SelfTest</text>
+    <text x="380" y="276" font-size="12" fill="#1e40af" text-anchor="middle">Built-in qualification</text>
+    <text x="380" y="291" font-size="12" fill="#1e40af" text-anchor="middle">tests (--validate)</text>
+    <rect x="460" y="230" width="130" height="72" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="525" y="256" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">Utilities</text>
+    <text x="525" y="276" font-size="12" fill="#1e40af" text-anchor="middle">Glob expansion</text>
+    <text x="525" y="291" font-size="12" fill="#1e40af" text-anchor="middle">and safe paths</text>
 
     <!-- Dictionary -->
-    <rect x="170" y="318" width="420" height="116" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <rect x="170" y="318" width="420" height="156" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
     <text x="380" y="344" font-size="16" font-weight="600" fill="#4c1d95" text-anchor="middle">Dictionary</text>
-    <rect x="184" y="356" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="244" y="376" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">YamlDictionary</text>
-    <text x="244" y="391" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Loader</text>
-    <text x="244" y="411" font-size="12" fill="#5b21b6" text-anchor="middle">reads YAML</text>
-    <rect x="320" y="356" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="380" y="376" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Conflict</text>
-    <text x="380" y="391" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Detector</text>
-    <text x="380" y="411" font-size="12" fill="#5b21b6" text-anchor="middle">flags clashes</text>
-    <rect x="456" y="356" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="516" y="376" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Markdown</text>
-    <text x="516" y="391" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Formatter</text>
-    <text x="516" y="411" font-size="12" fill="#5b21b6" text-anchor="middle">list or table</text>
-    <line x1="304" y1="389" x2="316" y2="389" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <line x1="440" y1="389" x2="452" y2="389" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <rect x="184" y="356" width="392" height="30" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="363" y="376" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="end">DictionaryGenerator</text>
+    <text x="369" y="376" font-size="12" fill="#5b21b6">runs the steps below in order</text>
+    <rect x="184" y="396" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="244" y="416" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">YamlDictionary</text>
+    <text x="244" y="431" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Loader</text>
+    <text x="244" y="451" font-size="12" fill="#5b21b6" text-anchor="middle">reads YAML</text>
+    <rect x="320" y="396" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="380" y="416" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Conflict</text>
+    <text x="380" y="431" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Detector</text>
+    <text x="380" y="451" font-size="12" fill="#5b21b6" text-anchor="middle">flags clashes</text>
+    <rect x="456" y="396" width="120" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="516" y="416" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Markdown</text>
+    <text x="516" y="431" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Formatter</text>
+    <text x="516" y="451" font-size="12" fill="#5b21b6" text-anchor="middle">list or table</text>
+    <line x1="304" y1="429" x2="316" y2="429" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <line x1="440" y1="429" x2="452" y2="429" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
 
     <!-- Input -->
-    <text x="60" y="326" font-size="13" font-weight="600" fill="#475569" text-anchor="middle">Input</text>
-    <rect x="0" y="340" width="120" height="66" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-    <text x="60" y="367" font-size="15" font-weight="600" fill="#334155" text-anchor="middle">YAML files</text>
-    <text x="60" y="388" font-size="12" fill="#475569" text-anchor="middle">term: definition</text>
-    <line x1="124" y1="373" x2="146" y2="373" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="60" y="380" font-size="13" font-weight="600" fill="#475569" text-anchor="middle">Input</text>
+    <rect x="0" y="396" width="120" height="66" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="60" y="423" font-size="15" font-weight="600" fill="#334155" text-anchor="middle">YAML files</text>
+    <text x="60" y="444" font-size="12" fill="#475569" text-anchor="middle">term: definition</text>
+    <line x1="124" y1="429" x2="180" y2="429" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
 
     <!-- Output -->
-    <rect x="650" y="300" width="165" height="150" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-    <text x="732" y="328" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Markdown</text>
+    <rect x="650" y="340" width="165" height="150" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="732" y="368" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Markdown</text>
     <g font-size="13" fill="#14532d" text-anchor="middle">
-      <rect x="664" y="342" width="137" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
-      <text x="732" y="362">Bullet list</text>
-      <rect x="664" y="380" width="137" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
-      <text x="732" y="400">Table</text>
+      <rect x="664" y="382" width="137" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
+      <text x="732" y="402">Bullet list</text>
+      <rect x="664" y="420" width="137" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
+      <text x="732" y="440">Table</text>
     </g>
-    <text x="732" y="430" font-size="12" fill="#166534" text-anchor="middle">Written to --output</text>
-    <line x1="590" y1="389" x2="646" y2="389" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-
-    <!-- Internal flow -->
-    <line x1="380" y1="214" x2="380" y2="226" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <line x1="380" y1="302" x2="380" y2="314" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="732" y="472" font-size="12" fill="#166534" text-anchor="middle">--output file or stdout</text>
+    <line x1="580" y1="429" x2="646" y2="429" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
   </g>
 </svg>

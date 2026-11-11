@@ -81,7 +81,8 @@ subsystem.
 
 - **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS); no
   platform-specific APIs are used in core logic.
-- **Target frameworks**: net8.0, net9.0, net10.0; distributed as a .NET global tool (`PackAsTool`).
+- **Target frameworks**: net10.0, net11.0 (`RollForward=LatestMajor`); distributed as a .NET global
+  tool (`PackAsTool`).
 - **Input size**: no enforced limit on the number of YAML files or entries.
 - **Output size**: no enforced limit; formatted output is buffered in memory before writing.
 - **Encoding**: all file I/O uses UTF-8 without BOM.

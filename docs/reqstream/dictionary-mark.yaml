@@ -328,6 +328,5 @@ sections:
         children:
           - DictionaryMark-Platform-Windows
           - DictionaryMark-Platform-Ubuntu
-          - DictionaryMark-Platform-DotNet8
-          - DictionaryMark-Platform-DotNet9
           - DictionaryMark-Platform-DotNet10
+          - DictionaryMark-Platform-DotNet11

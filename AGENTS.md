@@ -5,7 +5,7 @@
 - **project-tagline**: YAML dictionary to Markdown formatter
 - **description**: A .NET command-line tool that reads YAML dictionary files and generates formatted Markdown output as bullet lists or tables
 - **languages**: C#
-- **technologies**: .NET 8/9/10, YamlDotNet, Microsoft.Extensions.FileSystemGlobbing, DemaConsulting.TestResults
+- **technologies**: .NET 10/11, YamlDotNet, Microsoft.Extensions.FileSystemGlobbing, DemaConsulting.TestResults
 
 # Project Structure
 
