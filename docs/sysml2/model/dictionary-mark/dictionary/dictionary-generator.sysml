@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Orchestrates dictionary generation. */
 
         metadata info : SoftwareInfo {
-            description = "Orchestrates dictionary generation.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DictionaryGenerator.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryGeneratorTests.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary/dictionary-generator.md");

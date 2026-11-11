@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Entry point and execution orchestrator. */
 
         metadata info : SoftwareInfo {
-            description = "Entry point and execution orchestrator.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Program.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/ProgramTests.cs");
             designFiles = ("docs/design/dictionary-mark/program.md");

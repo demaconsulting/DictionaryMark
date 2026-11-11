@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* Shared, cross-cutting helper utilities. */
 
         metadata info : SoftwareInfo {
-            description = "Shared, cross-cutting helper utilities.";
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Utilities/UtilitiesSubsystemTests.cs");
             designFiles = ("docs/design/dictionary-mark/utilities.md");
             verificationFiles = ("docs/verification/dictionary-mark/utilities.md");

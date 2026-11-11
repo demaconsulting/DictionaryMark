@@ -5,7 +5,6 @@ package DictionaryMark {
         doc /* File-matching via glob patterns. */
 
         metadata info : SoftwareInfo {
-            description = "File-matching via glob patterns.";
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Utilities/GlobMatcher.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Utilities/GlobMatcherTests.cs");
             designFiles = ("docs/design/dictionary-mark/utilities/glob-matcher.md");

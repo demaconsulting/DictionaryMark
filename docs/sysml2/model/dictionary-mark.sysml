@@ -13,7 +13,6 @@ package DictionaryMark {
         doc /* The DictionaryMark system as a whole. */
 
         metadata info : SoftwareInfo {
-            description = "The DictionaryMark system as a whole.";
             designFiles = ("docs/design/dictionary-mark.md");
             verificationFiles = ("docs/verification/dictionary-mark.md");
             requirementFiles = ("docs/reqstream/dictionary-mark.yaml");
