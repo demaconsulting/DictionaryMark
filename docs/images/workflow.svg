@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="392" viewBox="0 0 960 392" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <!-- Transparent canvas; a white rounded card keeps the diagram readable in light and dark themes -->
+  <rect x="14" y="16" width="936" height="370" rx="28" fill="#d5dce6"/>
+  <rect x="10" y="10" width="936" height="370" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+
+  <g transform="translate(33,34)">
+    <!-- Step 1: author YAML dictionaries -->
+    <rect x="0" y="0" width="200" height="324" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="100" y="30" font-size="16" font-weight="600" fill="#1e3a8a" text-anchor="middle">1. Author YAML</text>
+    <rect x="14" y="46" width="172" height="58" rx="6" fill="#ffffff" stroke="#2563eb"/>
+    <text x="100" y="70" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#1e3a8a" text-anchor="middle">glossary.yaml</text>
+    <text x="100" y="90" font-size="12" fill="#1e40af" text-anchor="middle">flat term: definition pairs</text>
+    <rect x="14" y="114" width="172" height="58" rx="6" fill="#ffffff" stroke="#2563eb"/>
+    <text x="100" y="138" font-size="14" font-weight="600" fill="#1e3a8a" text-anchor="middle">Many files</text>
+    <text x="100" y="158" font-size="12" fill="#1e40af" text-anchor="middle">merged into one dictionary</text>
+    <rect x="14" y="182" width="172" height="58" rx="6" fill="#ffffff" stroke="#2563eb"/>
+    <text x="100" y="206" font-size="14" font-weight="600" fill="#1e3a8a" text-anchor="middle">Unique terms</text>
+    <text x="100" y="226" font-size="12" fill="#1e40af" text-anchor="middle">conflicting definitions fail</text>
+    <rect x="14" y="250" width="172" height="58" rx="6" fill="#ffffff" stroke="#2563eb"/>
+    <text x="100" y="274" font-size="14" font-weight="600" fill="#1e3a8a" text-anchor="middle">Flat mappings only</text>
+    <text x="100" y="294" font-size="12" fill="#1e40af" text-anchor="middle">nested YAML is rejected</text>
+
+    <line x1="204" y1="162" x2="226" y2="162" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- Step 2: run the tool -->
+    <rect x="230" y="0" width="200" height="324" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="330" y="30" font-size="16" font-weight="600" fill="#92400e" text-anchor="middle">2. Run DictionaryMark</text>
+    <rect x="244" y="46" width="172" height="58" rx="6" fill="#ffffff" stroke="#d97706"/>
+    <text x="330" y="70" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#92400e" text-anchor="middle">dictionarymark</text>
+    <text x="330" y="90" font-size="12" fill="#92400e" text-anchor="middle">from a shell or CI pipeline</text>
+    <rect x="244" y="114" width="172" height="58" rx="6" fill="#ffffff" stroke="#d97706"/>
+    <text x="330" y="138" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#92400e" text-anchor="middle">--input</text>
+    <text x="330" y="158" font-size="12" fill="#92400e" text-anchor="middle">file or glob, repeatable</text>
+    <rect x="244" y="182" width="172" height="58" rx="6" fill="#ffffff" stroke="#d97706"/>
+    <text x="330" y="206" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#92400e" text-anchor="middle">--format</text>
+    <text x="330" y="226" font-size="12" fill="#92400e" text-anchor="middle">bullets or table</text>
+    <rect x="244" y="250" width="172" height="58" rx="6" fill="#ffffff" stroke="#d97706"/>
+    <text x="330" y="274" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#92400e" text-anchor="middle">--term-header</text>
+    <text x="330" y="294" font-size="12" fill="#92400e" text-anchor="middle">and --def-header columns</text>
+
+    <line x1="434" y1="162" x2="456" y2="162" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- Step 3: Markdown output -->
+    <rect x="460" y="0" width="200" height="324" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="560" y="30" font-size="16" font-weight="600" fill="#5b21b6" text-anchor="middle">3. Get Markdown</text>
+    <rect x="474" y="46" width="172" height="58" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="560" y="70" font-size="14" font-weight="600" fill="#4c1d95" text-anchor="middle">Bullet list</text>
+    <text x="560" y="90" font-size="12" font-family="Consolas, monospace" fill="#5b21b6" text-anchor="middle">- **term**: definition</text>
+    <rect x="474" y="114" width="172" height="58" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="560" y="138" font-size="14" font-weight="600" fill="#4c1d95" text-anchor="middle">Table</text>
+    <text x="560" y="158" font-size="12" font-family="Consolas, monospace" fill="#5b21b6" text-anchor="middle">| Term | Definition |</text>
+    <rect x="474" y="182" width="172" height="58" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="560" y="206" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">--section --sort</text>
+    <text x="560" y="226" font-size="12" fill="#5b21b6" text-anchor="middle">heading and term order</text>
+    <rect x="474" y="250" width="172" height="58" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="560" y="274" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">--output</text>
+    <text x="560" y="294" font-size="12" fill="#5b21b6" text-anchor="middle">a .md file, or stdout</text>
+
+    <line x1="664" y1="162" x2="686" y2="162" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- Step 4: use the output -->
+    <rect x="690" y="0" width="200" height="324" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="790" y="30" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">4. Use it</text>
+    <rect x="704" y="46" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
+    <text x="790" y="70" font-size="14" font-weight="600" fill="#14532d" text-anchor="middle">Larger documents</text>
+    <text x="790" y="90" font-size="12" fill="#166534" text-anchor="middle">heading level via --depth</text>
+    <rect x="704" y="114" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
+    <text x="790" y="138" font-size="14" font-weight="600" fill="#14532d" text-anchor="middle">Docs pipeline</text>
+    <text x="790" y="158" font-size="12" fill="#166534" text-anchor="middle">regenerate on every build</text>
+    <rect x="704" y="182" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
+    <text x="790" y="206" font-size="14" font-weight="600" fill="#14532d" text-anchor="middle">CI gate</text>
+    <text x="790" y="226" font-size="12" fill="#166534" text-anchor="middle">non-zero exit on errors</text>
+    <rect x="704" y="250" width="172" height="58" rx="6" fill="#ffffff" stroke="#16a34a"/>
+    <text x="790" y="274" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#14532d" text-anchor="middle">--validate</text>
+    <text x="790" y="294" font-size="12" fill="#166534" text-anchor="middle">tool qualification evidence</text>
+  </g>
+</svg>

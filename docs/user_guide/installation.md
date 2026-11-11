@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-DictionaryMark requires the .NET SDK 8.0, 9.0, or 10.0. It runs on Windows, Linux, and macOS.
+DictionaryMark requires the .NET SDK 10.0 or 11.0. It runs on Windows, Linux, and macOS.
 
 Download the .NET SDK from <https://dotnet.microsoft.com/download>.
 
@@ -51,9 +51,8 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 | Component | Version | Status    |
 | :-------- | :------ | :-------- |
-| .NET SDK  | 8.0     | Supported |
-| .NET SDK  | 9.0     | Supported |
 | .NET SDK  | 10.0    | Supported |
+| .NET SDK  | 11.0    | Supported |
 | OS        | Windows | Supported |
 | OS        | Linux   | Supported |
 | OS        | macOS   | Supported |

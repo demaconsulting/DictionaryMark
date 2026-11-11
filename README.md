@@ -19,8 +19,12 @@ formatted Markdown output as either bullet lists or tables. It supports glob pat
 processing multiple files, detects conflicting definitions, and is designed for easy
 integration into documentation pipelines.
 
-![DictionaryMark architecture: YAML dictionary files flow through the Cli, Utilities, and Dictionary
-subsystems into a Markdown bullet list or table][architecture]
+The workflow below shows how to use it: author YAML dictionary files, run `dictionarymark` from a
+shell or CI pipeline, and use the generated Markdown in your documents and documentation pipeline.
+
+![DictionaryMark workflow: author YAML dictionary files, run dictionarymark with --input, --format and header
+options, get a Markdown bullet list or table, then embed it in documents, a docs pipeline or a CI
+gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/workflow.png)
 
 ## Features
 
@@ -29,14 +33,14 @@ subsystems into a Markdown bullet list or table][architecture]
 - 🔍 **Glob Patterns** - Process multiple input files with wildcards
 - ⚔️ **Conflict Detection** - Detect conflicting definitions across files
 - 🎯 **Customizable Output** - Control headings, column headers, sort order, and depth
-- 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 8, 9, and 10
+- 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
 
 ## Installation
 
 ### Prerequisites
 
-- [.NET SDK](https://dotnet.microsoft.com/download) 8.0, 9.0, or 10.0
+- [.NET SDK](https://dotnet.microsoft.com/download) 10.0 or 11.0
 
 ### Global Installation
 
@@ -83,9 +87,8 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 | Component | Version | Status       |
 |-----------|---------|--------------|
-| .NET SDK  | 8.0     | ✅ Supported |
-| .NET SDK  | 9.0     | ✅ Supported |
 | .NET SDK  | 10.0    | ✅ Supported |
+| .NET SDK  | 11.0    | ✅ Supported |
 | OS        | Windows | ✅ Supported |
 | OS        | Linux   | ✅ Supported |
 | OS        | macOS   | ✅ Supported |
@@ -268,5 +271,3 @@ DictionaryMark is built with the following open-source projects:
 - [Microsoft.Extensions.FileSystemGlobbing](https://www.nuget.org/packages/Microsoft.Extensions.FileSystemGlobbing)
   \- Glob pattern matching for file system paths
 - [DemaConsulting.TestResults](https://github.com/demaconsulting/TestResults) - TRX and JUnit XML test results library
-
-[architecture]: https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/architecture.png

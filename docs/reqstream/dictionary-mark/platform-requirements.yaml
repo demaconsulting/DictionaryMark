@@ -6,41 +6,11 @@ sections:
     sections:
       - title: Platform Requirements
         requirements:
-          - id: DictionaryMark-Platform-DotNet8
-            title: The tool shall run on .NET 8.0 (LTS).
-            justification: |
-              .NET 8.0 is the current long-term support release, ensuring broad compatibility
-              for enterprise environments that standardize on LTS runtimes.
-            tests:
-              # Test source pattern "dotnet8@" ensures these tests ran on .NET 8.0.
-              # This filtering is necessary to prove .NET 8.0 runtime support.
-              - dotnet8@DictionaryMark_VersionDisplay
-              - dotnet8@DictionaryMark_HelpDisplay
-              - dotnet8@DictionaryMark_BulletGeneration
-              - dotnet8@DictionaryMark_TableGeneration
-              - dotnet8@DictionaryMark_CustomHeaders
-              - dotnet8@DictionaryMark_ConflictDetection
-
-          - id: DictionaryMark-Platform-DotNet9
-            title: The tool shall run on .NET 9.0.
-            justification: |
-              .NET 9.0 is the current standard release, providing access to the latest
-              runtime improvements for teams that track non-LTS releases.
-            tests:
-              # Test source pattern "dotnet9@" ensures these tests ran on .NET 9.0.
-              # This filtering is necessary to prove .NET 9.0 runtime support.
-              - dotnet9@DictionaryMark_VersionDisplay
-              - dotnet9@DictionaryMark_HelpDisplay
-              - dotnet9@DictionaryMark_BulletGeneration
-              - dotnet9@DictionaryMark_TableGeneration
-              - dotnet9@DictionaryMark_CustomHeaders
-              - dotnet9@DictionaryMark_ConflictDetection
-
           - id: DictionaryMark-Platform-DotNet10
             title: The tool shall run on .NET 10.0.
             justification: |
-              .NET 10.0 ensures forward compatibility with upcoming runtime versions,
-              allowing the tool to be used in environments that adopt new releases early.
+              .NET 10.0 is the current long-term support release, ensuring broad compatibility
+              for enterprise environments that standardize on LTS runtimes.
             tests:
               # Test source pattern "dotnet10@" ensures these tests ran on .NET 10.0.
               # This filtering is necessary to prove .NET 10.0 runtime support.
@@ -50,6 +20,21 @@ sections:
               - dotnet10@DictionaryMark_TableGeneration
               - dotnet10@DictionaryMark_CustomHeaders
               - dotnet10@DictionaryMark_ConflictDetection
+
+          - id: DictionaryMark-Platform-DotNet11
+            title: The tool shall run on .NET 11.0.
+            justification: |
+              .NET 11.0 ensures forward compatibility with upcoming runtime versions,
+              allowing the tool to be used in environments that adopt new releases early.
+            tests:
+              # Test source pattern "dotnet11@" ensures these tests ran on .NET 11.0.
+              # This filtering is necessary to prove .NET 11.0 runtime support.
+              - dotnet11@DictionaryMark_VersionDisplay
+              - dotnet11@DictionaryMark_HelpDisplay
+              - dotnet11@DictionaryMark_BulletGeneration
+              - dotnet11@DictionaryMark_TableGeneration
+              - dotnet11@DictionaryMark_CustomHeaders
+              - dotnet11@DictionaryMark_ConflictDetection
 
           - id: DictionaryMark-Platform-Windows
             title: The tool shall run on Windows operating systems.

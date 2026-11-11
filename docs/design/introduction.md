@@ -37,6 +37,13 @@ diagram or the prose below.
 
 ![Software Structure](SoftwareStructureView.svg)
 
+The diagram below complements the structure view by showing how data flows at run time:
+`Program` dispatches the parsed command line, and the Dictionary subsystem loads the YAML files,
+checks for conflicts, and formats the Markdown output.
+
+![DictionaryMark architecture: the dictionarymark command drives Program, which uses the Cli, SelfTest,
+Utilities and Dictionary subsystems to turn YAML files into a Markdown bullet list or table](architecture.svg)
+
 ## Folder Layout
 
 - **src/** - source files and projects
