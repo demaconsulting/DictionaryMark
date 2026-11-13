@@ -213,11 +213,11 @@ list when no `--input` flag is supplied. This scenario is tested by
 `Context_Create_DefaultSort_IsFileOrder`.
 
 **Context_Create_Defaults_KindTermsAndHeaders**: Verifies `Kind` defaults to terms and the use/where
-headers and check-against list take their defaults. This scenario is tested by
+headers take their defaults. This scenario is tested by
 `Context_Create_Defaults_KindTermsAndHeaders`.
 
 **Context_Create_DeprecatedOptions_AreParsed**: Verifies `--kind deprecated`, `--use-header`,
-`--where-header` and repeated `--check-against` are parsed. This scenario is tested by
+and `--where-header` are parsed. This scenario is tested by
 `Context_Create_DeprecatedOptions_AreParsed`.
 
 **Context_Create_InvalidKind_ThrowsArgumentException**: Verifies an unrecognized `--kind` value is

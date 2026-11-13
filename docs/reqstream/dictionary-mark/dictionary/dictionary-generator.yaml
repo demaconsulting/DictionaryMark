@@ -64,13 +64,10 @@ sections:
               - id: DictionaryMark-DictionaryGenerator-DeprecatedKind
                 title: >-
                   The DictionaryGenerator shall generate a deprecated-terms table or bullet list when
-                  the kind is deprecated, and shall check the input against files of the other kind
-                  given with --check-against without producing output from them.
+                  the kind is deprecated.
                 justification: |
-                  Deprecated terms are published like approved terms, and a term must not be both
-                  approved and deprecated even when the two kinds are generated in separate runs.
+                  Deprecated terms are published like approved terms. Approved-versus-deprecated
+                  conflicts are enforced by Ste100Mark.
                 tests:
                   - DictionaryGenerator_Generate_DeprecatedKind_WritesTable
                   - DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed
-                  - DictionaryGenerator_Generate_CheckAgainstDeprecated_ReportsConflict
-                  - DictionaryGenerator_Generate_CheckAgainstNoConflict_OutputsOnlyPrimaryKind

@@ -9,7 +9,7 @@ normalization) and orders each group by source path (ordinal) so the result does
 order. It compares the first entry of each group with the others: any difference in `definition`
 (ordinal), `pos` (set), `variants` (case-insensitive set) or `visible` is a conflict. Identical
 duplicates collapse. Deprecated entries are grouped the same way and compared on `use` and `where`.
-A term, or an approved variant, that is both approved and deprecated is a conflict. There is no
+Approved-versus-deprecated conflicts are not checked here (Ste100Mark enforces them). There is no
 override precedence. `ConflictDetector` is a static class.
 
 #### Data Model
@@ -27,9 +27,7 @@ N/A - static class with no instance state.
 - *Postconditions*: Messages have these shapes (sources are full resolved paths):
   `Conflict: term '{T}' differs in {fields} between {A} and {B}.` (fields in the order definition,
   pos, variants, visible), `Conflict: deprecated term '{T}' differs in use, where between {A} and
-  {B}.`, `Conflict: term '{T}' is both approved ({A}) and deprecated ({D}).` and
-  `Conflict: variant '{V}' of term '{T}' is approved ({A}) but also deprecated ({D}).` An entry
-  without a source is shown as `<unknown>`.
+  {B}.` An entry without a source is shown as `<unknown>`.
 
 Thread-safe — all state is method-local.
 

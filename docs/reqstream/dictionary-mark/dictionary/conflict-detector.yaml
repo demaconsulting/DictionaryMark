@@ -66,13 +66,10 @@ sections:
               - id: DictionaryMark-ConflictDetector-Deprecated
                 title: >-
                   The ConflictDetector class shall report a conflict when deprecated entries for the
-                  same term differ in use or where, and when a term or an approved variant is both
-                  approved and deprecated.
+                  same term differ in use or where.
                 justification: |
-                  A term cannot be both approved and deprecated, and two deprecation records for one
-                  term must agree.
+                  Two deprecation records for one term must agree. Approved-versus-deprecated conflicts
+                  are enforced by Ste100Mark, not by DictionaryMark.
                 tests:
                   - ConflictDetector_Detect_DeprecatedDiffer_ReportsUseAndWhere
                   - ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty
-                  - ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict
-                  - ConflictDetector_Detect_VariantDeprecated_ReportsConflict

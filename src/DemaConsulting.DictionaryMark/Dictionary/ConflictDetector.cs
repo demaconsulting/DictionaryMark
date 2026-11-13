@@ -21,7 +21,7 @@
 namespace DemaConsulting.DictionaryMark.Dictionary;
 
 /// <summary>
-///     Detects conflicts among approved and deprecated dictionary entries.
+///     Detects conflicts among approved or deprecated dictionary entries.
 /// </summary>
 internal static class ConflictDetector
 {
@@ -32,8 +32,8 @@ internal static class ConflictDetector
     ///     Terms are compared case-insensitively. The same term in several places is not a conflict
     ///     when the entries are identical; it is a conflict when any of definition, pos, variants or
     ///     visible differs (definition by ordinal comparison; pos and variants as case-insensitive sets).
-    ///     Deprecated entries conflict when use or where differ. A term that is both approved and
-    ///     deprecated (or an approved variant that is deprecated) is a conflict. Entries are ordered
+    ///     Deprecated entries conflict when use or where differ. Approved-versus-deprecated
+    ///     conflicts are not checked here (Ste100Mark enforces them). Entries are ordered
     ///     by source before comparison so the result does not depend on input order, and the returned
     ///     messages are sorted by ordinal comparison. Thread-safe; all state is method-local.
     /// </remarks>
@@ -73,8 +73,6 @@ internal static class ConflictDetector
         {
             DetectDeprecatedConflicts(group, messages);
         }
-
-        DetectCrossConflicts(approvedGroups, deprecatedGroups, messages);
 
         return [.. messages.Order(StringComparer.Ordinal)];
     }
@@ -139,42 +137,6 @@ internal static class ConflictDetector
             {
                 messages.Add(
                     $"Conflict: deprecated term '{first.Term}' differs in {string.Join(", ", fields)} between {Name(first.Source)} and {Name(other.Source)}.");
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Detects terms or variants that are both approved and deprecated.
-    /// </summary>
-    private static void DetectCrossConflicts(
-        Dictionary<string, List<DictionaryEntry>> approved,
-        Dictionary<string, List<DeprecatedEntry>> deprecated,
-        HashSet<string> messages)
-    {
-        if (deprecated.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var group in approved.Values)
-        {
-            var first = group[0];
-            if (deprecated.TryGetValue(first.Term, out var deprecatedGroup))
-            {
-                messages.Add(
-                    $"Conflict: term '{first.Term}' is both approved ({Name(first.Source)}) and deprecated ({Name(deprecatedGroup[0].Source)}).");
-            }
-
-            foreach (var entry in group)
-            {
-                foreach (var variant in entry.Variants)
-                {
-                    if (deprecated.TryGetValue(variant, out var variantGroup))
-                    {
-                        messages.Add(
-                            $"Conflict: variant '{variant}' of term '{entry.Term}' is approved ({Name(entry.Source)}) but also deprecated ({Name(variantGroup[0].Source)}).");
-                    }
-                }
             }
         }
     }

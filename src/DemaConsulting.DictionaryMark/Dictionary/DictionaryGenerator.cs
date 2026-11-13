@@ -47,11 +47,9 @@ internal static class DictionaryGenerator
 
         // Resolve input files (strict: every pattern must match)
         IReadOnlyList<string> files;
-        IReadOnlyList<string> checkFiles;
         try
         {
             files = GlobMatcher.Resolve(context.InputPatterns);
-            checkFiles = GlobMatcher.Resolve(context.CheckAgainstPatterns);
         }
         catch (ArgumentException ex)
         {
@@ -74,9 +72,8 @@ internal static class DictionaryGenerator
         var approved = new List<DictionaryEntry>();
         var deprecated = new List<DeprecatedEntry>();
 
-        // Load the primary files as the selected kind and the check-against files as the other kind
-        if (!LoadFiles(context, files, deprecatedKind, approved, deprecated)
-            || !LoadFiles(context, checkFiles, !deprecatedKind, approved, deprecated))
+        // Load the input files as the selected kind
+        if (!LoadFiles(context, files, deprecatedKind, approved, deprecated))
         {
             return;
         }
@@ -168,7 +165,7 @@ internal static class DictionaryGenerator
     }
 
     /// <summary>
-    ///     Selects the deprecated entries that came from the primary input files (not check-against files).
+    ///     Selects the deprecated entries that came from the primary input files .
     /// </summary>
     private static List<DeprecatedEntry> DeprecatedForOutput(List<DeprecatedEntry> deprecated, IReadOnlyList<string> files) =>
         [.. deprecated.Where(e => files.Contains(e.Source, StringComparer.OrdinalIgnoreCase))];

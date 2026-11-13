@@ -45,8 +45,7 @@ selection, output formatting, and operational mode.
   `--sort <file|alpha>` (sort order), `--depth <n>` (heading depth),
   `--kind <terms|deprecated>` (input kind), `--use-header <text>` (deprecated-table "use instead"
   column header), `--where-header <text>` (deprecated-table "where used" column header),
-  `--check-against <pattern>` (repeatable; deprecated terms found in other dictionaries are
-  reported as conflicts), and `--results`/`--result <file>` (results file). Returns exit code 0 on
+  and `--results`/`--result <file>` (results file). Returns exit code 0 on
   success, 1 on error.
 - *Constraints*: Input patterns are resolved relative to the working directory at invocation
   time. All file I/O uses UTF-8 encoding without BOM. Input errors are strict: a missing file, an

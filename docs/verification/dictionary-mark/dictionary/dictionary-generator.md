@@ -56,14 +56,6 @@ deprecated table. This scenario is tested by `DictionaryGenerator_Generate_Depre
 **DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed**: Custom deprecated headers are
 used. This scenario is tested by `DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed`.
 
-**DictionaryGenerator_Generate_CheckAgainstDeprecated_ReportsConflict**: A conflict with a
-`--check-against` file is reported. This scenario is tested by
-`DictionaryGenerator_Generate_CheckAgainstDeprecated_ReportsConflict`.
-
-**DictionaryGenerator_Generate_CheckAgainstNoConflict_OutputsOnlyPrimaryKind**: Check-against files
-are never rendered. This scenario is tested by
-`DictionaryGenerator_Generate_CheckAgainstNoConflict_OutputsOnlyPrimaryKind`.
-
 **DictionaryGenerator_Generate_MissingInputs_ReportErrors**: Unmatched globs and missing files or
 directories are reported with distinct errors. This scenario is tested by
 `DictionaryGenerator_Generate_MissingInputs_ReportErrors`.

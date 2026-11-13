@@ -61,9 +61,6 @@ default `Bullets`.
 **WhereHeader**: `string` — Deprecated "where" column header; `--where-header`; default
 `"Where it was used"`.
 
-**CheckAgainstPatterns**: `List<string>` — Files loaded only for conflict checking via
-`--check-against` (repeatable); never rendered.
-
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
 
 #### Key Methods
@@ -113,8 +110,7 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 `TermHeader` (default `"Term"`); `--def-header <text>` / `--definition-header <text>` →
 `DefinitionHeader` (default `"Definition"`); `--sort <file|alpha>` → `SortBy` (default
 `FileOrder`); `--kind <terms|deprecated>` → `Kind` (invalid value throws `ArgumentException`);
-`--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`;
-`--check-against <pattern>` → `CheckAgainstPatterns` (repeatable).
+`--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`.
 
 - Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized or
   missing its required value; throws `InvalidOperationException` when the specified log file

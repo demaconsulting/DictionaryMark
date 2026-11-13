@@ -187,7 +187,6 @@ internal static class Program
         context.WriteLine("  --kind <kind>                     Input kind: terms (default) or deprecated");
         context.WriteLine("  --use-header <header>             Use column header for deprecated table format (default: Use instead)");
         context.WriteLine("  --where-header <header>           Where column header for deprecated table format (default: Where it was used)");
-        context.WriteLine("  --check-against <pattern>         Other-kind YAML file or glob checked for approved/deprecated conflicts (repeatable)");
     }
 
     /// <summary>

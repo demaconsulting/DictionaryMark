@@ -241,45 +241,6 @@ public class DictionaryGeneratorTests
         Assert.Contains("| Avoid | Prefer | Seen in |", output);
     }
 
-    /// <summary>Test that a term in a terms file and a deprecated file via --check-against is a conflict.</summary>
-    [Fact]
-    public void DictionaryGenerator_Generate_CheckAgainstDeprecated_ReportsConflict()
-    {
-        // Arrange
-        using var tmpDir = new TemporaryDirectory();
-        var terms = tmpDir.GetFilePath("terms.yaml");
-        var deprecated = tmpDir.GetFilePath("deprecated.yaml");
-        File.WriteAllText(terms, "Test Mode: A mode.\n");
-        File.WriteAllText(deprecated, "test mode: { use: Other }\n");
-
-        // Act
-        var (_, err, exitCode) = Run("--input", terms, "--check-against", deprecated);
-
-        // Assert
-        Assert.Equal(1, exitCode);
-        Assert.Contains("is both approved", err);
-    }
-
-    /// <summary>Test that check-against files produce no output of their own.</summary>
-    [Fact]
-    public void DictionaryGenerator_Generate_CheckAgainstNoConflict_OutputsOnlyPrimaryKind()
-    {
-        // Arrange
-        using var tmpDir = new TemporaryDirectory();
-        var terms = tmpDir.GetFilePath("terms.yaml");
-        var deprecated = tmpDir.GetFilePath("deprecated.yaml");
-        File.WriteAllText(terms, "Test Mode: A mode.\n");
-        File.WriteAllText(deprecated, "bench mode: { use: Test Mode }\n");
-
-        // Act
-        var (output, _, exitCode) = Run("--input", terms, "--check-against", deprecated);
-
-        // Assert
-        Assert.Equal(0, exitCode);
-        Assert.Contains("Test Mode", output);
-        Assert.DoesNotContain("bench mode", output);
-    }
-
     /// <summary>Test that a missing file and an unmatched glob are errors naming the pattern.</summary>
     [Fact]
     public void DictionaryGenerator_Generate_MissingInputs_ReportErrors()

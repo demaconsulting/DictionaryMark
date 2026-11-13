@@ -719,18 +719,16 @@ public class ContextTests
         Assert.Equal("Use instead", context.UseHeader);
         Assert.Equal("Where it was used", context.WhereHeader);
         Assert.False(context.TermHeaderSpecified);
-        Assert.Empty(context.CheckAgainstPatterns);
     }
 
-    /// <summary>Test that --kind, header and --check-against options are parsed.</summary>
+    /// <summary>Test that --kind, header options are parsed.</summary>
     [Fact]
     public void Context_Create_DeprecatedOptions_AreParsed()
     {
         // Act
         using var context = Context.Create(
         [
-            "--kind", "Deprecated", "--term-header", "Avoid", "--use-header", "Prefer", "--where-header", "Seen in",
-            "--check-against", "a.yaml", "--check-against", "b.yaml"
+            "--kind", "Deprecated", "--term-header", "Avoid", "--use-header", "Prefer", "--where-header", "Seen in"
         ]);
 
         // Assert
@@ -739,7 +737,6 @@ public class ContextTests
         Assert.Equal("Avoid", context.TermHeader);
         Assert.Equal("Prefer", context.UseHeader);
         Assert.Equal("Seen in", context.WhereHeader);
-        Assert.Equal(["a.yaml", "b.yaml"], context.CheckAgainstPatterns);
     }
 
     /// <summary>Test that an invalid --kind value is rejected.</summary>

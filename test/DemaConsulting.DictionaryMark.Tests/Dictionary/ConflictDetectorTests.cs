@@ -269,32 +269,6 @@ public class ConflictDetectorTests
             [new DeprecatedEntry("a", "b", null, "x.yaml"), new DeprecatedEntry("A", "b", null, "y.yaml")]));
     }
 
-    /// <summary>Test a term that is both approved and deprecated.</summary>
-    [Fact]
-    public void ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict()
-    {
-        // Act
-        var result = ConflictDetector.Detect(
-            [Entry("Test Mode", "a.yaml")],
-            [new DeprecatedEntry("test mode", "Other", null, "d.yaml")]);
-
-        // Assert
-        Assert.Equal(["Conflict: term 'Test Mode' is both approved (a.yaml) and deprecated (d.yaml)."], result);
-    }
-
-    /// <summary>Test an approved variant that is deprecated.</summary>
-    [Fact]
-    public void ConflictDetector_Detect_VariantDeprecated_ReportsConflict()
-    {
-        // Act
-        var result = ConflictDetector.Detect(
-            [Entry("bleed valve", "a.yaml", variants: ["bleed-valve"])],
-            [new DeprecatedEntry("Bleed-Valve", "Other", null, "d.yaml")]);
-
-        // Assert
-        Assert.Equal(["Conflict: variant 'bleed-valve' of term 'bleed valve' is approved (a.yaml) but also deprecated (d.yaml)."], result);
-    }
-
     /// <summary>Test that an entry without a source renders as unknown.</summary>
     [Fact]
     public void ConflictDetector_Detect_NoSource_RendersUnknown()

@@ -101,12 +101,6 @@ internal sealed class Context : IDisposable
     public string WhereHeader { get; private init; } = "Where it was used";
 
     /// <summary>
-    ///     Gets the patterns of the other kind's files used only to check approved-versus-deprecated
-    ///     conflicts (--check-against, repeatable); no output is generated from them.
-    /// </summary>
-    public List<string> CheckAgainstPatterns { get; } = [];
-
-    /// <summary>
     ///     Gets the proposed exit code for the application (0 for success, 1 for errors).
     /// </summary>
     public int ExitCode => _hasErrors ? 1 : 0;
@@ -161,7 +155,6 @@ internal sealed class Context : IDisposable
 
         // Copy input patterns
         result.InputPatterns.AddRange(parser.InputPatterns);
-        result.CheckAgainstPatterns.AddRange(parser.CheckAgainstPatterns);
 
         // Open log file if specified
         if (parser.LogFile != null)
@@ -271,9 +264,6 @@ internal sealed class Context : IDisposable
         /// <summary>Gets the where column header.</summary>
         public string WhereHeader { get; private set; } = "Where it was used";
 
-        /// <summary>Gets the check-against patterns.</summary>
-        public List<string> CheckAgainstPatterns { get; } = [];
-
         /// <summary>
         ///     Iterates over the argument list, dispatching each token to <see cref="ParseArgument"/> so that
         ///     recognized flags set their corresponding properties and unknown flags throw immediately.
@@ -375,10 +365,6 @@ internal sealed class Context : IDisposable
 
                 case "--where-header":
                     WhereHeader = GetRequiredStringArgument(arg, args, index, "a where header");
-                    return index + 1;
-
-                case "--check-against":
-                    CheckAgainstPatterns.Add(GetRequiredStringArgument(arg, args, index, "a file pattern"));
                     return index + 1;
 
                 case "--kind":

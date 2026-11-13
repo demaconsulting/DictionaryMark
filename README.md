@@ -33,7 +33,7 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - 📝 **Markdown Output** - Generate bullet lists or formatted tables
 - 🚫 **Deprecated Terms** - Generate a "Not used / Use instead" table from deprecated-term files
 - 🔍 **Glob Patterns** - Process multiple input files with wildcards
-- ⚔️ **Conflict Detection** - Detect conflicting entries across files, including approved-vs-deprecated
+- ⚔️ **Conflict Detection** - Detect conflicting entries across files
 - 🎯 **Customizable Output** - Control headings, column headers, sort order, and depth
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
@@ -124,7 +124,6 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--kind <kind>`                | Input kind: `terms` (default) or `deprecated`       |
 | `--use-header <header>`        | Deprecated "use" column header                      |
 | `--where-header <header>`      | Deprecated "where" column header                    |
-| `--check-against <pattern>`    | Extra files checked for conflicts only (repeatable) |
 
 ### Examples
 
@@ -262,12 +261,9 @@ The `Where it was used` column appears only when at least one entry has a `where
 The same term in several files is fine when the entries are identical. Entries that differ in
 `definition`, `pos`, `variants` or `visible` are an error naming the term, the differing fields and
 both files, for example
-`Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` A term (or an
-approved variant) that is both approved and deprecated is also a conflict. Use `--check-against` to
-load files of the other kind for conflict checking only, for example
-`--input terms.yaml --check-against deprecated.yaml`; they are never rendered. Input paths and
-`--check-against` paths may contain `${VAR}` environment variables, and a pattern that matches no
-file is an error.
+`Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` Approved-versus-deprecated conflicts are
+not checked by DictionaryMark; Ste100Mark enforces them. Input paths may contain `${VAR}`
+environment variables, and a pattern that matches no file is an error.
 
 ## Building
 

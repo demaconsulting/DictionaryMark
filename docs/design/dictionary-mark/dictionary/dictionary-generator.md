@@ -24,11 +24,9 @@ N/A - static class with no instance state.
 - *Postconditions*: Output written to file or stdout, or `context.WriteError` called and method
   returned early on any error.
 
-Processing steps: (1) Resolve input file paths — call `GlobMatcher.Resolve` for the input and
-`--check-against` patterns; return early on `ArgumentException`, `InvalidOperationException` or
+Processing steps: (1) Resolve input file paths — call `GlobMatcher.Resolve` for the input patterns; return early on `ArgumentException`, `InvalidOperationException` or
 empty result. (2) Load entries — call `YamlDictionaryLoader.Load` (or `LoadDeprecated` when
-`context.Kind` is deprecated) for each input file, and the other loader for check-against files;
-return early on `IOException` or `InvalidOperationException`. (3) Detect conflicts — call
+`context.Kind` is deprecated) for each input file; return early on `IOException` or `InvalidOperationException`. (3) Detect conflicts — call
 `ConflictDetector.Detect(approved, deprecated)`; if any conflicts found, call `context.WriteError`
 for each and return. (4) Format output — construct `MarkdownOptions` from context fields (`Format`,
 `SectionHeading`, `TermHeader`, `DefinitionHeader`, `UseHeader`, `WhereHeader`, `SortBy`,

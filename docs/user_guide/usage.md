@@ -151,13 +151,8 @@ Input patterns may contain `${VAR}` environment variables. A pattern that matche
 literal file that does not exist and an undefined variable are all errors.
 
 The same term in several files is fine when the entries are identical. Entries that differ in
-`definition`, `pos`, `variants` or `visible` conflict, as does a term (or approved variant) that is
-both approved and deprecated. Use `--check-against` to load files of the other kind for conflict
-checking only; they are never rendered:
-
-```bash
-dictionarymark --input terms.yaml --check-against deprecated.yaml --output docs/glossary.md
-```
+`definition`, `pos`, `variants` or `visible` conflict. DictionaryMark does not check approved terms
+against deprecated terms; Ste100Mark enforces approved-versus-deprecated conflicts.
 
 ## Sorted Output
 
@@ -286,7 +281,6 @@ The following command-line options are supported:
 | `--kind <kind>`                                         | Input kind: `terms` (default) or `deprecated`                     |
 | `--use-header <header>`                                 | Deprecated "use" column header (default: `Use instead`)           |
 | `--where-header <header>`                               | Deprecated "where" column header (default: `Where it was used`)   |
-| `--check-against <pattern>`                             | Extra files used only for conflict checking (repeatable)          |
 
 # Examples
 

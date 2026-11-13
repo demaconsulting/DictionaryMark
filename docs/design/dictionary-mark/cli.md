@@ -20,7 +20,7 @@ of the system through a `Context` instance.
 - *Contract*: `Context.Create(string[] args)` factory method; parsed boolean flags `Version`,
   `Help`, `Silent`, `Validate`; option properties `InputPatterns`, `OutputFile`, `Format`,
   `SortBy`, `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `ResultsFile`,
-  `Kind`, `UseHeader`, `WhereHeader`, `TermHeaderSpecified`, `CheckAgainstPatterns`;
+  `Kind`, `UseHeader`, `WhereHeader`, `TermHeaderSpecified`;
   output methods `WriteLine(string)` and `WriteError(string)`; derived property `ExitCode`
   (0 or 1).
 - *Constraints*: `Context` implements `IDisposable`; callers must dispose to release the log file

@@ -74,13 +74,5 @@ reported. This scenario is tested by `ConflictDetector_Detect_DeprecatedDiffer_R
 not conflicts. This scenario is tested by
 `ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty`.
 
-**ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict**: A term both approved and
-deprecated is a conflict. This scenario is tested by
-`ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict`.
-
-**ConflictDetector_Detect_VariantDeprecated_ReportsConflict**: An approved variant that is also
-deprecated is a conflict. This scenario is tested by
-`ConflictDetector_Detect_VariantDeprecated_ReportsConflict`.
-
 **ConflictDetector_Detect_NoSource_RendersUnknown**: A missing source renders as `<unknown>`. This
 scenario is tested by `ConflictDetector_Detect_NoSource_RendersUnknown`.

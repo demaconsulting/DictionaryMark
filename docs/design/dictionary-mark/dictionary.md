@@ -46,7 +46,7 @@ everything from resolving input file paths through formatting the final Markdown
 - *Contract*: Uses `context.InputPatterns`, `context.OutputFile`, `context.Format`,
   `context.SortBy`, `context.SectionHeading`, `context.TermHeader`, `context.TermHeaderSpecified`,
   `context.DefinitionHeader`, `context.UseHeader`, `context.WhereHeader`, `context.Kind`,
-  `context.CheckAgainstPatterns`, `context.HeadingDepth`, `context.WriteError`, `context.WriteLine`.
+  `context.HeadingDepth`, `context.WriteError`, `context.WriteLine`.
 - *Constraints*: N/A
 
 **GlobMatcher.Resolve**: Strict file pattern resolution from the Utilities subsystem.
@@ -70,12 +70,11 @@ everything from resolving input file paths through formatting the final Markdown
 
 `DictionaryGenerator.Generate` drives the pipeline in five steps:
 
-1. Call `GlobMatcher.Resolve` for `context.InputPatterns` and `context.CheckAgainstPatterns`
+1. Call `GlobMatcher.Resolve` for `context.InputPatterns`
    (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
    on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`context.Kind`, approved terms via
-   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`) and check-against files as
-   the other kind; return early on `IOException` or `InvalidOperationException`.
+   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or `InvalidOperationException`.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule; report
    each conflict via `context.WriteError` and return early if any are found.
 4. Construct a `MarkdownOptions` bag from `context` properties and call
