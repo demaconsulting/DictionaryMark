@@ -87,3 +87,27 @@ level is applied correctly at depth 2. This scenario is tested by
 `SectionHeading = "Glossary"` produces `###### Glossary`, confirming that the maximum heading depth is
 rendered correctly and clamping to the valid range of 1–6 does not corrupt the output. This scenario is
 tested by `MarkdownFormatter_Format_HeadingDepth6_EmitsLevelSixHeading`.
+
+**MarkdownFormatter_Format_InvisibleEntry_IsOmitted**: Invisible entries are not rendered. This
+scenario is tested by `MarkdownFormatter_Format_InvisibleEntry_IsOmitted`.
+
+**MarkdownFormatter_Format_Metadata_IsNotRendered**: `pos` and `variants` are not rendered. This
+scenario is tested by `MarkdownFormatter_Format_Metadata_IsNotRendered`.
+
+**MarkdownFormatter_FormatDeprecated_TableWithWhere_HasThreeColumns**: The `where` column appears
+when any entry has a value. This scenario is tested by
+`MarkdownFormatter_FormatDeprecated_TableWithWhere_HasThreeColumns`.
+
+**MarkdownFormatter_FormatDeprecated_TableWithoutWhere_HasTwoColumns**: The `where` column is
+omitted otherwise. This scenario is tested by
+`MarkdownFormatter_FormatDeprecated_TableWithoutWhere_HasTwoColumns`.
+
+**MarkdownFormatter_FormatDeprecated_CustomHeaders_AreUsed**: Custom headers are used. This scenario
+is tested by `MarkdownFormatter_FormatDeprecated_CustomHeaders_AreUsed`.
+
+**MarkdownFormatter_FormatDeprecated_BulletsAndPipes_AreRendered**: Bullets render with the optional
+where suffix and pipes are escaped. This scenario is tested by
+`MarkdownFormatter_FormatDeprecated_BulletsAndPipes_AreRendered`.
+
+**MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow**: An empty list yields an `N/A` row.
+This scenario is tested by `MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow`.

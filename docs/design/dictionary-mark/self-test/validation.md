@@ -4,7 +4,7 @@
 
 #### Purpose
 
-`Validation.Run` prints a system information header, executes six fixed in-process self-tests,
+`Validation.Run` prints a system information header, executes eight fixed in-process self-tests,
 prints a pass/fail summary, and optionally writes results to a TRX or JUnit XML file. Each test
 runs the real `Program` logic with temporary YAML input files and a log file to capture output.
 `Validation` is a static class with no instance state.
@@ -21,7 +21,7 @@ optionally writes a results file.
 - *Parameters*: `Context context` — provides output channels and the optional results file path.
 - *Returns*: `void`.
 - *Preconditions*: `context` is non-null.
-- *Postconditions*: All six tests executed; summary printed; results file written if
+- *Postconditions*: All eight tests executed; summary printed; results file written if
   `context.ResultsFile` is set; `context.WriteError` called for each failed test.
 
 Throws `ArgumentNullException` when `context` is null.
@@ -82,6 +82,22 @@ contains the custom header text.
 definitions, runs `Program.Run`, and verifies the exit code is non-zero (conflict detected).
 
 - *Parameters*: `Context context` — outer context; `TestResults testResults` — accumulator.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunHiddenEntryTest** *(private)*: Generates output from a glossary with a `visible: false` entry
+and verifies the entry is omitted while visible entries remain.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunDeprecatedTableTest** *(private)*: Generates a deprecated-terms table with `--kind deprecated`
+and verifies the `Not used`/`Use instead` columns and rows.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
 - *Returns*: `void`.
 - *Preconditions*: None.
 - *Postconditions*: One `TestResult` added.

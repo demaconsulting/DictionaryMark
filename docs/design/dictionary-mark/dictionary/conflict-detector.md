@@ -4,12 +4,13 @@
 
 #### Purpose
 
-`ConflictDetector.Detect` iterates over all entries, tracking the first definition seen for each
-term (case-insensitive). If a later entry has the same term but a different definition
-(case-sensitive comparison), a conflict message is generated. Same term and same definition is
-treated as allowed deduplication. Each conflicting term is reported at most once, using a separate
-`reported` `HashSet` to suppress duplicate messages when more than two entries share the same
-conflicting term. `ConflictDetector` is a static class.
+`ConflictDetector.Detect` groups approved entries by term (case-insensitive, after whitespace
+normalization) and orders each group by source path (ordinal) so the result does not depend on input
+order. It compares the first entry of each group with the others: any difference in `definition`
+(ordinal), `pos` (set), `variants` (case-insensitive set) or `visible` is a conflict. Identical
+duplicates collapse. Deprecated entries are grouped the same way and compared on `use` and `where`.
+Approved-versus-deprecated conflicts are not checked here (Ste100Mark enforces them). There is no
+override precedence. `ConflictDetector` is a static class.
 
 #### Data Model
 
@@ -17,19 +18,18 @@ N/A - static class with no instance state.
 
 #### Key Methods
 
-**Detect**: Scans all entries for terms that have two or more distinct definitions.
+**Detect**: Applies the shared conflict rule.
 
-- *Parameters*: `IEnumerable<DictionaryEntry> entries` — all entries from all loaded YAML files.
-- *Returns*: `IReadOnlyList<string>` — list of human-readable conflict messages (one per conflicting
-  term); empty when no conflicts exist.
+- *Parameters*: `IEnumerable<DictionaryEntry> entries` — approved entries from all loaded files;
+  `IEnumerable<DeprecatedEntry>? deprecated` — optional deprecated entries.
+- *Returns*: `IReadOnlyList<string>` — sorted (ordinal) conflict messages; empty when none.
 - *Preconditions*: `entries` is non-null.
-- *Postconditions*: Returns a list with one message per conflicting term; same term and same
-  definition produces no message.
+- *Postconditions*: Messages have these shapes (sources are full resolved paths):
+  `Conflict: term '{T}' differs in {fields} between {A} and {B}.` (fields in the order definition,
+  pos, variants, visible), `Conflict: deprecated term '{T}' differs in use, where between {A} and
+  {B}.` An entry without a source is shown as `<unknown>`.
 
-Term comparison is case-insensitive; definition comparison is case-sensitive (ordinal). Uses a
-method-local dictionary mapping each term to its first-seen definition, and a method-local `HashSet`
-tracking already-reported terms to suppress duplicate messages. Thread-safe — all state is
-method-local.
+Thread-safe — all state is method-local.
 
 #### Error Handling
 
@@ -41,11 +41,11 @@ method-local.
 
 #### Dependencies
 
-- **DictionaryEntry** — Dictionary subsystem data model; carries the term and definition strings
-  scanned for conflicts.
+- **DictionaryEntry**, **DeprecatedEntry** — Dictionary subsystem data models; carry the fields
+  compared for conflicts and the source path named in messages.
 
 #### Callers
 
-- **DictionaryGenerator.Generate** — calls `ConflictDetector.Detect(allEntries)` after all YAML
-  files have been loaded; iterates the returned list and calls `context.WriteError` for each
+- **DictionaryGenerator.Generate** — calls `ConflictDetector.Detect(approved, deprecated)` after all
+  YAML files have been loaded; iterates the returned list and calls `context.WriteError` for each
   message, then returns early without generating output.

@@ -26,7 +26,7 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 /// <summary>
 ///     Matches files using glob patterns.
 /// </summary>
-internal static class GlobMatcher
+internal static partial class GlobMatcher
 {
     /// <summary>
     ///     Gets files matching the specified glob patterns.
@@ -91,6 +91,98 @@ internal static class GlobMatcher
 
         return [.. files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
     }
+
+    /// <summary>
+    ///     Resolves input patterns strictly: every pattern must produce at least one file.
+    /// </summary>
+    /// <remarks>
+    ///     Each pattern first has <c>${VAR}</c> environment-variable references expanded. A pattern
+    ///     containing <c>*</c> or <c>?</c> is treated as a glob and must match at least one file. Any
+    ///     other pattern is a literal path resolved with <see cref="Path.GetFullPath(string)"/> (absolute,
+    ///     relative and UNC paths are supported) and must exist. This method never silently produces an
+    ///     empty result for a pattern that matches nothing.
+    /// </remarks>
+    /// <param name="patterns">Patterns to resolve. Must not be null; elements must be non-empty.</param>
+    /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="patterns"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when an element is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or a
+    ///     literal directory or file does not exist; the message names the pattern or full path.
+    /// </exception>
+    public static IReadOnlyList<string> Resolve(IEnumerable<string> patterns)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(patterns);
+
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pattern in patterns)
+        {
+            if (string.IsNullOrEmpty(pattern))
+            {
+                throw new ArgumentException("Pattern cannot be null or empty.", nameof(patterns));
+            }
+
+            var expanded = ExpandEnvironmentVariables(pattern);
+
+            if (expanded.Contains('*') || expanded.Contains('?'))
+            {
+                var matches = GetFiles([expanded]);
+                if (matches.Count == 0)
+                {
+                    throw new InvalidOperationException($"Input pattern '{pattern}' matched no files.");
+                }
+
+                foreach (var match in matches)
+                {
+                    files.Add(match);
+                }
+
+                continue;
+            }
+
+            var fullPath = Path.GetFullPath(expanded);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                throw new InvalidOperationException($"Input directory '{directory}' was not found (pattern '{pattern}').");
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                throw new InvalidOperationException($"Input file '{fullPath}' was not found.");
+            }
+
+            files.Add(fullPath);
+        }
+
+        return [.. files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
+    ///     Expands <c>${VAR}</c> environment-variable references in a pattern.
+    /// </summary>
+    /// <param name="pattern">The pattern to expand.</param>
+    /// <returns>The pattern with every reference replaced by the variable value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when a referenced variable is undefined or empty.</exception>
+    private static string ExpandEnvironmentVariables(string pattern) =>
+        EnvironmentVariableRegex().Replace(pattern, match =>
+        {
+            var name = match.Groups[1].Value;
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException(
+                    $"Environment variable '{name}' referenced by glossary path '{pattern}' is not defined.");
+            }
+
+            return value;
+        });
+
+    /// <summary>Matches <c>${VAR}</c> references.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")]
+    private static partial System.Text.RegularExpressions.Regex EnvironmentVariableRegex();
 
     /// <summary>
     ///     Matches an absolute path glob pattern against the file system.

@@ -68,6 +68,8 @@ internal static partial class Validation
         RunTableGenerationTest(context, testResults);
         RunCustomHeadersTest(context, testResults);
         RunConflictDetectionTest(context, testResults);
+        RunHiddenEntryTest(context, testResults);
+        RunDeprecatedTableTest(context, testResults);
 
         // Calculate totals
         var totalTests = testResults.Results.Count;
@@ -471,6 +473,127 @@ internal static partial class Validation
                 test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
                 test.ErrorMessage = "Conflict was not detected (expected non-zero exit code)";
                 context.WriteError($"✗ {TestName} - Failed: Conflict was not detected");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that an entry with <c>visible: false</c> is omitted from the generated Markdown.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunHiddenEntryTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_HiddenEntry";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("input.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
+
+            File.WriteAllText(
+                inputFile,
+                $"Alpha: First letter{Environment.NewLine}Prime:{Environment.NewLine}  definition: Hidden definition{Environment.NewLine}  pos: verb{Environment.NewLine}  visible: false{Environment.NewLine}");
+
+            var args = new[] { SilentArg, InputArg, inputFile, "--output", outputFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains("Alpha") && !content.Contains("Prime"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Hidden entry was rendered or visible entry was missing";
+                    context.WriteError($"✗ {TestName} - Failed: Hidden entry was rendered or visible entry was missing");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that <c>--kind deprecated</c> generates a deprecated-terms table.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunDeprecatedTableTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_DeprecatedTable";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("deprecated.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
+
+            File.WriteAllText(inputFile, $"bench mode: {{ use: Test Mode, where: Product A }}{Environment.NewLine}");
+
+            var args = new[] { SilentArg, InputArg, inputFile, "--kind", "deprecated", "--format", "table", "--output", outputFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains("| Not used") && content.Contains("| Use instead") &&
+                    content.Contains("Where it was used") && content.Contains("bench mode") && content.Contains("Test Mode"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Expected deprecated table content not found in output";
+                    context.WriteError($"✗ {TestName} - Failed: Expected deprecated table content not found in output");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
             }
         }
         // Generic catch is justified here as this is a test framework - any exception should be

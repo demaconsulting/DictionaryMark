@@ -114,7 +114,9 @@ public class DictionaryGeneratorTests
 
             // Assert
             Assert.Equal(1, context.ExitCode);
-            Assert.Contains("Conflict: term 'API' has multiple definitions", errWriter.ToString());
+            Assert.Contains("Conflict: term 'API' differs in definition between", errWriter.ToString());
+            Assert.Contains(tmpFile1, errWriter.ToString());
+            Assert.Contains(tmpFile2, errWriter.ToString());
         }
         finally
         {
@@ -143,5 +145,136 @@ public class DictionaryGeneratorTests
         var fileContent = File.ReadAllText(tmpOutputFile);
         Assert.Contains("API", fileContent);
         Assert.Equal(0, context.ExitCode);
+    }
+
+    /// <summary>Runs the generator with the arguments and returns stdout, stderr and the exit code.</summary>
+    private static (string Out, string Err, int ExitCode) Run(params string[] args)
+    {
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        try
+        {
+            using var outWriter = new StringWriter();
+            using var errWriter = new StringWriter();
+            Console.SetOut(outWriter);
+            Console.SetError(errWriter);
+            using var context = Context.Create(args);
+            DictionaryGenerator.Generate(context);
+            return (outWriter.ToString(), errWriter.ToString(), context.ExitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+    }
+
+    /// <summary>Test that hidden entries are omitted from the output but still conflict.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_HiddenEntry_OmittedFromOutput()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var file = tmpDir.GetFilePath("terms.yaml");
+        File.WriteAllText(file, "Alpha: First\nprime:\n  definition: Hidden\n  pos: verb\n  visible: false\n");
+
+        // Act
+        var (output, _, exitCode) = Run("--input", file);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Alpha", output);
+        Assert.DoesNotContain("prime", output);
+    }
+
+    /// <summary>Test that a hidden entry without a definition is an error.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_HiddenEntryWithoutDefinition_ReportsError()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var file = tmpDir.GetFilePath("terms.yaml");
+        File.WriteAllText(file, "prime:\n  pos: verb\n  visible: false\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--input", file);
+
+        // Assert: the error names the term and the file
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Term 'prime'", err);
+        Assert.Contains(file, err);
+    }
+
+    /// <summary>Test the deprecated table output.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_DeprecatedKind_WritesTable()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var file = tmpDir.GetFilePath("deprecated.yaml");
+        File.WriteAllText(file, "bench mode: { use: Test Mode, where: Product A }\nE-stop: { use: emergency stop }\n");
+
+        // Act
+        var (output, _, exitCode) = Run("--input", file, "--kind", "deprecated", "--format", "table");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("| Not used | Use instead | Where it was used |", output);
+        Assert.Contains("| bench mode | Test Mode | Product A |", output);
+    }
+
+    /// <summary>Test that an explicit term header applies to the deprecated kind.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var file = tmpDir.GetFilePath("deprecated.yaml");
+        File.WriteAllText(file, "bench mode: { use: Test Mode, where: Product A }\n");
+
+        // Act
+        var (output, _, _) = Run(
+            "--input", file, "--kind", "deprecated", "--format", "table",
+            "--term-header", "Avoid", "--use-header", "Prefer", "--where-header", "Seen in");
+
+        // Assert
+        Assert.Contains("| Avoid | Prefer | Seen in |", output);
+    }
+
+    /// <summary>Test that a missing file and an unmatched glob are errors naming the pattern.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_MissingInputs_ReportErrors()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var missing = tmpDir.GetFilePath("missing.yaml");
+        var glob = Path.Combine(tmpDir.DirectoryPath, "*.yaml");
+
+        // Act
+        var (_, fileErr, fileExit) = Run("--input", missing);
+        var (_, globErr, globExit) = Run("--input", glob);
+
+        // Assert
+        Assert.Equal(1, fileExit);
+        Assert.Contains(missing, fileErr);
+        Assert.Equal(1, globExit);
+        Assert.Contains($"Input pattern '{glob}' matched no files", globErr);
+    }
+
+    /// <summary>Test that one missing pattern fails even when another matches.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_OneMissingPattern_Fails()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var good = tmpDir.GetFilePath("good.yaml");
+        File.WriteAllText(good, "Alpha: First\n");
+
+        // Act
+        var (output, _, exitCode) = Run("--input", good, "--input", tmpDir.GetFilePath("none*.yaml"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Equal(string.Empty, output);
     }
 }

@@ -292,4 +292,122 @@ public class MarkdownFormatterTests
         // Assert: level-6 heading present
         Assert.Contains("###### Glossary", result);
     }
+
+    /// <summary>Test that invisible entries are omitted from bullets and table.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_InvisibleEntry_IsOmitted()
+    {
+        // Arrange: one visible and one hidden entry
+        DictionaryEntry[] entries =
+        [
+            new("Alpha", "First", null, null, true, "a.yaml"),
+            new("prime", "Hidden", ["verb"], null, false, "a.yaml")
+        ];
+
+        // Act
+        var bullets = MarkdownFormatter.Format(entries, new MarkdownOptions());
+        var table = MarkdownFormatter.Format(entries, new MarkdownOptions { Format = OutputFormat.Table });
+
+        // Assert
+        Assert.Contains("Alpha", bullets);
+        Assert.DoesNotContain("prime", bullets);
+        Assert.DoesNotContain("prime", table);
+    }
+
+    /// <summary>Test that metadata is never rendered.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_Metadata_IsNotRendered()
+    {
+        // Act
+        var result = MarkdownFormatter.Format(
+            [new DictionaryEntry("bleed valve", "Releases air.", ["noun"], ["bleed-valve"], true, "a.yaml")],
+            new MarkdownOptions());
+
+        // Assert
+        Assert.Equal($"- **bleed valve**: Releases air.{Environment.NewLine}", result);
+    }
+
+    /// <summary>Deprecated entries used by the deprecated formatter tests.</summary>
+    private static readonly DeprecatedEntry[] DeprecatedEntries =
+    [
+        new("bench mode", "Test Mode", "Product A", "a.yaml"),
+        new("E-stop", "emergency stop", null, "a.yaml")
+    ];
+
+    /// <summary>Test the deprecated table with a Where column.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_TableWithWhere_HasThreeColumns()
+    {
+        // Act
+        var result = MarkdownFormatter.FormatDeprecated(
+            DeprecatedEntries, new MarkdownOptions { Format = OutputFormat.Table, TermHeader = "Not used" });
+
+        // Assert
+        var nl = Environment.NewLine;
+        Assert.Equal(
+            $"| Not used | Use instead | Where it was used |{nl}| :--- | :--- | :--- |{nl}| bench mode | Test Mode | Product A |{nl}| E-stop | emergency stop |  |{nl}",
+            result);
+    }
+
+    /// <summary>Test the deprecated table omits the Where column when no entry has one.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_TableWithoutWhere_HasTwoColumns()
+    {
+        // Act
+        var result = MarkdownFormatter.FormatDeprecated(
+            [DeprecatedEntries[1]], new MarkdownOptions { Format = OutputFormat.Table, TermHeader = "Not used" });
+
+        // Assert
+        var nl = Environment.NewLine;
+        Assert.Equal($"| Not used | Use instead |{nl}| :--- | :--- |{nl}| E-stop | emergency stop |{nl}", result);
+    }
+
+    /// <summary>Test custom deprecated headers, heading and alpha sort.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_CustomHeaders_AreUsed()
+    {
+        // Act
+        var result = MarkdownFormatter.FormatDeprecated(
+            DeprecatedEntries,
+            new MarkdownOptions
+            {
+                Format = OutputFormat.Table,
+                TermHeader = "Avoid",
+                UseHeader = "Prefer",
+                WhereHeader = "Seen in",
+                SectionHeading = "Deprecated",
+                SortOrder = SortOrder.Alphabetical
+            });
+
+        // Assert: heading, headers and alphabetical order (bench mode before E-stop)
+        Assert.StartsWith("# Deprecated", result);
+        Assert.Contains("| Avoid | Prefer | Seen in |", result);
+        Assert.True(result.IndexOf("bench mode", StringComparison.Ordinal) < result.IndexOf("E-stop", StringComparison.Ordinal));
+    }
+
+    /// <summary>Test the deprecated bullet rendering and pipe escaping.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_BulletsAndPipes_AreRendered()
+    {
+        // Act
+        var bullets = MarkdownFormatter.FormatDeprecated(DeprecatedEntries, new MarkdownOptions());
+        var table = MarkdownFormatter.FormatDeprecated(
+            [new DeprecatedEntry("a|b", "c|d", null, "x.yaml")], new MarkdownOptions { Format = OutputFormat.Table });
+
+        // Assert
+        var nl = Environment.NewLine;
+        Assert.Equal($"- **bench mode**: Test Mode (where: Product A){nl}- **E-stop**: emergency stop{nl}", bullets);
+        Assert.Contains(@"| a\|b | c\|d |", table);
+    }
+
+    /// <summary>Test the empty deprecated table keeps an N/A row.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow()
+    {
+        // Act
+        var result = MarkdownFormatter.FormatDeprecated([], new MarkdownOptions { Format = OutputFormat.Table });
+
+        // Assert
+        Assert.Contains("| N/A | N/A |", result);
+    }
 }

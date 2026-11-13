@@ -62,13 +62,97 @@ Output:
 | SDK | Software Development Kit |
 ```
 
+## Rich Entries and a Good Glossary
+
+Every approved term needs a non-empty `definition`, either as a plain string or inside an object
+entry. An object entry may also carry `pos` (a part of speech or list of them: `noun`, `verb`,
+`adjective`, `adverb`, `proper-noun`; default `noun`), `variants` (a list of alternative spellings)
+and `visible` (default `true`). A missing or empty definition, a null value or an unknown key is an
+error naming the term and file. Entries with `visible: false` are left out of the output but are
+still checked for conflicts. Here is a complete small glossary, `terms.yaml`:
+
+```yaml
+Test Mode: A mode in which Product A runs self-checks and does not control the process.
+Product A: The main control unit made by Acme.
+Zorbix: A sealed connector that joins the bleed valve to the main line.
+bleed valve:
+  definition: A valve that releases trapped air.
+  pos: noun
+  variants: [bleed-valve]
+  visible: false
+```
+
+```bash
+dictionarymark --input terms.yaml --format table --section Glossary
+```
+
+Output (the hidden `bleed valve` entry is omitted):
+
+```markdown
+# Glossary
+
+| Term | Definition |
+| :--- | :--- |
+| Test Mode | A mode in which Product A runs self-checks and does not control the process. |
+| Product A | The main control unit made by Acme. |
+| Zorbix | A sealed connector that joins the bleed valve to the main line. |
+```
+
+With `--format bullets` the output is:
+
+```markdown
+# Glossary
+
+- **Test Mode**: A mode in which Product A runs self-checks and does not control the process.
+- **Product A**: The main control unit made by Acme.
+- **Zorbix**: A sealed connector that joins the bleed valve to the main line.
+```
+
+## Deprecated Terms
+
+Use `--kind deprecated` for a file of terms that must not be used. Each entry needs `use` and may
+have `where`; there is no definition. Given `deprecated.yaml`:
+
+```yaml
+bench mode: { use: Test Mode, where: Product A }
+Zorbix unit: { use: Zorbix }
+```
+
+```bash
+dictionarymark --input deprecated.yaml --kind deprecated --format table \
+  --section "Deprecated Terms" --depth 2
+```
+
+Output:
+
+```markdown
+## Deprecated Terms
+
+| Not used | Use instead | Where it was used |
+| :--- | :--- | :--- |
+| bench mode | Test Mode | Product A |
+| Zorbix unit | Zorbix |  |
+```
+
+The `Where it was used` column appears only when at least one entry has a `where` value. The
+headers can be changed with `--term-header`, `--use-header` and `--where-header`. With
+`--format bullets` the output is `- **bench mode**: Test Mode (where: Product A)` and
+`- **Zorbix unit**: Zorbix`.
+
 ## Multiple Input Files
 
-Merge entries from multiple YAML files (conflicting entries produce a clear error):
+Merge entries from multiple YAML files:
 
 ```bash
 dictionarymark --input terms/*.yaml --input extra/more-terms.yaml --output docs/glossary.md
 ```
+
+Input patterns may contain `${VAR}` environment variables. A pattern that matches no file, a
+literal file that does not exist and an undefined variable are all errors.
+
+The same term in several files is fine when the entries are identical. Entries that differ in
+`definition`, `pos`, `variants` or `visible` conflict. DictionaryMark does not check approved terms
+against deprecated terms; Ste100Mark enforces approved-versus-deprecated conflicts.
 
 ## Sorted Output
 
@@ -112,10 +196,11 @@ non-zero exit code. For example:
 Error: Unsupported argument '--unknown'
 ```
 
-Conflicting definitions for the same term across input files also produce a clear error:
+Conflicting entries for the same term across input files also produce a clear error naming the
+differing fields and both files:
 
 ```text
-Error: Conflict: term 'API' has multiple definitions
+Error: Conflict: term 'API' differs in definition between C:\a\one.yaml and C:\a\two.yaml.
 ```
 
 This behavior enables automated scripts and CI/CD pipelines to detect and surface misconfiguration
@@ -155,6 +240,8 @@ The self-validation suite runs the following tests:
 | `DictionaryMark_TableGeneration`   | Markdown table is generated correctly from a YAML input file      |
 | `DictionaryMark_CustomHeaders`     | `--term-header` and `--def-header` override the table column text |
 | `DictionaryMark_ConflictDetection` | Conflicting definitions across files are detected and reported    |
+| `DictionaryMark_HiddenEntry`       | Entries with `visible: false` are omitted from the output         |
+| `DictionaryMark_DeprecatedTable`   | A deprecated-terms table is generated with `--kind deprecated`    |
 
 ### Heading Depth
 
@@ -191,6 +278,9 @@ The following command-line options are supported:
 | `--term-header <header>`                                | Term column header for table format (default: `Term`)             |
 | `--def-header <header>`, `--definition-header <header>` | Definition column header for table format (default: `Definition`) |
 | `--sort <order>`                                        | Sort order: `file` (default) or `alpha`                           |
+| `--kind <kind>`                                         | Input kind: `terms` (default) or `deprecated`                     |
+| `--use-header <header>`                                 | Deprecated "use" column header (default: `Use instead`)           |
+| `--where-header <header>`                               | Deprecated "where" column header (default: `Where it was used`)   |
 
 # Examples
 

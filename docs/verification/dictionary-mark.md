@@ -66,6 +66,11 @@ the tool must produce a Markdown table of term–definition pairs with the corre
 separators and alignment. This ensures the table output mode meets formatting requirements.
 This scenario is tested by `DictionaryMark_Generate_TableFormat_OutputsTable`.
 
+**DeprecatedKind**: When `--kind deprecated` is provided with a YAML file of deprecated entries,
+the tool must produce a table with the "Use instead" and "Where it was used" columns and exit
+with code zero. This ensures the deprecated-terms output requirement is satisfied.
+This scenario is tested by `DictionaryMark_Generate_DeprecatedKind_OutputsDeprecatedTable`.
+
 **OutputFile**: When the `--output` flag is provided with a file path, the tool must write the
 generated Markdown to that file rather than to stdout. This ensures the tool can be integrated
 into file-based documentation pipelines.

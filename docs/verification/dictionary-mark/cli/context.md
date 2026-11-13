@@ -211,3 +211,14 @@ list when no `--input` flag is supplied. This scenario is tested by
 **Context_Create_DefaultSort_IsFileOrder**: Verifies that `SortBy` defaults to
 `SortOrder.FileOrder` when `--sort` is not supplied. This scenario is tested by
 `Context_Create_DefaultSort_IsFileOrder`.
+
+**Context_Create_Defaults_KindTermsAndHeaders**: Verifies `Kind` defaults to terms and the use/where
+headers take their defaults. This scenario is tested by
+`Context_Create_Defaults_KindTermsAndHeaders`.
+
+**Context_Create_DeprecatedOptions_AreParsed**: Verifies `--kind deprecated`, `--use-header`,
+and `--where-header` are parsed. This scenario is tested by
+`Context_Create_DeprecatedOptions_AreParsed`.
+
+**Context_Create_InvalidKind_ThrowsArgumentException**: Verifies an unrecognized `--kind` value is
+rejected. This scenario is tested by `Context_Create_InvalidKind_ThrowsArgumentException`.

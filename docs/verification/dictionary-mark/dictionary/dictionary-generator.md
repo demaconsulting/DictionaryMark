@@ -42,3 +42,23 @@ confirming the empty-pattern error path. This scenario is tested by
 specified, `Generate` creates the output file containing formatted Markdown and exits with code 0,
 confirming the file-output routing path as an alternative to writing to standard output. This scenario
 is tested by `DictionaryGenerator_Generate_OutputFile_WritesToFile`.
+
+**DictionaryGenerator_Generate_HiddenEntry_OmittedFromOutput**: A `visible: false` entry is omitted
+from output. This scenario is tested by `DictionaryGenerator_Generate_HiddenEntry_OmittedFromOutput`.
+
+**DictionaryGenerator_Generate_HiddenEntryWithoutDefinition_ReportsError**: A hidden entry without a
+definition is an error, since a definition is required regardless of visibility. This scenario is
+tested by `DictionaryGenerator_Generate_HiddenEntryWithoutDefinition_ReportsError`.
+
+**DictionaryGenerator_Generate_DeprecatedKind_WritesTable**: `--kind deprecated` writes the
+deprecated table. This scenario is tested by `DictionaryGenerator_Generate_DeprecatedKind_WritesTable`.
+
+**DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed**: Custom deprecated headers are
+used. This scenario is tested by `DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed`.
+
+**DictionaryGenerator_Generate_MissingInputs_ReportErrors**: Unmatched globs and missing files or
+directories are reported with distinct errors. This scenario is tested by
+`DictionaryGenerator_Generate_MissingInputs_ReportErrors`.
+
+**DictionaryGenerator_Generate_OneMissingPattern_Fails**: One unmatched pattern among several fails
+the run. This scenario is tested by `DictionaryGenerator_Generate_OneMissingPattern_Fails`.

@@ -19,7 +19,8 @@ of the system through a `Context` instance.
 - *Role*: Provider — other subsystems consume this unit
 - *Contract*: `Context.Create(string[] args)` factory method; parsed boolean flags `Version`,
   `Help`, `Silent`, `Validate`; option properties `InputPatterns`, `OutputFile`, `Format`,
-  `SortBy`, `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `ResultsFile`;
+  `SortBy`, `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `ResultsFile`,
+  `Kind`, `UseHeader`, `WhereHeader`, `TermHeaderSpecified`;
   output methods `WriteLine(string)` and `WriteError(string)`; derived property `ExitCode`
   (0 or 1).
 - *Constraints*: `Context` implements `IDisposable`; callers must dispose to release the log file
@@ -40,11 +41,19 @@ of the system through a `Context` instance.
 - *Contract*: `FileOrder` (default) or `Alphabetical`
 - *Constraints*: N/A
 
+**InputKind**: Enum from the Dictionary subsystem used as the type of `context.Kind`.
+
+- *Type*: In-process .NET public API
+- *Role*: Consumer — `Context` references this type defined in the Dictionary subsystem
+- *Contract*: `Terms` (default) or `Deprecated`
+- *Constraints*: N/A
+
 ### Design
 
 `Context` is created once per invocation by `Program.Main` calling `Context.Create(args)`. The
 factory delegates to the private nested `ArgumentParser`, which processes `args` sequentially:
-each recognized flag sets a property; unrecognized flags throw `ArgumentException`. After parsing,
+each recognized flag sets a property; unrecognized flags, and an invalid `--kind` value, throw
+`ArgumentException`. After parsing,
 `Context.Create` copies results into a new `Context` instance (init-only properties) and opens the
 log file if `--log` was specified.
 

@@ -1,7 +1,8 @@
 # DictionaryMark
 
 DictionaryMark is a .NET command-line application that reads YAML dictionary files containing
-term-definition pairs and produces formatted Markdown output as bullet lists or tables.
+term entries (plain definitions or rich entries) and deprecated-term entries, and produces
+formatted Markdown output as bullet lists or tables.
 
 ## Architecture
 
@@ -41,10 +42,15 @@ selection, output formatting, and operational mode.
   (output file), `-f`/`--format <bullets|table>` (output format), `-s`/`--section <text>`
   (section heading), `--term-header <text>` (term column header),
   `--def-header`/`--definition-header <text>` (definition column header),
-  `--sort <file|alpha>` (sort order), `--depth <n>` (heading depth), and
-  `--results`/`--result <file>` (results file). Returns exit code 0 on success, 1 on error.
+  `--sort <file|alpha>` (sort order), `--depth <n>` (heading depth),
+  `--kind <terms|deprecated>` (input kind), `--use-header <text>` (deprecated-table "use instead"
+  column header), `--where-header <text>` (deprecated-table "where used" column header),
+  and `--results`/`--result <file>` (results file). Returns exit code 0 on
+  success, 1 on error.
 - *Constraints*: Input patterns are resolved relative to the working directory at invocation
-  time. All file I/O uses UTF-8 encoding without BOM.
+  time. All file I/O uses UTF-8 encoding without BOM. Input errors are strict: a missing file, an
+  empty glob match, an undefined `${VAR}` reference, an entry without a definition, or an invalid
+  `--kind` value is reported as an error and produces no output.
 
 ## Dependencies
 

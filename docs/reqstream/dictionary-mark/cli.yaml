@@ -19,6 +19,7 @@ sections:
               - DictionaryMark-Context-ResultsFlag
               - DictionaryMark-Context-ResultsFlagMissing
               - DictionaryMark-Context-DepthFlag
+              - DictionaryMark-Context-KindOptions
             tests:
               - CliSubsystem_VersionFlow_ContextAndProgram_DisplaysVersionAndExits
               - CliSubsystem_HelpFlow_ContextAndProgram_DisplaysHelpAndExits

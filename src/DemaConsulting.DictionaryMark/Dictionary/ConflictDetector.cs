@@ -21,56 +21,128 @@
 namespace DemaConsulting.DictionaryMark.Dictionary;
 
 /// <summary>
-///     Detects conflicts in dictionary entries where the same term has different definitions.
+///     Detects conflicts among approved or deprecated dictionary entries.
 /// </summary>
 internal static class ConflictDetector
 {
     /// <summary>
-    ///     Detects conflicts among dictionary entries.
+    ///     Detects conflicts among dictionary entries and, optionally, deprecated entries.
     /// </summary>
     /// <remarks>
-    ///     Same term + same definition is NOT a conflict (it is a duplicate, which is allowed).
-    ///     Same term + different definition IS a conflict.
-    ///     Term comparison is case-insensitive.
-    ///     Definition comparison is case-sensitive (ordinal); two definitions that differ only
-    ///     in casing are treated as different definitions and constitute a conflict.
-    ///     Thread-safe; all state is method-local.
+    ///     Terms are compared case-insensitively. The same term in several places is not a conflict
+    ///     when the entries are identical; it is a conflict when any of definition, pos, variants or
+    ///     visible differs (definition by ordinal comparison; pos and variants as case-insensitive sets).
+    ///     Deprecated entries conflict when use or where differ. Approved-versus-deprecated
+    ///     conflicts are not checked here (Ste100Mark enforces them). Entries are ordered
+    ///     by source before comparison so the result does not depend on input order, and the returned
+    ///     messages are sorted by ordinal comparison. Thread-safe; all state is method-local.
     /// </remarks>
-    /// <param name="entries">The entries to check. Must not be null.</param>
-    /// <returns>List of conflict error messages (empty if no conflicts).</returns>
+    /// <param name="entries">The approved entries to check. Must not be null.</param>
+    /// <param name="deprecated">Optional deprecated entries to check.</param>
+    /// <returns>Sorted list of conflict messages (empty if no conflicts).</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries"/> is null.</exception>
-    public static IReadOnlyList<string> Detect(IEnumerable<DictionaryEntry> entries)
+    public static IReadOnlyList<string> Detect(
+        IEnumerable<DictionaryEntry> entries,
+        IEnumerable<DeprecatedEntry>? deprecated = null)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(entries);
 
-        var termDefinitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var conflicts = new List<string>();
-        // Track reported conflicts to emit at most one message per conflicting term
-        var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var messages = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var entry in entries)
+        var approvedGroups = entries
+            .GroupBy(e => e.Term, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(e => e.Source, StringComparer.Ordinal).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in approvedGroups.Values)
         {
-            if (termDefinitions.TryGetValue(entry.Term, out var existingDefinition))
-            {
-                // Same definition - no conflict (deduplication)
-                if (string.Equals(existingDefinition, entry.Definition, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                // Different definition - conflict
-                if (reported.Add(entry.Term))
-                {
-                    conflicts.Add($"Conflict: term '{entry.Term}' has multiple definitions");
-                }
-            }
-            else
-            {
-                termDefinitions[entry.Term] = entry.Definition;
-            }
+            DetectApprovedConflicts(group, messages);
         }
 
-        return conflicts;
+        var deprecatedGroups = (deprecated ?? [])
+            .GroupBy(e => e.Term, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(e => e.Source, StringComparer.Ordinal).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in deprecatedGroups.Values)
+        {
+            DetectDeprecatedConflicts(group, messages);
+        }
+
+        return [.. messages.Order(StringComparer.Ordinal)];
     }
+
+    /// <summary>
+    ///     Compares every entry of a same-term group with the first one.
+    /// </summary>
+    private static void DetectApprovedConflicts(List<DictionaryEntry> group, HashSet<string> messages)
+    {
+        var first = group[0];
+        foreach (var other in group.Skip(1))
+        {
+            var fields = new List<string>();
+            if (!string.Equals(first.Definition, other.Definition, StringComparison.Ordinal))
+            {
+                fields.Add("definition");
+            }
+
+            if (!first.Pos.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(other.Pos))
+            {
+                fields.Add("pos");
+            }
+
+            if (!first.Variants.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(other.Variants))
+            {
+                fields.Add("variants");
+            }
+
+            if (first.Visible != other.Visible)
+            {
+                fields.Add("visible");
+            }
+
+            if (fields.Count > 0)
+            {
+                messages.Add(
+                    $"Conflict: term '{first.Term}' differs in {string.Join(", ", fields)} between {Name(first.Source)} and {Name(other.Source)}.");
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Compares every deprecated entry of a same-term group with the first one.
+    /// </summary>
+    private static void DetectDeprecatedConflicts(List<DeprecatedEntry> group, HashSet<string> messages)
+    {
+        var first = group[0];
+        foreach (var other in group.Skip(1))
+        {
+            var fields = new List<string>();
+            if (!string.Equals(first.Use, other.Use, StringComparison.Ordinal))
+            {
+                fields.Add("use");
+            }
+
+            if (!string.Equals(first.Where ?? string.Empty, other.Where ?? string.Empty, StringComparison.Ordinal))
+            {
+                fields.Add("where");
+            }
+
+            if (fields.Count > 0)
+            {
+                messages.Add(
+                    $"Conflict: deprecated term '{first.Term}' differs in {string.Join(", ", fields)} between {Name(first.Source)} and {Name(other.Source)}.");
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Renders a source path for a message.
+    /// </summary>
+    private static string Name(string source) => string.IsNullOrEmpty(source) ? "<unknown>" : source;
 }

@@ -58,3 +58,46 @@ enforces a non-null precondition. This scenario is tested by
 containing two entries with the same key (case-insensitive, e.g., `"Term1"` and `"term1"`) causes `Load`
 to throw `InvalidOperationException`, confirming that duplicate keys within the same file are rejected.
 This scenario is tested by `YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException`.
+
+**YamlDictionaryLoader_Load_PlainString_HasDefaultMetadata**: A plain string yields the default
+`pos` and visibility. This scenario is tested by
+`YamlDictionaryLoader_Load_PlainString_HasDefaultMetadata`.
+
+**YamlDictionaryLoader_Load_ObjectEntry_ReadsAllFields**: An object entry's fields are read. This
+scenario is tested by `YamlDictionaryLoader_Load_ObjectEntry_ReadsAllFields`.
+
+**YamlDictionaryLoader_Load_PosString_VisibleString_Accepted**: A single-string `pos` and a string
+`visible` are accepted. This scenario is tested by
+`YamlDictionaryLoader_Load_PosString_VisibleString_Accepted`.
+
+**YamlDictionaryLoader_Load_Term_IsWhitespaceNormalized**: Terms are whitespace-normalized. This
+scenario is tested by `YamlDictionaryLoader_Load_Term_IsWhitespaceNormalized`.
+
+**YamlDictionaryLoader_Load_EmptyDefinitionString_ThrowsNamingTermAndFile**: An empty plain-string
+definition is an error naming the term and file. This scenario is tested by
+`YamlDictionaryLoader_Load_EmptyDefinitionString_ThrowsNamingTermAndFile`.
+
+**YamlDictionaryLoader_Load_NullValue_Throws**: Null values are errors. This scenario is tested by
+`YamlDictionaryLoader_Load_NullValue_Throws`.
+
+**YamlDictionaryLoader_Load_ObjectWithoutDefinition_Throws**: A missing or empty object `definition`
+is an error regardless of `visible`. This scenario is tested by
+`YamlDictionaryLoader_Load_ObjectWithoutDefinition_Throws`.
+
+**YamlDictionaryLoader_Load_UnknownKey_Throws**: Unknown keys are rejected. This scenario is tested
+by `YamlDictionaryLoader_Load_UnknownKey_Throws`.
+
+**YamlDictionaryLoader_Load_InvalidFieldValue_Throws**: Invalid `pos`, `variants` or `visible`
+values are rejected. This scenario is tested by `YamlDictionaryLoader_Load_InvalidFieldValue_Throws`.
+
+**YamlDictionaryLoader_Load_EmptyTerm_Throws**: An empty term is rejected. This scenario is tested
+by `YamlDictionaryLoader_Load_EmptyTerm_Throws`.
+
+**YamlDictionaryLoader_Load_SequenceValue_Throws**: A sequence value is rejected. This scenario is
+tested by `YamlDictionaryLoader_Load_SequenceValue_Throws`.
+
+**YamlDictionaryLoader_LoadDeprecated_ValidEntries_ReturnsEntries**: Valid deprecated entries load.
+This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_ValidEntries_ReturnsEntries`.
+
+**YamlDictionaryLoader_LoadDeprecated_Invalid_Throws**: A missing `use`, unknown key or non-object
+value is rejected. This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_Invalid_Throws`.

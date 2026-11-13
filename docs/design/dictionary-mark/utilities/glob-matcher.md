@@ -34,8 +34,19 @@ pattern, execute against that base; (4) relative pattern — create `Matcher`, e
 `Environment.CurrentDirectory`. Results accumulated in a `HashSet<string>` (case-insensitive)
 then sorted.
 
+**Resolve**: Strict variant of `GetFiles` used by the generator.
+
+- *Parameters*: `IEnumerable<string> patterns`.
+- *Returns*: `IReadOnlyList<string>` — sorted, deduplicated absolute paths.
+- *Postconditions*: `${VAR}` references are expanded first. A pattern that matches nothing, a
+  literal file that does not exist, a missing directory, or an undefined variable throws
+  `InvalidOperationException` with a message naming the pattern or path. Windows UNC paths are
+  supported as literals and as glob bases.
+
 #### Error Handling
 
+- `InvalidOperationException` — thrown by `Resolve` as described above; `DictionaryGenerator`
+  reports it as `Error: {message}`.
 - `ArgumentNullException` — thrown when `patterns` is null.
 - `ArgumentException` — thrown when any individual pattern is null or empty; caller must validate
   pattern values before passing them.

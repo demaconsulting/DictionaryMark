@@ -206,6 +206,24 @@ public class ValidationTests
     }
 
     /// <summary>
+    ///     Test that Run includes a hidden entry test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_HiddenEntryTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_HiddenEntry");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a deprecated table test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_DeprecatedTableTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_DeprecatedTable");
+    }
+
+    /// <summary>
     ///     Runs <see cref="Validation.Run"/> with a silent context and log file and asserts
     ///     that the log output contains a "Passed" entry for the specified self-test name.
     /// </summary>

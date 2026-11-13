@@ -72,3 +72,23 @@ error. This scenario is tested by
 glob pattern such as `*.yaml` matches files in `Environment.CurrentDirectory` when a matching
 file exists there, and that the returned path is absolute. This scenario is tested by
 `GlobMatcher_GetFiles_RelativeGlobPattern_ReturnsMatchingFiles`.
+
+**GlobMatcher_Resolve_LiteralAndGlob_ReturnsFiles**: Literal paths and globs resolve to files. This
+scenario is tested by `GlobMatcher_Resolve_LiteralAndGlob_ReturnsFiles`.
+
+**GlobMatcher_Resolve_GlobWithNoMatch_ThrowsNamingPattern**: A glob matching nothing fails naming
+the pattern. This scenario is tested by `GlobMatcher_Resolve_GlobWithNoMatch_ThrowsNamingPattern`.
+
+**GlobMatcher_Resolve_MissingFileOrDirectory_ThrowsDistinctErrors**: Missing files and directories
+give distinct errors. This scenario is tested by
+`GlobMatcher_Resolve_MissingFileOrDirectory_ThrowsDistinctErrors`.
+
+**GlobMatcher_Resolve_RelativeLiteral_ResolvesFullPath**: A relative literal resolves to a full
+path. This scenario is tested by `GlobMatcher_Resolve_RelativeLiteral_ResolvesFullPath`.
+
+**GlobMatcher_Resolve_EnvironmentVariable_IsExpandedOrFails**: `${VAR}` is expanded, and an
+undefined variable fails. This scenario is tested by
+`GlobMatcher_Resolve_EnvironmentVariable_IsExpandedOrFails`.
+
+**GlobMatcher_Resolve_UncPath_ResolvesOnWindows**: UNC paths resolve on Windows. This scenario is
+tested by `GlobMatcher_Resolve_UncPath_ResolvesOnWindows`.

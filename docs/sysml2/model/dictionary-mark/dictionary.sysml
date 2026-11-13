@@ -16,6 +16,8 @@ package DictionaryMark {
         part conflictDetector : ConflictDetector;
         part markdownFormatter : MarkdownFormatter;
         part dictionaryEntry : DictionaryEntry;
+        part deprecatedEntry : DeprecatedEntry;
+        part inputKind : InputKind;
         part markdownOptions : MarkdownOptions;
         part outputFormat : OutputFormat;
         part sortOrder : SortOrder;
@@ -27,6 +29,28 @@ package DictionaryMark {
         metadata info : SoftwareInfo {
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DictionaryEntry.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Dictionary/DictionaryEntryTests.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
+    }
+
+    part def DeprecatedEntry {
+        doc /* Data model: deprecated term with the replacement to use instead. */
+
+        metadata info : SoftwareInfo {
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/DeprecatedEntry.cs");
+            designFiles = ("docs/design/dictionary-mark/dictionary.md");
+            verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
+            requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");
+        }
+    }
+
+    part def InputKind {
+        doc /* Data model: input kind enum (terms or deprecated). */
+
+        metadata info : SoftwareInfo {
+            sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/InputKind.cs");
             designFiles = ("docs/design/dictionary-mark/dictionary.md");
             verificationFiles = ("docs/verification/dictionary-mark/dictionary.md");
             requirementFiles = ("docs/reqstream/dictionary-mark/dictionary.yaml");

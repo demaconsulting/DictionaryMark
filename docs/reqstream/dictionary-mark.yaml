@@ -138,6 +138,24 @@ sections:
         tests:
           - DictionaryMark_Generate_TableFormat_OutputsTable
 
+      - id: DictionaryMark-System-DeprecatedKind
+        title: >-
+          The tool shall generate a deprecated-terms table when the kind flag is set to deprecated.
+        justification: |
+          Documentation sets need a list of terms that must not be used, together with the
+          preferred replacement and where the term applied, generated from the same YAML tooling
+          as the approved glossary.
+        tags: [system]
+        children:
+          - DictionaryMark-Context-KindOptions
+          - DictionaryMark-DictionaryGenerator-DeprecatedKind
+          - DictionaryMark-DictionaryGenerator-RichEntries
+          - DictionaryMark-YamlLoader-Deprecated
+          - DictionaryMark-Formatter-Deprecated
+          - DictionaryMark-ConflictDetector-Deprecated
+        tests:
+          - DictionaryMark_Generate_DeprecatedKind_OutputsDeprecatedTable
+
       - id: DictionaryMark-System-OutputFile
         title: The tool shall write generated Markdown to a file when the output flag is provided.
         justification: |

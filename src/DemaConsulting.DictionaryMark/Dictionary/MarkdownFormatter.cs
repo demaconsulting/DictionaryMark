@@ -46,9 +46,9 @@ internal static class MarkdownFormatter
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(options);
 
-        // Deduplicate (first occurrence wins, case-insensitive)
+        // Omit invisible entries, then deduplicate (first occurrence wins, case-insensitive)
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var deduped = entries.Where(e => seen.Add(e.Term)).ToList();
+        var deduped = entries.Where(e => e.Visible).Where(e => seen.Add(e.Term)).ToList();
 
         // Sort if requested
         IEnumerable<DictionaryEntry> ordered = options.SortOrder == SortOrder.Alphabetical
@@ -56,14 +56,7 @@ internal static class MarkdownFormatter
             : deduped;
 
         var sb = new System.Text.StringBuilder();
-
-        // Optional section heading at configurable depth (1-6)
-        if (!string.IsNullOrEmpty(options.SectionHeading))
-        {
-            var depth = Math.Clamp(options.HeadingDepth, 1, 6);
-            sb.AppendLine($"{new string('#', depth)} {options.SectionHeading}");
-            sb.AppendLine();
-        }
+        AppendHeading(sb, options);
 
         if (options.Format == OutputFormat.Table)
         {
@@ -75,6 +68,88 @@ internal static class MarkdownFormatter
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    ///     Formats deprecated entries as Markdown text.
+    /// </summary>
+    /// <param name="entries">The deprecated entries to format.</param>
+    /// <param name="options">The formatting options.</param>
+    /// <returns>The formatted Markdown string.</returns>
+    /// <remarks>
+    ///     Deduplicates (first occurrence wins, case-insensitive), optionally sorts, emits the
+    ///     optional section heading, then renders a table (<c>Not used | Use instead</c> plus
+    ///     <c>Where it was used</c> only when any entry has a non-empty where value) or bullets
+    ///     (<c>- **Term**: Use</c> followed by <c> (where: Where)</c> when present). Pipe characters
+    ///     are escaped in table cells. This method is thread-safe.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries"/> or <paramref name="options"/> is null.</exception>
+    public static string FormatDeprecated(IReadOnlyList<DeprecatedEntry> entries, MarkdownOptions options)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(entries);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var deduped = entries.Where(e => seen.Add(e.Term)).ToList();
+
+        IEnumerable<DeprecatedEntry> ordered = options.SortOrder == SortOrder.Alphabetical
+            ? deduped.OrderBy(e => e.Term, StringComparer.OrdinalIgnoreCase)
+            : deduped;
+        var list = ordered.ToList();
+
+        var sb = new System.Text.StringBuilder();
+        AppendHeading(sb, options);
+
+        if (options.Format == OutputFormat.Table)
+        {
+            var showWhere = list.Any(e => !string.IsNullOrEmpty(e.Where));
+            if (showWhere)
+            {
+                sb.AppendLine($"| {EscapePipe(options.TermHeader)} | {EscapePipe(options.UseHeader)} | {EscapePipe(options.WhereHeader)} |");
+                sb.AppendLine("| :--- | :--- | :--- |");
+            }
+            else
+            {
+                sb.AppendLine($"| {EscapePipe(options.TermHeader)} | {EscapePipe(options.UseHeader)} |");
+                sb.AppendLine("| :--- | :--- |");
+            }
+
+            if (list.Count == 0)
+            {
+                sb.AppendLine(showWhere ? "| N/A | N/A | N/A |" : "| N/A | N/A |");
+            }
+
+            foreach (var entry in list)
+            {
+                sb.AppendLine(showWhere
+                    ? $"| {EscapePipe(entry.Term)} | {EscapePipe(entry.Use)} | {EscapePipe(entry.Where ?? string.Empty)} |"
+                    : $"| {EscapePipe(entry.Term)} | {EscapePipe(entry.Use)} |");
+            }
+        }
+        else
+        {
+            foreach (var entry in list)
+            {
+                var suffix = string.IsNullOrEmpty(entry.Where) ? string.Empty : $" (where: {entry.Where})";
+                sb.AppendLine($"- **{entry.Term}**: {entry.Use}{suffix}");
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    ///     Appends the optional section heading (depth clamped to 1-6) followed by a blank line.
+    /// </summary>
+    private static void AppendHeading(System.Text.StringBuilder sb, MarkdownOptions options)
+    {
+        if (!string.IsNullOrEmpty(options.SectionHeading))
+        {
+            var depth = Math.Clamp(options.HeadingDepth, 1, 6);
+            sb.AppendLine($"{new string('#', depth)} {options.SectionHeading}");
+            sb.AppendLine();
+        }
     }
 
     /// <summary>

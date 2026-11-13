@@ -84,3 +84,11 @@ a `.xml` file, `Validation.Run` creates a valid JUnit XML results file containin
 points to a file with an unsupported extension (e.g. `.json`), no results file is created, exit
 code becomes 1, and the log contains "Unsupported results file format". This scenario is tested
 by `Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile`.
+
+**Validation_Run_WithSilentContext_HiddenEntryTestPasses**: Verifies the hidden-entry self-test
+passes (log contains "DictionaryMark_HiddenEntry - Passed"). This scenario is tested by
+`Validation_Run_WithSilentContext_HiddenEntryTestPasses`.
+
+**Validation_Run_WithSilentContext_DeprecatedTableTestPasses**: Verifies the deprecated-table
+self-test passes (log contains "DictionaryMark_DeprecatedTable - Passed"). This scenario is tested
+by `Validation_Run_WithSilentContext_DeprecatedTableTestPasses`.

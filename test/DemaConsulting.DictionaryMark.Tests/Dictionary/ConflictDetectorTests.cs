@@ -156,4 +156,127 @@ public class ConflictDetectorTests
         // Act / Assert: passing null throws ArgumentNullException
         Assert.Throws<ArgumentNullException>(() => ConflictDetector.Detect(null!));
     }
+
+    /// <summary>Creates an entry with metadata and a source.</summary>
+    private static DictionaryEntry Entry(
+        string term, string source, string definition = "Def", string[]? pos = null, string[]? variants = null, bool visible = true) =>
+        new(term, definition, pos, variants, visible, source);
+
+    /// <summary>Test that identical entries from different files are not a conflict.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_IdenticalRichEntries_ReturnsEmpty()
+    {
+        // Act: same term, equal metadata (case-insensitive term, set-equal pos and variants)
+        var result = ConflictDetector.Detect(
+        [
+            Entry("Prime", "a.yaml", pos: ["noun", "verb"], variants: ["Pri"]),
+            Entry("prime", "b.yaml", pos: ["verb", "noun"], variants: ["pri"])
+        ]);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    /// <summary>Test that each differing field is reported by name.</summary>
+    [Theory]
+    [InlineData("definition")]
+    [InlineData("pos")]
+    [InlineData("variants")]
+    [InlineData("visible")]
+    public void ConflictDetector_Detect_DifferingField_ReportsFieldAndBothSources(string field)
+    {
+        // Arrange: the second entry differs only in the named field
+        var second = field switch
+        {
+            "definition" => Entry("prime", "b.yaml", definition: "Other"),
+            "pos" => Entry("prime", "b.yaml", pos: ["verb"]),
+            "variants" => Entry("prime", "b.yaml", variants: ["x"]),
+            _ => Entry("prime", "b.yaml", visible: false)
+        };
+
+        // Act
+        var result = ConflictDetector.Detect([Entry("prime", "a.yaml"), second]);
+
+        // Assert
+        Assert.Equal([$"Conflict: term 'prime' differs in {field} between a.yaml and b.yaml."], result);
+    }
+
+    /// <summary>Test that several differing fields are listed in a fixed order.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_SeveralFields_ListsInFixedOrder()
+    {
+        // Act
+        var result = ConflictDetector.Detect(
+        [
+            Entry("prime", "a.yaml"),
+            Entry("prime", "b.yaml", definition: "Other", pos: ["verb"], visible: false)
+        ]);
+
+        // Assert
+        Assert.Equal(["Conflict: term 'prime' differs in definition, pos, visible between a.yaml and b.yaml."], result);
+    }
+
+    /// <summary>Test that the result does not depend on input order.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_InputOrder_DoesNotChangeResult()
+    {
+        // Arrange
+        var a = Entry("prime", "a.yaml");
+        var b = Entry("prime", "b.yaml", pos: ["verb"]);
+
+        // Act / Assert: both orders give the same message
+        Assert.Equal(ConflictDetector.Detect([a, b]), ConflictDetector.Detect([b, a]));
+    }
+
+    /// <summary>Test that a hidden entry still takes part in conflict detection.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_HiddenEntry_StillConflicts()
+    {
+        // Act: hidden definition differs from the visible one
+        var result = ConflictDetector.Detect(
+        [
+            Entry("prime", "a.yaml", visible: false),
+            Entry("prime", "b.yaml", visible: false, definition: "Other")
+        ]);
+
+        // Assert
+        Assert.Single(result);
+    }
+
+    /// <summary>Test deprecated-versus-deprecated conflicts.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_DeprecatedDiffer_ReportsUseAndWhere()
+    {
+        // Act
+        var result = ConflictDetector.Detect(
+            [],
+            [
+                new DeprecatedEntry("bench mode", "Test Mode", "Product A", "a.yaml"),
+                new DeprecatedEntry("Bench Mode", "Other", null, "b.yaml")
+            ]);
+
+        // Assert
+        Assert.Equal(["Conflict: deprecated term 'bench mode' differs in use, where between a.yaml and b.yaml."], result);
+    }
+
+    /// <summary>Test identical deprecated duplicates collapse.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty()
+    {
+        // Act / Assert
+        Assert.Empty(ConflictDetector.Detect(
+            [],
+            [new DeprecatedEntry("a", "b", null, "x.yaml"), new DeprecatedEntry("A", "b", null, "y.yaml")]));
+    }
+
+    /// <summary>Test that an entry without a source renders as unknown.</summary>
+    [Fact]
+    public void ConflictDetector_Detect_NoSource_RendersUnknown()
+    {
+        // Act
+        var result = ConflictDetector.Detect([new DictionaryEntry("a", "x"), new DictionaryEntry("a", "y")]);
+
+        // Assert
+        Assert.Equal(["Conflict: term 'a' differs in definition between <unknown> and <unknown>."], result);
+    }
 }

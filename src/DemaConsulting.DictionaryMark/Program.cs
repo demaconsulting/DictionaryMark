@@ -181,9 +181,12 @@ internal static class Program
         context.WriteLine("  -o, --output <file>               Output Markdown file (default: stdout)");
         context.WriteLine("  -f, --format <format>             Output format: bullets (default) or table");
         context.WriteLine("  -s, --section <heading>           Section heading text");
-        context.WriteLine("  --term-header <header>            Term column header for table format (default: Term)");
+        context.WriteLine("  --term-header <header>            Term column header for table format (default: Term; Not used for deprecated)");
         context.WriteLine("  --def-header <header>             Definition column header for table format (default: Definition)");
         context.WriteLine("  --sort <order>                    Sort order: file (default) or alpha");
+        context.WriteLine("  --kind <kind>                     Input kind: terms (default) or deprecated");
+        context.WriteLine("  --use-header <header>             Use column header for deprecated table format (default: Use instead)");
+        context.WriteLine("  --where-header <header>           Where column header for deprecated table format (default: Where it was used)");
     }
 
     /// <summary>

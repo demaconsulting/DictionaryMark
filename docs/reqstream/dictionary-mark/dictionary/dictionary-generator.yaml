@@ -39,3 +39,35 @@ sections:
                 tests:
                   - DictionaryGenerator_Generate_SingleYamlFile_WritesToStdout
                   - DictionaryGenerator_Generate_OutputFile_WritesToFile
+
+              - id: DictionaryMark-DictionaryGenerator-StrictInputs
+                title: >-
+                  The DictionaryGenerator shall report an error naming the pattern or full path, and
+                  generate no output, when any input pattern matches no file or a literal file or
+                  directory does not exist.
+                justification: |
+                  A missing input must never silently produce an empty or partial glossary.
+                tests:
+                  - DictionaryGenerator_Generate_MissingInputs_ReportErrors
+                  - DictionaryGenerator_Generate_OneMissingPattern_Fails
+
+              - id: DictionaryMark-DictionaryGenerator-RichEntries
+                title: >-
+                  The DictionaryGenerator shall omit invisible entries from the output, and shall
+                  report an error naming the term and file for an approved entry without a definition.
+                justification: |
+                  Hidden entries are machine-only; a definition is required for every approved term.
+                tests:
+                  - DictionaryGenerator_Generate_HiddenEntry_OmittedFromOutput
+                  - DictionaryGenerator_Generate_HiddenEntryWithoutDefinition_ReportsError
+
+              - id: DictionaryMark-DictionaryGenerator-DeprecatedKind
+                title: >-
+                  The DictionaryGenerator shall generate a deprecated-terms table or bullet list when
+                  the kind is deprecated.
+                justification: |
+                  Deprecated terms are published like approved terms. Approved-versus-deprecated
+                  conflicts are enforced by Ste100Mark.
+                tests:
+                  - DictionaryGenerator_Generate_DeprecatedKind_WritesTable
+                  - DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed
