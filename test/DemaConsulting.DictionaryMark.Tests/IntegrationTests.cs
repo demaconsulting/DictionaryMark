@@ -408,6 +408,26 @@ public class IntegrationTests
         Assert.Contains("| API |", output);
     }
 
+    /// <summary>Test that DictionaryMark generates a deprecated-terms table when --kind deprecated is specified.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_DeprecatedKind_OutputsDeprecatedTable()
+    {
+        // Arrange: YAML input file with one deprecated entry
+        using var tmpDir = new TemporaryDirectory();
+        var tmpFile = tmpDir.GetFilePath("deprecated.yaml");
+        File.WriteAllText(tmpFile, "Zorbix unit: { use: Zorbix, where: Product A }\n");
+
+        // Act: run the tool with deprecated kind in table format
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath, "--input", tmpFile, "--kind", "deprecated", "--format", "table");
+
+        // Assert: deprecated table headers and the entry are present
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Use instead", output);
+        Assert.Contains("Where it was used", output);
+        Assert.Contains("Zorbix unit", output);
+    }
+
     /// <summary>Test that DictionaryMark writes output to a file when --output is specified.</summary>
     [Fact]
     public void DictionaryMark_Generate_WithOutputFile_WritesFile()
