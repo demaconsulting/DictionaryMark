@@ -69,9 +69,9 @@ public sealed class DictionaryEntry
         ArgumentNullException.ThrowIfNull(definition);
         Term = term;
         Definition = definition;
-        var posList = pos?.ToList() ?? [];
-        Pos = posList.Count > 0 ? posList : ["noun"];
-        Variants = variants?.ToList() ?? [];
+        var posList = pos?.ToArray() ?? [];
+        Pos = Array.AsReadOnly(posList.Length > 0 ? posList : ["noun"]);
+        Variants = Array.AsReadOnly(variants?.ToArray() ?? []);
         Visible = visible;
         Source = source ?? string.Empty;
     }

@@ -8,8 +8,9 @@
 occurrence wins, case-insensitive term comparison), optionally sorts alphabetically, and renders the
 entries in the requested format (bullet list or Markdown table). `pos` and `variants` are never
 rendered. `MarkdownFormatter.FormatDeprecated` does the same for deprecated entries: a table with
-the columns `TermHeader` (default `Not used`), `UseHeader` (default `Use instead`) and, only when
-any entry has a non-empty `where`, `WhereHeader` (default `Where it was used`), or bullets of the
+the columns `TermHeader` (the `MarkdownOptions` default is `Term`; the generator overrides it to
+`Not used` for the CLI unless `--term-header` is given), `UseHeader` (default `Use instead`) and,
+only when any entry has a non-empty `where`, `WhereHeader` (default `Where it was used`), or bullets of the
 form `- **{Term}**: {Use}` followed by `(where: {Where})` when present. Pipe characters in values
 are escaped for safe table cell rendering. `MarkdownFormatter` is a static class.
 

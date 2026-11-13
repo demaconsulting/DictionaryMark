@@ -87,6 +87,26 @@ public class DictionaryEntryTests
         Assert.Equal("a.yaml", entry.Source);
     }
 
+    /// <summary>Test that Pos and Variants cannot be mutated through a cast or via the source collections.</summary>
+    [Fact]
+    public void DictionaryEntry_Constructor_Collections_AreReadOnlyCopies()
+    {
+        // Arrange
+        var pos = new List<string> { "verb" };
+        var variants = new List<string> { "alt" };
+
+        // Act
+        var entry = new DictionaryEntry("Term", "Def", pos, variants, true, "a.yaml");
+        pos.Add("noun");
+        variants.Add("other");
+
+        // Assert
+        Assert.Equal(["verb"], entry.Pos);
+        Assert.Equal(["alt"], entry.Variants);
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)entry.Pos).Add("x"));
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)entry.Variants).Add("x"));
+    }
+
     /// <summary>Test that a null definition is rejected.</summary>
     [Fact]
     public void DictionaryEntry_Constructor_NullDefinition_ThrowsArgumentNullException()
