@@ -28,10 +28,12 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 
 ## Features
 
-- 📄 **YAML Dictionary Input** - Read term/definition pairs from YAML files
+- 📄 **YAML Dictionary Input** - Read terms from YAML files, as simple definitions or rich entries
+  (`definition`, `pos`, `variants`, `visible`)
 - 📝 **Markdown Output** - Generate bullet lists or formatted tables
+- 🚫 **Deprecated Terms** - Generate a "Not used / Use instead" table from deprecated-term files
 - 🔍 **Glob Patterns** - Process multiple input files with wildcards
-- ⚔️ **Conflict Detection** - Detect conflicting definitions across files
+- ⚔️ **Conflict Detection** - Detect conflicting entries across files, including approved-vs-deprecated
 - 🎯 **Customizable Output** - Control headings, column headers, sort order, and depth
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
@@ -119,6 +121,10 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--results <file>`             | Write validation results (.trx or .xml)             |
 | `--result <file>`              | Alias for `--results`                               |
 | `--depth <n>`                  | Set heading depth (default: 1, range: 1–6)          |
+| `--kind <kind>`                | Input kind: `terms` (default) or `deprecated`       |
+| `--use-header <header>`        | Deprecated "use" column header                      |
+| `--where-header <header>`      | Deprecated "where" column header                    |
+| `--check-against <pattern>`    | Extra files checked for conflicts only (repeatable) |
 
 ### Examples
 
@@ -182,6 +188,87 @@ Or with `--format bullets`:
 - **SDK**: Software Development Kit
 ```
 
+### A Good Glossary
+
+Every approved term needs a non-empty `definition`, either as a plain string or inside an object
+entry. An object entry may also carry `pos`, `variants` and `visible`. Entries with
+`visible: false` are still checked for conflicts but are left out of the output. Here is a complete
+small glossary, `terms.yaml`:
+
+```yaml
+Test Mode: A mode in which Product A runs self-checks and does not control the process.
+Product A: The main control unit made by Acme.
+Zorbix: A sealed connector that joins the bleed valve to the main line.
+bleed valve:
+  definition: A valve that releases trapped air.
+  pos: noun
+  variants: [bleed-valve]
+  visible: false
+```
+
+Running `dictionarymark --input terms.yaml --format table --section Glossary` produces:
+
+```markdown
+# Glossary
+
+| Term | Definition |
+| :--- | :--- |
+| Test Mode | A mode in which Product A runs self-checks and does not control the process. |
+| Product A | The main control unit made by Acme. |
+| Zorbix | A sealed connector that joins the bleed valve to the main line. |
+```
+
+With `--format bullets` the same file produces:
+
+```markdown
+# Glossary
+
+- **Test Mode**: A mode in which Product A runs self-checks and does not control the process.
+- **Product A**: The main control unit made by Acme.
+- **Zorbix**: A sealed connector that joins the bleed valve to the main line.
+```
+
+The hidden `bleed valve` entry does not appear in either output.
+
+### Deprecated Terms
+
+A deprecated-terms file lists terms that must not be used. Each entry needs `use` and may have
+`where`; there is no definition. Given `deprecated.yaml`:
+
+```yaml
+bench mode: { use: Test Mode, where: Product A }
+Zorbix unit: { use: Zorbix }
+```
+
+Running
+`dictionarymark --input deprecated.yaml --kind deprecated --format table --section "Deprecated Terms" --depth 2`
+produces:
+
+```markdown
+## Deprecated Terms
+
+| Not used | Use instead | Where it was used |
+| :--- | :--- | :--- |
+| bench mode | Test Mode | Product A |
+| Zorbix unit | Zorbix |  |
+```
+
+The `Where it was used` column appears only when at least one entry has a `where` value. With
+`--format bullets` the output is `- **bench mode**: Test Mode (where: Product A)` and
+`- **Zorbix unit**: Zorbix`.
+
+### Conflicts
+
+The same term in several files is fine when the entries are identical. Entries that differ in
+`definition`, `pos`, `variants` or `visible` are an error naming the term, the differing fields and
+both files, for example
+`Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` A term (or an
+approved variant) that is both approved and deprecated is also a conflict. Use `--check-against` to
+load files of the other kind for conflict checking only, for example
+`--input terms.yaml --check-against deprecated.yaml`; they are never rendered. Input paths and
+`--check-against` paths may contain `${VAR}` environment variables, and a pattern that matches no
+file is an error.
+
 ## Building
 
 ```pwsh
@@ -237,6 +324,8 @@ the results of each self-test. Each test proves a specific capability:
 - **`DictionaryMark_TableGeneration`** - Markdown table is generated correctly from YAML input
 - **`DictionaryMark_CustomHeaders`** - `--term-header` and `--def-header` override column text
 - **`DictionaryMark_ConflictDetection`** - Conflicting definitions across files are detected
+- **`DictionaryMark_HiddenEntry`** - Entries with `visible: false` are omitted from the output
+- **`DictionaryMark_DeprecatedTable`** - A deprecated-terms table is generated with `--kind deprecated`
 
 Results can be saved to a file:
 

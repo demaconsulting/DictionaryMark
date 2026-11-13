@@ -45,15 +45,22 @@ internal static class DictionaryGenerator
         // Validate input
         ArgumentNullException.ThrowIfNull(context);
 
-        // Resolve input files
+        // Resolve input files (strict: every pattern must match)
         IReadOnlyList<string> files;
+        IReadOnlyList<string> checkFiles;
         try
         {
-            files = GlobMatcher.GetFiles(context.InputPatterns);
+            files = GlobMatcher.Resolve(context.InputPatterns);
+            checkFiles = GlobMatcher.Resolve(context.CheckAgainstPatterns);
         }
         catch (ArgumentException ex)
         {
             context.WriteError($"Error: Invalid input pattern: {ex.Message}");
+            return;
+        }
+        catch (InvalidOperationException ex)
+        {
+            context.WriteError($"Error: {ex.Message}");
             return;
         }
 
@@ -63,29 +70,19 @@ internal static class DictionaryGenerator
             return;
         }
 
-        // Load all entries from all files
-        var allEntries = new List<DictionaryEntry>();
-        foreach (var file in files)
+        var deprecatedKind = context.Kind == InputKind.Deprecated;
+        var approved = new List<DictionaryEntry>();
+        var deprecated = new List<DeprecatedEntry>();
+
+        // Load the primary files as the selected kind and the check-against files as the other kind
+        if (!LoadFiles(context, files, deprecatedKind, approved, deprecated)
+            || !LoadFiles(context, checkFiles, !deprecatedKind, approved, deprecated))
         {
-            try
-            {
-                var entries = YamlDictionaryLoader.Load(file);
-                allEntries.AddRange(entries);
-            }
-            catch (IOException ex)
-            {
-                context.WriteError($"Error: Failed to read file '{file}': {ex.Message}");
-                return;
-            }
-            catch (InvalidOperationException ex)
-            {
-                context.WriteError($"Error: Invalid YAML in file '{file}': {ex.Message}");
-                return;
-            }
+            return;
         }
 
         // Check for conflicts
-        var conflicts = ConflictDetector.Detect(allEntries);
+        var conflicts = ConflictDetector.Detect(approved, deprecated);
         if (conflicts.Count > 0)
         {
             foreach (var conflict in conflicts)
@@ -102,13 +99,17 @@ internal static class DictionaryGenerator
             Format = context.Format,
             SectionHeading = context.SectionHeading,
             HeadingDepth = context.HeadingDepth,
-            TermHeader = context.TermHeader,
+            TermHeader = context.TermHeaderSpecified || !deprecatedKind ? context.TermHeader : "Not used",
             DefinitionHeader = context.DefinitionHeader,
-            SortOrder = context.SortBy
+            SortOrder = context.SortBy,
+            Kind = context.Kind,
+            UseHeader = context.UseHeader,
+            WhereHeader = context.WhereHeader
         };
 
-        var output = MarkdownFormatter.Format(allEntries, options);
-
+        var output = deprecatedKind
+            ? MarkdownFormatter.FormatDeprecated(DeprecatedForOutput(deprecated, files), options)
+            : MarkdownFormatter.Format(approved.Where(e => files.Contains(e.Source, StringComparer.OrdinalIgnoreCase)).ToList(), options);
         // Write output
         if (context.OutputFile != null)
         {
@@ -126,4 +127,49 @@ internal static class DictionaryGenerator
             context.WriteLine(output);
         }
     }
+
+    /// <summary>
+    ///     Loads files of one kind into the matching list, reporting the first error.
+    /// </summary>
+    /// <returns>True when every file loaded; false after writing an error.</returns>
+    private static bool LoadFiles(
+        Context context,
+        IReadOnlyList<string> files,
+        bool asDeprecated,
+        List<DictionaryEntry> approved,
+        List<DeprecatedEntry> deprecated)
+    {
+        foreach (var file in files)
+        {
+            try
+            {
+                if (asDeprecated)
+                {
+                    deprecated.AddRange(YamlDictionaryLoader.LoadDeprecated(file));
+                }
+                else
+                {
+                    approved.AddRange(YamlDictionaryLoader.Load(file));
+                }
+            }
+            catch (IOException ex)
+            {
+                context.WriteError($"Error: Failed to read file '{file}': {ex.Message}");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                context.WriteError($"Error: Invalid YAML in file '{file}': {ex.Message}");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Selects the deprecated entries that came from the primary input files (not check-against files).
+    /// </summary>
+    private static List<DeprecatedEntry> DeprecatedForOutput(List<DeprecatedEntry> deprecated, IReadOnlyList<string> files) =>
+        [.. deprecated.Where(e => files.Contains(e.Source, StringComparer.OrdinalIgnoreCase))];
 }

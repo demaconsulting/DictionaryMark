@@ -24,14 +24,16 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 ///     Represents a single dictionary entry with a term and its definition.
 /// </summary>
 /// <remarks>
-///     Immutable value type; once constructed, Term and Definition cannot change. Both properties
-///     are guaranteed non-null because the constructor rejects null arguments. Thread-safe for
-///     concurrent reads; no shared mutable state.
+///     Immutable; once constructed, no property can change. Term and Definition are guaranteed
+///     non-null because the constructor rejects null arguments. The optional metadata (part of
+///     speech, variants, visibility, source) has defaults so a flat term/definition entry stays
+///     valid. Thread-safe for concurrent reads; no shared mutable state.
 /// </remarks>
 public sealed class DictionaryEntry
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="DictionaryEntry"/> class.
+    ///     Initializes a new instance of the <see cref="DictionaryEntry"/> class with default metadata
+    ///     (part of speech <c>noun</c>, no variants, visible).
     /// </summary>
     /// <param name="term">The dictionary term. Must not be null.</param>
     /// <param name="definition">The term definition. Must not be null.</param>
@@ -39,11 +41,39 @@ public sealed class DictionaryEntry
     ///     Thrown when <paramref name="term"/> or <paramref name="definition"/> is null.
     /// </exception>
     public DictionaryEntry(string term, string definition)
+        : this(term, definition, null, null, true, string.Empty)
+    {
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DictionaryEntry"/> class with full metadata.
+    /// </summary>
+    /// <param name="term">The dictionary term. Must not be null.</param>
+    /// <param name="definition">The term definition. Must not be null.</param>
+    /// <param name="pos">Canonical parts of speech; null or empty means <c>noun</c>.</param>
+    /// <param name="variants">Extra spellings; null means none.</param>
+    /// <param name="visible">Whether the entry is rendered in the generated Markdown.</param>
+    /// <param name="source">Resolved path of the source file; empty when unknown.</param>
+    /// <exception cref="ArgumentNullException">
+    ///     Thrown when <paramref name="term"/> or <paramref name="definition"/> is null.
+    /// </exception>
+    public DictionaryEntry(
+        string term,
+        string definition,
+        IEnumerable<string>? pos,
+        IEnumerable<string>? variants,
+        bool visible,
+        string source)
     {
         ArgumentNullException.ThrowIfNull(term);
         ArgumentNullException.ThrowIfNull(definition);
         Term = term;
         Definition = definition;
+        var posList = pos?.ToList() ?? [];
+        Pos = posList.Count > 0 ? posList : ["noun"];
+        Variants = variants?.ToList() ?? [];
+        Visible = visible;
+        Source = source ?? string.Empty;
     }
 
     /// <summary>Gets the term; never null.</summary>
@@ -51,4 +81,16 @@ public sealed class DictionaryEntry
 
     /// <summary>Gets the definition; never null.</summary>
     public string Definition { get; }
+
+    /// <summary>Gets the canonical parts of speech; never empty (defaults to <c>noun</c>).</summary>
+    public IReadOnlyList<string> Pos { get; }
+
+    /// <summary>Gets the extra spellings of the term; empty when none.</summary>
+    public IReadOnlyList<string> Variants { get; }
+
+    /// <summary>Gets a value indicating whether the entry is rendered in the generated Markdown.</summary>
+    public bool Visible { get; }
+
+    /// <summary>Gets the resolved path of the source file; empty when unknown.</summary>
+    public string Source { get; }
 }

@@ -17,6 +17,10 @@ sections:
               - DictionaryMark-YamlLoader-FileErrors
               - DictionaryMark-YamlLoader-NullInput
               - DictionaryMark-YamlLoader-DuplicateKeys
+              - DictionaryMark-YamlLoader-RichEntries
+              - DictionaryMark-YamlLoader-DefinitionRequired
+              - DictionaryMark-YamlLoader-FieldValidation
+              - DictionaryMark-YamlLoader-Deprecated
             tests:
               - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
               - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
@@ -31,6 +35,8 @@ sections:
               - DictionaryMark-ConflictDetector-CaseInsensitive
               - DictionaryMark-ConflictDetector-Deduplication
               - DictionaryMark-ConflictDetector-NullRejection
+              - DictionaryMark-ConflictDetector-FieldWise
+              - DictionaryMark-ConflictDetector-Deprecated
             tests:
               - DictionarySubsystem_ConflictDetection_ConflictingEntries_ReturnsConflicts
 
@@ -45,6 +51,8 @@ sections:
               - DictionaryMark-Formatter-SectionHeading
               - DictionaryMark-Formatter-Sorting
               - DictionaryMark-Formatter-Deduplication
+              - DictionaryMark-Formatter-HiddenEntries
+              - DictionaryMark-Formatter-Deprecated
             tests:
               - DictionarySubsystem_BulletGeneration_ValidYaml_GeneratesBulletMarkdown
               - DictionarySubsystem_TableGeneration_ValidYaml_GeneratesTableMarkdown
@@ -58,5 +66,8 @@ sections:
               - DictionaryMark-DictionaryGenerator-FileLoading
               - DictionaryMark-DictionaryGenerator-ConflictReporting
               - DictionaryMark-DictionaryGenerator-OutputRouting
+              - DictionaryMark-DictionaryGenerator-StrictInputs
+              - DictionaryMark-DictionaryGenerator-RichEntries
+              - DictionaryMark-DictionaryGenerator-DeprecatedKind
             tests:
               - DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown

@@ -46,3 +46,33 @@ sections:
                   boundary rather than causing a NullReferenceException deeper in the call stack.
                 tests:
                   - ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException
+
+              - id: DictionaryMark-ConflictDetector-FieldWise
+                title: >-
+                  The ConflictDetector class shall report a conflict when entries for the same term
+                  differ in definition, pos, variants or visible, naming the term, the differing fields
+                  and both source paths, independent of input order.
+                justification: |
+                  Every consumer of the shared glossary must apply the same rule so that a term has one
+                  unambiguous meaning; naming both files lets the author resolve the conflict.
+                tests:
+                  - ConflictDetector_Detect_IdenticalRichEntries_ReturnsEmpty
+                  - ConflictDetector_Detect_DifferingField_ReportsFieldAndBothSources
+                  - ConflictDetector_Detect_SeveralFields_ListsInFixedOrder
+                  - ConflictDetector_Detect_InputOrder_DoesNotChangeResult
+                  - ConflictDetector_Detect_HiddenEntry_StillConflicts
+                  - ConflictDetector_Detect_NoSource_RendersUnknown
+
+              - id: DictionaryMark-ConflictDetector-Deprecated
+                title: >-
+                  The ConflictDetector class shall report a conflict when deprecated entries for the
+                  same term differ in use or where, and when a term or an approved variant is both
+                  approved and deprecated.
+                justification: |
+                  A term cannot be both approved and deprecated, and two deprecation records for one
+                  term must agree.
+                tests:
+                  - ConflictDetector_Detect_DeprecatedDiffer_ReportsUseAndWhere
+                  - ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty
+                  - ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict
+                  - ConflictDetector_Detect_VariantDeprecated_ReportsConflict

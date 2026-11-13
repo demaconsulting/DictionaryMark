@@ -51,6 +51,19 @@ default `Bullets`.
 
 **SortBy**: `SortOrder` — Sort order; set via `--sort`; default `FileOrder`.
 
+**Kind**: `InputKind` — Input kind; set via `--kind <terms|deprecated>` (case-insensitive); default
+`Terms`.
+
+**TermHeaderSpecified**: `bool` — `true` when `--term-header` was passed.
+
+**UseHeader**: `string` — Deprecated "use" column header; `--use-header`; default `"Use instead"`.
+
+**WhereHeader**: `string` — Deprecated "where" column header; `--where-header`; default
+`"Where it was used"`.
+
+**CheckAgainstPatterns**: `List<string>` — Files loaded only for conflict checking via
+`--check-against` (repeatable); never rendered.
+
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
 
 #### Key Methods
@@ -99,9 +112,9 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 `Bullets`); `--section <heading>` (`-s`) → `SectionHeading`; `--term-header <text>` →
 `TermHeader` (default `"Term"`); `--def-header <text>` / `--definition-header <text>` →
 `DefinitionHeader` (default `"Definition"`); `--sort <file|alpha>` → `SortBy` (default
-`FileOrder`).
-
-#### Error Handling
+`FileOrder`); `--kind <terms|deprecated>` → `Kind` (invalid value throws `ArgumentException`);
+`--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`;
+`--check-against <pattern>` → `CheckAgainstPatterns` (repeatable).
 
 - Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized or
   missing its required value; throws `InvalidOperationException` when the specified log file

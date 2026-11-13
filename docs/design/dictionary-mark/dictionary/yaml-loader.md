@@ -4,10 +4,12 @@
 
 #### Purpose
 
-`YamlDictionaryLoader.Load` reads and parses a YAML file, verifies the root node is a
-`YamlMappingNode`, and converts each key-value pair to a `DictionaryEntry`. It enforces
-flat-mapping structure — both keys and values must be scalar nodes — and detects duplicate keys
-within the same file using a case-insensitive hash set. `YamlDictionaryLoader` is a static class.
+`YamlDictionaryLoader.Load` reads and parses a YAML file of approved terms, verifies the root node is a
+`YamlMappingNode`, and converts each key-value pair to a `DictionaryEntry`. A value is either a
+definition string or an object with `definition`, `pos`, `variants` and `visible`. `LoadDeprecated`
+does the same for deprecated terms (objects with `use` and optional `where`). Terms are
+whitespace-normalized and duplicate keys within a file are detected case-insensitively.
+`YamlDictionaryLoader` is a static class.
 
 #### Data Model
 
@@ -18,24 +20,32 @@ N/A - static class with no instance state.
 **Load**: Reads the file at `filePath`, parses the YAML, and returns the entries in file order.
 
 - *Parameters*: `string filePath` — absolute or relative path to a YAML file.
-- *Returns*: `IReadOnlyList<DictionaryEntry>` — ordered list of `DictionaryEntry` objects, each
-  holding a `Term` (`string`) and `Definition` (`string`); immutable.
+- *Returns*: `IReadOnlyList<DictionaryEntry>` — ordered list of immutable `DictionaryEntry` objects
+  holding `Term`, `Definition`, `Pos` (default `noun`), `Variants`, `Visible` (default true) and
+  `Source` (full path).
 - *Preconditions*: `filePath` is non-null.
-- *Postconditions*: Returns a list of all key-value pairs from the file in document order; throws on
-  any structural or I/O error.
+- *Postconditions*: Returns a list of all entries from the file in document order; throws on any
+  structural, validation or I/O error.
 
-Opens the file, creates a `YamlStream`, calls `Load(TextReader)`, retrieves the first document's
-root node, pattern-matches it to `YamlMappingNode`, then iterates `Children`, pattern-matching each
-key to `YamlScalarNode` (key) and value to `YamlScalarNode` (value). Duplicate keys within the same
-file are rejected. Each valid pair becomes a `DictionaryEntry`.
+`definition` is required for every approved term, regardless of `visible`: a plain-string value must
+be non-empty, and an object value must have a non-empty `definition`. Null values and missing or
+empty definitions are errors naming the term and file. `pos` is one string or a list drawn from
+`noun`, `verb`, `adjective`, `adverb` and `proper-noun` (case-insensitive); `variants` is a list of
+strings (whitespace-normalized, de-duplicated case-insensitively); `visible` is a boolean or the
+strings `true`/`false`. Unknown keys are errors.
+
+**LoadDeprecated**: Same structure for deprecated terms: each value must be an object with a
+required non-empty `use` and an optional `where`; no definition. Returns
+`IReadOnlyList<DeprecatedEntry>`.
 
 #### Error Handling
 
 - `ArgumentNullException` — thrown when `filePath` is null; must be supplied by the caller.
 - `IOException` — thrown when the file cannot be read (not found, access denied, etc.).
 - `InvalidOperationException` — thrown when the YAML root is not a mapping node, a key is
-  non-scalar, a value is non-scalar (nested structure), or a duplicate key is found within the same
-  file.
+  non-scalar or empty, a value is not a string or object, a field is invalid, an unknown key is
+  present, a definition or `use` is missing, or a duplicate key is found within the same file. The
+  message names the term and the file.
 
 The caller (`DictionaryGenerator`) catches `IOException` and `InvalidOperationException`, reports
 them via `context.WriteError`, and returns without generating output.
@@ -44,8 +54,8 @@ them via `context.WriteError`, and returns without generating output.
 
 - **YamlDotNet** — OTS package; `YamlStream`, `YamlMappingNode`, and `YamlScalarNode` APIs used to
   parse the YAML input file.
-- **DictionaryEntry** — Dictionary subsystem data model; output type constructed for each valid
-  key-value pair.
+- **DictionaryEntry**, **DeprecatedEntry** — Dictionary subsystem data models; output types
+  constructed for each valid entry.
 
 #### Callers
 

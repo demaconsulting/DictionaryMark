@@ -77,6 +77,24 @@ sections:
                 tests:
                   - Validation_Run_WithSilentContext_ConflictDetectionTestPasses
 
+              - id: DictionaryMark-Validation-HiddenEntry
+                title: >-
+                  The Validation unit shall confirm that an entry with visible set to false is omitted
+                  from the generated Markdown in the deployment environment.
+                justification: |
+                  Confirms that machine-only entries are kept out of the human-readable glossary.
+                tests:
+                  - Validation_Run_WithSilentContext_HiddenEntryTestPasses
+
+              - id: DictionaryMark-Validation-DeprecatedTable
+                title: >-
+                  The Validation unit shall confirm that the deprecated-terms table is generated
+                  correctly in the deployment environment.
+                justification: |
+                  Confirms that the --kind deprecated output works in the deployment environment.
+                tests:
+                  - Validation_Run_WithSilentContext_DeprecatedTableTestPasses
+
               - id: DictionaryMark-Validation-TrxOutput
                 title: The Validation unit shall write TRX-format results when a .trx results file is specified.
                 justification: |

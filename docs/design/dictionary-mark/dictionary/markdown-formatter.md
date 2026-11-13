@@ -4,10 +4,14 @@
 
 #### Purpose
 
-`MarkdownFormatter.Format` deduplicates entries (first occurrence wins, case-insensitive term
-comparison), optionally sorts alphabetically, and renders the entries in the requested format
-(bullet list or Markdown table). Pipe characters in term and definition values are escaped for safe
-table cell rendering. `MarkdownFormatter` is a static class.
+`MarkdownFormatter.Format` omits entries whose `Visible` is false, deduplicates the rest (first
+occurrence wins, case-insensitive term comparison), optionally sorts alphabetically, and renders the
+entries in the requested format (bullet list or Markdown table). `pos` and `variants` are never
+rendered. `MarkdownFormatter.FormatDeprecated` does the same for deprecated entries: a table with
+the columns `TermHeader` (default `Not used`), `UseHeader` (default `Use instead`) and, only when
+any entry has a non-empty `where`, `WhereHeader` (default `Where it was used`), or bullets of the
+form `- **{Term}**: {Use}` followed by `(where: {Where})` when present. Pipe characters in values
+are escaped for safe table cell rendering. `MarkdownFormatter` is a static class.
 
 #### Data Model
 
@@ -26,6 +30,9 @@ the Dictionary subsystem data model):
 
 **HeadingDepth**: `int` — heading level (1–6) for the section heading; default 1.
 
+**Kind**, **UseHeader**, **WhereHeader**: `InputKind` and `string` values used by
+`FormatDeprecated`; `Kind` is informational for the formatter.
+
 #### Key Methods
 
 **Format**: Returns the formatted Markdown string.
@@ -37,11 +44,18 @@ the Dictionary subsystem data model):
 - *Postconditions*: Returns valid Markdown with all entries deduplicated; an empty entry list
   produces a valid `N/A` table row (not an error).
 
-Processing: (1) Deduplicate — first occurrence of each term (case-insensitive) wins. (2) Sort —
+Processing: (1) Omit invisible entries, then deduplicate — first occurrence of each term (case-insensitive) wins. (2) Sort —
 alphabetical when `options.SortOrder == Alphabetical`; otherwise preserve file order. (3) Emit
 optional section heading when `options.SectionHeading` is non-empty; heading level from
 `options.HeadingDepth` (1–6; values outside range clamped by `Math.Clamp`). (4) Render as bullet
 list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
+
+**FormatDeprecated**: Returns the formatted Markdown string for deprecated entries.
+
+- *Parameters*: `IReadOnlyList<DeprecatedEntry> entries`; `MarkdownOptions options`.
+- *Returns*: `string` — table or bullets, with optional section heading.
+- *Preconditions*: `entries` and `options` are non-null.
+- *Postconditions*: Entries deduplicated; an empty list produces an `N/A` table row.
 
 **FormatBullets** *(private)*: Emits one `- **{Term}**: {Definition}` line per entry.
 

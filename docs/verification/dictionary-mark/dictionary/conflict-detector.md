@@ -50,3 +50,37 @@ the first conflict found. This scenario is tested by
 the `entries` argument causes `Detect` to throw `ArgumentNullException`, confirming that the method
 enforces a non-null precondition. This scenario is tested by
 `ConflictDetector_Detect_NullEntries_ThrowsArgumentNullException`.
+
+**ConflictDetector_Detect_IdenticalRichEntries_ReturnsEmpty**: Identical rich duplicates are not
+conflicts. This scenario is tested by `ConflictDetector_Detect_IdenticalRichEntries_ReturnsEmpty`.
+
+**ConflictDetector_Detect_DifferingField_ReportsFieldAndBothSources**: A difference in definition,
+pos, variants or visible is reported naming the field and both sources. This scenario is tested by
+`ConflictDetector_Detect_DifferingField_ReportsFieldAndBothSources`.
+
+**ConflictDetector_Detect_SeveralFields_ListsInFixedOrder**: Several differing fields are listed in
+a fixed order. This scenario is tested by `ConflictDetector_Detect_SeveralFields_ListsInFixedOrder`.
+
+**ConflictDetector_Detect_InputOrder_DoesNotChangeResult**: Input order does not change the result.
+This scenario is tested by `ConflictDetector_Detect_InputOrder_DoesNotChangeResult`.
+
+**ConflictDetector_Detect_HiddenEntry_StillConflicts**: Hidden entries take part in conflict
+detection. This scenario is tested by `ConflictDetector_Detect_HiddenEntry_StillConflicts`.
+
+**ConflictDetector_Detect_DeprecatedDiffer_ReportsUseAndWhere**: Differing deprecated entries are
+reported. This scenario is tested by `ConflictDetector_Detect_DeprecatedDiffer_ReportsUseAndWhere`.
+
+**ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty**: Identical deprecated duplicates are
+not conflicts. This scenario is tested by
+`ConflictDetector_Detect_DeprecatedIdentical_ReturnsEmpty`.
+
+**ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict**: A term both approved and
+deprecated is a conflict. This scenario is tested by
+`ConflictDetector_Detect_ApprovedAndDeprecated_ReportsConflict`.
+
+**ConflictDetector_Detect_VariantDeprecated_ReportsConflict**: An approved variant that is also
+deprecated is a conflict. This scenario is tested by
+`ConflictDetector_Detect_VariantDeprecated_ReportsConflict`.
+
+**ConflictDetector_Detect_NoSource_RendersUnknown**: A missing source renders as `<unknown>`. This
+scenario is tested by `ConflictDetector_Detect_NoSource_RendersUnknown`.

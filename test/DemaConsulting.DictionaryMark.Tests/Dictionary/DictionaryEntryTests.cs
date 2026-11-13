@@ -58,4 +58,40 @@ public class DictionaryEntryTests
         Assert.Equal("", entry.Term);
         Assert.Equal("", entry.Definition);
     }
+
+    /// <summary>Test that the short constructor applies default metadata.</summary>
+    [Fact]
+    public void DictionaryEntry_Constructor_TermAndDefinition_HasDefaultMetadata()
+    {
+        // Act
+        var entry = new DictionaryEntry("Term", "Def");
+
+        // Assert
+        Assert.Equal(["noun"], entry.Pos);
+        Assert.Empty(entry.Variants);
+        Assert.True(entry.Visible);
+        Assert.Equal("", entry.Source);
+    }
+
+    /// <summary>Test that the full constructor stores the metadata.</summary>
+    [Fact]
+    public void DictionaryEntry_Constructor_FullMetadata_SetsProperties()
+    {
+        // Act
+        var entry = new DictionaryEntry("Term", "Def", ["verb"], ["alt"], false, "a.yaml");
+
+        // Assert
+        Assert.Equal(["verb"], entry.Pos);
+        Assert.Equal(["alt"], entry.Variants);
+        Assert.False(entry.Visible);
+        Assert.Equal("a.yaml", entry.Source);
+    }
+
+    /// <summary>Test that a null definition is rejected.</summary>
+    [Fact]
+    public void DictionaryEntry_Constructor_NullDefinition_ThrowsArgumentNullException()
+    {
+        // Act / Assert
+        Assert.Throws<ArgumentNullException>(() => new DictionaryEntry("Term", null!));
+    }
 }

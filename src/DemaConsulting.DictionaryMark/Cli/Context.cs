@@ -88,6 +88,24 @@ internal sealed class Context : IDisposable
     /// <summary>Gets the sort order (--sort). Default is FileOrder.</summary>
     public SortOrder SortBy { get; private init; } = SortOrder.FileOrder;
 
+    /// <summary>Gets the kind of input (--kind): Terms (default) or Deprecated.</summary>
+    public InputKind Kind { get; private init; } = InputKind.Terms;
+
+    /// <summary>Gets a value indicating whether --term-header was supplied explicitly.</summary>
+    public bool TermHeaderSpecified { get; private init; }
+
+    /// <summary>Gets the "use instead" column header for deprecated table format (--use-header). Default is "Use instead".</summary>
+    public string UseHeader { get; private init; } = "Use instead";
+
+    /// <summary>Gets the "where used" column header for deprecated table format (--where-header). Default is "Where it was used".</summary>
+    public string WhereHeader { get; private init; } = "Where it was used";
+
+    /// <summary>
+    ///     Gets the patterns of the other kind's files used only to check approved-versus-deprecated
+    ///     conflicts (--check-against, repeatable); no output is generated from them.
+    /// </summary>
+    public List<string> CheckAgainstPatterns { get; } = [];
+
     /// <summary>
     ///     Gets the proposed exit code for the application (0 for success, 1 for errors).
     /// </summary>
@@ -134,11 +152,16 @@ internal sealed class Context : IDisposable
             SectionHeading = parser.SectionHeading,
             TermHeader = parser.TermHeader,
             DefinitionHeader = parser.DefinitionHeader,
-            SortBy = parser.SortBy
+            SortBy = parser.SortBy,
+            Kind = parser.Kind,
+            TermHeaderSpecified = parser.TermHeaderSpecified,
+            UseHeader = parser.UseHeader,
+            WhereHeader = parser.WhereHeader
         };
 
         // Copy input patterns
         result.InputPatterns.AddRange(parser.InputPatterns);
+        result.CheckAgainstPatterns.AddRange(parser.CheckAgainstPatterns);
 
         // Open log file if specified
         if (parser.LogFile != null)
@@ -236,6 +259,21 @@ internal sealed class Context : IDisposable
         /// <summary>Gets the sort order.</summary>
         public SortOrder SortBy { get; private set; } = SortOrder.FileOrder;
 
+        /// <summary>Gets the input kind.</summary>
+        public InputKind Kind { get; private set; } = InputKind.Terms;
+
+        /// <summary>Gets a value indicating whether the term header was given explicitly.</summary>
+        public bool TermHeaderSpecified { get; private set; }
+
+        /// <summary>Gets the use column header.</summary>
+        public string UseHeader { get; private set; } = "Use instead";
+
+        /// <summary>Gets the where column header.</summary>
+        public string WhereHeader { get; private set; } = "Where it was used";
+
+        /// <summary>Gets the check-against patterns.</summary>
+        public List<string> CheckAgainstPatterns { get; } = [];
+
         /// <summary>
         ///     Iterates over the argument list, dispatching each token to <see cref="ParseArgument"/> so that
         ///     recognized flags set their corresponding properties and unknown flags throw immediately.
@@ -328,7 +366,32 @@ internal sealed class Context : IDisposable
 
                 case "--term-header":
                     TermHeader = GetRequiredStringArgument(arg, args, index, "a term header");
+                    TermHeaderSpecified = true;
                     return index + 1;
+
+                case "--use-header":
+                    UseHeader = GetRequiredStringArgument(arg, args, index, "a use header");
+                    return index + 1;
+
+                case "--where-header":
+                    WhereHeader = GetRequiredStringArgument(arg, args, index, "a where header");
+                    return index + 1;
+
+                case "--check-against":
+                    CheckAgainstPatterns.Add(GetRequiredStringArgument(arg, args, index, "a file pattern"));
+                    return index + 1;
+
+                case "--kind":
+                    {
+                        var kindValue = GetRequiredStringArgument(arg, args, index, "a kind value (terms or deprecated)");
+                        Kind = kindValue.ToLowerInvariant() switch
+                        {
+                            "terms" => InputKind.Terms,
+                            "deprecated" => InputKind.Deprecated,
+                            _ => throw new ArgumentException($"{arg} requires 'terms' or 'deprecated'", nameof(args))
+                        };
+                        return index + 1;
+                    }
 
                 case "--def-header":
                 case "--definition-header":

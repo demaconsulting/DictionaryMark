@@ -116,3 +116,16 @@ sections:
                 tests:
                   - Context_Create_LogFlag_OpensLogFile
                   - Context_WriteError_WritesToLogFile
+
+              - id: DictionaryMark-Context-KindOptions
+                title: >-
+                  The Context class shall parse the --kind (terms or deprecated), --use-header,
+                  --where-header and repeatable --check-against options, track whether --term-header was
+                  supplied, and reject an invalid --kind value.
+                justification: |
+                  The deprecated-terms output needs its own selector and column headers, and the
+                  approved-versus-deprecated check needs the other kind's files.
+                tests:
+                  - Context_Create_Defaults_KindTermsAndHeaders
+                  - Context_Create_DeprecatedOptions_AreParsed
+                  - Context_Create_InvalidKind_ThrowsArgumentException

@@ -40,6 +40,15 @@ public sealed class MarkdownOptions
     /// <summary>Gets or initializes the definition column header (table format only).</summary>
     public string DefinitionHeader { get; init; } = "Definition";
 
+    /// <summary>Gets or initializes the kind of entries being formatted.</summary>
+    public InputKind Kind { get; init; } = InputKind.Terms;
+
+    /// <summary>Gets or initializes the "use instead" column header (deprecated kind, table format only).</summary>
+    public string UseHeader { get; init; } = "Use instead";
+
+    /// <summary>Gets or initializes the "where used" column header (deprecated kind, table format only).</summary>
+    public string WhereHeader { get; init; } = "Where it was used";
+
     /// <summary>Gets or initializes the sort order.</summary>
     public SortOrder SortOrder { get; init; } = SortOrder.FileOrder;
 }

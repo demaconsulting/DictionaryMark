@@ -42,3 +42,27 @@ sections:
                   Clear error messages help users identify invalid input patterns quickly.
                 tests:
                   - GlobMatcher_GetFiles_NullOrEmptyPattern_ThrowsArgumentException
+
+              - id: DictionaryMark-GlobMatcher-StrictResolve
+                title: >-
+                  The GlobMatcher shall resolve patterns strictly, failing with an error that names the
+                  pattern or full path when a glob matches no file or a literal directory or file does
+                  not exist, and supporting relative, absolute and UNC paths.
+                justification: |
+                  A path or glob that matches nothing must never silently produce an empty glossary.
+                tests:
+                  - GlobMatcher_Resolve_LiteralAndGlob_ReturnsFiles
+                  - GlobMatcher_Resolve_GlobWithNoMatch_ThrowsNamingPattern
+                  - GlobMatcher_Resolve_MissingFileOrDirectory_ThrowsDistinctErrors
+                  - GlobMatcher_Resolve_RelativeLiteral_ResolvesFullPath
+                  - GlobMatcher_Resolve_UncPath_ResolvesOnWindows
+
+              - id: DictionaryMark-GlobMatcher-EnvironmentVariables
+                title: >-
+                  The GlobMatcher shall expand ${VAR} environment-variable references in patterns and
+                  fail with an error naming the variable when it is undefined or empty.
+                justification: |
+                  Environment variables let shared glossary locations differ between machines without
+                  changing command lines.
+                tests:
+                  - GlobMatcher_Resolve_EnvironmentVariable_IsExpandedOrFails

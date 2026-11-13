@@ -56,3 +56,28 @@ sections:
                   - MarkdownFormatter_Format_HeadingDepth1_EmitsLevelOneHeading
                   - MarkdownFormatter_Format_HeadingDepth2_EmitsLevelTwoHeading
                   - MarkdownFormatter_Format_HeadingDepth6_EmitsLevelSixHeading
+
+              - id: DictionaryMark-Formatter-HiddenEntries
+                title: >-
+                  The MarkdownFormatter class shall omit entries whose visible value is false and shall
+                  never render pos or variants.
+                justification: |
+                  Machine-only entries (inflections, aliases) are kept for other tools but must not
+                  appear in the human-readable glossary.
+                tests:
+                  - MarkdownFormatter_Format_InvisibleEntry_IsOmitted
+                  - MarkdownFormatter_Format_Metadata_IsNotRendered
+
+              - id: DictionaryMark-Formatter-Deprecated
+                title: >-
+                  The MarkdownFormatter class shall format deprecated entries as a table with the
+                  columns Not used and Use instead, plus Where it was used only when any entry has a
+                  where value, or as a bullet list, with configurable headers.
+                justification: |
+                  A published list of deprecated terms tells authors which term to use instead.
+                tests:
+                  - MarkdownFormatter_FormatDeprecated_TableWithWhere_HasThreeColumns
+                  - MarkdownFormatter_FormatDeprecated_TableWithoutWhere_HasTwoColumns
+                  - MarkdownFormatter_FormatDeprecated_CustomHeaders_AreUsed
+                  - MarkdownFormatter_FormatDeprecated_BulletsAndPipes_AreRendered
+                  - MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow
