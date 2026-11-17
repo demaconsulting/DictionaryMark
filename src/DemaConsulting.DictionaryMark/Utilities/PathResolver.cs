@@ -110,16 +110,38 @@ internal static partial class PathResolver
     /// <remarks>
     ///     Used for literal (non-glob) paths such as output files and the configuration file. The
     ///     result is a full path with <c>.</c> and <c>..</c> segments collapsed. No file-system access
-    ///     is performed.
+    ///     is performed. A path that the platform rejects as malformed (for example one containing a
+    ///     null character) or too long is reported as an <see cref="InvalidOperationException"/>, so
+    ///     callers handle every user-path problem through a single exception type.
     /// </remarks>
     /// <param name="path">The literal path to resolve. Must not be null.</param>
     /// <param name="baseDirectory">The directory that relative paths are rooted at. Must not be null.</param>
     /// <param name="description">Description of the path used in error messages. Must not be null.</param>
     /// <returns>The normalized full path.</returns>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when a referenced variable is undefined or empty.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when a referenced variable is undefined or empty, or the path is malformed or too
+    ///     long; the message names the description and the original path.
+    /// </exception>
     public static string ResolvePath(string path, string baseDirectory, string description) =>
-        Path.GetFullPath(Combine(path, baseDirectory, description));
+        GetFullPath(Combine(path, baseDirectory, description), path, description);
+
+    /// <summary>
+    ///     Determines whether an exception reports a malformed, unsupported or overlong path.
+    /// </summary>
+    /// <remarks>
+    ///     Gives every caller the same definition of "invalid path" for use in exception filters, so
+    ///     the list of path-validation exceptions raised by <see cref="Path"/>, <see cref="File"/> and
+    ///     <see cref="Directory"/> members is kept in one place. <see cref="ArgumentNullException"/> is
+    ///     excluded because a null argument is a programming error, not a user-supplied path problem.
+    /// </remarks>
+    /// <param name="exception">The exception to classify. Must not be null.</param>
+    /// <returns>
+    ///     True for <see cref="ArgumentException"/> (other than <see cref="ArgumentNullException"/>),
+    ///     <see cref="NotSupportedException"/> and <see cref="PathTooLongException"/>; otherwise false.
+    /// </returns>
+    public static bool IsInvalidPathException(Exception exception) =>
+        exception is (ArgumentException and not ArgumentNullException) or NotSupportedException or PathTooLongException;
 
     /// <summary>
     ///     Resolves a directory path against a base directory and requires the directory to exist.
@@ -140,7 +162,8 @@ internal static partial class PathResolver
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when a referenced variable is undefined, the expanded path contains <c>*</c> or
-    ///     <c>?</c>, or the directory does not exist; the message names the description and path.
+    ///     <c>?</c>, the path is malformed or too long, or the directory does not exist; the message
+    ///     names the description and path.
     /// </exception>
     public static string ResolveExistingDirectory(string path, string baseDirectory, string description)
     {
@@ -158,7 +181,7 @@ internal static partial class PathResolver
         }
 
         // Normalize the path and require the directory to exist
-        var full = Path.GetFullPath(combined);
+        var full = GetFullPath(combined, path, description);
         if (!Directory.Exists(full))
         {
             throw new InvalidOperationException(
@@ -166,6 +189,29 @@ internal static partial class PathResolver
         }
 
         return full;
+    }
+
+    /// <summary>
+    ///     Normalizes a rooted path, reporting a malformed or overlong path with the user's context.
+    /// </summary>
+    /// <param name="combined">The expanded and rooted path to normalize.</param>
+    /// <param name="path">The path as written by the user, quoted in the error message.</param>
+    /// <param name="description">Description of the path used in the error message.</param>
+    /// <returns>The normalized full path.</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when <see cref="Path.GetFullPath(string)"/> rejects the path as malformed, unsupported
+    ///     or too long.
+    /// </exception>
+    private static string GetFullPath(string combined, string path, string description)
+    {
+        try
+        {
+            return Path.GetFullPath(combined);
+        }
+        catch (Exception ex) when (IsInvalidPathException(ex))
+        {
+            throw new InvalidOperationException($"Invalid {description} '{path}': {ex.Message}", ex);
+        }
     }
 
     /// <summary>

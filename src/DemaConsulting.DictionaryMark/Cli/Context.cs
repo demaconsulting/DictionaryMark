@@ -170,8 +170,8 @@ internal sealed class Context : IDisposable
     ///     config file that defines tables, or the column-width count does not match the table shape.
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the root directory is invalid or missing, the config file is missing or invalid, or the
-    ///     specified log file cannot be opened.
+    ///     Thrown when the root directory or config file path is malformed, invalid or missing, the config file is
+    ///     missing or invalid, or the specified log file cannot be opened.
     /// </exception>
     public static Context Create(string[] args)
     {

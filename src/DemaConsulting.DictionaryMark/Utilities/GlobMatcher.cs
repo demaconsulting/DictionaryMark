@@ -104,8 +104,9 @@ internal static partial class GlobMatcher
     /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="patterns"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    ///     Thrown when an element is null or empty, or a glob is rejected by the globbing library
-    ///     (for example a <c>..</c> segment after a wildcard).
+    ///     Thrown when an element is null or empty, a literal path is malformed (for example it contains a
+    ///     null character), or a glob is rejected by the globbing library (for example a <c>..</c> segment
+    ///     after a wildcard).
     /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or a
@@ -137,9 +138,11 @@ internal static partial class GlobMatcher
     /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     /// <exception cref="ArgumentException">
-    ///     Thrown when an element is null or empty, or a glob is rejected by the globbing library
-    ///     (for example a <c>..</c> segment after a wildcard).
+    ///     Thrown when an element is null or empty, a literal path is malformed (for example it contains a
+    ///     null character), or a glob is rejected by the globbing library (for example a <c>..</c> segment
+    ///     after a wildcard).
     /// </exception>
+    /// <exception cref="PathTooLongException">Thrown when a literal path exceeds the platform's maximum length.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or a
     ///     literal directory or file does not exist; the message names the pattern or full path.

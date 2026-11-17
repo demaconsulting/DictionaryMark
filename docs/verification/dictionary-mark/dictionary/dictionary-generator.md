@@ -79,6 +79,22 @@ with its label, the summary `1 of 2 table jobs failed` is written, the exit code
 job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob`.
 
+**DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob**: Verifies that when
+the first job's input pattern contains a null character, the job is reported as an invalid input
+pattern with its label, the exit code is 1, and the second job still writes its output. This
+scenario is tested by `DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob**: Verifies that when the
+first job's output lies beneath an existing file, the write failure is reported with the job label
+and the output path as written, the exit code is 1, and the second job still writes its output.
+This scenario is tested by `DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob**: Verifies on
+Windows (the test returns early on other platforms, where `*` is a valid file-name character) that
+an output path such as `out/*.md`, which normalizes cleanly but is rejected on write, fails only its
+own job and the second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob`.
+
 **DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob**: Verifies that when the first job
 reads a syntactically malformed YAML file, the job is reported as invalid YAML naming the file, writes
 no output, the exit code is 1, and the second job still writes its output. This scenario is tested by

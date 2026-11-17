@@ -461,6 +461,31 @@ public class ConfigFileTests
         Assert.Equal($"Config file '{path}': Directory '{full}' specified by root key 'missing' does not exist.", ex.Message);
     }
 
+    /// <summary>Test that a root with a character invalid on every platform is an error naming the file.</summary>
+    [Fact]
+    public void ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile()
+    {
+        // Arrange: a root containing a null character (YAML "\0" escape in a double-quoted scalar)
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: \"bad\\0dir\"\n");
+
+        // Act / Assert: the malformed path is reported with the file's context rather than escaping
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.StartsWith($"Config file '{path}': Invalid root key 'bad\0dir': ", ex.Message);
+    }
+
+    /// <summary>Test that a config file path with an invalid character is an error naming the path.</summary>
+    [Fact]
+    public void ConfigFile_Load_PathInvalidCharacter_ThrowsNamingFile()
+    {
+        // Arrange: a config file path containing a null character, which is invalid on every platform
+        const string path = "bad\0config.yaml";
+
+        // Act / Assert: the malformed path is reported with the config-file context
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.StartsWith($"Config file '{path}': invalid path: ", ex.Message);
+    }
+
     /// <summary>Test that a root value that is not a non-empty string is rejected.</summary>
     /// <param name="value">The invalid root value.</param>
     [Theory]

@@ -290,6 +290,13 @@ the full path of the directory. These scenarios are tested by
 missing directory (message naming the directory and option), a repeated option, a missing value
 and a whitespace value. These scenarios are tested by the tests of the same names.
 
+**Context_Create_RootFlagInvalidCharacter_ThrowsInvalidOperationException** and
+**Context_Create_ConfigFlagInvalidCharacter_ThrowsInvalidOperationException**: Verify that a
+`--root` or `--config` value containing a null character (invalid on every platform) is reported
+as `InvalidOperationException` naming the option and the value (`Invalid --root option '...'`,
+`Invalid config file path '...'`), so `Program.Main` prints a clean error. These scenarios are
+tested by the tests of the same names.
+
 **Context_Create_RootFlag_AppliedToCommandLineJob**,
 **Context_Create_RootFlag_AppliedToConfigTables**, **Context_Create_RootFlag_OverridesConfigRoot**,
 **Context_Create_ConfigRoot_AppliedToConfigTables**, **Context_Create_ConfigRoot_AppliedToCommandLineJob**,

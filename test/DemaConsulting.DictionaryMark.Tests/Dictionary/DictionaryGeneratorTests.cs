@@ -352,6 +352,81 @@ public class DictionaryGeneratorTests
     }
 
     /// <summary>
+    ///     Test that an input pattern with an invalid character fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob()
+    {
+        // Arrange: the first job's input contains a null character (invalid on every platform); the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: \"bad\\0name.yaml\"\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the first job is reported as an invalid input pattern; the second job still wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('a.md'): Invalid input pattern:", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
+    ///     Test that an output whose parent is an existing file fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob()
+    {
+        // Arrange: the first job writes beneath a file, which cannot become a directory; the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "blocker")), "x");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: blocker/a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the write failure is reported against the first job; the second job still wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('blocker/a.md'): Failed to write output file 'blocker/a.md':", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
+    ///     Test that an output file name the platform rejects on write (a wildcard on Windows) fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob()
+    {
+        // A wildcard is a valid file-name character on Linux and macOS, so only Windows rejects it on write
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // Arrange: the first job's output name contains a wildcard; the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: \"out/*.md\"\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the write failure is reported against the first job; the second job still wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out/*.md'): Failed to write output file 'out/*.md':", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
     ///     Test that a syntactically malformed YAML input fails only its own job.
     /// </summary>
     [Fact]

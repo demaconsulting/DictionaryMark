@@ -101,7 +101,12 @@ the key. Examples:
   `key 'root' must be a non-empty string`.
 - Root resolution errors from `PathResolver` are re-thrown with the file prefix and the original
   as the inner exception, for example
-  `Config file '...': Directory '...' specified by root key 'docs' does not exist.`
+  `Config file '...': Directory '...' specified by root key 'docs' does not exist.` This includes a
+  malformed or overlong root (for example a null character), which `PathResolver` reports as
+  `Config file '...': Invalid root key '{root}': {reason}`.
+- A configuration file path that `Path.GetFullPath` rejects is reported as
+  `Config file '{path}': invalid path: {reason}`, and a path-validation exception while reading
+  the file is reported as `cannot be read: {reason}`.
 
 File-system and YAML parser exceptions are wrapped, so callers only handle
 `InvalidOperationException`. `Program.Main` reports it as `Error: {message}` with exit code 1.

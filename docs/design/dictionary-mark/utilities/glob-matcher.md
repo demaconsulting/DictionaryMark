@@ -60,12 +60,14 @@ then sorted.
   reports it as `Error: {message}`.
 - `ArgumentNullException` — thrown when `patterns` is null.
 - `ArgumentException` — thrown when any individual pattern is null or empty; caller must validate
-  pattern values before passing them.
+  pattern values before passing them. `Path.GetFullPath` also throws it (or `PathTooLongException`)
+  for a malformed or overlong literal pattern, for example one containing a null character.
 - Non-matching patterns return no error — empty result is returned silently; `DictionaryGenerator`
   is responsible for detecting and reporting the "no files found" condition.
-- File-system errors from `Matcher.Execute` propagate as-is; `DictionaryGenerator` only catches
-  `ArgumentException` around `GlobMatcher.GetFiles`, so non-argument exceptions reach
-  `Program.Main`.
+- File-system errors from `Matcher.Execute` propagate as-is. `DictionaryGenerator` catches
+  path-validation exceptions (`PathResolver.IsInvalidPathException`), `IOException` and
+  `UnauthorizedAccessException` around `GlobMatcher.Resolve` and reports them as a failure of that
+  job only.
 
 #### Dependencies
 

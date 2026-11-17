@@ -89,6 +89,12 @@ file. These scenarios are tested by the tests of the same names.
 directory are rejected with the file prefix and the resolver's message. These scenarios are tested
 by the tests of the same names.
 
+**ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile** and
+**ConfigFile_Load_PathInvalidCharacter_ThrowsNamingFile**: A `root` value and a configuration file
+path containing a null character (invalid on every platform) are rejected as
+`InvalidOperationException` with the `Config file '...': ` prefix instead of escaping as a raw
+path-validation exception. These scenarios are tested by the tests of the same names.
+
 **ConfigFile_Load_RootInvalidValue_Throws**: A sequence, a mapping and an empty string `root` are
 rejected with `key 'root' must be a non-empty string`. This scenario is tested by
 `ConfigFile_Load_RootInvalidValue_Throws`.

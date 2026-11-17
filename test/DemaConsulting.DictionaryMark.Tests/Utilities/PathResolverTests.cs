@@ -258,4 +258,60 @@ public class PathResolverTests
         // Assert: the message names the description (capitalized) and the value
         Assert.Equal("Root key 'sub*' must not contain wildcard characters.", ex.Message);
     }
+
+    /// <summary>Test that a literal path with a null character is reported with the description and value.</summary>
+    [Fact]
+    public void PathResolver_ResolvePath_NullCharacter_ThrowsInvalidOperationExceptionNamingPath()
+    {
+        // Arrange: a path containing a null character, which is invalid on every platform
+        using var tmpDir = new TemporaryDirectory();
+        const string path = "bad\0name.md";
+
+        // Act: resolve the malformed path
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => PathResolver.ResolvePath(path, tmpDir.DirectoryPath, "output path"));
+
+        // Assert: the message names the description and the value, and keeps the original exception
+        Assert.StartsWith($"Invalid output path '{path}': ", ex.Message);
+        Assert.IsAssignableFrom<ArgumentException>(ex.InnerException);
+    }
+
+    /// <summary>Test that a directory path with a null character is reported with the description and value.</summary>
+    [Fact]
+    public void PathResolver_ResolveExistingDirectory_NullCharacter_ThrowsInvalidOperationExceptionNamingPath()
+    {
+        // Arrange: a directory path containing a null character, which is invalid on every platform
+        using var tmpDir = new TemporaryDirectory();
+        const string path = "bad\0dir";
+
+        // Act: resolve the malformed directory
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => PathResolver.ResolveExistingDirectory(path, tmpDir.DirectoryPath, "--root option"));
+
+        // Assert: the message names the description and the value
+        Assert.StartsWith($"Invalid --root option '{path}': ", ex.Message);
+    }
+
+    /// <summary>Test that path-validation exceptions are classified as invalid-path exceptions.</summary>
+    [Fact]
+    public void PathResolver_IsInvalidPathException_PathValidationExceptions_ReturnsTrue()
+    {
+        // Arrange / Act / Assert: the path-validation exceptions are recognized
+        Assert.True(PathResolver.IsInvalidPathException(new ArgumentException("bad")));
+        Assert.True(PathResolver.IsInvalidPathException(new NotSupportedException("bad")));
+        Assert.True(PathResolver.IsInvalidPathException(new PathTooLongException("bad")));
+    }
+
+    /// <summary>Test that programming errors and other I/O errors are not classified as invalid-path exceptions.</summary>
+    [Fact]
+    public void PathResolver_IsInvalidPathException_OtherExceptions_ReturnsFalse()
+    {
+        // Arrange: a genuine null-argument exception raised by the resolver itself
+        var nullArgument = Assert.Throws<ArgumentNullException>(() => PathResolver.ResolvePath(null!, "base", "d"));
+
+        // Act / Assert: null arguments and general I/O errors are not invalid paths
+        Assert.False(PathResolver.IsInvalidPathException(nullArgument));
+        Assert.False(PathResolver.IsInvalidPathException(new IOException("io")));
+        Assert.False(PathResolver.IsInvalidPathException(new InvalidOperationException("op")));
+    }
 }

@@ -1029,6 +1029,30 @@ public class ContextTests
         Assert.Equal($"Directory '{missing}' specified by --root option '{missing}' does not exist.", ex.Message);
     }
 
+    /// <summary>Test that a --root value with a character invalid on every platform is reported cleanly.</summary>
+    [Fact]
+    public void Context_Create_RootFlagInvalidCharacter_ThrowsInvalidOperationException()
+    {
+        // Arrange: a root containing a null character
+        const string root = "bad\0dir";
+
+        // Act / Assert: the error names the option and the value instead of escaping as a raw path exception
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--root", root]));
+        Assert.StartsWith($"Invalid --root option '{root}': ", ex.Message);
+    }
+
+    /// <summary>Test that a --config value with a character invalid on every platform is reported cleanly.</summary>
+    [Fact]
+    public void Context_Create_ConfigFlagInvalidCharacter_ThrowsInvalidOperationException()
+    {
+        // Arrange: a config file path containing a null character
+        const string config = "bad\0config.yaml";
+
+        // Act / Assert: the error names the config file path and the value
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", config]));
+        Assert.StartsWith($"Invalid config file path '{config}': ", ex.Message);
+    }
+
     /// <summary>Test that --root given twice is rejected.</summary>
     [Fact]
     public void Context_Create_RootFlagTwice_ThrowsArgumentException()

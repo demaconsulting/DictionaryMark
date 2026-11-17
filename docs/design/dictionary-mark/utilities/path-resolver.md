@@ -40,6 +40,11 @@ N/A - static class with no instance state.
 paths: output files and the configuration file. The result is a full path with `.` and `..`
 collapsed. No file-system access.
 
+**IsInvalidPathException**: Returns `true` for `ArgumentException` (other than
+`ArgumentNullException`), `NotSupportedException` and `PathTooLongException`. This is the single
+definition of a path-validation exception. `ResolvePath` and `ResolveExistingDirectory` use it, and
+so do the callers' exception filters around their own `File` and `Directory` calls.
+
 **ResolveExistingDirectory**: Resolves a root directory.
 
 - *Parameters*: `string path`; `string baseDirectory`; `string description`.
@@ -61,6 +66,9 @@ All errors are `InvalidOperationException` (except null arguments, which throw
 - Wildcard in a directory: `{Description} '{path}' must not contain wildcard characters.` (the
   description is capitalized).
 - Missing directory: `Directory '{full}' specified by {description} '{path}' does not exist.`
+- Malformed or overlong path (a path-validation exception from `Path.GetFullPath` in
+  `ResolvePath` or `ResolveExistingDirectory`, for example a null character):
+  `Invalid {description} '{path}': {message}`, with the original exception as the inner exception.
 
 Callers either report the message as a per-job error (`DictionaryGenerator`, `GlobMatcher` via
 `DictionaryGenerator`) or let it stop the run before any job (`Context`, `ConfigFile`).
@@ -76,3 +84,5 @@ N/A - uses only .NET base class library path and environment APIs.
   `output path`).
 - **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`.
 - **ConfigFile.Load** — `ResolveExistingDirectory` for the `root` key.
+- **IsInvalidPathException** — used by `DictionaryGenerator` (input resolution, reading and
+  writing) and `ConfigFile` (config path normalization and reading) in their exception filters.

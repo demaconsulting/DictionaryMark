@@ -105,17 +105,26 @@ internal sealed class ConfigFile
     /// <returns>The validated configuration.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the file is missing or unreadable, is not valid YAML, is empty, does not have a
-    ///     mapping root, or contains an unknown, disallowed, missing or invalid key; the message names
-    ///     the file, the key, and the job when the problem is inside one.
+    ///     Thrown when the path is malformed, the file is missing or unreadable, is not valid YAML, is empty, does not have a
+    ///     mapping root, or contains an unknown, disallowed, missing or invalid key (including a malformed or missing
+    ///     root directory); the message names the file, the key, and the job when the problem is inside one.
     /// </exception>
     public static ConfigFile Load(string path)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(path);
 
-        // Read and parse the file into its root mapping
-        var fullPath = Path.GetFullPath(path);
+        // Read and parse the file into its root mapping (a malformed path is reported with the file's context)
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+        }
+        catch (Exception ex) when (PathResolver.IsInvalidPathException(ex))
+        {
+            throw new InvalidOperationException($"Config file '{path}': invalid path: {ex.Message}", ex);
+        }
+
         var prefix = $"Config file '{fullPath}': ";
         var root = ReadRootMapping(fullPath, prefix);
 
@@ -178,7 +187,7 @@ internal sealed class ConfigFile
         {
             throw new InvalidOperationException($"{prefix}file not found", ex);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
         {
             throw new InvalidOperationException($"{prefix}cannot be read: {ex.Message}", ex);
         }
@@ -490,9 +499,14 @@ internal sealed class ConfigFile
     /// <param name="fullPath">The full path of the configuration file.</param>
     /// <param name="prefix">The error-message prefix naming the file.</param>
     /// <returns>The full path of the existing root directory.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the root cannot be resolved or does not exist.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the root is malformed, cannot be resolved or does not exist; the message starts
+    ///     with <paramref name="prefix"/>.
+    /// </exception>
     private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
     {
+        // PathResolver reports every root problem (undefined variable, wildcard, malformed or
+        // overlong path, missing directory) as InvalidOperationException; add the file's context
         try
         {
             var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;

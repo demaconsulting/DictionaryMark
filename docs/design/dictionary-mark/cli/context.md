@@ -119,7 +119,9 @@ command-line job when `--input` was given, or none.
 Throws `ArgumentException` when an argument is unknown, invalid, repeated or missing its value,
 when `--input`/`--output` is combined with configuration tables, or when a column-width count does
 not match the table. Throws `InvalidOperationException` when the root directory is invalid or
-missing, the configuration file is invalid, or the log file cannot be opened.
+missing, the `--root` or `--config` path is malformed (reported by `PathResolver` as
+`Invalid --root option '...': ...` or `Invalid config file path '...': ...`), the configuration
+file is invalid, or the log file cannot be opened.
 
 **ParseColumnWidths** (private, in `ArgumentParser`): splits the `--column-widths` value on `,`,
 trims each item, and parses it with `NumberStyles.None` and the invariant culture, which rejects

@@ -62,28 +62,33 @@ catch-all for unexpected exceptions.
 
 Error cases:
 
-- **Invalid or unresolved input** — `ArgumentException` or `InvalidOperationException` from
-  `GlobMatcher.Resolve`; reports `"Error: {message}"` (pattern matched no files, file or directory
-  not found, undefined `${VAR}`).
+- **Invalid or unresolved input** — `InvalidOperationException` or a path-validation exception
+  (`PathResolver.IsInvalidPathException`: `ArgumentException`, `NotSupportedException` or
+  `PathTooLongException`) from `GlobMatcher.Resolve`. An `InvalidOperationException` reports
+  `"Error: {message}"` (pattern matched no files, file or directory not found, undefined `${VAR}`).
+  A path-validation exception reports `"Error: Invalid input pattern: {message}"` (for example a
+  null character or a glob rejected by the globbing library).
 - **I/O or access error resolving input** — `IOException` or `UnauthorizedAccessException` from
   `GlobMatcher.Resolve` (directory enumeration); reports
   `"Error: Failed to resolve input patterns: {message}"`.
 - **No files found** — no jobs, or an empty list from `GlobMatcher.Resolve`; reports
   `"Error: No input files found matching the specified patterns."`.
-- **I/O or access error reading YAML** — `IOException` or `UnauthorizedAccessException` from
-  `YamlDictionaryLoader.Load`; reports `"Error: Failed to read file '{file}': {message}"`.
+- **I/O or access error reading YAML** — `IOException`, `UnauthorizedAccessException` or a
+  path-validation exception from `YamlDictionaryLoader.Load`; reports
+  `"Error: Failed to read file '{file}': {message}"`.
 - **Malformed YAML** — `YamlException` from `YamlDictionaryLoader.Load` (syntax error); reports
   `"Error: Invalid YAML in file '{file}': {message}"`.
 - **Invalid YAML structure** — `InvalidOperationException` from `YamlDictionaryLoader.Load`;
   reports `"Error: Invalid YAML in file '{file}': {message}"`.
-- **Undefined variable in the output path** — `InvalidOperationException` from
-  `PathResolver.ResolvePath`; reports `"Error: {message}"`.
-- **Invalid output path** — `ArgumentException`, `NotSupportedException` or
-  `PathTooLongException` from `PathResolver.ResolvePath` (for example a null character); reports
+- **Unresolvable output path** — `InvalidOperationException` from `PathResolver.ResolvePath`, for
+  an undefined variable or a malformed or overlong path (for example a null character); reports
+  `"Error: {message}"`, which for a malformed path reads
   `"Error: Invalid output path '{file}': {message}"` with the output path as written.
-- **I/O or access error writing output** — `IOException` or `UnauthorizedAccessException` from
-  `Directory.CreateDirectory` or `File.WriteAllText`; reports
-  `"Error: Failed to write output file '{file}': {message}"` with the output path as written.
+- **I/O or access error writing output** — `IOException`, `UnauthorizedAccessException` or a
+  path-validation exception from `Directory.CreateDirectory` or `File.WriteAllText`. A path that
+  normalizes cleanly can still be rejected on write, for example a wildcard in a Windows file name.
+  Reports `"Error: Failed to write output file '{file}': {message}"` with the output path as
+  written.
 
 For configuration jobs, every message above is prefixed with the job label, for example
 `"Error: table job 2 ('docs/deprecated.md'): Input pattern 'x/*.yaml' matched no files."`.

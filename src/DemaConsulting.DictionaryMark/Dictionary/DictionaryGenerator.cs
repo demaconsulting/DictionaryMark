@@ -93,8 +93,10 @@ internal static class DictionaryGenerator
         {
             files = GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory);
         }
-        catch (ArgumentException ex)
+        catch (Exception ex) when (PathResolver.IsInvalidPathException(ex))
         {
+            // Literal patterns are normalized, which rejects malformed (for example a null character)
+            // or overlong paths; the globbing library rejects unsupported glob syntax
             Report(context, job, $"Invalid input pattern: {ex.Message}");
             return false;
         }
@@ -165,7 +167,8 @@ internal static class DictionaryGenerator
     {
         var outputFile = job.OutputFile!;
 
-        // Resolve the output path (expanding ${VAR}) against the job's base directory
+        // Resolve the output path (expanding ${VAR}) against the job's base directory; malformed or
+        // overlong paths are reported by the resolver as InvalidOperationException
         string fullPath;
         try
         {
@@ -174,12 +177,6 @@ internal static class DictionaryGenerator
         catch (InvalidOperationException ex)
         {
             Report(context, job, ex.Message);
-            return false;
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            // Path normalization rejects malformed paths (for example a null character) or overlong paths
-            Report(context, job, $"Invalid output path '{outputFile}': {ex.Message}");
             return false;
         }
 
@@ -195,8 +192,10 @@ internal static class DictionaryGenerator
             File.WriteAllText(fullPath, output);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
         {
+            // The platform can still reject a normalized path when writing (for example a wildcard
+            // character in a Windows file name), so path-validation exceptions fail only this job
             Report(context, job, $"Failed to write output file '{outputFile}': {ex.Message}");
             return false;
         }
@@ -236,7 +235,7 @@ internal static class DictionaryGenerator
                     approved.AddRange(YamlDictionaryLoader.Load(file));
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
             {
                 Report(context, job, $"Failed to read file '{file}': {ex.Message}");
                 return false;

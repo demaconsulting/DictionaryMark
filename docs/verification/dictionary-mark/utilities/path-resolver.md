@@ -72,3 +72,15 @@ be rejected. This scenario is tested by `PathResolver_ResolveExistingDirectory_P
 **PathResolver_ResolveExistingDirectory_Wildcard_Throws**: A value containing `*` must be rejected
 with the capitalized description in the message. This scenario is tested by
 `PathResolver_ResolveExistingDirectory_Wildcard_Throws`.
+
+**PathResolver_ResolvePath_NullCharacter_ThrowsInvalidOperationExceptionNamingPath** and
+**PathResolver_ResolveExistingDirectory_NullCharacter_ThrowsInvalidOperationExceptionNamingPath**:
+A path containing a null character (invalid on every platform) must be reported as
+`InvalidOperationException` with `Invalid {description} '{path}': ` and not escape as a raw
+path-validation exception. These scenarios are tested by the tests of the same names.
+
+**PathResolver_IsInvalidPathException_PathValidationExceptions_ReturnsTrue** and
+**PathResolver_IsInvalidPathException_OtherExceptions_ReturnsFalse**: `ArgumentException`,
+`NotSupportedException` and `PathTooLongException` must be classified as path-validation
+exceptions; `ArgumentNullException`, `IOException` and `InvalidOperationException` must not. These
+scenarios are tested by the tests of the same names.
