@@ -73,6 +73,25 @@ job matches no files, its error is prefixed with `table job 1 ('a.md')`, it writ
 second job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel`.
 
+**DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob**: Verifies that when
+the first job's output path contains a null character, the job is reported as an invalid output path
+with its label, the summary `1 of 2 table jobs failed` is written, the exit code is 1, and the second
+job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob**: Verifies that when the first job
+reads a syntactically malformed YAML file, the job is reported as invalid YAML naming the file, writes
+no output, the exit code is 1, and the second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_MalformedDeprecatedYaml_ContinuesWithLaterJob**: Verifies the same
+behavior for a malformed deprecated-terms file loaded with `kind: deprecated`. This scenario is tested
+by `DictionaryGenerator_Generate_MalformedDeprecatedYaml_ContinuesWithLaterJob`.
+
+An unreadable input file (`UnauthorizedAccessException`) is not tested, because file permissions cannot
+be denied reliably on every platform (for example when tests run as root); it is handled by the same
+code path as other read errors.
+
 **DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne**: Verifies that when both jobs
 fail, both are reported, the summary `2 of 2 table jobs failed` is written, and the exit code is 1.
 This scenario is tested by `DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne`.

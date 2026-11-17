@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Utilities;
+using YamlDotNet.Core;
 
 namespace DemaConsulting.DictionaryMark.Dictionary;
 
@@ -72,8 +73,10 @@ internal static class DictionaryGenerator
     ///     Applies an early-return-on-error strategy within the job: each error condition is
     ///     reported (prefixed with the job label when the job has one) and the job stops with no
     ///     output. Error cases include invalid input patterns, undefined environment variables,
-    ///     I/O errors reading YAML files, invalid YAML structure, conflicts between the job's input
-    ///     files, and I/O or access errors writing the output file. Relative inputs and the
+    ///     I/O or access errors resolving input patterns or reading YAML files, malformed or
+    ///     structurally invalid YAML, conflicts between the job's input files, invalid output paths,
+    ///     and I/O or access errors writing the output file. Every expected exception is caught here
+    ///     so that a failing job never stops the jobs that follow it. Relative inputs and the
     ///     relative output resolve against <see cref="TableJob.BaseDirectory"/>. Missing parent
     ///     directories of the output file are created.
     /// </remarks>
@@ -98,6 +101,12 @@ internal static class DictionaryGenerator
         catch (InvalidOperationException ex)
         {
             Report(context, job, ex.Message);
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Glob matching enumerates directories, which can fail on unreadable or vanished directories
+            Report(context, job, $"Failed to resolve input patterns: {ex.Message}");
             return false;
         }
 
@@ -167,6 +176,12 @@ internal static class DictionaryGenerator
             Report(context, job, ex.Message);
             return false;
         }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            // Path normalization rejects malformed paths (for example a null character) or overlong paths
+            Report(context, job, $"Invalid output path '{outputFile}': {ex.Message}");
+            return false;
+        }
 
         // Create missing parent directories and write the file
         try
@@ -221,9 +236,15 @@ internal static class DictionaryGenerator
                     approved.AddRange(YamlDictionaryLoader.Load(file));
                 }
             }
-            catch (IOException ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 Report(context, job, $"Failed to read file '{file}': {ex.Message}");
+                return false;
+            }
+            catch (YamlException ex)
+            {
+                // Syntactically malformed YAML is rejected by the parser before structural checks run
+                Report(context, job, $"Invalid YAML in file '{file}': {ex.Message}");
                 return false;
             }
             catch (InvalidOperationException ex)

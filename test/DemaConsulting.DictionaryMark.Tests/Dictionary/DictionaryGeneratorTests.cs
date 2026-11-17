@@ -328,6 +328,77 @@ public class DictionaryGeneratorTests
         Assert.False(File.Exists(Path.Combine(tmpDir.DirectoryPath, "config", "a.md")));
     }
 
+    /// <summary>
+    ///     Test that an output path with an invalid character fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob()
+    {
+        // Arrange: the first job's output contains a null character (invalid on every platform); the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: \"bad\\0name.md\"\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the first job is reported as an invalid output path; the second job still wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('bad\0name.md'): Invalid output path 'bad\0name.md':", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
+    ///     Test that a syntactically malformed YAML input fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob()
+    {
+        // Arrange: the first job reads a file with an unclosed flow sequence; the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        var malformed = tmpDir.GetFilePath(Path.Combine("config", "a.yaml"));
+        File.WriteAllText(malformed, "Alpha: [unclosed\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the malformed file is reported against the first job, which wrote nothing; the second job still ran
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('a.md'): Invalid YAML in file '{malformed}':", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(tmpDir.GetFilePath(Path.Combine("config", "a.md"))));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
+    ///     Test that a malformed deprecated-terms YAML input fails only its own job.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_MalformedDeprecatedYaml_ContinuesWithLaterJob()
+    {
+        // Arrange: the first job reads a malformed deprecated-terms file; the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        var malformed = tmpDir.GetFilePath(Path.Combine("config", "old.yaml"));
+        File.WriteAllText(malformed, "bench mode: { use: Test Mode\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: old.yaml\n    output: old.md\n    kind: deprecated\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the malformed file is reported against the first job; the second job still wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('old.md'): Invalid YAML in file '{malformed}':", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
     /// <summary>Test that failed jobs produce a summary and exit code 1.</summary>
     [Fact]
     public void DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne()

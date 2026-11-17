@@ -34,9 +34,11 @@ N/A - static class with no instance state.
 - *Postconditions*: Output written to file or stdout, or an error reported and no output written.
 
 Processing steps: (1) Resolve input file paths — call `GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
-return early on `ArgumentException`, `InvalidOperationException` or empty result. (2) Load entries — call
+return early on `ArgumentException`, `InvalidOperationException`, `IOException`, `UnauthorizedAccessException` or empty
+result. (2) Load entries — call
 `YamlDictionaryLoader.Load` (or `LoadDeprecated` when `job.Options.Kind` is deprecated) for each input file; return
-early on `IOException` or `InvalidOperationException`. (3) Detect conflicts — call
+early on `IOException`, `UnauthorizedAccessException`, `YamlException` or `InvalidOperationException`. (3) Detect
+conflicts — call
 `ConflictDetector.Detect(approved, deprecated)` for this job's files; if any conflicts found, report each and return.
 (4) Format output — call `MarkdownFormatter.Format` or `FormatDeprecated` with `job.Options` (already merged by
 `TableJob`, including the `Not used` deprecated term header and the column widths) using only entries from the primary
@@ -54,21 +56,31 @@ unchanged.
 
 `GenerateJob` applies an early-return-on-error strategy within a job: each error condition calls
 `Report` (which calls `context.WriteError`, setting exit code to 1) and returns `false`. `Generate`
-continues with the next job, so one run reports the failures of every job.
+continues with the next job, so one run reports the failures of every job. Every expected exception
+is caught inside `GenerateJob`, so no job failure escapes to stop the jobs that follow it; there is no
+catch-all for unexpected exceptions.
 
 Error cases:
 
 - **Invalid or unresolved input** — `ArgumentException` or `InvalidOperationException` from
   `GlobMatcher.Resolve`; reports `"Error: {message}"` (pattern matched no files, file or directory
   not found, undefined `${VAR}`).
+- **I/O or access error resolving input** — `IOException` or `UnauthorizedAccessException` from
+  `GlobMatcher.Resolve` (directory enumeration); reports
+  `"Error: Failed to resolve input patterns: {message}"`.
 - **No files found** — no jobs, or an empty list from `GlobMatcher.Resolve`; reports
   `"Error: No input files found matching the specified patterns."`.
-- **I/O error reading YAML** — `IOException` from `YamlDictionaryLoader.Load`; reports
-  `"Error: Failed to read file '{file}': {message}"`.
+- **I/O or access error reading YAML** — `IOException` or `UnauthorizedAccessException` from
+  `YamlDictionaryLoader.Load`; reports `"Error: Failed to read file '{file}': {message}"`.
+- **Malformed YAML** — `YamlException` from `YamlDictionaryLoader.Load` (syntax error); reports
+  `"Error: Invalid YAML in file '{file}': {message}"`.
 - **Invalid YAML structure** — `InvalidOperationException` from `YamlDictionaryLoader.Load`;
   reports `"Error: Invalid YAML in file '{file}': {message}"`.
 - **Undefined variable in the output path** — `InvalidOperationException` from
   `PathResolver.ResolvePath`; reports `"Error: {message}"`.
+- **Invalid output path** — `ArgumentException`, `NotSupportedException` or
+  `PathTooLongException` from `PathResolver.ResolvePath` (for example a null character); reports
+  `"Error: Invalid output path '{file}': {message}"` with the output path as written.
 - **I/O or access error writing output** — `IOException` or `UnauthorizedAccessException` from
   `Directory.CreateDirectory` or `File.WriteAllText`; reports
   `"Error: Failed to write output file '{file}': {message}"` with the output path as written.
