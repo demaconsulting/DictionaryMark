@@ -92,3 +92,13 @@ passes (log contains "DictionaryMark_HiddenEntry - Passed"). This scenario is te
 **Validation_Run_WithSilentContext_DeprecatedTableTestPasses**: Verifies the deprecated-table
 self-test passes (log contains "DictionaryMark_DeprecatedTable - Passed"). This scenario is tested
 by `Validation_Run_WithSilentContext_DeprecatedTableTestPasses`.
+
+**Validation_Run_WithSilentContext_ColumnWidthsTestPasses**: Runs `Validation.Run` and verifies the log
+reports `DictionaryMark_ColumnWidths` as passed, confirming proportional column widths work in the
+deployment environment. This scenario is tested by
+`Validation_Run_WithSilentContext_ColumnWidthsTestPasses`.
+
+**Validation_Run_WithSilentContext_ConfigTablesTestPasses**: Runs `Validation.Run` and verifies the log
+reports `DictionaryMark_ConfigTables` as passed, confirming configuration table jobs with
+config-relative `..` paths and output directory creation work in the deployment environment. This
+scenario is tested by `Validation_Run_WithSilentContext_ConfigTablesTestPasses`.

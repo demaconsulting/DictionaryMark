@@ -410,4 +410,99 @@ public class MarkdownFormatterTests
         // Assert
         Assert.Contains("| N/A | N/A |", result);
     }
+
+    /// <summary>Builds the expected separator row for the given dash counts.</summary>
+    /// <param name="dashes">The dash count of each column.</param>
+    /// <returns>The separator row.</returns>
+    private static string Separator(params int[] dashes) =>
+        "|" + string.Concat(dashes.Select(d => $" :{new string('-', d)} |"));
+
+    /// <summary>Test that weights 25 and 75 give exactly 25 and 75 dashes.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_TableWithColumnWidths_ProportionalSeparator()
+    {
+        // Arrange: table options with column widths 25,75
+        var options = new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [25, 75] };
+
+        // Act: format the entries as a table
+        var result = MarkdownFormatter.Format(TwoEntries, options);
+
+        // Assert: the exact proportional separator follows the header row
+        var nl = Environment.NewLine;
+        Assert.Contains($"| Term | Definition |{nl}{Separator(25, 75)}{nl}| Alpha | First letter |", result);
+    }
+
+    /// <summary>Test that small weights get at least three dashes and that weights are rounded.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_TableWithSmallWeight_UsesMinimumThreeDashes()
+    {
+        // Act: format with a tiny weight and with weights that need rounding
+        var minimum = MarkdownFormatter.Format(TwoEntries, new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [1, 1000] });
+        var rounded = MarkdownFormatter.Format(TwoEntries, new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [1, 2] });
+
+        // Assert: the minimum of 3 wins over 0, and 1:2 rounds to 33:67
+        Assert.Contains(Separator(3, 100), minimum);
+        Assert.Contains(Separator(33, 67), rounded);
+    }
+
+    /// <summary>Test that tables without column widths keep the default separator.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_TableWithoutColumnWidths_UsesDefaultSeparator()
+    {
+        // Act: format without column widths
+        var result = MarkdownFormatter.Format(TwoEntries, new MarkdownOptions { Format = OutputFormat.Table });
+
+        // Assert: the output is byte-for-byte the default table
+        var nl = Environment.NewLine;
+        Assert.Equal($"| Term | Definition |{nl}| :--- | :--- |{nl}| Alpha | First letter |{nl}| Beta | Second letter |{nl}", result);
+    }
+
+    /// <summary>Test that bullet output ignores column widths.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_BulletsWithColumnWidths_Unchanged()
+    {
+        // Act: format bullets with and without (mismatched) widths
+        var withWidths = MarkdownFormatter.Format(TwoEntries, new MarkdownOptions { ColumnWidths = [1, 2, 3] });
+        var withoutWidths = MarkdownFormatter.Format(TwoEntries, new MarkdownOptions());
+
+        // Assert: the outputs are identical
+        Assert.Equal(withoutWidths, withWidths);
+    }
+
+    /// <summary>Test that a deprecated table with a Where column uses all three weights.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_WithWhereAndWidths_UsesThreeWeights()
+    {
+        // Act: format deprecated entries that include a where value
+        var result = MarkdownFormatter.FormatDeprecated(
+            DeprecatedEntries, new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [20, 50, 30] });
+
+        // Assert: three proportional columns
+        Assert.Contains(Separator(20, 50, 30), result);
+    }
+
+    /// <summary>Test that a deprecated table without a Where column rescales the first two weights.</summary>
+    [Fact]
+    public void MarkdownFormatter_FormatDeprecated_WithoutWhereAndWidths_RescalesFirstTwo()
+    {
+        // Act: format a deprecated entry without a where value
+        var result = MarkdownFormatter.FormatDeprecated(
+            [DeprecatedEntries[1]],
+            new MarkdownOptions { Format = OutputFormat.Table, TermHeader = "Not used", ColumnWidths = [20, 50, 30] });
+
+        // Assert: the third weight is dropped and 20:50 is rescaled to 29:71
+        var nl = Environment.NewLine;
+        Assert.Contains($"| Not used | Use instead |{nl}{Separator(29, 71)}{nl}", result);
+    }
+
+    /// <summary>Test that a column-width count that does not match the table is rejected.</summary>
+    [Fact]
+    public void MarkdownFormatter_Format_ColumnWidthCountMismatch_ThrowsArgumentException()
+    {
+        // Act / Assert: three widths for a terms table and two for a deprecated table are rejected
+        Assert.Throws<ArgumentException>(
+            () => MarkdownFormatter.Format(TwoEntries, new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [1, 2, 3] }));
+        Assert.Throws<ArgumentException>(
+            () => MarkdownFormatter.FormatDeprecated(DeprecatedEntries, new MarkdownOptions { Format = OutputFormat.Table, ColumnWidths = [1, 2] }));
+    }
 }

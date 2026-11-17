@@ -638,4 +638,574 @@ public class IntegrationTests
         Assert.True(string.IsNullOrWhiteSpace(stdout),
             $"Expected no markdown output on stdout, but got: {stdout}");
     }
+
+    /// <summary>Name of the environment variable used by the path tests.</summary>
+    private const string VariableName = "DICTIONARYMARK_INTEGRATION_TEST";
+
+    /// <summary>Builds the expected separator row for the given dash counts.</summary>
+    /// <param name="dashes">The dash count of each column.</param>
+    /// <returns>The separator row.</returns>
+    private static string Separator(params int[] dashes) =>
+        "|" + string.Concat(dashes.Select(d => $" :{new string('-', d)} |"));
+
+    /// <summary>Writes a text file, creating its directory, and returns its full path.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="relativePath">The path relative to the temporary directory, using '/' separators.</param>
+    /// <param name="content">The file content.</param>
+    /// <returns>The full path of the file.</returns>
+    private static string WriteFile(TemporaryDirectory tmpDir, string relativePath, string content)
+    {
+        var path = tmpDir.GetFilePath(relativePath.Replace('/', Path.DirectorySeparatorChar));
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>Returns the full path of a file under the temporary directory without creating anything.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="relativePath">The path relative to the temporary directory, using '/' separators.</param>
+    /// <returns>The full path.</returns>
+    private static string PathIn(TemporaryDirectory tmpDir, string relativePath) =>
+        Path.Combine(tmpDir.DirectoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    /// <summary>Test that --column-widths sizes the table separator in proportion to the weights.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ColumnWidths_OutputsProportionalSeparator()
+    {
+        // Arrange: a dictionary file
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "input.yaml", "API: Application Programming Interface\n");
+
+        // Act: generate a table with weights 25,75
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--input", input, "--format", "table", "--column-widths", "25,75");
+
+        // Assert: exactly 25 and 75 dashes follow the header row
+        Assert.Equal(0, exitCode);
+        Assert.Contains($"| Term | Definition |{Environment.NewLine}{Separator(25, 75)}", output);
+    }
+
+    /// <summary>Test that a deprecated table without Where drops the third weight and rescales the first two.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ColumnWidthsDeprecatedWithoutWhere_RescalesTwoColumns()
+    {
+        // Arrange: deprecated entries without a where value
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "deprecated.yaml", "E-stop: { use: emergency stop }\n");
+
+        // Act: three weights for the deprecated table
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath,
+            "--input", input, "--kind", "deprecated", "--format", "table", "--column-widths", "20,50,30");
+
+        // Assert: two columns rescaled from 20:50
+        Assert.Equal(0, exitCode);
+        Assert.Contains(Separator(29, 71) + Environment.NewLine, output);
+        Assert.DoesNotContain("Where it was used", output);
+    }
+
+    /// <summary>Test that bullet output ignores --column-widths.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ColumnWidthsWithBullets_OutputUnchanged()
+    {
+        // Arrange: a dictionary file
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "input.yaml", "API: Application Programming Interface\n");
+
+        // Act: generate bullets with and without (mismatched) widths
+        var withExit = Runner.Run(out var withWidths, "dotnet", _dllPath, "--input", input, "--column-widths", "1,2,3");
+        var withoutExit = Runner.Run(out var withoutWidths, "dotnet", _dllPath, "--input", input);
+
+        // Assert: identical output
+        Assert.Equal(0, withExit);
+        Assert.Equal(0, withoutExit);
+        Assert.Equal(withoutWidths, withWidths);
+    }
+
+    /// <summary>Test that invalid --column-widths values are rejected.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ColumnWidthsInvalidValue_ReturnsError()
+    {
+        // Act: zero, negative and non-integer weights
+        var zero = Runner.Run(out var zeroOutput, "dotnet", _dllPath, "--column-widths", "0,100");
+        var negative = Runner.Run(out _, "dotnet", _dllPath, "--column-widths", "-1,2");
+        var fraction = Runner.Run(out _, "dotnet", _dllPath, "--column-widths", "1.5,2");
+
+        // Assert: every value is rejected with the expected message
+        Assert.Equal(1, zero);
+        Assert.Equal(1, negative);
+        Assert.Equal(1, fraction);
+        Assert.Contains("--column-widths requires 2 or 3 comma-separated positive integers", zeroOutput);
+    }
+
+    /// <summary>Test that a weight count not matching the table columns is rejected.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ColumnWidthsWrongCount_ReturnsError()
+    {
+        // Arrange: a deprecated dictionary
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "deprecated.yaml", "E-stop: { use: emergency stop }\n");
+
+        // Act: two weights for a deprecated table
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath,
+            "--input", input, "--kind", "deprecated", "--format", "table", "--column-widths", "1,2");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("deprecated tables require exactly 3 values", output);
+    }
+
+    /// <summary>Test that config file defaults apply to a command-line run.</summary>
+    [Fact]
+    public void DictionaryMark_Config_FormattingDefaults_AppliedToCommandLineRun()
+    {
+        // Arrange: a config with formatting defaults only
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "input.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "dictionarymark.yaml", "format: table\nsection: Glossary\ncolumn-widths: [25, 75]\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--input", input);
+
+        // Assert: section, table and widths come from the config
+        Assert.Equal(0, exitCode);
+        Assert.Contains("# Glossary", output);
+        Assert.Contains(Separator(25, 75), output);
+    }
+
+    /// <summary>Test that command-line options override job and default values from the config file.</summary>
+    [Fact]
+    public void DictionaryMark_Config_CommandLineOption_OverridesFileValues()
+    {
+        // Arrange: a config whose default and job both set a different term header
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "input.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "dictionarymark.yaml",
+            "format: table\nterm-header: FromDefaults\ntables:\n  - input: input.yaml\n    output: a.md\n" +
+            "  - input: input.yaml\n    output: b.md\n    term-header: FromJob\n");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--config", config, "--term-header", "FromCli");
+
+        // Assert: the command line wins for every job
+        Assert.Equal(0, exitCode);
+        Assert.Contains("| FromCli |", File.ReadAllText(PathIn(tmpDir, "a.md")));
+        Assert.Contains("| FromCli |", File.ReadAllText(PathIn(tmpDir, "b.md")));
+    }
+
+    /// <summary>Test that each config table job writes its own output.</summary>
+    [Fact]
+    public void DictionaryMark_Config_MultipleTableJobs_WritesEachOutput()
+    {
+        // Arrange: approved and deprecated dictionaries with one job each
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "terms.yaml", "API: Application Programming Interface\n");
+        WriteFile(tmpDir, "deprecated.yaml", "E-stop: { use: emergency stop, where: Product A }\n");
+        var config = WriteFile(tmpDir, "dictionarymark.yaml",
+            "format: table\ntables:\n  - input: terms.yaml\n    output: terms.md\n    column-widths: [25, 75]\n" +
+            "  - input: deprecated.yaml\n    output: deprecated.md\n    kind: deprecated\n    column-widths: [20, 50, 30]\n");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config);
+
+        // Assert: both outputs exist with their own widths
+        Assert.Equal(0, exitCode);
+        Assert.Contains(Separator(25, 75), File.ReadAllText(PathIn(tmpDir, "terms.md")));
+        Assert.Contains(Separator(20, 50, 30), File.ReadAllText(PathIn(tmpDir, "deprecated.md")));
+    }
+
+    /// <summary>Test that config paths, including '..' segments, resolve from the config file's directory.</summary>
+    [Fact]
+    public void DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory()
+    {
+        // Arrange: shared dictionaries beside the config directory; output into a missing sibling directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/a/terms.yaml", "API: Application Programming Interface\n");
+        WriteFile(tmpDir, "shared/b.yaml", "UI: User Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: [../shared/**/*.yaml, sub/../../shared/b.yaml]\n    output: ../docs/generated/terms.md\n");
+
+        // Act: run from a working directory unrelated to the config file
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        var content = File.ReadAllText(PathIn(tmpDir, "docs/generated/terms.md"));
+        Assert.Contains("API", content);
+        Assert.Contains("UI", content);
+    }
+
+    /// <summary>Test that ${VAR} references are expanded in the config path and in config file paths.</summary>
+    [Fact]
+    public void DictionaryMark_Config_EnvironmentVariablesInPaths_AreExpanded()
+    {
+        // Arrange: a variable naming the temporary directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", "API: Application Programming Interface\n");
+        WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: ${" + VariableName + "}/shared/*.yaml\n    output: ${" + VariableName + "}/out/terms.md\n");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act: the config path itself also uses the variable
+            var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", "${" + VariableName + "}/config/dictionarymark.yaml");
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "out/terms.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that a failing job does not stop the others and the run exits non-zero.</summary>
+    [Fact]
+    public void DictionaryMark_Config_OneJobFails_OtherJobsWrittenAndExitNonZero()
+    {
+        // Arrange: the second of three jobs matches nothing
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "dictionarymark.yaml",
+            "tables:\n  - input: terms.yaml\n    output: a.md\n  - input: missing/*.yaml\n    output: b.md\n" +
+            "  - input: terms.yaml\n    output: c.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert: jobs 1 and 3 are written; job 2 is reported by index and output
+        Assert.Equal(1, exitCode);
+        Assert.True(File.Exists(PathIn(tmpDir, "a.md")));
+        Assert.True(File.Exists(PathIn(tmpDir, "c.md")));
+        Assert.False(File.Exists(PathIn(tmpDir, "b.md")));
+        Assert.Contains("Error: table job 2 ('b.md'):", output);
+        Assert.Contains("Error: 1 of 3 table jobs failed.", output);
+    }
+
+    /// <summary>Test that a missing or malformed config file is reported with its name.</summary>
+    [Fact]
+    public void DictionaryMark_Config_InvalidFile_ReturnsErrorNamingFile()
+    {
+        // Arrange: a missing file and a malformed file
+        using var tmpDir = new TemporaryDirectory();
+        var missing = PathIn(tmpDir, "missing.yaml");
+        var malformed = WriteFile(tmpDir, "bad.yaml", "format: [table\n");
+
+        // Act
+        var missingExit = Runner.Run(out var missingOutput, "dotnet", _dllPath, "--config", missing);
+        var malformedExit = Runner.Run(out var malformedOutput, "dotnet", _dllPath, "--config", malformed);
+
+        // Assert
+        Assert.Equal(1, missingExit);
+        Assert.Contains($"Config file '{missing}': file not found", missingOutput);
+        Assert.Equal(1, malformedExit);
+        Assert.Contains($"Config file '{malformed}': invalid YAML", malformedOutput);
+    }
+
+    /// <summary>Test that unknown and disallowed keys are reported with the key, job and file.</summary>
+    [Fact]
+    public void DictionaryMark_Config_UnknownKey_ReturnsErrorNamingKey()
+    {
+        // Arrange: an unknown job key and a disallowed top-level key
+        using var tmpDir = new TemporaryDirectory();
+        var jobKey = WriteFile(tmpDir, "job.yaml", "tables:\n  - input: a.yaml\n    output: a.md\n    theme: dark\n");
+        var topKey = WriteFile(tmpDir, "top.yaml", "log: run.log\n");
+
+        // Act
+        var jobExit = Runner.Run(out var jobOutput, "dotnet", _dllPath, "--config", jobKey);
+        var topExit = Runner.Run(out var topOutput, "dotnet", _dllPath, "--config", topKey);
+
+        // Assert
+        Assert.Equal(1, jobExit);
+        Assert.Contains($"Config file '{jobKey}': table job 1: unknown key 'theme'", jobOutput);
+        Assert.Equal(1, topExit);
+        Assert.Contains($"Config file '{topKey}': key 'log'", topOutput);
+    }
+
+    /// <summary>Test that --input, --output and a repeated --config are rejected with a tables config.</summary>
+    [Fact]
+    public void DictionaryMark_Config_TablesWithCommandLineInput_ReturnsError()
+    {
+        // Arrange: a config with tables
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "dictionarymark.yaml", "tables:\n  - input: a.yaml\n    output: a.md\n");
+
+        // Act
+        var inputExit = Runner.Run(out var inputOutput, "dotnet", _dllPath, "--config", config, "--input", "b.yaml");
+        var outputExit = Runner.Run(out var outputOutput, "dotnet", _dllPath, "--config", config, "--output", "b.md");
+        var twiceExit = Runner.Run(out var twiceOutput, "dotnet", _dllPath, "--config", config, "--config", config);
+
+        // Assert
+        Assert.Equal(1, inputExit);
+        Assert.Contains("--input cannot be used with config file", inputOutput);
+        Assert.Equal(1, outputExit);
+        Assert.Contains("--output cannot be used with config file", outputOutput);
+        Assert.Equal(1, twiceExit);
+        Assert.Contains("--config can only be specified once", twiceOutput);
+    }
+
+    /// <summary>Test that relative command-line globs with '..' segments are processed.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_ParentDirectoryGlob_ProcessesMatches()
+    {
+        // Arrange: a working directory beside a shared dictionary directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", "API: Application Programming Interface\n");
+        var work = Directory.CreateDirectory(PathIn(tmpDir, "work")).FullName;
+
+        // Act: leading and mid-pattern '..' segments
+        var leadingExit = Runner.RunInDirectory(out var leading, work, "dotnet", _dllPath, "--input", "../shared/*.yaml");
+        var midExit = Runner.RunInDirectory(out var mid, work, "dotnet", _dllPath, "--input", "sub/../../shared/*.yaml");
+
+        // Assert
+        Assert.Equal(0, leadingExit);
+        Assert.Contains("API", leading);
+        Assert.Equal(0, midExit);
+        Assert.Contains("API", mid);
+    }
+
+    /// <summary>Test that missing output directories are created.</summary>
+    [Fact]
+    public void DictionaryMark_Generate_OutputInMissingDirectory_CreatesDirectory()
+    {
+        // Arrange: an output path in directories that do not exist
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "input.yaml", "API: Application Programming Interface\n");
+        var output = PathIn(tmpDir, "new/nested/out.md");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--input", input, "--output", output);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(output));
+    }
+
+    /// <summary>Test that relative command-line inputs and output resolve against --root.</summary>
+    [Fact]
+    public void DictionaryMark_Root_CommandLineInputsAndOutput_ResolvedAgainstRoot()
+    {
+        // Arrange: a dictionary under a root directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "root/dict/terms.yaml", "API: Application Programming Interface\n");
+        var root = PathIn(tmpDir, "root");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--root", root, "--input", "dict/*.yaml", "--output", "out/terms.md");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "root/out/terms.md")));
+    }
+
+    /// <summary>Test that a relative --root with '..' resolves against the working directory.</summary>
+    [Fact]
+    public void DictionaryMark_Root_RelativeRootWithParentSegments_ResolvedAgainstWorkingDirectory()
+    {
+        // Arrange: a working directory and a sibling root
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "root/terms.yaml", "API: Application Programming Interface\n");
+        var work = Directory.CreateDirectory(PathIn(tmpDir, "work")).FullName;
+
+        // Act
+        var exitCode = Runner.RunInDirectory(out var output, work, "dotnet", _dllPath, "--root", "../root", "--input", "*.yaml");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", output);
+    }
+
+    /// <summary>Test that config table paths resolve against --root.</summary>
+    [Fact]
+    public void DictionaryMark_Root_ConfigTables_ResolvedAgainstRoot()
+    {
+        // Arrange: a config in one directory and a dictionary under a separate root
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "root/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config, "--root", PathIn(tmpDir, "root"));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "root/out.md")));
+    }
+
+    /// <summary>Test that ${VAR} references in --root are expanded.</summary>
+    [Fact]
+    public void DictionaryMark_Root_EnvironmentVariable_Expanded()
+    {
+        // Arrange: a variable naming the root directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "terms.yaml", "API: Application Programming Interface\n");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--root", "${" + VariableName + "}", "--input", "terms.yaml");
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            Assert.Contains("API", output);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that absolute inputs and outputs ignore --root.</summary>
+    [Fact]
+    public void DictionaryMark_Root_AbsoluteInputAndOutput_IgnoreRoot()
+    {
+        // Arrange: an absolute input and output outside the root
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "terms.yaml", "API: Application Programming Interface\n");
+        var output = PathIn(tmpDir, "out.md");
+        var root = Directory.CreateDirectory(PathIn(tmpDir, "root")).FullName;
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--root", root, "--input", input, "--output", output);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(output));
+        Assert.Empty(Directory.GetFileSystemEntries(root));
+    }
+
+    /// <summary>Test that the config root key is the base for table jobs.</summary>
+    [Fact]
+    public void DictionaryMark_Config_Root_TablesResolvedAgainstRoot()
+    {
+        // Arrange: a config two levels below the repository root it names
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "dict/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "tools/config/dictionarymark.yaml",
+            "root: ../..\ntables:\n  - input: dict/*.yaml\n    output: docs/terms.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "docs/terms.md")));
+    }
+
+    /// <summary>Test that the config root key is the base for command-line inputs when the file has no tables.</summary>
+    [Fact]
+    public void DictionaryMark_Config_Root_CommandLineInputsResolvedAgainstRoot()
+    {
+        // Arrange: a config without tables naming a root directory
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "dict/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "root: ../dict\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--input", "terms.yaml");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", output);
+    }
+
+    /// <summary>Test that --root overrides the config root key.</summary>
+    [Fact]
+    public void DictionaryMark_Root_CommandLineRoot_OverridesConfigRoot()
+    {
+        // Arrange: the config root names an empty directory; --root names the one with the dictionary
+        using var tmpDir = new TemporaryDirectory();
+        Directory.CreateDirectory(PathIn(tmpDir, "empty"));
+        WriteFile(tmpDir, "real/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "root: ../empty\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config, "--root", PathIn(tmpDir, "real"));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(PathIn(tmpDir, "real/out.md")));
+    }
+
+    /// <summary>Test that, without a root, command-line paths resolve against the working directory.</summary>
+    [Fact]
+    public void DictionaryMark_Config_NoRoot_CommandLinePathsUseWorkingDirectory()
+    {
+        // Arrange: a config without tables or root in one directory; the dictionary in the working directory
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "format: table\n");
+        WriteFile(tmpDir, "work/terms.yaml", "API: Application Programming Interface\n");
+        var work = PathIn(tmpDir, "work");
+
+        // Act
+        var exitCode = Runner.RunInDirectory(
+            out _, work, "dotnet", _dllPath, "--config", config, "--input", "terms.yaml", "--output", "terms.md");
+
+        // Assert: the output was written in the working directory
+        Assert.Equal(0, exitCode);
+        Assert.Contains("| API |", File.ReadAllText(PathIn(tmpDir, "work/terms.md")));
+    }
+
+    /// <summary>Test that a missing --root directory is an error.</summary>
+    [Fact]
+    public void DictionaryMark_Root_MissingDirectory_ReturnsError()
+    {
+        // Arrange: a root that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missing = PathIn(tmpDir, "missing");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--root", missing, "--input", "a.yaml");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Directory '{missing}' specified by --root option", output);
+    }
+
+    /// <summary>Test that a repeated or empty --root is an error.</summary>
+    [Fact]
+    public void DictionaryMark_Root_SpecifiedTwice_ReturnsError()
+    {
+        // Act
+        var twiceExit = Runner.Run(out var twice, "dotnet", _dllPath, "--root", ".", "--root", ".");
+        var emptyExit = Runner.Run(out var empty, "dotnet", _dllPath, "--root", "");
+
+        // Assert
+        Assert.Equal(1, twiceExit);
+        Assert.Contains("--root can only be specified once", twice);
+        Assert.Equal(1, emptyExit);
+        Assert.Contains("--root requires a non-empty directory path", empty);
+    }
+
+    /// <summary>Test that a config root naming a missing directory is an error naming the file.</summary>
+    [Fact]
+    public void DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile()
+    {
+        // Arrange: a config whose root does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "dictionarymark.yaml", "root: missing\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Config file '{config}': Directory '{PathIn(tmpDir, "missing")}' specified by root key", output);
+    }
+
+    /// <summary>Test that a root key inside a table job is an error naming the job.</summary>
+    [Fact]
+    public void DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob()
+    {
+        // Arrange: a job with a root key
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "dictionarymark.yaml", "tables:\n  - input: a.yaml\n    output: a.md\n    root: ..\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Config file '{config}': table job 1: key 'root' is only allowed at the top level", output);
+    }
 }

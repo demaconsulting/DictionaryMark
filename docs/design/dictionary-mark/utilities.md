@@ -5,11 +5,12 @@
 ### Overview
 
 The Utilities subsystem provides shared helper functionality consumed by other subsystems. It
-contains three units: `GlobMatcher`, which resolves glob patterns to sorted, deduplicated
-file-path lists; `PathHelpers`, which enforces a path-traversal security boundary when combining
-a trusted base path with a caller-supplied relative path; and `TemporaryDirectory`, a disposable
-helper for creating and cleaning up temporary working folders. None of these units depends on any
-other DictionaryMark subsystem.
+contains four units: `GlobMatcher`, which resolves glob patterns to sorted, deduplicated
+file-path lists; `PathResolver`, which resolves user-supplied paths against a base directory
+with `${VAR}` expansion and `..` support; `PathHelpers`, which enforces a path-traversal security
+boundary when combining a trusted base path with a caller-supplied relative path; and
+`TemporaryDirectory`, a disposable helper for creating and cleaning up temporary working folders.
+None of these units depends on any other DictionaryMark subsystem.
 
 ### Interfaces
 
@@ -21,6 +22,28 @@ other DictionaryMark subsystem.
   `IReadOnlyList<string>` of absolute file paths. Throws `ArgumentNullException` when `patterns`
   is null; throws `ArgumentException` when any pattern is null or empty.
 - *Constraints*: Results are sorted with `StringComparer.OrdinalIgnoreCase`.
+
+**GlobMatcher.Resolve**: Strictly resolves input patterns against a base directory.
+
+- *Type*: In-process .NET public API
+- *Role*: Provider — `DictionaryGenerator` consumes this to resolve each job's input patterns
+- *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` (and
+  `Resolve(patterns)`, which uses the working directory) returns the sorted, deduplicated absolute
+  paths; every pattern must match. Throws `InvalidOperationException` naming the pattern or path
+  when a pattern matches nothing or a variable is undefined.
+- *Constraints*: `..` segments are supported anywhere before the first wildcard.
+
+**PathResolver**: Resolves user-supplied paths against a base directory.
+
+- *Type*: In-process .NET public API
+- *Role*: Provider — `GlobMatcher`, `DictionaryGenerator`, `Context` and `ConfigFile` consume this
+- *Contract*: `ExpandEnvironmentVariables(path, description)`, `Combine(path, baseDirectory,
+  description)` (rooted, not normalized; for globs), `ResolvePath(path, baseDirectory,
+  description)` (rooted and normalized; for literal paths) and `ResolveExistingDirectory(path,
+  baseDirectory, description)` (for root directories; rejects wildcards and missing directories).
+  Throws `InvalidOperationException` with a message naming the description and path.
+- *Constraints*: Only the path argument is expanded, never the base directory. Absolute paths
+  ignore the base directory.
 
 **PathHelpers.SafePathCombine**: Enforces path-traversal security boundary.
 
@@ -53,7 +76,9 @@ other DictionaryMark subsystem.
 
 ### Design
 
-The three units are independent helpers with no internal dependencies between them.
+`GlobMatcher.Resolve` uses `PathResolver.Combine` to expand and root every pattern before
+matching, so every glob is matched as an absolute glob whose literal base directory may contain
+`..` segments. The other units are independent helpers.
 `GlobMatcher.GetFiles` handles three path categories in order: (1) absolute path without
 wildcards — checks `File.Exists` directly; (2) absolute path with wildcards — extracts the
 deepest wildcard-free directory segment as the base, constructs a `Matcher` with the remaining

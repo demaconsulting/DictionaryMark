@@ -70,6 +70,8 @@ internal static partial class Validation
         RunConflictDetectionTest(context, testResults);
         RunHiddenEntryTest(context, testResults);
         RunDeprecatedTableTest(context, testResults);
+        RunColumnWidthsTest(context, testResults);
+        RunConfigTablesTest(context, testResults);
 
         // Calculate totals
         var totalTests = testResults.Results.Count;
@@ -593,6 +595,141 @@ internal static partial class Validation
             {
                 test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
                 test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that <c>--column-widths</c> sizes the table separator in proportion to the weights.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunColumnWidthsTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_ColumnWidths";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath("input.yaml");
+            var outputFile = tempDir.GetFilePath("output.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}");
+
+            var args = new[] { SilentArg, InputArg, inputFile, "--format", "table", "--column-widths", "25,75", "--output", outputFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            // Weights 25 and 75 scale to exactly 25 and 75 dashes
+            var expectedSeparator = $"| :{new string('-', 25)} | :{new string('-', 75)} |";
+            if (exitCode == 0 && File.Exists(outputFile))
+            {
+                var content = File.ReadAllText(outputFile);
+                if (content.Contains(expectedSeparator) && content.Contains("| Alpha | First letter |"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Expected proportional table separator not found in output";
+                    context.WriteError($"✗ {TestName} - Failed: Expected proportional table separator not found in output");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output file not created";
+                context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that a <c>--config</c> file with <c>tables</c> generates every table, resolving
+    ///     relative paths (including <c>..</c>) from the config file's directory and creating missing
+    ///     output directories.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunConfigTablesTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_ConfigTables";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var inputFile = tempDir.GetFilePath(Path.Combine("shared", "terms.yaml"));
+            var configFile = tempDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+
+            // The output directory is deliberately not created, so the tool must create it
+            var tableFile = Path.Combine(tempDir.DirectoryPath, "out", "table.md");
+            var bulletFile = Path.Combine(tempDir.DirectoryPath, "out", "bullets.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}");
+
+            // Two jobs share a format default; the second overrides it, and both write to a missing directory
+            var nl = Environment.NewLine;
+            File.WriteAllText(
+                configFile,
+                $"format: table{nl}tables:{nl}" +
+                $"  - input: ../shared/*.yaml{nl}    output: ../out/table.md{nl}" +
+                $"  - input: ../shared/terms.yaml{nl}    output: ../out/bullets.md{nl}    format: bullets{nl}");
+
+            var args = new[] { SilentArg, "--config", configFile };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            if (exitCode == 0 && File.Exists(tableFile) && File.Exists(bulletFile))
+            {
+                var table = File.ReadAllText(tableFile);
+                var bullets = File.ReadAllText(bulletFile);
+                if (table.Contains("| Alpha | First letter |") && bullets.Contains("- **Alpha**: First letter"))
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                    context.WriteLine($"✓ {TestName} - Passed");
+                }
+                else
+                {
+                    test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                    test.ErrorMessage = "Expected table job content not found in outputs";
+                    context.WriteError($"✗ {TestName} - Failed: Expected table job content not found in outputs");
+                }
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage = $"Program exited with code {exitCode} or output files not created";
                 context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
             }
         }

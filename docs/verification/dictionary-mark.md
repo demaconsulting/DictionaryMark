@@ -13,7 +13,12 @@ temporary files.
 ## Test Environment
 
 - **Test framework**: xUnit v3 with `[Collection("Sequential")]` to prevent parallel execution.
-- **Execution method**: `dotnet <DLL> <args>` via `Runner.Run` helper.
+- **Execution method**: `dotnet <DLL> <args>` via `Runner.Run` helper. Tests of working-directory
+  relative paths (relative `..` globs, a relative `--root`, command-line paths without a root) use
+  `Runner.RunInDirectory` to start the tool in a temporary working directory without changing the
+  working directory of the test process.
+- **Environment variables**: tests of `${VAR}` expansion set a uniquely named variable in the test
+  process (inherited by the started tool) and remove it in a `finally` block.
 - **DLL location**: `AppContext.BaseDirectory` (resolved in the test class constructor).
 - **Temporary files**: `TemporaryDirectory` helper creates a unique subdirectory under
   `Environment.CurrentDirectory` and deletes it on disposal (see
@@ -146,3 +151,90 @@ This scenario is tested by `DictionaryMark_UnrecognizedArgument_WritesErrorToStd
 write any Markdown output — neither to stdout nor to any output file. This ensures partial
 or corrupt output is never produced when the tool is misconfigured.
 This scenario is tested by `DictionaryMark_UnrecognizedArgument_WritesNoMarkdownOutput`.
+
+**ColumnWidths**: When `--column-widths 25,75` is given with table output, the separator row must
+contain exactly 25 and 75 dashes after the `:` markers. When three weights are given for a
+deprecated table whose entries have no Where value, the third weight must be dropped and the first
+two rescaled (20,50 becomes 29,71). Bullet output must be byte-for-byte identical with and without
+widths.
+This scenario is tested by `DictionaryMark_Generate_ColumnWidths_OutputsProportionalSeparator`,
+`DictionaryMark_Generate_ColumnWidthsDeprecatedWithoutWhere_RescalesTwoColumns` and
+`DictionaryMark_Generate_ColumnWidthsWithBullets_OutputUnchanged`.
+
+**ColumnWidthsValidation**: Zero, negative and non-integer weights, and a weight count that does
+not match the table (2 weights for a deprecated table), must be rejected with an error and exit
+code 1.
+This scenario is tested by `DictionaryMark_Generate_ColumnWidthsInvalidValue_ReturnsError` and
+`DictionaryMark_Generate_ColumnWidthsWrongCount_ReturnsError`.
+
+**ConfigDefaults**: A configuration file with only formatting defaults must apply them to a
+command-line `--input` run (section heading, table format and column widths).
+This scenario is tested by `DictionaryMark_Config_FormattingDefaults_AppliedToCommandLineRun`.
+
+**ConfigPrecedence**: A command-line option must override both the job key and the top-level
+default of the configuration file, for every job.
+This scenario is tested by `DictionaryMark_Config_CommandLineOption_OverridesFileValues`.
+
+**ConfigTableJobs**: A configuration file with two table jobs (approved terms and deprecated terms,
+each with its own widths) must produce both output files.
+This scenario is tested by `DictionaryMark_Config_MultipleTableJobs_WritesEachOutput`.
+
+**ConfigRelativePaths**: Relative inputs (a leading `..` recursive glob and a mid-pattern `..`
+literal) and a relative output in a missing directory, all in a configuration file, must resolve
+against the configuration file's directory regardless of the working directory.
+This scenario is tested by
+`DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory`.
+
+**ConfigEnvironmentVariables**: `${VAR}` references in the `--config` path and in the input and
+output paths of a job must be expanded.
+This scenario is tested by `DictionaryMark_Config_EnvironmentVariablesInPaths_AreExpanded`.
+
+**ConfigJobFailures**: When the second of three jobs matches no files, jobs 1 and 3 must still be
+written, the failure must be reported as `table job 2 ('b.md')`, a summary `1 of 3 table jobs
+failed` must be reported, and the exit code must be 1.
+This scenario is tested by `DictionaryMark_Config_OneJobFails_OtherJobsWrittenAndExitNonZero`.
+
+**ConfigValidation**: A missing file, malformed YAML, an unknown job key and a disallowed top-level
+key must each be rejected with an error naming the file and the key (and job), and exit code 1.
+This scenario is tested by `DictionaryMark_Config_InvalidFile_ReturnsErrorNamingFile` and
+`DictionaryMark_Config_UnknownKey_ReturnsErrorNamingKey`.
+
+**ConfigCommandLineConflict**: `--input` and `--output` with a configuration file that defines
+tables, and a repeated `--config`, must be rejected with exit code 1.
+This scenario is tested by `DictionaryMark_Config_TablesWithCommandLineInput_ReturnsError`.
+
+**ParentDirectoryPatterns**: Relative command-line globs with a leading `..` and with `..` after a
+normal segment must match files outside the working directory.
+This scenario is tested by `DictionaryMark_Generate_ParentDirectoryGlob_ProcessesMatches`.
+
+**OutputDirectoryCreation**: An `--output` path inside directories that do not exist must be
+written after the directories are created.
+This scenario is tested by `DictionaryMark_Generate_OutputInMissingDirectory_CreatesDirectory`.
+
+**RootDirectory**: With `--root`, relative command-line inputs and outputs, and relative
+configuration table paths, must resolve against the root; a relative root with `..` must resolve
+against the working directory; `${VAR}` in the root must be expanded; and absolute inputs and
+outputs must ignore the root.
+This scenario is tested by `DictionaryMark_Root_CommandLineInputsAndOutput_ResolvedAgainstRoot`,
+`DictionaryMark_Root_RelativeRootWithParentSegments_ResolvedAgainstWorkingDirectory`,
+`DictionaryMark_Root_ConfigTables_ResolvedAgainstRoot`, `DictionaryMark_Root_EnvironmentVariable_Expanded`
+and `DictionaryMark_Root_AbsoluteInputAndOutput_IgnoreRoot`.
+
+**ConfigRoot**: A configuration file's `root: ../..` key must be the base for its table jobs, and a
+`root` key in a file without tables must be the base for command-line inputs.
+This scenario is tested by `DictionaryMark_Config_Root_TablesResolvedAgainstRoot` and
+`DictionaryMark_Config_Root_CommandLineInputsResolvedAgainstRoot`.
+
+**RootPrecedence**: `--root` must override the configuration `root` key; without any root,
+configuration paths must resolve against the configuration file's directory and command-line
+paths against the working directory.
+This scenario is tested by `DictionaryMark_Root_CommandLineRoot_OverridesConfigRoot`,
+`DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory` and
+`DictionaryMark_Config_NoRoot_CommandLinePathsUseWorkingDirectory`.
+
+**RootValidation**: A missing `--root` directory, a repeated or empty `--root`, a configuration
+`root` naming a missing directory, and a `root` key inside a table job must each be rejected with
+an error and exit code 1.
+This scenario is tested by `DictionaryMark_Root_MissingDirectory_ReturnsError`,
+`DictionaryMark_Root_SpecifiedTwice_ReturnsError`, `DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile`
+and `DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob`.

@@ -75,3 +75,12 @@ This scenario is tested by `Program_Run_WithShortHelpFlag_DisplaysUsage`.
 created from `["-?"]`. Standard output must contain `"Usage:"` and `"Options:"` and exit code
 must be zero, confirming the `-?` alias for `--help` is accepted.
 This scenario is tested by `Program_Run_WithQuestionMarkFlag_DisplaysUsage`.
+
+**Program_Run_WithConfigTables_InvokesDictionaryGeneration**: `Program.Run` is called with a context
+created from `["--silent", "--config", config]`, where the configuration file defines one table job.
+The job's output file must be written and the exit code must be zero, confirming that configuration
+table jobs dispatch to dictionary generation.
+This scenario is tested by `Program_Run_WithConfigTables_InvokesDictionaryGeneration`.
+
+The help scenario `Program_Run_WithHelpFlag_DisplaysUsageInformation` also asserts that the usage
+text lists `--config <file>`, `--column-widths <w1,w2[,w3]>` and `--root <dir>`.

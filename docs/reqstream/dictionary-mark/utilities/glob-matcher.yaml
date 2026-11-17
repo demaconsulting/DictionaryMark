@@ -66,3 +66,16 @@ sections:
                   changing command lines.
                 tests:
                   - GlobMatcher_Resolve_EnvironmentVariable_IsExpandedOrFails
+
+              - id: DictionaryMark-GlobMatcher-BaseDirectory
+                title: >-
+                  The GlobMatcher shall resolve relative patterns against a supplied base directory, supporting
+                  parent-directory segments anywhere before the first wildcard.
+                justification: |
+                  Configuration-file and root-relative inputs are written relative to a directory other than the
+                  working directory, and often reference shared dictionaries through parent-directory segments.
+                tests:
+                  - GlobMatcher_Resolve_BaseDirectory_ResolvesRelativePatterns
+                  - GlobMatcher_Resolve_LeadingParentSegmentGlob_ReturnsFiles
+                  - GlobMatcher_Resolve_NestedParentSegmentGlob_ReturnsFiles
+                  - GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile

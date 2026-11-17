@@ -7,8 +7,9 @@
 `Context` constructed from controlled argument arrays and write temporary YAML files to disk using
 `TemporaryDirectory`. Console standard output and standard error are redirected with `StringWriter`
 instances to capture generated output and error messages. All collaborating units (`GlobMatcher`,
-`YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`) run with their real implementations
-against real files; no mocking or stubbing is used.
+`PathResolver`, `YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`) run with their real
+implementations against real files; no mocking or stubbing is used. Multi-job scenarios build their jobs
+through `Context` and `TableJob` (documented dependencies) from a real configuration file.
 
 #### Test Environment
 
@@ -62,3 +63,33 @@ directories are reported with distinct errors. This scenario is tested by
 
 **DictionaryGenerator_Generate_OneMissingPattern_Fails**: One unmatched pattern among several fails
 the run. This scenario is tested by `DictionaryGenerator_Generate_OneMissingPattern_Fails`.
+
+**DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput**: Verifies that a configuration file with
+two jobs writes both outputs, each with its own content and format. This scenario is tested by
+`DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput`.
+
+**DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel**: Verifies that when the first
+job matches no files, its error is prefixed with `table job 1 ('a.md')`, it writes no output, and the
+second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel`.
+
+**DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne**: Verifies that when both jobs
+fail, both are reported, the summary `2 of 2 table jobs failed` is written, and the exit code is 1.
+This scenario is tested by `DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne`.
+
+**DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory**: Verifies that an `--output`
+path inside two missing directories is written after the directories are created. This scenario is
+tested by `DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory`.
+
+**DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput**: Verifies that a job's
+`sub/../../shared/*.yaml` input and `../out/terms.md` output resolve against the job's base directory
+(the configuration file's directory). This scenario is tested by
+`DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput`.
+
+**DictionaryGenerator_Generate_ConflictsDetectedPerJob**: Verifies that two conflicting dictionaries
+used by separate jobs produce no error, while one job reading both reports the conflict prefixed with
+its label. This scenario is tested by `DictionaryGenerator_Generate_ConflictsDetectedPerJob`.
+
+**DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput**: Verifies that `--column-widths 25,75`
+reaches the generated table separator. This scenario is tested by
+`DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput`.

@@ -326,4 +326,77 @@ public class GlobMatcherTests
         Assert.Single(literal);
         Assert.Single(glob);
     }
+
+    /// <summary>Test that relative patterns resolve against a supplied base directory.</summary>
+    [Fact]
+    public void GlobMatcher_Resolve_BaseDirectory_ResolvesRelativePatterns()
+    {
+        // Arrange: files in a base directory that is not the working directory
+        using var tmpDir = new TemporaryDirectory();
+        var a = tmpDir.GetFilePath("a.yaml");
+        var b = tmpDir.GetFilePath(Path.Combine("sub", "b.yaml"));
+        File.WriteAllText(a, "A: a\n");
+        File.WriteAllText(b, "B: b\n");
+
+        // Act: resolve a literal and a recursive glob relative to the base directory
+        var result = GlobMatcher.Resolve(["a.yaml", "sub/*.yaml"], tmpDir.DirectoryPath);
+
+        // Assert: both files are found as full paths
+        Assert.Equal([Path.GetFullPath(a), Path.GetFullPath(b)], result);
+    }
+
+    /// <summary>Test that a glob starting with '..' resolves against the base directory.</summary>
+    [Fact]
+    public void GlobMatcher_Resolve_LeadingParentSegmentGlob_ReturnsFiles()
+    {
+        // Arrange: a shared directory beside the base directory
+        using var tmpDir = new TemporaryDirectory();
+        var shared = tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml"));
+        File.WriteAllText(shared, "A: a\n");
+        var baseDirectory = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "config")).FullName;
+
+        // Act
+        var result = GlobMatcher.Resolve(["../shared/*.yaml"], baseDirectory);
+
+        // Assert
+        Assert.Equal([Path.GetFullPath(shared)], result);
+    }
+
+    /// <summary>Test that globs with '..' after a normal segment and multiple '..' segments resolve.</summary>
+    [Fact]
+    public void GlobMatcher_Resolve_NestedParentSegmentGlob_ReturnsFiles()
+    {
+        // Arrange: a nested dictionary tree two levels above the base directory
+        using var tmpDir = new TemporaryDirectory();
+        var deep = tmpDir.GetFilePath(Path.Combine("a", "x", "deep.yaml"));
+        var shared = tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml"));
+        File.WriteAllText(deep, "D: d\n");
+        File.WriteAllText(shared, "S: s\n");
+        var baseDirectory = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "c", "d")).FullName;
+
+        // Act: a recursive glob after two '..' segments, and '..' after a normal segment
+        var recursive = GlobMatcher.Resolve(["../../a/**/*.yaml"], baseDirectory);
+        var midPattern = GlobMatcher.Resolve(["sub/../../../shared/*.yaml"], baseDirectory);
+
+        // Assert
+        Assert.Equal([Path.GetFullPath(deep)], recursive);
+        Assert.Equal([Path.GetFullPath(shared)], midPattern);
+    }
+
+    /// <summary>Test that a literal path with '..' resolves against the base directory.</summary>
+    [Fact]
+    public void GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile()
+    {
+        // Arrange: a file beside the base directory
+        using var tmpDir = new TemporaryDirectory();
+        var shared = tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml"));
+        File.WriteAllText(shared, "A: a\n");
+        var baseDirectory = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "config")).FullName;
+
+        // Act
+        var result = GlobMatcher.Resolve(["../shared/terms.yaml"], baseDirectory);
+
+        // Assert
+        Assert.Equal([Path.GetFullPath(shared)], result);
+    }
 }

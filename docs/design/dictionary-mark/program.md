@@ -51,18 +51,19 @@ notice to `context`.
 - *Preconditions*: None.
 - *Postconditions*: Banner written to context output.
 
-**PrintHelp** *(private)*: Writes the full usage and options text to `context`.
+**PrintHelp** *(private)*: Writes the full usage and options text to `context`, including the
+dictionary generation options `--column-widths <w1,w2[,w3]>`, `--config <file>` and `--root <dir>`.
 
 - *Parameters*: `Context context` — output channel.
 - *Returns*: `void`.
 - *Preconditions*: None.
 - *Postconditions*: Usage text written to context output.
 
-**RunToolLogic** *(private)*: If `context.InputPatterns` is non-empty, calls
-`DictionaryGenerator.Generate(context)` directly (static method; no instance is created).
-Otherwise writes a hint directing the user to `--input` and `--help`.
+**RunToolLogic** *(private)*: If `context.Jobs` is non-empty (from `--input` patterns or
+configuration-file tables), calls `DictionaryGenerator.Generate(context)` directly (static method;
+no instance is created). Otherwise writes a hint directing the user to `--input` and `--help`.
 
-- *Parameters*: `Context context` — provides input patterns and output channels.
+- *Parameters*: `Context context` — provides the jobs and output channels.
 - *Returns*: `void`.
 - *Preconditions*: None.
 - *Postconditions*: Dictionary generation attempted or hint written to output.
@@ -83,7 +84,8 @@ internally via `context.WriteError`.
 
 - **Context** — CLI subsystem; provides parsed flags, output channels, and exit code state.
 - **Validation** — SelfTest subsystem; invoked when `--validate` is specified.
-- **DictionaryGenerator** — Dictionary subsystem; invoked when `--input` patterns are specified.
+- **DictionaryGenerator** — Dictionary subsystem; invoked when `--input` patterns or
+  configuration-file tables are specified.
 
 ### Callers
 

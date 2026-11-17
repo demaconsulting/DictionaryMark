@@ -7,7 +7,11 @@ verification. The `Runner` class in `test/DemaConsulting.DictionaryMark.Tests/He
 provides a shared helper that launches DictionaryMark as an external operating-system process and
 returns the exit code. It exposes two overloads: one that captures stdout and stderr as separate
 strings, and a convenience overload that concatenates them (stdout before stderr) into a single
-string. Its correctness is demonstrated transitively: every integration test that calls `Runner.Run`
+string. A third method, `RunInDirectory`, starts the process in a given working directory and
+returns the concatenated output; it has a distinct name so string arguments cannot bind to the
+wrong overload, and it lets tests of working-directory-relative paths run without changing the
+working directory of the test process. Its correctness is demonstrated transitively: every
+integration test that calls `Runner.Run` or `Runner.RunInDirectory`
 and correctly asserts on process output or exit code implicitly proves that `Runner` launched the
 process, drained both output streams without deadlock, and returned the exit code faithfully. No
 dedicated tests exist for `Runner` itself.

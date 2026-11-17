@@ -29,13 +29,14 @@ sections:
 
           - id: DictionaryMark-Program-GenerateDictionary
             title: >-
-              The Program unit shall invoke dictionary generation when input patterns are
-              specified and no action flag overrides it.
+              The Program unit shall invoke dictionary generation when input patterns or configuration table
+              jobs are specified and no action flag overrides it.
             justification: |
-              When invoked without a version, help, or validate flag and input patterns are
+              When invoked without a version, help, or validate flag and input patterns or table jobs are
               provided, the tool must perform its primary function of dictionary generation.
             tests:
               - Program_Run_WithInputPatterns_InvokesDictionaryGeneration
+              - Program_Run_WithConfigTables_InvokesDictionaryGeneration
 
           - id: DictionaryMark-Program-NoInputHint
             title: The Program unit shall display a usage hint when neither action flag nor input patterns are set.

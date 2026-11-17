@@ -35,6 +35,10 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - 🔍 **Glob Patterns** - Process multiple input files with wildcards
 - ⚔️ **Conflict Detection** - Detect conflicting entries across files
 - 🎯 **Customizable Output** - Control headings, column headers, sort order, and depth
+- 📏 **Column Widths** - Size table columns in proportion to relative weights (for example `25,75`)
+- ⚙️ **Configuration File** - Keep formatting options and several table jobs in a YAML file beside the
+  dictionaries
+- 📂 **Root Directory** - Resolve relative input and output paths against a chosen base directory
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
 
@@ -124,6 +128,13 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--kind <kind>` | Input kind: `terms` (default) or `deprecated` |
 | `--use-header <header>` | Deprecated "use" column header |
 | `--where-header <header>` | Deprecated "where" column header |
+| `--column-widths <w1,w2[,w3]>` | Relative table column widths (e.g. `25,75`) |
+| `--config <file>` | Read formatting defaults and table jobs from a YAML file |
+| `--root <dir>` | Base directory for relative input and output paths |
+
+Missing parent directories of output files are created. Input patterns may use `..` segments before
+the first wildcard (for example `../shared/*.yaml`), and input and output paths may contain `${VAR}`
+environment variables.
 
 ### Examples
 
@@ -256,6 +267,87 @@ The `Where it was used` column appears only when at least one entry has a `where
 `--format bullets` the output is `- **bench mode**: Test Mode (where: Product A)` and
 `- **Zorbix unit**: Zorbix`.
 
+### Column Widths
+
+When a table is converted to HTML or PDF (for example with Pandoc), the column widths follow the
+number of dashes in the separator line. `--column-widths` sets those dash counts in proportion to
+relative weights, scaled to about 100 dashes in total with at least 3 per column:
+
+```bash
+dictionarymark --input glossary.yaml --format table --column-widths 25,75
+```
+
+```markdown
+| Term | Definition |
+| :------------------------- | :--------------------------------------------------------------------------- |
+| API | Application Programming Interface |
+```
+
+The weights must be positive integers. A terms table takes exactly 2 values and a deprecated table
+exactly 3; when no deprecated entry has a `where` value, the third weight is dropped and the first two
+are rescaled. Bullet output ignores the option. Without the option the output is unchanged.
+
+### Configuration File
+
+`--config <file.yaml>` reads formatting defaults, an optional root directory, and optional table jobs
+from a YAML file, so the options can be versioned beside the dictionaries they describe:
+
+```yaml
+# docs/glossary/dictionarymark.yaml
+format: table
+depth: 2
+sort: alpha
+column-widths: [25, 75]
+tables:
+  - input: "*glossary.yaml"
+    output: ../generated/glossary/terms.md
+    section: Terms
+  - input: [deprecated.yaml, ../../shared/deprecated.yaml]
+    output: ../generated/glossary/deprecated.md
+    section: Deprecated Terms
+    kind: deprecated
+    column-widths: [20, 50, 30]
+```
+
+```bash
+dictionarymark --config docs/glossary/dictionarymark.yaml
+```
+
+- **Top-level keys** are formatting defaults: `format`, `section`, `depth`, `sort`, `term-header`,
+  `def-header` (or `definition-header`), `kind`, `use-header`, `where-header` and `column-widths`
+  (a YAML sequence), plus `root` and `tables`.
+- **`tables`** is a list of jobs. Each job needs `input` (a pattern or a list of patterns) and
+  `output`, and may set any formatting key.
+- **Precedence**: a command-line option wins over a job key, which wins over a top-level default,
+  which wins over the built-in default.
+- **Without `tables`**, the file only supplies defaults, and `--input`/`--output` come from the
+  command line. **With `tables`**, `--input` and `--output` are errors; `--silent` and `--log` are
+  allowed.
+- **Paths** in the file are relative to the file's directory (unless a root directory is set), may use
+  `..` and `${VAR}`, and missing output directories are created.
+- **Errors**: unknown or misplaced keys (for example `log` or `input` at the top level) are reported
+  with the key, the job and the file. Every job runs; each failing job is reported as
+  `table job {n} ('{output}')`, and the exit code is non-zero if any job failed.
+
+### Root Directory
+
+`--root <dir>` (relative to the working directory) or a top-level `root:` key in the configuration
+file (relative to the file) sets the base directory for every relative input pattern and output path,
+so the tool can run from any working directory:
+
+```yaml
+# tools/dictionarymark/dictionarymark.yaml
+root: ../..
+tables:
+  - input: docs/glossary/*.yaml
+    output: docs/generated/glossary.md
+```
+
+The base directory is `--root` if given, else the configuration `root`, else the configuration file's
+directory (for paths from the file) or the working directory (for command-line paths). Absolute paths
+ignore the root, and `--config`, `--log` and `--results` are never resolved against it. The root must
+exist; `${VAR}` and `..` are supported.
+
 ### Conflicts
 
 The same term in several files is fine when the entries are identical. Entries that differ in `definition`, `pos`,
@@ -321,6 +413,9 @@ the results of each self-test. Each test proves a specific capability:
 - **`DictionaryMark_ConflictDetection`** - Conflicting definitions across files are detected
 - **`DictionaryMark_HiddenEntry`** - Entries with `visible: false` are omitted from the output
 - **`DictionaryMark_DeprecatedTable`** - A deprecated-terms table is generated with `--kind deprecated`
+- **`DictionaryMark_ColumnWidths`** - `--column-widths` sizes the table separator in proportion to the weights
+- **`DictionaryMark_ConfigTables`** - A `--config` file generates every table job, with config-relative
+  `..` paths and missing output directories created
 
 Results can be saved to a file:
 

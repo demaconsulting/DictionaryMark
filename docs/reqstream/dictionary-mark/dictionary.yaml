@@ -69,5 +69,34 @@ sections:
               - DictionaryMark-DictionaryGenerator-StrictInputs
               - DictionaryMark-DictionaryGenerator-RichEntries
               - DictionaryMark-DictionaryGenerator-DeprecatedKind
+              - DictionaryMark-DictionaryGenerator-OutputDirectories
             tests:
               - DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown
+
+          - id: DictionaryMark-Dictionary-ColumnWidths
+            title: >-
+              The Dictionary subsystem shall size generated table columns in proportion to the requested column
+              widths, rescaling for deprecated tables without a Where column.
+            justification: |
+              Proportional columns keep long definitions readable when tables are rendered to fixed-width
+              pages.
+            children:
+              - DictionaryMark-Formatter-ColumnWidths
+              - DictionaryMark-Formatter-ColumnWidthsDeprecated
+              - DictionaryMark-DictionaryGenerator-ColumnWidths
+            tests:
+              - DictionarySubsystem_TableGeneration_ColumnWidths_GeneratesProportionalSeparator
+
+          - id: DictionaryMark-Dictionary-TableJobs
+            title: >-
+              The Dictionary subsystem shall generate one output per job, resolving each job's paths against its
+              base directory and reporting failures per job without stopping the remaining jobs.
+            justification: |
+              Configuration files define several independent tables that must all be generated and diagnosed
+              in one run.
+            children:
+              - DictionaryMark-DictionaryGenerator-TableJobs
+              - DictionaryMark-DictionaryGenerator-JobErrors
+              - DictionaryMark-DictionaryGenerator-JobPaths
+            tests:
+              - DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput

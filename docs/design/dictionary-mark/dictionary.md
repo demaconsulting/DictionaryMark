@@ -19,10 +19,10 @@ everything from resolving input file paths through formatting the final Markdown
 
 - *Type*: In-process .NET public API
 - *Role*: Provider — other units invoke this to run the full pipeline
-- *Contract*: `Generate(Context context)` runs the pipeline end-to-end using settings from
-  `context`; writes output to file or stdout; calls `context.WriteError` and returns early on any
-  error.
-- *Constraints*: Returns without generating output if any error is detected.
+- *Contract*: `Generate(Context context)` runs every job in `context.Jobs`; each job writes its
+  output to a file or stdout, or calls `context.WriteError` and stops on its first error; the
+  remaining jobs still run.
+- *Constraints*: A job that fails produces no output.
 
 **OutputFormat**: Enum defining the available output formats.
 
@@ -41,20 +41,34 @@ everything from resolving input file paths through formatting the final Markdown
 **Context**: The context object passed in from the Cli subsystem.
 
 - *Type*: In-process .NET public API
-- *Role*: Consumer — `DictionaryGenerator` reads input patterns, output options, and output channels
-  from `context`
-- *Contract*: Uses `context.InputPatterns`, `context.OutputFile`, `context.Format`,
-  `context.SortBy`, `context.SectionHeading`, `context.TermHeader`, `context.TermHeaderSpecified`,
-  `context.DefinitionHeader`, `context.UseHeader`, `context.WhereHeader`, `context.Kind`,
-  `context.HeadingDepth`, `context.WriteError`, `context.WriteLine`.
+- *Role*: Consumer — `DictionaryGenerator` reads the jobs and output channels from `context`
+- *Contract*: Uses `context.Jobs`, `context.UsesConfigTables`, `context.WriteError`,
+  `context.WriteLine`.
+- *Constraints*: N/A
+
+**TableJob**: One generation job from the Cli subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `DictionaryGenerator` runs each job
+- *Contract*: Uses `InputPatterns`, `OutputFile`, `BaseDirectory`, `Label` and `Options`.
+- *Constraints*: N/A
+
+**PathResolver.ResolvePath**: Literal path resolution from the Utilities subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `DictionaryGenerator` resolves each job's output path against its base
+  directory
+- *Contract*: Returns the normalized full path after `${VAR}` expansion; throws
+  `InvalidOperationException` for an undefined variable.
 - *Constraints*: N/A
 
 **GlobMatcher.Resolve**: Strict file pattern resolution from the Utilities subsystem.
 
 - *Type*: In-process .NET public API
 - *Role*: Consumer — `DictionaryGenerator` calls this to resolve patterns to file paths
-- *Contract*: `Resolve(IEnumerable<string> patterns)` returns a sorted, deduplicated list of absolute
-  file paths after expanding `${VAR}` references.
+- *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` returns a sorted,
+  deduplicated list of absolute file paths after expanding `${VAR}` references and rooting relative
+  patterns at the base directory.
 - *Constraints*: Throws `ArgumentException` on empty patterns and `InvalidOperationException` when a
   pattern matches nothing, a literal path does not exist, or a variable is undefined.
 
@@ -68,22 +82,37 @@ everything from resolving input file paths through formatting the final Markdown
 
 ### Design
 
-`DictionaryGenerator.Generate` drives the pipeline in five steps:
+`DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
+job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. Call `GlobMatcher.Resolve` for `context.InputPatterns`
+1. Call `GlobMatcher.Resolve` for the job's input patterns and base directory
    (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
    on `ArgumentException` or `InvalidOperationException`, or when no files are found.
-2. Load each resolved file: input files as the selected kind (`context.Kind`, approved terms via
+2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
    `InvalidOperationException`.
-3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule; report
-   each conflict via `context.WriteError` and return early if any are found.
-4. Construct a `MarkdownOptions` bag from `context` properties and call
-   `MarkdownFormatter.Format` (approved terms) or `MarkdownFormatter.FormatDeprecated` (deprecated
-   terms), using only entries from the primary input files, to produce the Markdown string.
-5. Write the string to `context.OutputFile` (via `File.WriteAllText`) or to stdout (via
+3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
+   job; report each conflict and return early if any are found. Different jobs may use different or
+   overlapping dictionaries.
+4. Call `MarkdownFormatter.Format` (approved terms) or `MarkdownFormatter.FormatDeprecated`
+   (deprecated terms) with `job.Options`, using only entries from the primary input files, to
+   produce the Markdown string. When `job.Options.ColumnWidths` is set, table separators are sized
+   in proportion to the widths.
+5. Write the string to the job's output file — resolved against the job's base directory with
+   `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
-   call `context.WriteError` and return.
+   report the error and return.
+
+Every job error is written through `context.WriteError`, prefixed with the job label
+(`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration
+tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported.
+
+#### Column widths
+
+`MarkdownOptions.ColumnWidths` holds one positive weight per table column, or `null`. Without
+widths the separator is the fixed `| :--- | :--- |` row, so default output is unchanged. With
+widths, each column gets `max(3, round_half_up(weight * 100 / total))` dashes after the `:`
+alignment marker (see *MarkdownFormatter Design*).
 
 #### Rich entries and deprecated terms
 

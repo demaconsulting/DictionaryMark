@@ -277,4 +277,152 @@ public class DictionaryGeneratorTests
         Assert.Equal(1, exitCode);
         Assert.Equal(string.Empty, output);
     }
+
+    /// <summary>Writes a config file into a "config" sub-directory and returns its path.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="content">The YAML content.</param>
+    /// <returns>The full path of the config file.</returns>
+    private static string WriteConfig(TemporaryDirectory tmpDir, string content)
+    {
+        var path = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>Test that every config job writes its own output.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput()
+    {
+        // Arrange: two dictionaries and two jobs with different formats
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: a.md\n    format: table\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, _, exitCode) = Run("--config", config);
+
+        // Assert: both outputs exist with their own content and format
+        Assert.Equal(0, exitCode);
+        Assert.Contains("| Alpha | First |", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "a.md"))));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>Test that a failing job does not stop later jobs and is reported with its label.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel()
+    {
+        // Arrange: the first job matches nothing; the second is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: none*.yaml\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, _) = Run("--config", config);
+
+        // Assert: the first job's error names its index and output; the second job still ran
+        Assert.Contains("Error: table job 1 ('a.md'): Input pattern 'none*.yaml' matched no files.", err);
+        Assert.True(File.Exists(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+        Assert.False(File.Exists(Path.Combine(tmpDir.DirectoryPath, "config", "a.md")));
+    }
+
+    /// <summary>Test that failed jobs produce a summary and exit code 1.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne()
+    {
+        // Arrange: two jobs that both fail
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: none1.yaml\n    output: a.md\n  - input: none2.yaml\n    output: b.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: both failures are reported, followed by the summary
+        Assert.Equal(1, exitCode);
+        Assert.Contains("table job 1 ('a.md')", err);
+        Assert.Contains("table job 2 ('b.md')", err);
+        Assert.Contains("Error: 2 of 2 table jobs failed.", err);
+    }
+
+    /// <summary>Test that missing parent directories of the output file are created.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory()
+    {
+        // Arrange: an output path inside directories that do not exist
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(input, "Alpha: First\n");
+        var output = Path.Combine(tmpDir.DirectoryPath, "new", "nested", "out.md");
+
+        // Act
+        var (_, _, exitCode) = Run("--input", input, "--output", output);
+
+        // Assert: the directories and the file were created
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Alpha", File.ReadAllText(output));
+    }
+
+    /// <summary>Test that relative inputs and output resolve against the job's base directory.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput()
+    {
+        // Arrange: a shared dictionary beside the config directory, referenced through '..'
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: sub/../../shared/*.yaml\n    output: ../out/terms.md\n");
+
+        // Act
+        var (_, _, exitCode) = Run("--config", config);
+
+        // Assert: the output was written relative to the config directory
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Alpha", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "terms.md")));
+    }
+
+    /// <summary>Test that conflicts are detected within a job but not across jobs.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConflictsDetectedPerJob()
+    {
+        // Arrange: two dictionaries that conflict, used by separate jobs and then by one job
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "API: Advanced Peripheral Interface\n");
+        var separate = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act: separate jobs
+        var (_, _, separateExit) = Run("--config", separate);
+
+        // Arrange: one job reading both dictionaries
+        var combined = WriteConfig(tmpDir, "tables:\n  - input: [a.yaml, b.yaml]\n    output: c.md\n");
+
+        // Act: combined job
+        var (_, combinedErr, combinedExit) = Run("--config", combined);
+
+        // Assert: only the combined job reports the conflict, labeled with the job
+        Assert.Equal(0, separateExit);
+        Assert.Equal(1, combinedExit);
+        Assert.Contains("Error: table job 1 ('c.md'): Conflict: term 'API'", combinedErr);
+    }
+
+    /// <summary>Test that column widths reach the generated table.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput()
+    {
+        // Arrange: a dictionary file
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath("input.yaml");
+        File.WriteAllText(input, "Alpha: First\n");
+
+        // Act: generate a table with column widths
+        var (output, _, exitCode) = Run("--input", input, "--format", "table", "--column-widths", "25,75");
+
+        // Assert: the separator has 25 and 75 dashes
+        Assert.Equal(0, exitCode);
+        Assert.Contains($"| :{new string('-', 25)} | :{new string('-', 75)} |", output);
+    }
 }

@@ -12,4 +12,7 @@ package DictionaryMark {
             requirementFiles = ("docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml");
         }
     }
+
+    // GlobMatcher expands and roots each pattern against the base directory before matching
+    dependency GlobMatcher to PathResolver;
 }

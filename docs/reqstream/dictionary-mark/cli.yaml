@@ -69,3 +69,73 @@ sections:
             tests:
               - CliSubsystem_ErrorOutput_ContextAndProgram_WritesErrorToStderr
               - CliSubsystem_InvalidArgs_ContextAndProgram_RejectsUnknownArgumentsAndExitsNonZero
+
+          - id: DictionaryMark-Cli-ColumnWidthsOption
+            title: >-
+              The CLI subsystem shall accept relative table column widths and reject widths that are not 2 or 3
+              positive integers or whose count does not match the effective table shape.
+            justification: |
+              The column widths must reach the formatter only when they describe the table being generated,
+              so invalid values are reported before any output is written.
+            children:
+              - DictionaryMark-Context-ColumnWidthsOption
+              - DictionaryMark-TableJob-ColumnWidthsCount
+            tests:
+              - CliSubsystem_ColumnWidthsFlow_ContextAndProgram_WritesProportionalTable
+              - CliSubsystem_ColumnWidthsFlow_InvalidValue_ExitsNonZero
+
+          - id: DictionaryMark-Cli-ConfigFile
+            title: >-
+              The CLI subsystem shall load a YAML configuration file given by the config option, providing
+              formatting defaults and table jobs, and shall reject invalid files and conflicting command-line
+              options with an error.
+            justification: |
+              The configuration file is a second source of run settings; the CLI subsystem owns all run
+              settings, so it must read, validate and turn the file into generation jobs.
+            children:
+              - DictionaryMark-Context-ConfigOption
+              - DictionaryMark-ConfigFile-Load
+              - DictionaryMark-ConfigFile-InputForms
+              - DictionaryMark-ConfigFile-FileErrors
+              - DictionaryMark-ConfigFile-TablesStructure
+              - DictionaryMark-ConfigFile-KeyValidation
+              - DictionaryMark-ConfigFile-ValueValidation
+              - DictionaryMark-ConfigFile-Root
+              - DictionaryMark-TableJob-Identity
+            tests:
+              - CliSubsystem_ConfigFlow_TableJobs_GeneratesEachOutput
+              - CliSubsystem_ConfigFlow_InvalidConfig_ExitsNonZero
+              - CliSubsystem_ConfigFlow_TablesWithInput_ExitsNonZero
+
+          - id: DictionaryMark-Cli-FormattingPrecedence
+            title: >-
+              The CLI subsystem shall determine each formatting setting from the command line, then the table job,
+              then the configuration file defaults, then the built-in default.
+            justification: |
+              A single, predictable precedence lets users override shared configuration for one run and lets
+              each job refine the shared defaults.
+            children:
+              - DictionaryMark-Context-ExplicitOptions
+              - DictionaryMark-TableJob-Precedence
+              - DictionaryMark-TableJob-DeprecatedTermHeader
+              - DictionaryMark-TableJob-ColumnWidthsCount
+            tests:
+              - CliSubsystem_ConfigFlow_CommandLineOverride_AppliesToEveryJob
+
+          - id: DictionaryMark-Cli-RootDirectory
+            title: >-
+              The CLI subsystem shall determine the base directory for relative input and output paths from the
+              root option, then the configuration file root key, then the path's origin default, and shall reject
+              root directories that do not exist.
+            justification: |
+              A root directory lets users run the tool from any working directory with repository-relative
+              paths; the CLI subsystem owns run settings, so it selects the base directory for every job.
+            children:
+              - DictionaryMark-Context-RootOption
+              - DictionaryMark-Context-BaseDirectorySelection
+              - DictionaryMark-ConfigFile-Root
+            tests:
+              - CliSubsystem_RootFlow_CommandLineRoot_ResolvesInputsAndOutput
+              - CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs
+              - CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs
+              - CliSubsystem_RootFlow_MissingRoot_ExitsNonZero

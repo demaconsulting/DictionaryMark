@@ -12,6 +12,7 @@ package DictionaryMark {
         }
 
         part globMatcher : GlobMatcher;
+        part pathResolver : PathResolver;
         part pathHelpers : PathHelpers;
         part temporaryDirectory : TemporaryDirectory;
     }

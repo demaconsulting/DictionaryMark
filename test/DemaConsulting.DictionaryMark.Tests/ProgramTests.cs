@@ -82,6 +82,9 @@ public class ProgramTests
             Assert.Contains("Options:", output);
             Assert.Contains("--version", output);
             Assert.Contains("--help", output);
+            Assert.Contains("--config <file>", output);
+            Assert.Contains("--column-widths <w1,w2[,w3]>", output);
+            Assert.Contains("--root <dir>", output);
             Assert.Equal(0, context.ExitCode);
         }
         finally
@@ -181,6 +184,27 @@ public class ProgramTests
         {
             Console.SetOut(originalOut);
         }
+    }
+
+    /// <summary>
+    ///     Test that Run with config-file table jobs invokes dictionary generation.
+    /// </summary>
+    [Fact]
+    public void Program_Run_WithConfigTables_InvokesDictionaryGeneration()
+    {
+        // Arrange: a dictionary and a config file with one table job
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath("input.yaml"), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath("dictionarymark.yaml");
+        File.WriteAllText(config, "tables:\n  - input: input.yaml\n    output: out.md\n");
+        using var context = Context.Create(["--silent", "--config", config]);
+
+        // Act: execute the operation being tested
+        Program.Run(context);
+
+        // Assert: the job output was generated
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains("API", File.ReadAllText(tmpDir.GetFilePath("out.md")));
     }
 
     /// <summary>

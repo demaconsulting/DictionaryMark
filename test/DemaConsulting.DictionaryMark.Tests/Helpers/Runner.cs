@@ -65,7 +65,50 @@ internal static class Runner
     /// <returns>Program exit code.</returns>
     /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
     /// <exception cref="TimeoutException">Thrown when the process does not exit within 30 seconds.</exception>
-    public static int Run(out string stdout, out string stderr, string program, params string[] arguments)
+    public static int Run(out string stdout, out string stderr, string program, params string[] arguments) =>
+        RunCore(out stdout, out stderr, null, program, arguments);
+
+    /// <summary>
+    ///     Runs the specified program in a given working directory and captures its output.
+    /// </summary>
+    /// <remarks>
+    ///     Used by tests of relative paths (for example <c>..</c> segments and a relative root
+    ///     directory), which must not change the working directory of the test process itself.
+    ///     Uses a distinct name rather than an overload of <see cref="Run(out string, string, string[])"/>
+    ///     so that string arguments cannot be bound to the wrong parameter.
+    /// </remarks>
+    /// <param name="output">Program output (stdout concatenated before stderr).</param>
+    /// <param name="workingDirectory">Working directory of the started process.</param>
+    /// <param name="program">Program name or path.</param>
+    /// <param name="arguments">Program arguments.</param>
+    /// <returns>Program exit code.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
+    /// <exception cref="TimeoutException">Thrown when the process does not exit within 30 seconds.</exception>
+    public static int RunInDirectory(out string output, string workingDirectory, string program, params string[] arguments)
+    {
+        var exitCode = RunCore(out var stdout, out var stderr, workingDirectory, program, arguments);
+        output = stdout + stderr;
+        return exitCode;
+    }
+
+    /// <summary>
+    ///     Runs the specified program, optionally in a given working directory, capturing stdout and stderr.
+    /// </summary>
+    /// <remarks>
+    ///     Stdout and stderr are read concurrently on background tasks to prevent the OS pipe buffers
+    ///     from filling and deadlocking the process. The process is given 30 seconds to exit; if it
+    ///     does not exit in time it is forcibly terminated and a <see cref="TimeoutException"/> is
+    ///     thrown.
+    /// </remarks>
+    /// <param name="stdout">Program standard output.</param>
+    /// <param name="stderr">Program standard error.</param>
+    /// <param name="workingDirectory">Working directory of the process, or null to inherit the current one.</param>
+    /// <param name="program">Program name or path.</param>
+    /// <param name="arguments">Program arguments.</param>
+    /// <returns>Program exit code.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when process fails to start.</exception>
+    /// <exception cref="TimeoutException">Thrown when the process does not exit within 30 seconds.</exception>
+    private static int RunCore(out string stdout, out string stderr, string? workingDirectory, string program, string[] arguments)
     {
         // Construct the start information
         var startInfo = new ProcessStartInfo(program)
@@ -75,6 +118,10 @@ internal static class Runner
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        if (workingDirectory != null)
+        {
+            startInfo.WorkingDirectory = workingDirectory;
+        }
 
         // Add the arguments
         foreach (var argument in arguments)

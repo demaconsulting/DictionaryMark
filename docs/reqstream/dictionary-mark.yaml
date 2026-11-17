@@ -348,3 +348,242 @@ sections:
           - DictionaryMark-Platform-Ubuntu
           - DictionaryMark-Platform-DotNet10
           - DictionaryMark-Platform-DotNet11
+
+      - id: DictionaryMark-System-ColumnWidths
+        title: >-
+          The tool shall size table columns in proportion to the relative weights given by the column-widths option,
+          dropping the third weight and rescaling the first two when a deprecated table has no Where column.
+        justification: |
+          Generated tables are often embedded in documents rendered to PDF, where column widths follow the
+          separator dash counts. Long definitions need a wider column than short terms to stay readable, and
+          users must be able to choose the ratio without editing generated files.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ColumnWidthsOption
+          - DictionaryMark-Dictionary-ColumnWidths
+        tests:
+          - DictionaryMark_Generate_ColumnWidths_OutputsProportionalSeparator
+          - DictionaryMark_Generate_ColumnWidthsDeprecatedWithoutWhere_RescalesTwoColumns
+          - DictionaryMark_Generate_ColumnWidthsWithBullets_OutputUnchanged
+
+      - id: DictionaryMark-System-ColumnWidths-Validation
+        title: >-
+          The tool shall reject column widths that are not positive integers, are empty, or whose count does not
+          match the number of table columns, with an error and a non-zero exit code.
+        justification: |
+          A zero, negative or fractional weight, or the wrong number of weights, cannot describe the table and
+          would silently produce a misleading layout; failing early tells the user what to fix.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ColumnWidthsOption
+          - DictionaryMark-Cli-FormattingPrecedence
+        tests:
+          - DictionaryMark_Generate_ColumnWidthsInvalidValue_ReturnsError
+          - DictionaryMark_Generate_ColumnWidthsWrongCount_ReturnsError
+
+      - id: DictionaryMark-System-ConfigFile-Defaults
+        title: >-
+          The tool shall apply the formatting defaults given in a YAML configuration file named by the config
+          option.
+        justification: |
+          Projects that generate several glossaries repeat the same formatting options; keeping them in one
+          version-controlled file avoids long, duplicated command lines.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ConfigFile
+          - DictionaryMark-Cli-FormattingPrecedence
+        tests:
+          - DictionaryMark_Config_FormattingDefaults_AppliedToCommandLineRun
+
+      - id: DictionaryMark-System-ConfigFile-Precedence
+        title: >-
+          The tool shall take each formatting setting from the command line first, then from the table job, then
+          from the configuration file defaults, and finally from the built-in default.
+        justification: |
+          A predictable precedence lets users override a shared configuration for a single run without editing
+          the file, and lets each table job refine the shared defaults.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-FormattingPrecedence
+        tests:
+          - DictionaryMark_Config_CommandLineOption_OverridesFileValues
+
+      - id: DictionaryMark-System-ConfigFile-TableJobs
+        title: >-
+          The tool shall generate one output file for each table job listed under tables in the configuration
+          file.
+        justification: |
+          Documentation sets need several tables (for example approved and deprecated terms) generated in one
+          step, each from its own inputs and with its own formatting.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ConfigFile
+          - DictionaryMark-Dictionary-TableJobs
+          - DictionaryMark-Program-GenerateDictionary
+        tests:
+          - DictionaryMark_Config_MultipleTableJobs_WritesEachOutput
+
+      - id: DictionaryMark-System-ConfigFile-RelativePaths
+        title: >-
+          The tool shall resolve relative input patterns and output paths of table jobs against the configuration
+          file's directory, including parent-directory segments, when no root directory is specified.
+        justification: |
+          A configuration file must work the same from any working directory, and dictionaries are often shared
+          from a directory outside the one that holds the configuration file.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-TableJobs
+          - DictionaryMark-Utilities-PathResolution
+        tests:
+          - DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory
+
+      - id: DictionaryMark-System-ConfigFile-EnvironmentVariables
+        title: >-
+          The tool shall expand ${VAR} environment-variable references in the configuration file path and in the
+          input patterns and output paths of table jobs.
+        justification: |
+          Environment variables let the same configuration file locate shared dictionaries and output folders
+          that differ between machines and CI agents.
+        tags: [system]
+        children:
+          - DictionaryMark-Utilities-PathResolution
+          - DictionaryMark-Cli-ConfigFile
+        tests:
+          - DictionaryMark_Config_EnvironmentVariablesInPaths_AreExpanded
+
+      - id: DictionaryMark-System-ConfigFile-JobFailures
+        title: >-
+          The tool shall process every table job even when an earlier job fails, report each failure naming the
+          job index and output, and return a non-zero exit code when any job failed.
+        justification: |
+          Reporting every failing job in one run saves repeated fix-and-retry cycles, and a non-zero exit code
+          lets CI pipelines detect any failure.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-TableJobs
+          - DictionaryMark-Program-ExitCode
+        tests:
+          - DictionaryMark_Config_OneJobFails_OtherJobsWrittenAndExitNonZero
+
+      - id: DictionaryMark-System-ConfigFile-Validation
+        title: >-
+          The tool shall reject a configuration file that is missing, unreadable, not valid YAML, wrongly
+          structured, or contains an unknown, disallowed or invalid key, with an error naming the file and the key
+          or job.
+        justification: |
+          Silently ignoring a misspelled or misplaced key would generate wrong output; a precise error lets the
+          user correct the file quickly.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ConfigFile
+        tests:
+          - DictionaryMark_Config_InvalidFile_ReturnsErrorNamingFile
+          - DictionaryMark_Config_UnknownKey_ReturnsErrorNamingKey
+
+      - id: DictionaryMark-System-ConfigFile-CommandLineConflict
+        title: >-
+          The tool shall reject the input and output options when the configuration file defines table jobs, and
+          shall reject a repeated config option.
+        justification: |
+          When the file defines the jobs, command-line inputs and outputs would be ambiguous; rejecting them
+          avoids generating files the user did not intend.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-ConfigFile
+        tests:
+          - DictionaryMark_Config_TablesWithCommandLineInput_ReturnsError
+
+      - id: DictionaryMark-System-ParentDirectoryPatterns
+        title: >-
+          The tool shall accept parent-directory segments anywhere before the first wildcard in command-line input
+          patterns.
+        justification: |
+          Users commonly reference shared dictionaries in sibling directories with relative paths such as
+          ../shared/*.yaml.
+        tags: [system]
+        children:
+          - DictionaryMark-Utilities-PathResolution
+          - DictionaryMark-Utilities-FileMatching
+        tests:
+          - DictionaryMark_Generate_ParentDirectoryGlob_ProcessesMatches
+
+      - id: DictionaryMark-System-OutputDirectoryCreation
+        title: The tool shall create missing parent directories of output files.
+        justification: |
+          Generated documentation is usually written into build folders that do not yet exist in a clean
+          checkout; requiring users to create them first adds needless pipeline steps.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-Generation
+        tests:
+          - DictionaryMark_Generate_OutputInMissingDirectory_CreatesDirectory
+
+      - id: DictionaryMark-System-RootDirectory
+        title: >-
+          The tool shall resolve every relative input pattern and output path, from the command line or the
+          configuration file, against the directory given by the root option, where a relative root resolves
+          against the working directory, ${VAR} references and parent-directory segments are supported, and
+          absolute paths are unchanged.
+        justification: |
+          A root directory lets users run the tool from any working directory (for example a CI step or an IDE
+          task) while writing paths relative to the repository.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-RootDirectory
+          - DictionaryMark-Utilities-PathResolution
+          - DictionaryMark-Dictionary-TableJobs
+        tests:
+          - DictionaryMark_Root_CommandLineInputsAndOutput_ResolvedAgainstRoot
+          - DictionaryMark_Root_RelativeRootWithParentSegments_ResolvedAgainstWorkingDirectory
+          - DictionaryMark_Root_ConfigTables_ResolvedAgainstRoot
+          - DictionaryMark_Root_EnvironmentVariable_Expanded
+          - DictionaryMark_Root_AbsoluteInputAndOutput_IgnoreRoot
+
+      - id: DictionaryMark-System-ConfigFile-Root
+        title: >-
+          The tool shall use the configuration file's top-level root key as the base directory for every relative
+          input pattern and output path, resolving the key relative to the configuration file's directory with
+          ${VAR} references and parent-directory segments.
+        justification: |
+          A configuration file kept in a tools folder can then use repository-relative paths, independent of
+          where the file itself is stored.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-RootDirectory
+          - DictionaryMark-Cli-ConfigFile
+        tests:
+          - DictionaryMark_Config_Root_TablesResolvedAgainstRoot
+          - DictionaryMark_Config_Root_CommandLineInputsResolvedAgainstRoot
+
+      - id: DictionaryMark-System-RootDirectory-Precedence
+        title: >-
+          The tool shall take the base directory for relative paths from the root option first, then from the
+          configuration file's root key, and otherwise use the configuration file's directory for paths from the
+          file and the working directory for command-line paths.
+        justification: |
+          A predictable precedence lets a single run override the configured root without editing the file,
+          while keeping the original behavior when no root is given.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-RootDirectory
+        tests:
+          - DictionaryMark_Root_CommandLineRoot_OverridesConfigRoot
+          - DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory
+          - DictionaryMark_Config_NoRoot_CommandLinePathsUseWorkingDirectory
+
+      - id: DictionaryMark-System-RootDirectory-Validation
+        title: >-
+          The tool shall reject a root directory that does not exist (from either source), a repeated or empty
+          root option, and a root key inside a table job, with an error and a non-zero exit code.
+        justification: |
+          Resolving paths against a missing or ambiguous root would fail later with confusing per-file errors;
+          rejecting it up front names the actual problem.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-RootDirectory
+          - DictionaryMark-Cli-ConfigFile
+        tests:
+          - DictionaryMark_Root_MissingDirectory_ReturnsError
+          - DictionaryMark_Root_SpecifiedTwice_ReturnsError
+          - DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile
+          - DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob
