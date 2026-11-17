@@ -1,0 +1,55 @@
+---
+# DictionaryMark TableJob unit requirements
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Cli Requirements
+        sections:
+          - title: TableJob Requirements
+            requirements:
+              - id: DictionaryMark-TableJob-Precedence
+                title: >-
+                  The TableJob unit shall take each formatting setting from the highest-precedence layer that
+                  specifies it (command line, then job, then configuration defaults) and otherwise from the
+                  built-in default.
+                justification: |
+                  Merging the layers in one place guarantees the same precedence for every job.
+                tests:
+                  - TableJob_Create_CommandLineLayer_OverridesJobAndDefaults
+                  - TableJob_Create_JobLayer_OverridesDefaults
+                  - TableJob_Create_NoLayers_UsesBuiltInDefaults
+                  - FormattingSettings_Over_NonNullWins
+
+              - id: DictionaryMark-TableJob-ColumnWidthsCount
+                title: >-
+                  The TableJob unit shall require exactly 2 column widths for terms tables and exactly 3 for
+                  deprecated tables, and shall ignore column widths for bullet output.
+                justification: |
+                  The width count can only be checked once the effective kind and format are known, and bullet
+                  output has no columns to size.
+                tests:
+                  - TableJob_Create_TermsWithThreeWidths_Throws
+                  - TableJob_Create_DeprecatedWithTwoWidths_Throws
+                  - TableJob_Create_BulletsWithMismatchedWidths_IgnoresWidths
+                  - TableJob_Create_TableWithMatchingWidths_SetsColumnWidths
+
+              - id: DictionaryMark-TableJob-DeprecatedTermHeader
+                title: >-
+                  The TableJob unit shall use the term header "Not used" for deprecated tables when no layer
+                  specifies a term header.
+                justification: |
+                  Deprecated tables list terms not to use, so the default first-column header must say so, while
+                  an explicit header from any layer still wins.
+                tests:
+                  - TableJob_Create_DeprecatedWithoutTermHeader_UsesNotUsed
+
+              - id: DictionaryMark-TableJob-Identity
+                title: >-
+                  The TableJob unit shall label each configuration-file job with its 1-based index and its output
+                  as written, and shall leave the command-line job unlabeled.
+                justification: |
+                  Error messages must name the failing job so users can find it, while command-line messages stay
+                  unchanged.
+                tests:
+                  - TableJob_Create_Label_NamesIndexAndOutput

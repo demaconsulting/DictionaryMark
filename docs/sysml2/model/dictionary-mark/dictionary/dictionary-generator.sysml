@@ -12,4 +12,8 @@ package DictionaryMark {
             requirementFiles = ("docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml");
         }
     }
+
+    // DictionaryGenerator runs each job and resolves its output path against the job's base directory
+    dependency DictionaryGenerator to TableJob;
+    dependency DictionaryGenerator to PathResolver;
 }

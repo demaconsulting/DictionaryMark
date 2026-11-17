@@ -171,6 +171,163 @@ dictionarymark --input glossary.yaml --format table \
   --term-header "Abbreviation" --def-header "Meaning"
 ```
 
+## Column Widths
+
+When a table is converted to HTML or PDF (for example with Pandoc), the relative column widths follow
+the number of dashes in the separator line under the header row. By default every column gets the
+same short separator, so the term column takes as much room as the definitions. Use
+`--column-widths` to give each column a relative weight:
+
+```bash
+dictionarymark --input glossary.yaml --format table --column-widths 25,75
+```
+
+```markdown
+| Term | Definition |
+| :------------------------- | :--------------------------------------------------------------------------- |
+| API | Application Programming Interface |
+```
+
+Rules:
+
+- The weights are positive integers. Zero, negative, fractional and empty values are errors.
+- The dash counts are proportional to the weights, scaled to about 100 in total, with at least 3 dashes
+  per column. The `:` left-alignment marker is kept, so the output is always a valid pipe table.
+- A terms table takes exactly 2 weights; a deprecated table (`--kind deprecated`) takes exactly 3.
+  When no deprecated entry has a `where` value, the Where column is omitted, so the third weight is
+  dropped and the first two are rescaled (for example `20,50,30` gives 29 and 71 dashes).
+- Bullet output ignores `--column-widths`.
+- Without the option, the output is exactly as before.
+
+## Configuration File
+
+A configuration file keeps the formatting options, and optionally several table jobs, in a YAML file
+that can be versioned beside the dictionaries. Pass it with `--config <file.yaml>`:
+
+```yaml
+# docs/glossary/dictionarymark.yaml
+format: table
+depth: 2
+sort: alpha
+column-widths: [25, 75]
+tables:
+  - input: "*glossary.yaml"
+    output: ../generated/glossary/terms.md
+    section: Terms
+  - input:
+      - deprecated.yaml
+      - ../../shared/deprecated.yaml
+    output: ../generated/glossary/deprecated.md
+    section: Deprecated Terms
+    kind: deprecated
+    column-widths: [20, 50, 30]
+```
+
+```bash
+dictionarymark --config docs/glossary/dictionarymark.yaml
+```
+
+### Keys
+
+| Key | Where | Value |
+| :--- | :--- | :--- |
+| `format` | top level or job | `bullets` or `table` |
+| `section` | top level or job | Section heading text |
+| `depth` | top level or job | Heading depth, 1 to 6 |
+| `sort` | top level or job | `file` or `alpha` |
+| `term-header` | top level or job | Term column header |
+| `def-header` (or `definition-header`) | top level or job | Definition column header |
+| `kind` | top level or job | `terms` or `deprecated` |
+| `use-header` | top level or job | Deprecated "use" column header |
+| `where-header` | top level or job | Deprecated "where" column header |
+| `column-widths` | top level or job | YAML sequence of 2 or 3 positive integers, for example `[25, 75]` |
+| `root` | top level only | Base directory for relative paths, relative to the file; must exist |
+| `tables` | top level only | Non-empty list of table jobs |
+| `input` | job only, required | A pattern, or a list of patterns |
+| `output` | job only, required | Output Markdown file |
+
+The values follow the same rules as the matching command-line options. `def-header` and
+`definition-header` may not both appear in one mapping. The keys `input`, `output`, `log`, `results`,
+`validate`, `silent`, `version` and `help` are not allowed at the top level, `root` is not allowed in
+a job, and any unknown key is an error.
+
+### Precedence
+
+Each formatting setting is taken from, in order:
+
+1. The command-line option, which applies to every job.
+2. The job's key.
+3. The file's top-level key.
+4. The built-in default.
+
+For example, `dictionarymark --config dictionarymark.yaml --format bullets` writes every table job as
+a bullet list.
+
+### Without and With Tables
+
+- **Without `tables`**, the file only supplies formatting defaults (and optionally `root`). The inputs
+  and output come from `--input` and `--output` on the command line.
+- **With `tables`**, the file decides the inputs and outputs. `--input` and `--output` on the command
+  line are errors. `--silent` and `--log` are allowed. `--config` may be given only once.
+
+### Paths
+
+- Relative `input` patterns and `output` paths in the file are resolved against the configuration
+  file's directory, so the file works from any working directory. A root directory changes this; see
+  *Root Directory*.
+- `..` segments are allowed anywhere before the first wildcard, for example `../shared/*.yaml` or
+  `sub/../../shared/*.yaml`.
+- `${VAR}` environment variables are expanded in the `--config` path and in every input and output
+  path. An undefined variable is an error.
+- A pattern that matches no file is an error for that job.
+- Missing parent directories of every output file are created (also for `--output` on the command
+  line).
+
+### Job Failures
+
+Every job runs, even after an earlier job fails. Each failure is reported with the job's 1-based
+index and output, followed by a summary, and the exit code is non-zero:
+
+```text
+Error: table job 2 ('deprecated.md'): Input pattern 'missing/*.yaml' matched no files.
+Error: 1 of 2 table jobs failed.
+```
+
+Problems with the file itself (missing file, invalid YAML, unknown or misplaced keys, invalid values)
+stop the run before any job, with an error naming the file, the job and the key:
+
+```text
+Error: Config file 'C:\repo\docs\glossary\dictionarymark.yaml': table job 1: unknown key 'theme'
+```
+
+## Root Directory
+
+A root directory is the base for every relative input pattern and output path, so the tool can run from
+any working directory while the paths stay relative to, for example, the repository root. Set it with
+`--root <dir>` on the command line or with the top-level `root` key in the configuration file:
+
+```yaml
+# tools/dictionarymark/dictionarymark.yaml
+root: ../..
+tables:
+  - input: docs/glossary/*.yaml
+    output: docs/generated/glossary.md
+```
+
+The base directory for a relative path is chosen as follows:
+
+| Path from | 1st | 2nd | Otherwise |
+| :--- | :--- | :--- | :--- |
+| Configuration table job (`input`, `output`) | `--root` | `root` key | Configuration file directory |
+| Command line (`--input`, `--output`) | `--root` | `root` key | Working directory |
+| `--config`, `--log`, `--results` | Not affected | Not affected | Working directory |
+
+- A relative `--root` is resolved against the working directory; a relative `root` key is resolved
+  against the configuration file's directory. Both support `${VAR}` and `..`.
+- Absolute input and output paths ignore the root.
+- The root must be an existing directory and must not contain wildcards. `--root` may be given only
+  once and must not be empty. The `root` key is checked even when `--root` overrides it.
+
 ## Silent Mode
 
 Suppress console output:
@@ -242,6 +399,8 @@ The self-validation suite runs the following tests:
 | `DictionaryMark_ConflictDetection` | Conflicting definitions across files are detected and reported |
 | `DictionaryMark_HiddenEntry` | Entries with `visible: false` are omitted from the output |
 | `DictionaryMark_DeprecatedTable` | A deprecated-terms table is generated with `--kind deprecated` |
+| `DictionaryMark_ColumnWidths` | `--column-widths` sizes the table separator in proportion to the weights |
+| `DictionaryMark_ConfigTables` | A `--config` file generates every table job, with config-relative `..` paths |
 
 ### Heading Depth
 
@@ -281,6 +440,9 @@ The following command-line options are supported:
 | `--kind <kind>` | Input kind: `terms` (default) or `deprecated` |
 | `--use-header <header>` | Deprecated "use" column header (default: `Use instead`) |
 | `--where-header <header>` | Deprecated "where" column header (default: `Where it was used`) |
+| `--column-widths <w1,w2[,w3]>` | Relative table column widths, for example `25,75` |
+| `--config <file>` | Read formatting defaults and table jobs from a YAML file (once only) |
+| `--root <dir>` | Base directory for relative input and output paths (once only) |
 
 # Examples
 
@@ -306,6 +468,19 @@ dictionarymark --validate --results validation-results.trx
 
 ```bash
 dictionarymark --silent --input glossary.yaml --output docs/glossary.md --log tool-output.log
+```
+
+## Example 5: Generate Several Tables from One Configuration File
+
+```bash
+dictionarymark --silent --config docs/glossary/dictionarymark.yaml --log glossary.log
+```
+
+## Example 6: Run from Anywhere with `--root`
+
+```bash
+dictionarymark --root /path/to/repo --input "docs/glossary/*.yaml" --format table \
+  --column-widths 25,75 --output docs/generated/glossary.md
 ```
 
 # Continuous Compliance

@@ -7,7 +7,7 @@
 The SelfTest subsystem provides self-validation functionality for DictionaryMark. It enables the
 tool to verify its own correct operation in the deployment environment, which is a requirement for
 tool qualification in regulated environments. The subsystem contains one unit, `Validation`, which
-implements the `--validate` CLI behavior. It runs a fixed suite of six in-process self-tests,
+implements the `--validate` CLI behavior. It runs a fixed suite of ten in-process self-tests,
 collects results into a `TestResults` object, optionally serializes results to a file, and reports
 pass/fail counts. `Validation` has no persistent state and is safe to call multiple times in the
 same process.
@@ -18,7 +18,7 @@ same process.
 
 - *Type*: In-process .NET public API
 - *Role*: Provider — `Program.Run` invokes this when `--validate` is set
-- *Contract*: `Validation.Run(Context context)` runs all six self-tests, prints a summary, and
+- *Contract*: `Validation.Run(Context context)` runs all ten self-tests, prints a summary, and
   optionally writes a results file. Calls `context.WriteError` for each failed test, setting
   `context.ExitCode` to 1.
 - *Constraints*: `context` must be non-null; throws `ArgumentNullException` otherwise.
@@ -57,12 +57,15 @@ same process.
 
 ### Design
 
-`Validation.Run` creates a `TestResults` collection, then calls six private test methods
+`Validation.Run` creates a `TestResults` collection, then calls ten private test methods
 sequentially: `RunVersionTest`, `RunHelpTest`, `RunBulletGenerationTest`,
-`RunTableGenerationTest`, `RunCustomHeadersTest`, `RunConflictDetectionTest`. Each test method:
+`RunTableGenerationTest`, `RunCustomHeadersTest`, `RunConflictDetectionTest`,
+`RunHiddenEntryTest`, `RunDeprecatedTableTest`, `RunColumnWidthsTest` and `RunConfigTablesTest`.
+Each test method:
 
 1. Creates a `TemporaryDirectory` scoped to the test.
-2. Constructs a string-array argument list and an in-memory `Context` (with `--silent`).
+2. Constructs a string-array argument list (and, for `RunConfigTablesTest`, a configuration
+   file) and an in-memory `Context` (with `--silent`).
 3. Calls `Program.Run(context)` to exercise the tool.
 4. Asserts expected output or exit-code behavior; records a `Passed` or `Failed` `TestResult`.
 

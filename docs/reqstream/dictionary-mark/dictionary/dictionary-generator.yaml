@@ -71,3 +71,47 @@ sections:
                 tests:
                   - DictionaryGenerator_Generate_DeprecatedKind_WritesTable
                   - DictionaryGenerator_Generate_DeprecatedKindCustomHeaders_AreUsed
+
+              - id: DictionaryMark-DictionaryGenerator-TableJobs
+                title: >-
+                  The DictionaryGenerator shall generate the output of every job, each from its own inputs and
+                  formatting, detecting conflicts within each job separately.
+                justification: |
+                  Configuration files define several independent tables, which may legitimately use different or
+                  overlapping dictionaries.
+                tests:
+                  - DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput
+                  - DictionaryGenerator_Generate_ConflictsDetectedPerJob
+
+              - id: DictionaryMark-DictionaryGenerator-JobErrors
+                title: >-
+                  The DictionaryGenerator shall continue with the remaining jobs after a job fails, prefix each
+                  configuration-job error with the job index and output, and report how many table jobs failed.
+                justification: |
+                  Reporting every failure in one run, attributed to its job, saves repeated fix-and-retry cycles.
+                tests:
+                  - DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel
+                  - DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne
+
+              - id: DictionaryMark-DictionaryGenerator-JobPaths
+                title: >-
+                  The DictionaryGenerator shall resolve each job's relative input patterns and relative output
+                  path against the job's base directory.
+                justification: |
+                  Configuration-file and root-relative paths must not depend on the working directory.
+                tests:
+                  - DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput
+
+              - id: DictionaryMark-DictionaryGenerator-OutputDirectories
+                title: The DictionaryGenerator shall create missing parent directories of an output file.
+                justification: |
+                  Output is usually written into build folders that do not yet exist in a clean checkout.
+                tests:
+                  - DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory
+
+              - id: DictionaryMark-DictionaryGenerator-ColumnWidths
+                title: The DictionaryGenerator shall format each job's output with that job's column widths.
+                justification: |
+                  Column widths are part of a job's formatting and must reach the formatter unchanged.
+                tests:
+                  - DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput

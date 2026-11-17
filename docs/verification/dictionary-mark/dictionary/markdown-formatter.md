@@ -111,3 +111,32 @@ where suffix and pipes are escaped. This scenario is tested by
 
 **MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow**: An empty list yields an `N/A` row.
 This scenario is tested by `MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow`.
+
+**MarkdownFormatter_Format_TableWithColumnWidths_ProportionalSeparator**: Verifies that weights 25 and 75
+give exactly 25 and 75 dashes directly after the header row, with the `:` markers kept. This scenario is
+tested by `MarkdownFormatter_Format_TableWithColumnWidths_ProportionalSeparator`.
+
+**MarkdownFormatter_Format_TableWithSmallWeight_UsesMinimumThreeDashes**: Verifies the boundary cases
+`1,1000` (the minimum of 3 dashes wins, giving 3 and 100) and `1,2` (rounded to 33 and 67). This
+scenario is tested by `MarkdownFormatter_Format_TableWithSmallWeight_UsesMinimumThreeDashes`.
+
+**MarkdownFormatter_Format_TableWithoutColumnWidths_UsesDefaultSeparator**: Verifies that a table without
+widths is byte-for-byte the default output. This scenario is tested by
+`MarkdownFormatter_Format_TableWithoutColumnWidths_UsesDefaultSeparator`. The existing exact-string tests
+of the default table and deprecated table also guard this.
+
+**MarkdownFormatter_Format_BulletsWithColumnWidths_Unchanged**: Verifies that bullet output with
+(mismatched) widths is identical to bullet output without widths. This scenario is tested by
+`MarkdownFormatter_Format_BulletsWithColumnWidths_Unchanged`.
+
+**MarkdownFormatter_FormatDeprecated_WithWhereAndWidths_UsesThreeWeights**: Verifies that a deprecated
+table with a Where column uses all three weights (20, 50, 30 dashes). This scenario is tested by
+`MarkdownFormatter_FormatDeprecated_WithWhereAndWidths_UsesThreeWeights`.
+
+**MarkdownFormatter_FormatDeprecated_WithoutWhereAndWidths_RescalesFirstTwo**: Verifies that without a
+Where column the third weight is dropped and 20:50 is rescaled to 29:71. This scenario is tested by
+`MarkdownFormatter_FormatDeprecated_WithoutWhereAndWidths_RescalesFirstTwo`.
+
+**MarkdownFormatter_Format_ColumnWidthCountMismatch_ThrowsArgumentException**: Verifies the defensive
+contract: three widths for a terms table and two for a deprecated table throw `ArgumentException`. This
+scenario is tested by `MarkdownFormatter_Format_ColumnWidthCountMismatch_ThrowsArgumentException`.

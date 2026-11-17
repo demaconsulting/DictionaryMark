@@ -15,7 +15,8 @@ sections:
               YAML file content into a structured node tree via YamlStream, YamlMappingNode, and
               YamlScalarNode from the YamlDotNet.RepresentationModel namespace. Correct parsing is
               verified indirectly by the YamlDictionaryLoaderTests unit tests, which exercise all
-              required YamlDotNet APIs through normal class-level calls.
+              required YamlDotNet APIs through normal class-level calls. ConfigFile uses the same API
+              family, plus YamlSequenceNode, to read configuration files.
             tags: [ots]
             tests:
               - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries

@@ -29,6 +29,8 @@ This guide covers:
 - Prerequisites and installation on Windows, Linux, and macOS
 - A complete CLI options reference
 - Usage examples for common scenarios, including glob patterns, custom headers, and sort order
+- Table column widths, configuration files with several table jobs, and the root directory for
+  relative paths
 - Self-validation for regulated environments
 
 This guide assumes that the .NET SDK 10.0 or 11.0 is installed on the target system.

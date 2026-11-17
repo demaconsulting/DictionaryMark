@@ -21,6 +21,8 @@ sections:
               - DictionaryMark-Validation-ConflictDetection
               - DictionaryMark-Validation-HiddenEntry
               - DictionaryMark-Validation-DeprecatedTable
+              - DictionaryMark-Validation-ColumnWidths
+              - DictionaryMark-Validation-ConfigTables
               - DictionaryMark-Validation-TrxOutput
               - DictionaryMark-Validation-JUnitOutput
               - DictionaryMark-Validation-UnsupportedExtension

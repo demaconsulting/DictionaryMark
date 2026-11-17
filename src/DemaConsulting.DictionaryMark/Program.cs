@@ -187,11 +187,15 @@ internal static class Program
         context.WriteLine("  --kind <kind>                     Input kind: terms (default) or deprecated");
         context.WriteLine("  --use-header <header>             Use column header for deprecated table format (default: Use instead)");
         context.WriteLine("  --where-header <header>           Where column header for deprecated table format (default: Where it was used)");
+        context.WriteLine("  --column-widths <w1,w2[,w3]>      Relative table column widths (e.g. 25,75)");
+        context.WriteLine("  --config <file>                   Read formatting defaults and table jobs from a YAML file");
+        context.WriteLine("  --root <dir>                      Base directory for relative input and output paths");
     }
 
     /// <summary>
     ///     Implements the default dispatch path: delegates to <see cref="Dictionary.DictionaryGenerator"/>
-    ///     when input patterns are specified, or writes a usage hint when none are provided.
+    ///     when there are generation jobs (from input patterns or config-file tables), or writes a usage
+    ///     hint when there are none.
     /// </summary>
     /// <remarks>
     ///     Separates the two-branch default logic from <see cref="Run"/> so that each branch
@@ -200,8 +204,8 @@ internal static class Program
     /// <param name="context">The context containing command line arguments and program state.</param>
     private static void RunToolLogic(Context context)
     {
-        // If input patterns are specified, run dictionary generation
-        if (context.InputPatterns.Count > 0)
+        // If there are generation jobs, run dictionary generation
+        if (context.Jobs.Count > 0)
         {
             Dictionary.DictionaryGenerator.Generate(context);
             return;

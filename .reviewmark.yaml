@@ -145,6 +145,37 @@ reviews:
       - "src/**/Cli/Context.cs"
       - "test/**/Cli/ContextTests.cs"
 
+  # DictionaryMark-Cli-ConfigFile Review (unit under a subsystem)
+  - id: DictionaryMark-Cli-ConfigFile
+    title: Review that DictionaryMark Cli ConfigFile Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/cli.md"
+      - "docs/reqstream/dictionary-mark/cli.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/cli/config-file.yaml"
+      - "docs/design/dictionary-mark/cli/config-file.md"
+      - "docs/verification/dictionary-mark/cli/config-file.md"
+      - "src/**/Cli/ConfigFile.cs"
+      - "test/**/Cli/ConfigFileTests.cs"
+
+  # DictionaryMark-Cli-TableJob Review (unit under a subsystem)
+  - id: DictionaryMark-Cli-TableJob
+    title: Review that DictionaryMark Cli TableJob Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/cli.md"
+      - "docs/reqstream/dictionary-mark/cli.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/cli/table-job.yaml"
+      - "docs/design/dictionary-mark/cli/table-job.md"
+      - "docs/verification/dictionary-mark/cli/table-job.md"
+      - "src/**/Cli/FormattingSettings.cs"
+      - "src/**/Cli/TableJob.cs"
+      - "test/**/Cli/TableJobTests.cs"
+
   # DictionaryMark-SelfTest Review (subsystem)
   - id: DictionaryMark-SelfTest
     title: Review that DictionaryMark SelfTest Satisfies Subsystem Requirements
@@ -277,6 +308,21 @@ reviews:
       - "docs/verification/dictionary-mark/utilities/glob-matcher.md"
       - "src/**/Utilities/GlobMatcher.cs"
       - "test/**/Utilities/GlobMatcherTests.cs"
+
+  # DictionaryMark-Utilities-PathResolver Review (unit under a subsystem)
+  - id: DictionaryMark-Utilities-PathResolver
+    title: Review that DictionaryMark Utilities PathResolver Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/path-resolver.yaml"
+      - "docs/design/dictionary-mark/utilities/path-resolver.md"
+      - "docs/verification/dictionary-mark/utilities/path-resolver.md"
+      - "src/**/Utilities/PathResolver.cs"
+      - "test/**/Utilities/PathResolverTests.cs"
 
   # DictionaryMark-Utilities-PathHelpers Review (unit under a subsystem)
   - id: DictionaryMark-Utilities-PathHelpers

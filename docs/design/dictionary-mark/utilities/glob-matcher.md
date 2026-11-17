@@ -34,14 +34,25 @@ pattern, execute against that base; (4) relative pattern — create `Matcher`, e
 `Environment.CurrentDirectory`. Results accumulated in a `HashSet<string>` (case-insensitive)
 then sorted.
 
-**Resolve**: Strict variant of `GetFiles` used by the generator.
+**Resolve**: Strict variant of `GetFiles` used by the generator. Two overloads exist:
+`Resolve(patterns)` delegates to `Resolve(patterns, Environment.CurrentDirectory)`.
 
-- *Parameters*: `IEnumerable<string> patterns`.
+- *Parameters*: `IEnumerable<string> patterns`; `string baseDirectory` — the directory relative
+  patterns resolve against (the working directory, the configuration file's directory, or a root
+  directory).
 - *Returns*: `IReadOnlyList<string>` — sorted, deduplicated absolute paths.
-- *Postconditions*: `${VAR}` references are expanded first. A pattern that matches nothing, a
-  literal file that does not exist, a missing directory, or an undefined variable throws
-  `InvalidOperationException` with a message naming the pattern or path. Windows UNC paths are
-  supported as literals and as glob bases.
+- *Postconditions*: Each pattern is first passed to `PathResolver.Combine(pattern, baseDirectory,
+  "glossary path")`, which expands `${VAR}` references and roots a relative pattern at the base
+  directory without normalizing it. A rooted pattern with a wildcard is then matched as an absolute
+  glob by `GetFiles`: the literal part before the first wildcard becomes the matcher's base
+  directory (normalized with `Path.GetFullPath`), so `..` segments anywhere before the first
+  wildcard work, whether they are leading (`../shared/*.yaml`) or follow a normal segment
+  (`sub/../../shared/*.yaml`). Rooting first also avoids the matcher enumerating parent
+  directories for a leading `..`. A `..` after a wildcard is not supported; the globbing library
+  rejects it with `ArgumentException`. A literal pattern is resolved with `Path.GetFullPath`. A
+  pattern that matches nothing, a literal file that does not exist, a missing directory, or an
+  undefined variable throws `InvalidOperationException` with a message naming the pattern or
+  path. Windows UNC paths are supported as literals and as glob bases.
 
 #### Error Handling
 
@@ -49,20 +60,24 @@ then sorted.
   reports it as `Error: {message}`.
 - `ArgumentNullException` — thrown when `patterns` is null.
 - `ArgumentException` — thrown when any individual pattern is null or empty; caller must validate
-  pattern values before passing them.
+  pattern values before passing them. `Path.GetFullPath` also throws it (or `PathTooLongException`)
+  for a malformed or overlong literal pattern, for example one containing a null character.
 - Non-matching patterns return no error — empty result is returned silently; `DictionaryGenerator`
   is responsible for detecting and reporting the "no files found" condition.
-- File-system errors from `Matcher.Execute` propagate as-is; `DictionaryGenerator` only catches
-  `ArgumentException` around `GlobMatcher.GetFiles`, so non-argument exceptions reach
-  `Program.Main`.
+- File-system errors from `Matcher.Execute` propagate as-is. `DictionaryGenerator` catches
+  path-validation exceptions (`PathResolver.IsInvalidPathException`), `IOException` and
+  `UnauthorizedAccessException` around `GlobMatcher.Resolve` and reports them as a failure of that
+  job only.
 
 #### Dependencies
 
 - **Microsoft.Extensions.FileSystemGlobbing** — OTS package; `Matcher` and `DirectoryInfoWrapper`
   APIs used to evaluate glob patterns against the file system.
+- **PathResolver** — Utilities unit; expands `${VAR}` references and roots patterns at the base
+  directory.
 
 #### Callers
 
-- **DictionaryGenerator.Generate** — calls `GlobMatcher.GetFiles(context.InputPatterns)` as the
-  first step of the pipeline to resolve user-supplied glob patterns to a sorted, deduplicated list
-  of concrete file paths.
+- **DictionaryGenerator.GenerateJob** — calls `GlobMatcher.Resolve(job.InputPatterns,
+  job.BaseDirectory)` as the first step of each job to resolve user-supplied glob patterns to a
+  sorted, deduplicated list of concrete file paths.

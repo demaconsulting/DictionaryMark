@@ -93,27 +93,65 @@ internal static partial class GlobMatcher
     }
 
     /// <summary>
-    ///     Resolves input patterns strictly: every pattern must produce at least one file.
+    ///     Resolves input patterns strictly against the current working directory.
     /// </summary>
     /// <remarks>
-    ///     Each pattern first has <c>${VAR}</c> environment-variable references expanded. A pattern
-    ///     containing <c>*</c> or <c>?</c> is treated as a glob and must match at least one file. Any
-    ///     other pattern is a literal path resolved with <see cref="Path.GetFullPath(string)"/> (absolute,
-    ///     relative and UNC paths are supported) and must exist. This method never silently produces an
-    ///     empty result for a pattern that matches nothing.
+    ///     Equivalent to <see cref="Resolve(IEnumerable{string}, string)"/> with
+    ///     <see cref="Environment.CurrentDirectory"/> as the base directory, which keeps the original
+    ///     command-line behavior when no root directory is given.
     /// </remarks>
     /// <param name="patterns">Patterns to resolve. Must not be null; elements must be non-empty.</param>
     /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="patterns"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when an element is null or empty.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when an element is null or empty, a literal path is malformed (for example it contains a
+    ///     null character), or a glob is rejected by the globbing library (for example a <c>..</c> segment
+    ///     after a wildcard).
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or a
     ///     literal directory or file does not exist; the message names the pattern or full path.
     /// </exception>
-    public static IReadOnlyList<string> Resolve(IEnumerable<string> patterns)
+    public static IReadOnlyList<string> Resolve(IEnumerable<string> patterns) =>
+        Resolve(patterns, Environment.CurrentDirectory);
+
+    /// <summary>
+    ///     Resolves input patterns strictly against a base directory: every pattern must produce at
+    ///     least one file.
+    /// </summary>
+    /// <remarks>
+    ///     Each pattern first has <c>${VAR}</c> environment-variable references expanded and, when
+    ///     relative, is rooted at <paramref name="baseDirectory"/> by <see cref="PathResolver"/>. A
+    ///     pattern containing <c>*</c> or <c>?</c> is then treated as an absolute glob and must match
+    ///     at least one file; <c>..</c> segments anywhere before the first wildcard are supported
+    ///     because the literal part of the pattern becomes the matcher's base directory. Any other
+    ///     pattern is a literal path resolved with <see cref="Path.GetFullPath(string)"/> (absolute,
+    ///     relative and UNC paths are supported) and must exist. Absolute patterns ignore the base
+    ///     directory. This method never silently produces an empty result for a pattern that matches
+    ///     nothing. File-system I/O is performed; the method is thread-safe.
+    /// </remarks>
+    /// <param name="patterns">Patterns to resolve. Must not be null; elements must be non-empty.</param>
+    /// <param name="baseDirectory">
+    ///     Directory that relative patterns are resolved against (the working directory, the
+    ///     configuration file's directory, or a root directory). Must not be null.
+    /// </param>
+    /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when an element is null or empty, a literal path is malformed (for example it contains a
+    ///     null character), or a glob is rejected by the globbing library (for example a <c>..</c> segment
+    ///     after a wildcard).
+    /// </exception>
+    /// <exception cref="PathTooLongException">Thrown when a literal path exceeds the platform's maximum length.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or a
+    ///     literal directory or file does not exist; the message names the pattern or full path.
+    /// </exception>
+    public static IReadOnlyList<string> Resolve(IEnumerable<string> patterns, string baseDirectory)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(patterns);
+        ArgumentNullException.ThrowIfNull(baseDirectory);
 
         var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -124,7 +162,8 @@ internal static partial class GlobMatcher
                 throw new ArgumentException("Pattern cannot be null or empty.", nameof(patterns));
             }
 
-            var expanded = ExpandEnvironmentVariables(pattern);
+            // Expand variables and root the pattern so every glob is matched as an absolute glob
+            var expanded = PathResolver.Combine(pattern, baseDirectory, "glossary path");
 
             if (expanded.Contains('*') || expanded.Contains('?'))
             {
@@ -159,30 +198,6 @@ internal static partial class GlobMatcher
 
         return [.. files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
     }
-
-    /// <summary>
-    ///     Expands <c>${VAR}</c> environment-variable references in a pattern.
-    /// </summary>
-    /// <param name="pattern">The pattern to expand.</param>
-    /// <returns>The pattern with every reference replaced by the variable value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when a referenced variable is undefined or empty.</exception>
-    private static string ExpandEnvironmentVariables(string pattern) =>
-        EnvironmentVariableRegex().Replace(pattern, match =>
-        {
-            var name = match.Groups[1].Value;
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrEmpty(value))
-            {
-                throw new InvalidOperationException(
-                    $"Environment variable '{name}' referenced by glossary path '{pattern}' is not defined.");
-            }
-
-            return value;
-        });
-
-    /// <summary>Matches <c>${VAR}</c> references.</summary>
-    [System.Text.RegularExpressions.GeneratedRegex(@"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")]
-    private static partial System.Text.RegularExpressions.Regex EnvironmentVariableRegex();
 
     /// <summary>
     ///     Matches an absolute path glob pattern against the file system.
@@ -230,6 +245,8 @@ internal static partial class GlobMatcher
 
         if (Directory.Exists(baseDir))
         {
+            // Normalize the literal base so ".." segments before the first wildcard are collapsed
+            baseDir = Path.GetFullPath(baseDir);
             var matcher = new Matcher();
             matcher.AddInclude(relPattern);
             var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(baseDir)));

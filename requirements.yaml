@@ -9,6 +9,8 @@ includes:
   - docs/reqstream/dictionary-mark/program.yaml
   - docs/reqstream/dictionary-mark/cli.yaml
   - docs/reqstream/dictionary-mark/cli/context.yaml
+  - docs/reqstream/dictionary-mark/cli/config-file.yaml
+  - docs/reqstream/dictionary-mark/cli/table-job.yaml
   - docs/reqstream/dictionary-mark/self-test.yaml
   - docs/reqstream/dictionary-mark/self-test/validation.yaml
   - docs/reqstream/dictionary-mark/dictionary.yaml
@@ -18,6 +20,7 @@ includes:
   - docs/reqstream/dictionary-mark/dictionary/dictionary-generator.yaml
   - docs/reqstream/dictionary-mark/utilities.yaml
   - docs/reqstream/dictionary-mark/utilities/glob-matcher.yaml
+  - docs/reqstream/dictionary-mark/utilities/path-resolver.yaml
   - docs/reqstream/dictionary-mark/utilities/path-helpers.yaml
   - docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml
   - docs/reqstream/dictionary-mark/platform-requirements.yaml

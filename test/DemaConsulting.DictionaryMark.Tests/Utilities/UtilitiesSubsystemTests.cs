@@ -151,4 +151,49 @@ public class UtilitiesSubsystemTests
         // Assert: the test file is found in the resolved list
         Assert.Contains(testFile, files);
     }
+
+    /// <summary>
+    ///     Test that path resolution and file matching together resolve output paths and input
+    ///     globs containing '..' segments against a base directory.
+    /// </summary>
+    [Fact]
+    public void UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles()
+    {
+        // Arrange: a shared dictionary beside a config directory
+        using var tmpDir = new TemporaryDirectory();
+        var shared = tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml"));
+        File.WriteAllText(shared, "key: value\n");
+        var configDirectory = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "config")).FullName;
+
+        // Act: resolve an input glob and an output path relative to the config directory
+        var inputs = GlobMatcher.Resolve(["sub/../../shared/*.yaml"], configDirectory);
+        var output = PathResolver.ResolvePath("../out/terms.md", configDirectory, "output path");
+
+        // Assert: both resolve to normalized paths outside the config directory
+        Assert.Equal([Path.GetFullPath(shared)], inputs);
+        Assert.Equal(Path.Combine(tmpDir.DirectoryPath, "out", "terms.md"), output);
+    }
+
+    /// <summary>
+    ///     Test that a root directory containing '..' resolves and serves as the base for input globs
+    ///     that also contain '..'.
+    /// </summary>
+    [Fact]
+    public void UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles()
+    {
+        // Arrange: directories a, b and c under a temporary directory, with a dictionary in c
+        using var tmpDir = new TemporaryDirectory();
+        Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "a"));
+        Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "b"));
+        var file = tmpDir.GetFilePath(Path.Combine("c", "terms.yaml"));
+        File.WriteAllText(file, "key: value\n");
+
+        // Act: resolve the root "a/../b", then a glob climbing from it into c
+        var root = PathResolver.ResolveExistingDirectory("a/../b", tmpDir.DirectoryPath, "--root option");
+        var inputs = GlobMatcher.Resolve(["../c/*.yaml"], root);
+
+        // Assert: the root is normalized and the glob finds the dictionary
+        Assert.Equal(Path.Combine(tmpDir.DirectoryPath, "b"), root);
+        Assert.Equal([Path.GetFullPath(file)], inputs);
+    }
 }

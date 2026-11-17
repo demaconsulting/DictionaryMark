@@ -92,3 +92,20 @@ undefined variable fails. This scenario is tested by
 
 **GlobMatcher_Resolve_UncPath_ResolvesOnWindows**: UNC paths resolve on Windows. This scenario is
 tested by `GlobMatcher_Resolve_UncPath_ResolvesOnWindows`.
+
+**GlobMatcher_Resolve_BaseDirectory_ResolvesRelativePatterns**: A literal and a glob that are relative
+to a base directory other than the working directory must resolve to the files under that base
+directory. This scenario is tested by `GlobMatcher_Resolve_BaseDirectory_ResolvesRelativePatterns`.
+
+**GlobMatcher_Resolve_LeadingParentSegmentGlob_ReturnsFiles**: `../shared/*.yaml` from a base
+directory must match the file in the sibling `shared` directory. This scenario is tested by
+`GlobMatcher_Resolve_LeadingParentSegmentGlob_ReturnsFiles`.
+
+**GlobMatcher_Resolve_NestedParentSegmentGlob_ReturnsFiles**: `../../a/**/*.yaml` (a recursive glob
+after two `..` segments) and `sub/../../../shared/*.yaml` (`..` after a normal segment, which the
+globbing library alone rejects) must both match. This scenario is tested by
+`GlobMatcher_Resolve_NestedParentSegmentGlob_ReturnsFiles`.
+
+**GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile**: The literal `../shared/terms.yaml` must
+resolve against the base directory. This scenario is tested by
+`GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile`.

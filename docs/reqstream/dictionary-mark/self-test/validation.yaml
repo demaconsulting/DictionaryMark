@@ -116,3 +116,23 @@ sections:
                   Clear error messages help users identify misconfiguration quickly.
                 tests:
                   - Validation_Run_WithUnsupportedResultsFormat_DoesNotWriteFile
+
+              - id: DictionaryMark-Validation-ColumnWidths
+                title: >-
+                  The Validation unit shall confirm that proportional table column widths are generated correctly
+                  in the deployment environment.
+                justification: |
+                  Confirms that the --column-widths option works in the deployment environment.
+                tests:
+                  - Validation_Run_WithSilentContext_ColumnWidthsTestPasses
+
+              - id: DictionaryMark-Validation-ConfigTables
+                title: >-
+                  The Validation unit shall confirm that configuration-file table jobs, including relative paths
+                  with parent-directory segments and missing output directories, are generated correctly in the
+                  deployment environment.
+                justification: |
+                  Path handling differs between operating systems, so configuration-file generation must be
+                  confirmed on each deployment platform.
+                tests:
+                  - Validation_Run_WithSilentContext_ConfigTablesTestPasses

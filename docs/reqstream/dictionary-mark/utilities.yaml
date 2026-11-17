@@ -53,3 +53,21 @@ sections:
               - DictionaryMark-Utilities-PathSafety
             tests:
               - UtilitiesSubsystem_DirectoryCreationWorkflow_ValidPaths_CreatesDirectories
+
+          - id: DictionaryMark-Utilities-PathResolution
+            title: >-
+              The Utilities subsystem shall resolve user-supplied input patterns, output paths and directories
+              against a base directory, expanding ${VAR} references and supporting parent-directory segments.
+            justification: |
+              Paths come from the command line and from configuration files, relative to different directories;
+              shared resolution ensures they behave the same everywhere.
+            children:
+              - DictionaryMark-PathResolver-ResolvePath
+              - DictionaryMark-PathResolver-EnvironmentVariables
+              - DictionaryMark-PathResolver-GlobCombine
+              - DictionaryMark-PathResolver-NullValidation
+              - DictionaryMark-PathResolver-ExistingDirectory
+              - DictionaryMark-GlobMatcher-BaseDirectory
+            tests:
+              - UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles
+              - UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles

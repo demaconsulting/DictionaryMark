@@ -4,7 +4,7 @@
 
 #### Purpose
 
-`Validation.Run` prints a system information header, executes eight fixed in-process self-tests,
+`Validation.Run` prints a system information header, executes ten fixed in-process self-tests,
 prints a pass/fail summary, and optionally writes results to a TRX or JUnit XML file. Each test
 runs the real `Program` logic with temporary YAML input files and a log file to capture output.
 `Validation` is a static class with no instance state.
@@ -21,7 +21,7 @@ optionally writes a results file.
 - *Parameters*: `Context context` — provides output channels and the optional results file path.
 - *Returns*: `void`.
 - *Preconditions*: `context` is non-null.
-- *Postconditions*: All eight tests executed; summary printed; results file written if
+- *Postconditions*: All ten tests executed; summary printed; results file written if
   `context.ResultsFile` is set; `context.WriteError` called for each failed test.
 
 Throws `ArgumentNullException` when `context` is null.
@@ -96,6 +96,28 @@ and verifies the entry is omitted while visible entries remain.
 
 **RunDeprecatedTableTest** *(private)*: Generates a deprecated-terms table with `--kind deprecated`
 and verifies the `Not used`/`Use instead` columns and rows.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunColumnWidthsTest** *(private)* (`DictionaryMark_ColumnWidths`): Generates a table with
+`--format table --column-widths 25,75` and verifies the separator row has exactly 25 and 75 dashes
+and the entry row is present.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunConfigTablesTest** *(private)* (`DictionaryMark_ConfigTables`): Writes a dictionary in
+`shared/`, and in `config/` a configuration file with a top-level `format: table` and two jobs that
+read `../shared/*.yaml` and `../shared/terms.yaml` and write `../out/table.md` and
+`../out/bullets.md` (the second job overrides `format: bullets`). The `out/` directory is not
+created beforehand. Runs `Program.Run` with `--config` and verifies both outputs exist with the
+table and bullet content. This exercises configuration loading, the formatting precedence,
+config-relative `..` path resolution and output directory creation on each deployment platform.
 
 - *Parameters*: `Context context`; `TestResults testResults`.
 - *Returns*: `void`.

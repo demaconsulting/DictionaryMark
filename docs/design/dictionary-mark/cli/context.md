@@ -5,8 +5,9 @@
 #### Purpose
 
 `Context` is created once per tool invocation via the `Create` factory method. It parses the
-argument list using the inner `ArgumentParser` helper, opens any requested log file, and exposes
-the parsed flags as read-only properties. It owns the two output channels — console and log file —
+argument list using the inner `ArgumentParser` helper, resolves the root directory, loads the
+configuration file, builds the generation jobs, opens any requested log file, and exposes the
+parsed flags as read-only properties. It owns the two output channels — console and log file —
 through `WriteLine` and `WriteError`. It signals errors both at construction time (exceptions) and
 at runtime (via `_hasErrors` flag).
 
@@ -31,7 +32,7 @@ once `true`, remains `true` for the lifetime of the instance.
 specified.
 
 **HeadingDepth**: `int` — Heading depth for output; valid range 1–6; default 1; set via
-`--depth`.
+`--depth` or the configuration file's top-level `depth` key.
 
 **InputPatterns**: `List<string>` — Input file patterns specified via `-i` or `--input`
 (repeatable); default empty list.
@@ -54,28 +55,80 @@ default `Bullets`.
 **Kind**: `InputKind` — Input kind; set via `--kind <terms|deprecated>` (case-insensitive); default
 `Terms`.
 
-**TermHeaderSpecified**: `bool` — `true` when `--term-header` was passed.
+**TermHeaderSpecified**: `bool` — `true` when a term header was given by `--term-header` or the
+configuration file's top-level `term-header` key.
 
 **UseHeader**: `string` — Deprecated "use" column header; `--use-header`; default `"Use instead"`.
 
 **WhereHeader**: `string` — Deprecated "where" column header; `--where-header`; default
 `"Where it was used"`.
 
+The formatting properties above (`HeadingDepth`, `Format`, `SectionHeading`, `TermHeader`,
+`DefinitionHeader`, `SortBy`, `Kind`, `UseHeader`, `WhereHeader`) hold the effective top-level
+value: the command line, else the configuration file's top-level default, else the built-in
+default. Per-job values are in `Jobs`.
+
+**ColumnWidths**: `IReadOnlyList<int>?` — Effective top-level relative column widths from
+`--column-widths` or the configuration file's `column-widths` key; `null` when not given.
+
+**ConfigFilePath**: `string?` — Full path of the configuration file given by `--config`, after
+`${VAR}` expansion and resolution against the working directory; `null` when not given.
+
+**RootDirectory**: `string?` — Effective root directory: the resolved `--root`, else the
+configuration file's resolved `root` key, else `null`. Always an existing full path when set.
+
+**CommandLineFormatting**: `FormattingSettings` — The formatting options given explicitly on the
+command line; options not given are `null`. Highest-precedence formatting layer.
+
+**Jobs**: `IReadOnlyList<TableJob>` — The generation jobs: one per configuration table, or one
+command-line job when `--input` was given, or none.
+
+**UsesConfigTables**: `bool` — `true` when `Jobs` come from the configuration file's `tables`.
+
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
 
 #### Key Methods
 
-**Create**: Factory method. Delegates to the private `ArgumentParser` helper to parse `args`, then
-opens the log file if `--log` was supplied.
+**Create**: Factory method. The steps are, in order:
+
+1. Delegate to the private `ArgumentParser` helper to parse `args`. Formatting options are
+   recorded only when given, as the command-line `FormattingSettings` layer. A second `--config`
+   or `--root` throws `ArgumentException`; so does an empty or whitespace `--root` value.
+2. If `--root` was given, resolve it with `PathResolver.ResolveExistingDirectory` against the
+   working directory (description `--root option`).
+3. If `--config` was given, resolve it with `PathResolver.ResolvePath` against the working
+   directory (never the root) and load it with `ConfigFile.Load`.
+4. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
+5. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
+   `--output` throws `ArgumentException` naming the file; otherwise each table becomes
+   `TableJob.Create(index, inputs, output, base, [command line, job, config defaults])`. A
+   column-width error from `TableJob.Create` is re-thrown with the `Config file '{path}': `
+   prefix. Without tables, when `--input` was given, one command-line job
+   `TableJob.Create(null, inputs, output, base, [command line, config defaults])` is created.
+   The base directory comes from the private `SelectBaseDirectory(root, originDefault)`, which
+   returns the root when set and otherwise the origin default (the configuration file's
+   directory for table jobs, the working directory for the command-line job).
+6. Open the log file if `--log` was supplied.
 
 - *Parameters*: `string[] args` — command-line arguments to parse.
 - *Returns*: `Context` — a fully initialized instance.
 - *Preconditions*: None.
-- *Postconditions*: Returns a fully initialized `Context`; all parsed properties are set; log file
-  is open if `--log` was specified.
+- *Postconditions*: Returns a fully initialized `Context`; all parsed properties are set; every
+  job has been created and validated; log file is open if `--log` was specified.
 
-Throws `ArgumentException` when an unknown argument or a flag missing its required value is
-encountered. Throws `InvalidOperationException` when the specified log file cannot be opened.
+Throws `ArgumentException` when an argument is unknown, invalid, repeated or missing its value,
+when `--input`/`--output` is combined with configuration tables, or when a column-width count does
+not match the table. Throws `InvalidOperationException` when the root directory is invalid or
+missing, the `--root` or `--config` path is malformed (reported by `PathResolver` as
+`Invalid --root option '...': ...` or `Invalid config file path '...': ...`), the configuration
+file is invalid, or the log file cannot be opened.
+
+**ParseColumnWidths** (private, in `ArgumentParser`): splits the `--column-widths` value on `,`,
+trims each item, and parses it with `NumberStyles.None` and the invariant culture, which rejects
+signs, decimal points and blanks. Each value must be greater than 0, and there must be 2 or 3
+values; otherwise it throws `ArgumentException("--column-widths requires 2 or 3 comma-separated
+positive integers (e.g. 25,75)")`. The count is checked against the table shape later, in
+`TableJob.Create`.
 
 **WriteLine**: Writes `message` to `Console.Out` (unless `Silent` is `true`) and to `_logWriter`
 (if open).
@@ -110,11 +163,16 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 `TermHeader` (default `"Term"`); `--def-header <text>` / `--definition-header <text>` →
 `DefinitionHeader` (default `"Definition"`); `--sort <file|alpha>` → `SortBy` (default
 `FileOrder`); `--kind <terms|deprecated>` → `Kind` (invalid value throws `ArgumentException`);
-`--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`.
+`--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`;
+`--column-widths <w1,w2[,w3]>` → `ColumnWidths`; `--config <file>` → `ConfigFilePath` (once
+only); `--root <dir>` → `RootDirectory` (once only, non-empty).
 
-- Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized or
-  missing its required value; throws `InvalidOperationException` when the specified log file
-  cannot be opened. `Program.Main` is expected to catch both types.
+- Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized,
+  invalid, repeated or missing its required value, when `--input`/`--output` is combined with
+  configuration tables, or when a column-width count does not match the table; throws
+  `InvalidOperationException` when the root directory is invalid or missing, the configuration
+  file is invalid, or the log file cannot be opened. `Program.Main` is expected to catch both
+  types. All of these stop the run before any job runs.
 - Runtime errors: `WriteError` does not throw; it records the error message and sets
   `_hasErrors = true` so that `ExitCode` returns 1. No exception is raised at the point of the
   error.
@@ -123,6 +181,11 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 
 - **OutputFormat** — Dictionary subsystem enum; type of the parsed `--format` flag value.
 - **SortOrder** — Dictionary subsystem enum; type of the parsed `--sort` flag value.
+- **InputKind** — Dictionary subsystem enum; type of the parsed `--kind` flag value.
+- **ConfigFile** — Cli unit; loads the configuration file given by `--config`.
+- **TableJob** and **FormattingSettings** — Cli unit and supporting type; the generation jobs and
+  the formatting precedence layers.
+- **PathResolver** — Utilities unit; resolves `--config` and `--root`.
 
 #### Callers
 

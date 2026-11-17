@@ -51,4 +51,14 @@ public sealed class MarkdownOptions
 
     /// <summary>Gets or initializes the sort order.</summary>
     public SortOrder SortOrder { get; init; } = SortOrder.FileOrder;
+
+    /// <summary>
+    ///     Gets or initializes the relative table column widths, or null for the default separator.
+    /// </summary>
+    /// <remarks>
+    ///     When null (the default), tables use the fixed <c>| :--- | :--- |</c> separator so output
+    ///     is unchanged. When set, it holds one positive weight per table column (2 for terms
+    ///     tables, 3 for deprecated tables); bullet output ignores it.
+    /// </remarks>
+    public IReadOnlyList<int>? ColumnWidths { get; init; }
 }

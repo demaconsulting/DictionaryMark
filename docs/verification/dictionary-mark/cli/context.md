@@ -12,13 +12,19 @@ directly:
 - **`Console`** — stdout and stderr streams are temporarily redirected to `StringWriter`
   instances so that tests can assert on the exact content written without producing console
   noise. This is a test infrastructure technique, not mocking.
-- **File system** — tests that exercise log file writing create temporary files via
-  `TemporaryDirectory` for automatic cleanup. No file-system behavior is stubbed or replaced.
+- **File system** — tests that exercise log file writing, configuration files and root
+  directories create temporary files via `TemporaryDirectory` for automatic cleanup. No
+  file-system behavior is stubbed or replaced.
+- **ConfigFile, TableJob, PathResolver** — documented dependencies of `Context`; they run their
+  real logic, so the configuration and root tests confirm how `Context` combines them.
 
 #### Test Environment
 
-N/A - standard test environment. Tests that write log files use `TemporaryDirectory` for
-automatic cleanup.
+Tests that write log or configuration files use `TemporaryDirectory` for automatic cleanup.
+Tests of a relative `--root` or `--config` must not change `Environment.CurrentDirectory`: they
+create a uniquely named directory under the working directory (the test output folder) and delete
+it in a `finally` block. Tests of `${VAR}` expansion set a uniquely named environment variable and
+remove it in a `finally` block. The test class runs in the `Sequential` collection.
 
 #### Acceptance Criteria
 
@@ -222,3 +228,83 @@ and `--where-header` are parsed. This scenario is tested by
 
 **Context_Create_InvalidKind_ThrowsArgumentException**: Verifies an unrecognized `--kind` value is
 rejected. This scenario is tested by `Context_Create_InvalidKind_ThrowsArgumentException`.
+
+**Context_Create_ColumnWidthsFlag_SetsColumnWidths**: Verifies that `--column-widths 25,75` and
+`20 , 50 , 30` (with spaces) are parsed in order and recorded in the command-line layer. This
+scenario is tested by `Context_Create_ColumnWidthsFlag_SetsColumnWidths`.
+
+**Context_Create_ColumnWidthsFlag_InvalidValue_ThrowsArgumentException**: Verifies that `0,1`,
+`-1,2`, `1.5,2`, `a,b`, `25,`, an empty value, `1` and `1,2,3,4` are each rejected with the
+"2 or 3 comma-separated positive integers" message. This scenario is tested by
+`Context_Create_ColumnWidthsFlag_InvalidValue_ThrowsArgumentException`.
+
+**Context_Create_ColumnWidthsFlag_WithoutValue_ThrowsArgumentException**: Verifies that
+`--column-widths` without a value is rejected. This scenario is tested by
+`Context_Create_ColumnWidthsFlag_WithoutValue_ThrowsArgumentException`.
+
+**Context_Create_ColumnWidthsCountMismatch_ThrowsArgumentException**: Verifies that three widths
+for a terms table are rejected when the jobs are built. This scenario is tested by
+`Context_Create_ColumnWidthsCountMismatch_ThrowsArgumentException`.
+
+**Context_Create_ConfigFlag_LoadsTableJobs**: Verifies that `--config` with two tables gives two
+jobs with merged formats, the sequence input, and the label `table job 2 ('b.md')`. This scenario
+is tested by `Context_Create_ConfigFlag_LoadsTableJobs`.
+
+**Context_Create_ConfigFlagTwice_ThrowsArgumentException**: Verifies that a repeated `--config`
+is rejected. This scenario is tested by `Context_Create_ConfigFlagTwice_ThrowsArgumentException`.
+
+**Context_Create_ConfigWithTablesAndInput_ThrowsArgumentException** and
+**Context_Create_ConfigWithTablesAndOutput_ThrowsArgumentException**: Verify that `--input` and
+`--output` are rejected, naming the configuration file, when the file defines tables. These
+scenarios are tested by `Context_Create_ConfigWithTablesAndInput_ThrowsArgumentException` and
+`Context_Create_ConfigWithTablesAndOutput_ThrowsArgumentException`.
+
+**Context_Create_ConfigWithoutTables_AppliesDefaultsToCommandLineJob**: Verifies that a
+configuration file without tables supplies defaults to the single command-line job, while an
+explicit `--depth` still wins. This scenario is tested by
+`Context_Create_ConfigWithoutTables_AppliesDefaultsToCommandLineJob`.
+
+**Context_Create_FormattingFlags_RecordedAsCommandLineLayer** and
+**Context_Create_NoFormattingFlags_CommandLineLayerEmpty**: Verify that exactly the formatting
+options given are recorded in `CommandLineFormatting`, and that it is empty when none are given.
+These scenarios are tested by `Context_Create_FormattingFlags_RecordedAsCommandLineLayer` and
+`Context_Create_NoFormattingFlags_CommandLineLayerEmpty`.
+
+**Context_Create_ConfigPathEnvironmentVariable_Expanded**: Verifies that `${VAR}` in the
+`--config` path is expanded. This scenario is tested by
+`Context_Create_ConfigPathEnvironmentVariable_Expanded`.
+
+**Context_Create_RootFlag_SetsRootDirectory**,
+**Context_Create_RootFlagRelativeWithParentSegments_ResolvedAgainstWorkingDirectory** and
+**Context_Create_RootFlagEnvironmentVariable_Expanded**: Verify that `--root` resolves an absolute
+path, a relative `sub/../{name}` path against the working directory, and a `${VAR}` reference to
+the full path of the directory. These scenarios are tested by
+`Context_Create_RootFlag_SetsRootDirectory`,
+`Context_Create_RootFlagRelativeWithParentSegments_ResolvedAgainstWorkingDirectory` and
+`Context_Create_RootFlagEnvironmentVariable_Expanded`.
+
+**Context_Create_RootFlagMissingDirectory_ThrowsInvalidOperationException**,
+**Context_Create_RootFlagTwice_ThrowsArgumentException**,
+**Context_Create_RootFlagWithoutValue_ThrowsArgumentException** and
+**Context_Create_RootFlagEmpty_ThrowsArgumentException**: Verify the error paths of `--root`: a
+missing directory (message naming the directory and option), a repeated option, a missing value
+and a whitespace value. These scenarios are tested by the tests of the same names.
+
+**Context_Create_RootFlagInvalidCharacter_ThrowsInvalidOperationException** and
+**Context_Create_ConfigFlagInvalidCharacter_ThrowsInvalidOperationException**: Verify that a
+`--root` or `--config` value containing a null character (invalid on every platform) is reported
+as `InvalidOperationException` naming the option and the value (`Invalid --root option '...'`,
+`Invalid config file path '...'`), so `Program.Main` prints a clean error. These scenarios are
+tested by the tests of the same names.
+
+**Context_Create_RootFlag_AppliedToCommandLineJob**,
+**Context_Create_RootFlag_AppliedToConfigTables**, **Context_Create_RootFlag_OverridesConfigRoot**,
+**Context_Create_ConfigRoot_AppliedToConfigTables**, **Context_Create_ConfigRoot_AppliedToCommandLineJob**,
+**Context_Create_NoRoot_ConfigTablesUseConfigDirectory** and
+**Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory**: Verify every cell of the
+base-directory precedence table by checking `TableJob.BaseDirectory` of the created jobs. These
+scenarios are tested by the tests of the same names.
+
+**Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot**: Verifies that a relative `--config`
+is resolved against the working directory even when `--root` names a different directory. This
+scenario is tested by `Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot`.

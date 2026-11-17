@@ -16,6 +16,8 @@ input-files:
   - docs/verification/dictionary-mark/program.md
   - docs/verification/dictionary-mark/cli.md
   - docs/verification/dictionary-mark/cli/context.md
+  - docs/verification/dictionary-mark/cli/config-file.md
+  - docs/verification/dictionary-mark/cli/table-job.md
   - docs/verification/dictionary-mark/dictionary.md
   - docs/verification/dictionary-mark/dictionary/yaml-loader.md
   - docs/verification/dictionary-mark/dictionary/conflict-detector.md
@@ -25,6 +27,7 @@ input-files:
   - docs/verification/dictionary-mark/self-test/validation.md
   - docs/verification/dictionary-mark/utilities.md
   - docs/verification/dictionary-mark/utilities/glob-matcher.md
+  - docs/verification/dictionary-mark/utilities/path-resolver.md
   - docs/verification/dictionary-mark/utilities/path-helpers.md
   - docs/verification/dictionary-mark/utilities/temporary-directory.md
   - docs/verification/dictionary-mark/test-helpers.md

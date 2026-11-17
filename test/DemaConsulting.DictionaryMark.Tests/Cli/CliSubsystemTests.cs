@@ -404,4 +404,241 @@ public class CliSubsystemTests
         var logContent = File.ReadAllText(logFile);
         Assert.Contains("## CLI Depth", logContent);
     }
+
+    /// <summary>Runs Program.Main with captured console output and returns the exit code and stderr.</summary>
+    /// <param name="args">The command-line arguments.</param>
+    /// <returns>The exit code and the captured standard error.</returns>
+    private static (int ExitCode, string Error) RunMain(params string[] args)
+    {
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        try
+        {
+            using var outWriter = new StringWriter();
+            using var errWriter = new StringWriter();
+            Console.SetOut(outWriter);
+            Console.SetError(errWriter);
+            var exitCode = Program.Main(args);
+            return (exitCode, errWriter.ToString());
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+    }
+
+    /// <summary>Writes a config file into a "config" sub-directory and returns its path.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="content">The YAML content.</param>
+    /// <returns>The full path of the config file.</returns>
+    private static string WriteConfig(TemporaryDirectory tmpDir, string content)
+    {
+        var path = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>Expected separator for column widths 25,75 (or 1,3).</summary>
+    private static readonly string Separator2575 = $"| :{new string('-', 25)} | :{new string('-', 75)} |";
+
+    /// <summary>
+    ///     Test that Context and Program work together to apply --column-widths to a generated table.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ColumnWidthsFlow_ContextAndProgram_WritesProportionalTable()
+    {
+        // Arrange: a dictionary and a table command with column widths
+        using var tmpDir = new TemporaryDirectory();
+        var inputFile = tmpDir.GetFilePath("input.yaml");
+        var outputFile = tmpDir.GetFilePath("output.md");
+        File.WriteAllText(inputFile, "API: Application Programming Interface\n");
+        var args = new[] { "--silent", "--input", inputFile, "--format", "table", "--column-widths", "25,75", "--output", outputFile };
+
+        // Act: create context and run program logic
+        using var context = Context.Create(args);
+        Program.Run(context);
+
+        // Assert: the widths are parsed and the table separator is proportional
+        Assert.Equal(0, context.ExitCode);
+        Assert.Equal([25, 75], context.ColumnWidths!);
+        Assert.Contains(Separator2575, File.ReadAllText(outputFile));
+    }
+
+    /// <summary>
+    ///     Test that an invalid --column-widths value exits non-zero with an error on stderr.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ColumnWidthsFlow_InvalidValue_ExitsNonZero()
+    {
+        // Act: run the entry point with a zero width
+        var (exitCode, error) = RunMain("--column-widths", "0,1");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--column-widths requires 2 or 3 comma-separated positive integers", error);
+    }
+
+    /// <summary>
+    ///     Test that Context and Program work together to generate every table job of a config file.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ConfigFlow_TableJobs_GeneratesEachOutput()
+    {
+        // Arrange: a dictionary and a config with two jobs
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir,
+            "format: table\ntables:\n  - input: ../shared/*.yaml\n    output: ../out/a.md\n" +
+            "  - input: ../shared/terms.yaml\n    output: ../out/b.md\n    format: bullets\n");
+
+        // Act: create context and run program logic
+        using var context = Context.Create(["--silent", "--config", config]);
+        Program.Run(context);
+
+        // Assert: both outputs exist with their own format
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains("| API |", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "a.md")));
+        Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that command-line formatting options override the config file for every job.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ConfigFlow_CommandLineOverride_AppliesToEveryJob()
+    {
+        // Arrange: a config whose jobs set bullets, overridden on the command line
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir,
+            "format: bullets\ntables:\n  - input: terms.yaml\n    output: a.md\n" +
+            "  - input: terms.yaml\n    output: b.md\n    format: bullets\n");
+
+        // Act: override the format and widths on the command line
+        using var context = Context.Create(["--silent", "--config", config, "--format", "table", "--column-widths", "1,3"]);
+        Program.Run(context);
+
+        // Assert: both outputs are proportional tables
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains(Separator2575, File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "a.md"))));
+        Assert.Contains(Separator2575, File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
+
+    /// <summary>
+    ///     Test that an invalid config file exits non-zero with an error naming the file.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ConfigFlow_InvalidConfig_ExitsNonZero()
+    {
+        // Arrange: a config with an unknown key
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "theme: dark\n");
+
+        // Act
+        var (exitCode, error) = RunMain("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Config file '{config}': unknown key 'theme'", error);
+    }
+
+    /// <summary>
+    ///     Test that --input with a config that defines tables exits non-zero.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_ConfigFlow_TablesWithInput_ExitsNonZero()
+    {
+        // Arrange: a config with tables
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: a.yaml\n    output: a.md\n");
+
+        // Act
+        var (exitCode, error) = RunMain("--config", config, "--input", "b.yaml");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--input cannot be used with config file", error);
+    }
+
+    /// <summary>
+    ///     Test that --root is the base for command-line inputs and output.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_RootFlow_CommandLineRoot_ResolvesInputsAndOutput()
+    {
+        // Arrange: a dictionary under a root directory
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("root", "dict", "terms.yaml")), "API: Application Programming Interface\n");
+        var root = Path.Combine(tmpDir.DirectoryPath, "root");
+
+        // Act: use relative paths that only exist under the root
+        using var context = Context.Create(["--silent", "--root", root, "--input", "dict/*.yaml", "--output", "out/terms.md"]);
+        Program.Run(context);
+
+        // Assert
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains("API", File.ReadAllText(Path.Combine(root, "out", "terms.md")));
+    }
+
+    /// <summary>
+    ///     Test that the config root key is the base for table jobs.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs()
+    {
+        // Arrange: a config two levels below the root it names
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("dict", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("a", "b", "dictionarymark.yaml"));
+        File.WriteAllText(config, "root: ../..\ntables:\n  - input: dict/*.yaml\n    output: out/terms.md\n");
+
+        // Act
+        using var context = Context.Create(["--silent", "--config", config]);
+        Program.Run(context);
+
+        // Assert
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains("API", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "terms.md")));
+    }
+
+    /// <summary>
+    ///     Test that --root overrides the config root key for table jobs.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs()
+    {
+        // Arrange: the config root names an empty directory; --root names the one with the dictionary
+        using var tmpDir = new TemporaryDirectory();
+        Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "empty"));
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("real", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir, "root: ../empty\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+        var root = Path.Combine(tmpDir.DirectoryPath, "real");
+
+        // Act
+        using var context = Context.Create(["--silent", "--config", config, "--root", root]);
+        Program.Run(context);
+
+        // Assert: the job resolved against --root
+        Assert.Equal(0, context.ExitCode);
+        Assert.Contains("API", File.ReadAllText(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a missing root directory exits non-zero with an error naming it.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_RootFlow_MissingRoot_ExitsNonZero()
+    {
+        // Arrange: a root directory that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act
+        var (exitCode, error) = RunMain("--root", missing, "--input", "a.yaml");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Directory '{missing}' specified by --root option", error);
+    }
 }

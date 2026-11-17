@@ -20,6 +20,8 @@ sections:
               - dotnet10@DictionaryMark_TableGeneration
               - dotnet10@DictionaryMark_CustomHeaders
               - dotnet10@DictionaryMark_ConflictDetection
+              - dotnet10@DictionaryMark_ColumnWidths
+              - dotnet10@DictionaryMark_ConfigTables
 
           - id: DictionaryMark-Platform-DotNet11
             title: The tool shall run on .NET 11.0.
@@ -35,6 +37,8 @@ sections:
               - dotnet11@DictionaryMark_TableGeneration
               - dotnet11@DictionaryMark_CustomHeaders
               - dotnet11@DictionaryMark_ConflictDetection
+              - dotnet11@DictionaryMark_ColumnWidths
+              - dotnet11@DictionaryMark_ConfigTables
 
           - id: DictionaryMark-Platform-Windows
             title: The tool shall run on Windows operating systems.
@@ -51,6 +55,8 @@ sections:
               - windows@DictionaryMark_TableGeneration
               - windows@DictionaryMark_CustomHeaders
               - windows@DictionaryMark_ConflictDetection
+              - windows@DictionaryMark_ColumnWidths
+              - windows@DictionaryMark_ConfigTables
 
           - id: DictionaryMark-Platform-Ubuntu
             title: The tool shall run on Ubuntu operating systems.
@@ -67,3 +73,5 @@ sections:
               - ubuntu@DictionaryMark_TableGeneration
               - ubuntu@DictionaryMark_CustomHeaders
               - ubuntu@DictionaryMark_ConflictDetection
+              - ubuntu@DictionaryMark_ColumnWidths
+              - ubuntu@DictionaryMark_ConfigTables

@@ -81,3 +81,30 @@ sections:
                   - MarkdownFormatter_FormatDeprecated_CustomHeaders_AreUsed
                   - MarkdownFormatter_FormatDeprecated_BulletsAndPipes_AreRendered
                   - MarkdownFormatter_FormatDeprecated_Empty_HasNotApplicableRow
+
+              - id: DictionaryMark-Formatter-ColumnWidths
+                title: >-
+                  The MarkdownFormatter class shall size table separator dashes in proportion to the column
+                  weights, scaled to about 100 in total with at least 3 per column and the left-alignment colon
+                  kept, shall keep the default separator when no widths are given, and shall not change bullet
+                  output.
+                justification: |
+                  Renderers derive column widths from the separator dash counts, so proportional dashes give
+                  proportional columns while the output stays a valid pipe table.
+                tests:
+                  - MarkdownFormatter_Format_TableWithColumnWidths_ProportionalSeparator
+                  - MarkdownFormatter_Format_TableWithSmallWeight_UsesMinimumThreeDashes
+                  - MarkdownFormatter_Format_TableWithoutColumnWidths_UsesDefaultSeparator
+                  - MarkdownFormatter_Format_BulletsWithColumnWidths_Unchanged
+                  - MarkdownFormatter_Format_ColumnWidthCountMismatch_ThrowsArgumentException
+
+              - id: DictionaryMark-Formatter-ColumnWidthsDeprecated
+                title: >-
+                  The MarkdownFormatter class shall use all 3 column weights for a deprecated table with a Where
+                  column, and otherwise only the first 2 weights rescaled over their own total.
+                justification: |
+                  The Where column is only shown when needed, so the remaining columns must still fill the table
+                  in the requested ratio.
+                tests:
+                  - MarkdownFormatter_FormatDeprecated_WithWhereAndWidths_UsesThreeWeights
+                  - MarkdownFormatter_FormatDeprecated_WithoutWhereAndWidths_RescalesFirstTwo

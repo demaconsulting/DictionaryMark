@@ -1,0 +1,103 @@
+---
+# DictionaryMark ConfigFile unit requirements
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Cli Requirements
+        sections:
+          - title: ConfigFile Requirements
+            requirements:
+              - id: DictionaryMark-ConfigFile-Load
+                title: >-
+                  The ConfigFile unit shall load a YAML configuration file whose root mapping holds top-level
+                  formatting defaults and an optional tables sequence of jobs, each with input, output and
+                  optional formatting keys.
+                justification: |
+                  The configuration file is the single place where a project records its glossary formatting
+                  and the tables to generate.
+                children:
+                  - DictionaryMark-OTS-YamlDotNet
+                tests:
+                  - ConfigFile_Load_DefaultsAndTables_ParsesAllKeys
+                  - ConfigFile_Load_DefinitionHeaderAlias_IsAccepted
+
+              - id: DictionaryMark-ConfigFile-InputForms
+                title: >-
+                  The ConfigFile unit shall accept a job input as either a single string or a sequence of
+                  strings, keeping each pattern as written.
+                justification: |
+                  Most jobs read one glob, but some combine several dictionaries; patterns are resolved later
+                  against the job's base directory, so they must not be altered while loading.
+                tests:
+                  - ConfigFile_Load_InputAsString_ReturnsSinglePattern
+                  - ConfigFile_Load_InputAsSequence_ReturnsAllPatterns
+
+              - id: DictionaryMark-ConfigFile-FileErrors
+                title: >-
+                  The ConfigFile unit shall report a missing, unreadable, empty or invalid YAML file, or a root
+                  that is not a mapping, with an error naming the file.
+                justification: |
+                  A configuration that cannot be read must stop the run with a message that identifies the file.
+                tests:
+                  - ConfigFile_Load_MissingFile_ThrowsNamingFile
+                  - ConfigFile_Load_InvalidYaml_ThrowsNamingFile
+                  - ConfigFile_Load_NonMappingRoot_Throws
+                  - ConfigFile_Load_EmptyFile_Throws
+
+              - id: DictionaryMark-ConfigFile-TablesStructure
+                title: >-
+                  The ConfigFile unit shall require tables to be a non-empty sequence of mappings, each with
+                  input and output, reporting errors that name the job by its 1-based index.
+                justification: |
+                  A wrongly structured job cannot be generated; naming the job lets users find it in a file with
+                  many jobs.
+                tests:
+                  - ConfigFile_Load_TablesNotSequence_Throws
+                  - ConfigFile_Load_TablesEmpty_Throws
+                  - ConfigFile_Load_JobNotMapping_ThrowsNamingJob
+                  - ConfigFile_Load_JobMissingInput_ThrowsNamingJob
+                  - ConfigFile_Load_JobMissingOutput_ThrowsNamingJob
+
+              - id: DictionaryMark-ConfigFile-KeyValidation
+                title: >-
+                  The ConfigFile unit shall reject unknown keys, the keys input, output, log, results, validate,
+                  silent, version and help at the top level, and both definition-header aliases in one mapping,
+                  with an error naming the key, the job and the file.
+                justification: |
+                  Ignoring a misspelled or misplaced key would silently generate the wrong output.
+                tests:
+                  - ConfigFile_Load_DisallowedTopLevelKey_ThrowsNamingKey
+                  - ConfigFile_Load_UnknownTopLevelKey_ThrowsNamingKey
+                  - ConfigFile_Load_UnknownJobKey_ThrowsNamingKeyAndJob
+                  - ConfigFile_Load_BothDefHeaderAliases_Throws
+
+              - id: DictionaryMark-ConfigFile-ValueValidation
+                title: >-
+                  The ConfigFile unit shall validate formatting values with the same rules as the command line,
+                  requiring column-widths to be a sequence of 2 or 3 positive integers.
+                justification: |
+                  The same setting must accept the same values wherever it is given.
+                tests:
+                  - ConfigFile_Load_InvalidDepth_Throws
+                  - ConfigFile_Load_InvalidFormatSortKind_Throws
+                  - ConfigFile_Load_ColumnWidthsNotSequence_Throws
+                  - ConfigFile_Load_ColumnWidthsInvalidValues_Throws
+
+              - id: DictionaryMark-ConfigFile-Root
+                title: >-
+                  The ConfigFile unit shall accept an optional top-level non-empty root string, resolve it
+                  relative to the configuration file's directory with ${VAR} expansion and parent-directory
+                  normalization, and reject a missing directory or a root key inside a table job, with an error
+                  naming the file and the job.
+                justification: |
+                  The root key lets a configuration file kept in a tools folder use repository-relative paths.
+                tests:
+                  - ConfigFile_Load_Root_ResolvedRelativeToConfigDirectory
+                  - ConfigFile_Load_RootWithParentSegments_Normalized
+                  - ConfigFile_Load_RootEnvironmentVariable_Expanded
+                  - ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile
+                  - ConfigFile_Load_RootMissingDirectory_ThrowsNamingFile
+                  - ConfigFile_Load_RootInvalidValue_Throws
+                  - ConfigFile_Load_RootInTableJob_ThrowsNamingJob
+                  - ConfigFile_Load_NoRoot_RootDirectoryIsNull

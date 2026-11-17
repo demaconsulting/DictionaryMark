@@ -62,6 +62,8 @@ internal static partial class YamlDictionaryLoader
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
     /// <exception cref="IOException">Thrown when the file cannot be read.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+    /// <exception cref="YamlException">Thrown when the file is not syntactically valid YAML.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
     /// </exception>
@@ -106,6 +108,8 @@ internal static partial class YamlDictionaryLoader
     /// <returns>Ordered list of <see cref="DeprecatedEntry"/> objects in document order.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
     /// <exception cref="IOException">Thrown when the file cannot be read.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+    /// <exception cref="YamlException">Thrown when the file is not syntactically valid YAML.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
     /// </exception>

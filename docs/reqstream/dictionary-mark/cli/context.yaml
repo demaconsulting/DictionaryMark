@@ -127,3 +127,77 @@ sections:
                   - Context_Create_Defaults_KindTermsAndHeaders
                   - Context_Create_DeprecatedOptions_AreParsed
                   - Context_Create_InvalidKind_ThrowsArgumentException
+
+              - id: DictionaryMark-Context-ColumnWidthsOption
+                title: >-
+                  The Context class shall parse the --column-widths option as 2 or 3 comma-separated positive
+                  integers and reject zero, negative, non-integer, empty and wrongly counted values.
+                justification: |
+                  Column widths are typed by users on the command line, so syntax errors must be reported with
+                  a clear message before any work is done.
+                tests:
+                  - Context_Create_ColumnWidthsFlag_SetsColumnWidths
+                  - Context_Create_ColumnWidthsFlag_InvalidValue_ThrowsArgumentException
+                  - Context_Create_ColumnWidthsFlag_WithoutValue_ThrowsArgumentException
+                  - Context_Create_ColumnWidthsCountMismatch_ThrowsArgumentException
+
+              - id: DictionaryMark-Context-ConfigOption
+                title: >-
+                  The Context class shall accept --config at most once, resolve it against the working directory
+                  with ${VAR} expansion, load the file, create one job per table, and reject --input or --output
+                  when the file defines tables.
+                justification: |
+                  The configuration file must be located the same way regardless of any root directory, and the
+                  generation jobs must be fully determined before any job runs.
+                tests:
+                  - Context_Create_ConfigFlag_LoadsTableJobs
+                  - Context_Create_ConfigFlagTwice_ThrowsArgumentException
+                  - Context_Create_ConfigWithTablesAndInput_ThrowsArgumentException
+                  - Context_Create_ConfigWithTablesAndOutput_ThrowsArgumentException
+                  - Context_Create_ConfigWithoutTables_AppliesDefaultsToCommandLineJob
+                  - Context_Create_ConfigPathEnvironmentVariable_Expanded
+
+              - id: DictionaryMark-Context-ExplicitOptions
+                title: >-
+                  The Context class shall record the formatting options given explicitly on the command line as
+                  the highest-precedence formatting layer, leaving options that were not given unset.
+                justification: |
+                  Only options the user actually typed may override the configuration file; recording built-in
+                  defaults as if they were given would hide the file's values.
+                tests:
+                  - Context_Create_FormattingFlags_RecordedAsCommandLineLayer
+                  - Context_Create_NoFormattingFlags_CommandLineLayerEmpty
+
+              - id: DictionaryMark-Context-RootOption
+                title: >-
+                  The Context class shall accept --root <dir> at most once and with a non-empty value, and shall
+                  resolve it against the working directory, expanding ${VAR} and normalizing parent-directory
+                  segments, rejecting a directory that does not exist.
+                justification: |
+                  The root directory is the base for every relative path, so it must be unambiguous and must
+                  exist before any job runs.
+                tests:
+                  - Context_Create_RootFlag_SetsRootDirectory
+                  - Context_Create_RootFlagRelativeWithParentSegments_ResolvedAgainstWorkingDirectory
+                  - Context_Create_RootFlagEnvironmentVariable_Expanded
+                  - Context_Create_RootFlagMissingDirectory_ThrowsInvalidOperationException
+                  - Context_Create_RootFlagTwice_ThrowsArgumentException
+                  - Context_Create_RootFlagWithoutValue_ThrowsArgumentException
+                  - Context_Create_RootFlagEmpty_ThrowsArgumentException
+
+              - id: DictionaryMark-Context-BaseDirectorySelection
+                title: >-
+                  The Context class shall give every job the base directory --root, else the configuration file
+                  root key, else the configuration file's directory for table jobs and the working directory for
+                  the command-line job, and shall not resolve --config against the root.
+                justification: |
+                  Selecting the base directory in one place guarantees the documented precedence for every job.
+                tests:
+                  - Context_Create_RootFlag_AppliedToCommandLineJob
+                  - Context_Create_RootFlag_AppliedToConfigTables
+                  - Context_Create_RootFlag_OverridesConfigRoot
+                  - Context_Create_ConfigRoot_AppliedToConfigTables
+                  - Context_Create_ConfigRoot_AppliedToCommandLineJob
+                  - Context_Create_NoRoot_ConfigTablesUseConfigDirectory
+                  - Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory
+                  - Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot

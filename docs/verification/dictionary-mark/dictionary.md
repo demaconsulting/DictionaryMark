@@ -51,3 +51,17 @@ containing two entries (`API` and `CI`) is passed to `DictionaryGenerator.Genera
 Markdown. The captured output must contain `"API"` and `"CI"` and `context.ExitCode` must be
 zero, confirming the full generation pipeline operates end-to-end.
 This scenario is tested by `DictionarySubsystem_Generation_ValidYaml_GeneratesMarkdown`.
+
+**DictionarySubsystem_TableGeneration_ColumnWidths_GeneratesProportionalSeparator**: A temporary YAML
+file is loaded with `YamlDictionaryLoader.Load` and formatted by `MarkdownFormatter.Format` as a table
+with column widths `1,3`. The output must contain a separator with 25 and 75 dashes followed by the
+entry row, confirming that column widths flow from the options through the formatter.
+This scenario is tested by
+`DictionarySubsystem_TableGeneration_ColumnWidths_GeneratesProportionalSeparator`.
+
+**DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput**: A configuration file with two jobs
+(table and bullets) writing into a missing `out` directory is passed through `Context` to
+`DictionaryGenerator.Generate`. Both outputs must exist with their own formats and the exit code must
+be zero, confirming per-job generation, path resolution against the job's base directory and output
+directory creation.
+This scenario is tested by `DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput`.

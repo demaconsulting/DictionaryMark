@@ -29,7 +29,15 @@ implementations, and file attribute filtering.
 
 ### Integration Pattern
 
-For relative patterns, `GlobMatcher` creates a `Matcher` rooted at `Environment.CurrentDirectory`:
+`GlobMatcher.Resolve`, used for all generation inputs, first roots every relative pattern at a
+base directory — the working directory, the configuration file's directory, or a root directory —
+so the pattern reaches the matcher as an absolute pattern (see below). This supports `..` segments
+anywhere before the first wildcard: `Matcher` itself accepts `..` only at the beginning of a
+pattern and enumerates each parent directory for a leading `..`, which rooting avoids. A `..`
+after a wildcard is still rejected by `Matcher.AddInclude` with `ArgumentException`.
+
+For relative patterns passed directly to `GetFiles`, `GlobMatcher` creates a `Matcher` rooted at
+`Environment.CurrentDirectory`:
 
 ```csharp
 var matcher = new Matcher();
@@ -37,11 +45,10 @@ matcher.AddInclude(pattern);
 var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Environment.CurrentDirectory)));
 ```
 
-For absolute patterns containing wildcards, `GlobMatcher` first extracts the non-wildcard base
-directory from the pattern, then creates a `Matcher` rooted at that directory with the remaining
-pattern segment as the include rule. In both cases, matched relative paths are combined with the
-base directory and resolved to absolute paths via `Path.GetFullPath` before being added to the
-results set.
+For absolute patterns containing wildcards, `GlobMatcher` first extracts the non-wildcard base directory from the
+pattern (normalizing any `..` segments with `Path.GetFullPath`), then creates a `Matcher` rooted at that directory with
+the remaining pattern segment as the include rule. In both cases, matched relative paths are combined with the base
+directory and resolved to absolute paths via `Path.GetFullPath` before being added to the results set.
 
 ### Error Handling
 
@@ -54,8 +61,9 @@ returns an empty list to its caller.
 
 ### Design Constraints
 
-- Relative patterns are always resolved relative to `Environment.CurrentDirectory` at the time
-  of the call; no alternative base directory can be configured.
+- Relative patterns passed to `GetFiles` are resolved relative to `Environment.CurrentDirectory`
+  at the time of the call; `Resolve` roots relative patterns at a caller-supplied base directory
+  before matching.
 - The deduplication set uses `StringComparer.OrdinalIgnoreCase`, so on case-sensitive file
   systems two paths that differ only in case are treated as the same key and merged into a
   single entry.

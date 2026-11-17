@@ -59,3 +59,16 @@ created in a temporary directory. The returned list must contain the expected fi
 exception thrown, confirming glob pattern resolution operates correctly against a real file
 system.
 This scenario is tested by `UtilitiesSubsystem_GlobMatcher_ResolvesFiles`.
+
+**UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles**: `GlobMatcher.Resolve` is called with
+`sub/../../shared/*.yaml` and `PathResolver.ResolvePath` with `../out/terms.md`, both relative to a
+`config` directory. The glob must find the shared dictionary and the output path must be the normalized
+sibling path, confirming that the two units resolve `..` consistently.
+This scenario is tested by `UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles`.
+
+**UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles**:
+`PathResolver.ResolveExistingDirectory("a/../b", tmp)` must return the normalized `b` directory, and
+`GlobMatcher.Resolve(["../c/*.yaml"], root)` must then find the dictionary in `c`, confirming that a
+root directory with `..` serves as the base for globs that also contain `..`.
+This scenario is tested by
+`UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles`.

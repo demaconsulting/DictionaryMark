@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Utilities;
+using YamlDotNet.Core;
 
 namespace DemaConsulting.DictionaryMark.Dictionary;
 
@@ -29,15 +30,15 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 internal static class DictionaryGenerator
 {
     /// <summary>
-    ///     Generates Markdown output from YAML dictionary files.
+    ///     Generates Markdown output for every job in the context.
     /// </summary>
-    /// <param name="context">The context containing input patterns, output options, and output channels. Must not be null.</param>
+    /// <param name="context">The context containing the jobs and output channels. Must not be null.</param>
     /// <remarks>
-    ///     Applies an early-return-on-error strategy: each error condition writes to
-    ///     <c>context.WriteError</c> (which sets the exit code to 1) and returns immediately,
-    ///     with no output generated. Error cases include invalid input patterns, I/O errors
-    ///     reading YAML files, invalid YAML structure, no files found, and I/O or access errors
-    ///     writing the output file.
+    ///     Every job runs, even after an earlier job fails, so a single run reports every problem.
+    ///     Each failure is written to <c>context.WriteError</c> (which sets the exit code to 1);
+    ///     messages for config-file jobs start with the job label, which names the job index and
+    ///     output. When the jobs come from config-file tables and any job failed, a summary line
+    ///     reports how many failed. When there are no jobs, an error is reported.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null.</exception>
     public static void Generate(Context context)
@@ -45,85 +46,169 @@ internal static class DictionaryGenerator
         // Validate input
         ArgumentNullException.ThrowIfNull(context);
 
-        // Resolve input files (strict: every pattern must match)
-        IReadOnlyList<string> files;
-        try
-        {
-            files = GlobMatcher.Resolve(context.InputPatterns);
-        }
-        catch (ArgumentException ex)
-        {
-            context.WriteError($"Error: Invalid input pattern: {ex.Message}");
-            return;
-        }
-        catch (InvalidOperationException ex)
-        {
-            context.WriteError($"Error: {ex.Message}");
-            return;
-        }
-
-        if (files.Count == 0)
+        // Nothing to generate is an error
+        if (context.Jobs.Count == 0)
         {
             context.WriteError("Error: No input files found matching the specified patterns.");
             return;
         }
 
-        var deprecatedKind = context.Kind == InputKind.Deprecated;
+        // Run every job (Select is fully enumerated by Count), counting failures rather than stopping at the first one
+        var failed = context.Jobs.Select(job => GenerateJob(context, job)).Count(succeeded => !succeeded);
+
+        // Summarize failures of config-file table jobs
+        if (context.UsesConfigTables && failed > 0)
+        {
+            context.WriteError($"Error: {failed} of {context.Jobs.Count} table jobs failed.");
+        }
+    }
+
+    /// <summary>
+    ///     Generates the Markdown output of one job.
+    /// </summary>
+    /// <param name="context">The context providing the output channels. Must not be null.</param>
+    /// <param name="job">The job to run. Must not be null.</param>
+    /// <returns>True when the job produced its output; false after reporting an error.</returns>
+    /// <remarks>
+    ///     Applies an early-return-on-error strategy within the job: each error condition is
+    ///     reported (prefixed with the job label when the job has one) and the job stops with no
+    ///     output. Error cases include invalid input patterns, undefined environment variables,
+    ///     I/O or access errors resolving input patterns or reading YAML files, malformed or
+    ///     structurally invalid YAML, conflicts between the job's input files, invalid output paths,
+    ///     and I/O or access errors writing the output file. Every expected exception is caught here
+    ///     so that a failing job never stops the jobs that follow it. Relative inputs and the
+    ///     relative output resolve against <see cref="TableJob.BaseDirectory"/>. Missing parent
+    ///     directories of the output file are created.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    internal static bool GenerateJob(Context context, TableJob job)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(job);
+
+        // Resolve input files (strict: every pattern must match)
+        IReadOnlyList<string> files;
+        try
+        {
+            files = GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory);
+        }
+        catch (Exception ex) when (PathResolver.IsInvalidPathException(ex))
+        {
+            // Literal patterns are normalized, which rejects malformed (for example a null character)
+            // or overlong paths; the globbing library rejects unsupported glob syntax
+            Report(context, job, $"Invalid input pattern: {ex.Message}");
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Report(context, job, ex.Message);
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Glob matching enumerates directories, which can fail on unreadable or vanished directories
+            Report(context, job, $"Failed to resolve input patterns: {ex.Message}");
+            return false;
+        }
+
+        if (files.Count == 0)
+        {
+            Report(context, job, "No input files found matching the specified patterns.");
+            return false;
+        }
+
+        var options = job.Options;
+        var deprecatedKind = options.Kind == InputKind.Deprecated;
         var approved = new List<DictionaryEntry>();
         var deprecated = new List<DeprecatedEntry>();
 
         // Load the input files as the selected kind
-        if (!LoadFiles(context, files, deprecatedKind, approved, deprecated))
+        if (!LoadFiles(context, job, files, deprecatedKind, approved, deprecated))
         {
-            return;
+            return false;
         }
 
-        // Check for conflicts
+        // Check for conflicts between this job's files
         var conflicts = ConflictDetector.Detect(approved, deprecated);
         if (conflicts.Count > 0)
         {
             foreach (var conflict in conflicts)
             {
-                context.WriteError($"Error: {conflict}");
+                Report(context, job, conflict);
             }
 
-            return;
+            return false;
         }
 
         // Format output
-        var options = new MarkdownOptions
-        {
-            Format = context.Format,
-            SectionHeading = context.SectionHeading,
-            HeadingDepth = context.HeadingDepth,
-            TermHeader = context.TermHeaderSpecified || !deprecatedKind ? context.TermHeader : "Not used",
-            DefinitionHeader = context.DefinitionHeader,
-            SortOrder = context.SortBy,
-            Kind = context.Kind,
-            UseHeader = context.UseHeader,
-            WhereHeader = context.WhereHeader
-        };
-
         var output = deprecatedKind
             ? MarkdownFormatter.FormatDeprecated(DeprecatedForOutput(deprecated, files), options)
             : MarkdownFormatter.Format(approved.Where(e => files.Contains(e.Source, StringComparer.OrdinalIgnoreCase)).ToList(), options);
+
         // Write output
-        if (context.OutputFile != null)
-        {
-            try
-            {
-                File.WriteAllText(context.OutputFile, output);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                context.WriteError($"Error: Failed to write output file '{context.OutputFile}': {ex.Message}");
-            }
-        }
-        else
+        if (job.OutputFile == null)
         {
             context.WriteLine(output);
+            return true;
+        }
+
+        return WriteOutputFile(context, job, output);
+    }
+
+    /// <summary>
+    ///     Writes a job's output to its output file, creating missing parent directories.
+    /// </summary>
+    /// <param name="context">The context for error reporting.</param>
+    /// <param name="job">The job whose output file is written.</param>
+    /// <param name="output">The formatted Markdown.</param>
+    /// <returns>True when the file was written; false after reporting an error.</returns>
+    private static bool WriteOutputFile(Context context, TableJob job, string output)
+    {
+        var outputFile = job.OutputFile!;
+
+        // Resolve the output path (expanding ${VAR}) against the job's base directory; malformed or
+        // overlong paths are reported by the resolver as InvalidOperationException
+        string fullPath;
+        try
+        {
+            fullPath = PathResolver.ResolvePath(outputFile, job.BaseDirectory, "output path");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Report(context, job, ex.Message);
+            return false;
+        }
+
+        // Create missing parent directories and write the file
+        try
+        {
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(fullPath, output);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
+        {
+            // The platform can still reject a normalized path when writing (for example a wildcard
+            // character in a Windows file name), so path-validation exceptions fail only this job
+            Report(context, job, $"Failed to write output file '{outputFile}': {ex.Message}");
+            return false;
         }
     }
+
+    /// <summary>
+    ///     Reports a job error, prefixed with the job label when the job has one.
+    /// </summary>
+    /// <param name="context">The context for error reporting.</param>
+    /// <param name="job">The job that failed.</param>
+    /// <param name="text">The error text without the <c>Error:</c> prefix.</param>
+    private static void Report(Context context, TableJob job, string text) =>
+        context.WriteError(job.Label == null ? $"Error: {text}" : $"Error: {job.Label}: {text}");
 
     /// <summary>
     ///     Loads files of one kind into the matching list, reporting the first error.
@@ -131,6 +216,7 @@ internal static class DictionaryGenerator
     /// <returns>True when every file loaded; false after writing an error.</returns>
     private static bool LoadFiles(
         Context context,
+        TableJob job,
         IReadOnlyList<string> files,
         bool asDeprecated,
         List<DictionaryEntry> approved,
@@ -149,14 +235,20 @@ internal static class DictionaryGenerator
                     approved.AddRange(YamlDictionaryLoader.Load(file));
                 }
             }
-            catch (IOException ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
             {
-                context.WriteError($"Error: Failed to read file '{file}': {ex.Message}");
+                Report(context, job, $"Failed to read file '{file}': {ex.Message}");
+                return false;
+            }
+            catch (YamlException ex)
+            {
+                // Syntactically malformed YAML is rejected by the parser before structural checks run
+                Report(context, job, $"Invalid YAML in file '{file}': {ex.Message}");
                 return false;
             }
             catch (InvalidOperationException ex)
             {
-                context.WriteError($"Error: Invalid YAML in file '{file}': {ex.Message}");
+                Report(context, job, $"Invalid YAML in file '{file}': {ex.Message}");
                 return false;
             }
         }

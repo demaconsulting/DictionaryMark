@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Cli;
 
@@ -746,5 +747,472 @@ public class ContextTests
         // Act / Assert
         var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--kind", "other"]));
         Assert.Contains("--kind requires 'terms' or 'deprecated'", ex.Message);
+    }
+
+    /// <summary>Name of the environment variable used by the config and root tests.</summary>
+    private const string VariableName = "DICTIONARYMARK_CONTEXT_TEST";
+
+    /// <summary>A config file with one table job.</summary>
+    private const string OneTableConfig = "format: table\ntables:\n  - input: a.yaml\n    output: a.md\n";
+
+    /// <summary>Writes a config file into a sub-directory of the temporary directory.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="content">The YAML content.</param>
+    /// <returns>The full path of the config file.</returns>
+    private static string WriteConfig(TemporaryDirectory tmpDir, string content)
+    {
+        var path = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>Creates a sub-directory of the temporary directory and returns its full path.</summary>
+    /// <param name="tmpDir">The temporary directory.</param>
+    /// <param name="name">The sub-directory name.</param>
+    /// <returns>The full path of the new directory.</returns>
+    private static string CreateDirectory(TemporaryDirectory tmpDir, string name) =>
+        Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, name)).FullName;
+
+    /// <summary>Test that --column-widths is parsed into the column widths.</summary>
+    [Fact]
+    public void Context_Create_ColumnWidthsFlag_SetsColumnWidths()
+    {
+        // Act: parse two and three widths, with surrounding spaces
+        using var two = Context.Create(["--column-widths", "25,75"]);
+        using var three = Context.Create(["--column-widths", " 20 , 50 , 30 "]);
+
+        // Assert: the widths are parsed in order
+        Assert.Equal([25, 75], two.ColumnWidths!);
+        Assert.Equal([20, 50, 30], three.ColumnWidths!);
+        Assert.Equal([25, 75], two.CommandLineFormatting.ColumnWidths!);
+    }
+
+    /// <summary>Test that invalid --column-widths values are rejected.</summary>
+    /// <param name="value">The invalid value.</param>
+    [Theory]
+    [InlineData("0,1")]
+    [InlineData("-1,2")]
+    [InlineData("1.5,2")]
+    [InlineData("a,b")]
+    [InlineData("25,")]
+    [InlineData("")]
+    [InlineData("1")]
+    [InlineData("1,2,3,4")]
+    public void Context_Create_ColumnWidthsFlag_InvalidValue_ThrowsArgumentException(string value)
+    {
+        // Act / Assert: the value is rejected with the expected message
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--column-widths", value]));
+        Assert.Contains("--column-widths requires 2 or 3 comma-separated positive integers", ex.Message);
+    }
+
+    /// <summary>Test that --column-widths without a value is rejected.</summary>
+    [Fact]
+    public void Context_Create_ColumnWidthsFlag_WithoutValue_ThrowsArgumentException()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--column-widths"]));
+        Assert.Contains("--column-widths requires", ex.Message);
+    }
+
+    /// <summary>Test that a widths count that does not match the table is rejected.</summary>
+    [Fact]
+    public void Context_Create_ColumnWidthsCountMismatch_ThrowsArgumentException()
+    {
+        // Act / Assert: a terms table with three widths is rejected
+        var ex = Assert.Throws<ArgumentException>(
+            () => Context.Create(["--input", "a.yaml", "--format", "table", "--column-widths", "1,2,3"]));
+        Assert.Contains("terms tables require exactly 2 values", ex.Message);
+    }
+
+    /// <summary>Test that --config loads the table jobs.</summary>
+    [Fact]
+    public void Context_Create_ConfigFlag_LoadsTableJobs()
+    {
+        // Arrange: a config with two jobs
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig + "  - input: [b.yaml, c.yaml]\n    output: b.md\n    format: bullets\n");
+
+        // Act: create the context
+        using var context = Context.Create(["--config", path]);
+
+        // Assert: one job per table, with the merged formatting
+        Assert.Equal(path, context.ConfigFilePath);
+        Assert.True(context.UsesConfigTables);
+        Assert.Equal(2, context.Jobs.Count);
+        Assert.Equal(OutputFormat.Table, context.Jobs[0].Options.Format);
+        Assert.Equal(OutputFormat.Bullets, context.Jobs[1].Options.Format);
+        Assert.Equal(["b.yaml", "c.yaml"], context.Jobs[1].InputPatterns);
+        Assert.Equal("table job 2 ('b.md')", context.Jobs[1].Label);
+    }
+
+    /// <summary>Test that --config given twice is rejected.</summary>
+    [Fact]
+    public void Context_Create_ConfigFlagTwice_ThrowsArgumentException()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--config", "a.yaml", "--config", "b.yaml"]));
+        Assert.Contains("--config can only be specified once", ex.Message);
+    }
+
+    /// <summary>Test that --input with a config that defines tables is rejected.</summary>
+    [Fact]
+    public void Context_Create_ConfigWithTablesAndInput_ThrowsArgumentException()
+    {
+        // Arrange: a config with tables
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+
+        // Act / Assert: the error names the option and the config file
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--config", path, "--input", "x.yaml"]));
+        Assert.Contains($"--input cannot be used with config file '{path}'", ex.Message);
+    }
+
+    /// <summary>Test that --output with a config that defines tables is rejected.</summary>
+    [Fact]
+    public void Context_Create_ConfigWithTablesAndOutput_ThrowsArgumentException()
+    {
+        // Arrange: a config with tables
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+
+        // Act / Assert: the error names the option and the config file
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--config", path, "--output", "x.md"]));
+        Assert.Contains($"--output cannot be used with config file '{path}'", ex.Message);
+    }
+
+    /// <summary>Test that a config without tables supplies defaults to the command-line job.</summary>
+    [Fact]
+    public void Context_Create_ConfigWithoutTables_AppliesDefaultsToCommandLineJob()
+    {
+        // Arrange: a config with formatting defaults only
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "format: table\nsection: Glossary\ndepth: 3\n");
+
+        // Act: create a context with a command-line input and an overriding depth
+        using var context = Context.Create(["--config", path, "--input", "a.yaml", "--depth", "2"]);
+
+        // Assert: one command-line job; config defaults apply where the command line is silent
+        var job = Assert.Single(context.Jobs);
+        Assert.False(context.UsesConfigTables);
+        Assert.Null(job.Label);
+        Assert.Equal(OutputFormat.Table, job.Options.Format);
+        Assert.Equal("Glossary", job.Options.SectionHeading);
+        Assert.Equal(2, job.Options.HeadingDepth);
+        Assert.Equal(OutputFormat.Table, context.Format);
+        Assert.Equal(2, context.HeadingDepth);
+    }
+
+    /// <summary>Test that explicitly given formatting options form the command-line layer.</summary>
+    [Fact]
+    public void Context_Create_FormattingFlags_RecordedAsCommandLineLayer()
+    {
+        // Act: give several formatting options
+        using var context = Context.Create(
+            ["--format", "table", "--sort", "alpha", "--def-header", "Meaning", "--depth", "4", "--section", "S"]);
+
+        // Assert: exactly the given options are recorded
+        var layer = context.CommandLineFormatting;
+        Assert.Equal(OutputFormat.Table, layer.Format);
+        Assert.Equal(SortOrder.Alphabetical, layer.SortBy);
+        Assert.Equal("Meaning", layer.DefinitionHeader);
+        Assert.Equal(4, layer.HeadingDepth);
+        Assert.Equal("S", layer.SectionHeading);
+        Assert.Null(layer.Kind);
+        Assert.Null(layer.TermHeader);
+        Assert.Null(layer.ColumnWidths);
+    }
+
+    /// <summary>Test that the command-line layer is empty when no formatting option is given.</summary>
+    [Fact]
+    public void Context_Create_NoFormattingFlags_CommandLineLayerEmpty()
+    {
+        // Act
+        using var context = Context.Create(["--input", "a.yaml"]);
+
+        // Assert: nothing was recorded, and no config or root applies
+        Assert.Equal(FormattingSettings.Empty, context.CommandLineFormatting);
+        Assert.Null(context.ConfigFilePath);
+        Assert.Null(context.RootDirectory);
+        Assert.Null(context.ColumnWidths);
+    }
+
+    /// <summary>Test that ${VAR} references in the --config path are expanded.</summary>
+    [Fact]
+    public void Context_Create_ConfigPathEnvironmentVariable_Expanded()
+    {
+        // Arrange: a variable naming the config directory
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+        Environment.SetEnvironmentVariable(VariableName, Path.GetDirectoryName(path));
+        try
+        {
+            // Act: reference the config through the variable
+            using var context = Context.Create(["--config", "${" + VariableName + "}/dictionarymark.yaml"]);
+
+            // Assert: the expanded config was loaded
+            Assert.Equal(path, context.ConfigFilePath);
+            Assert.Single(context.Jobs);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that --root sets the root directory.</summary>
+    [Fact]
+    public void Context_Create_RootFlag_SetsRootDirectory()
+    {
+        // Arrange: an existing directory
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "root");
+
+        // Act
+        using var context = Context.Create(["--root", root]);
+
+        // Assert
+        Assert.Equal(root, context.RootDirectory);
+    }
+
+    /// <summary>Test that a relative --root with '..' resolves against the working directory.</summary>
+    [Fact]
+    public void Context_Create_RootFlagRelativeWithParentSegments_ResolvedAgainstWorkingDirectory()
+    {
+        // Arrange: a uniquely named directory under the working directory
+        var name = "root-" + Guid.NewGuid().ToString("N");
+        var full = Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, name)).FullName;
+        try
+        {
+            // Act: reference it through a path that climbs out of a sub-directory
+            using var context = Context.Create(["--root", $"sub/../{name}"]);
+
+            // Assert: the normalized full path is the root
+            Assert.Equal(full, context.RootDirectory);
+        }
+        finally
+        {
+            Directory.Delete(full, recursive: true);
+        }
+    }
+
+    /// <summary>Test that ${VAR} references in --root are expanded.</summary>
+    [Fact]
+    public void Context_Create_RootFlagEnvironmentVariable_Expanded()
+    {
+        // Arrange: a variable naming an existing directory
+        using var tmpDir = new TemporaryDirectory();
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            using var context = Context.Create(["--root", "${" + VariableName + "}"]);
+
+            // Assert
+            Assert.Equal(Path.GetFullPath(tmpDir.DirectoryPath), context.RootDirectory);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that a missing --root directory is rejected.</summary>
+    [Fact]
+    public void Context_Create_RootFlagMissingDirectory_ThrowsInvalidOperationException()
+    {
+        // Arrange: a directory that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act / Assert: the error names the directory and the option
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--root", missing]));
+        Assert.Equal($"Directory '{missing}' specified by --root option '{missing}' does not exist.", ex.Message);
+    }
+
+    /// <summary>Test that a --root value with a character invalid on every platform is reported cleanly.</summary>
+    [Fact]
+    public void Context_Create_RootFlagInvalidCharacter_ThrowsInvalidOperationException()
+    {
+        // Arrange: a root containing a null character
+        const string root = "bad\0dir";
+
+        // Act / Assert: the error names the option and the value instead of escaping as a raw path exception
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--root", root]));
+        Assert.StartsWith($"Invalid --root option '{root}': ", ex.Message);
+    }
+
+    /// <summary>Test that a --config value with a character invalid on every platform is reported cleanly.</summary>
+    [Fact]
+    public void Context_Create_ConfigFlagInvalidCharacter_ThrowsInvalidOperationException()
+    {
+        // Arrange: a config file path containing a null character
+        const string config = "bad\0config.yaml";
+
+        // Act / Assert: the error names the config file path and the value
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", config]));
+        Assert.StartsWith($"Invalid config file path '{config}': ", ex.Message);
+    }
+
+    /// <summary>Test that --root given twice is rejected.</summary>
+    [Fact]
+    public void Context_Create_RootFlagTwice_ThrowsArgumentException()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--root", ".", "--root", "."]));
+        Assert.Contains("--root can only be specified once", ex.Message);
+    }
+
+    /// <summary>Test that --root without a value is rejected.</summary>
+    [Fact]
+    public void Context_Create_RootFlagWithoutValue_ThrowsArgumentException()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--root"]));
+        Assert.Contains("--root requires a directory path", ex.Message);
+    }
+
+    /// <summary>Test that an empty --root value is rejected.</summary>
+    [Fact]
+    public void Context_Create_RootFlagEmpty_ThrowsArgumentException()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--root", " "]));
+        Assert.Contains("--root requires a non-empty directory path", ex.Message);
+    }
+
+    /// <summary>Test that --root is the base directory of the command-line job.</summary>
+    [Fact]
+    public void Context_Create_RootFlag_AppliedToCommandLineJob()
+    {
+        // Arrange: an existing root directory
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "root");
+
+        // Act
+        using var context = Context.Create(["--root", root, "--input", "a.yaml"]);
+
+        // Assert
+        Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that --root is the base directory of config table jobs.</summary>
+    [Fact]
+    public void Context_Create_RootFlag_AppliedToConfigTables()
+    {
+        // Arrange: a config with tables and a separate root
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+        var root = CreateDirectory(tmpDir, "root");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--root", root]);
+
+        // Assert
+        Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that --root overrides the config file's root key.</summary>
+    [Fact]
+    public void Context_Create_RootFlag_OverridesConfigRoot()
+    {
+        // Arrange: a config whose root key names one directory, and --root naming another
+        using var tmpDir = new TemporaryDirectory();
+        CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root\n" + OneTableConfig);
+        var root = CreateDirectory(tmpDir, "cli-root");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--root", root]);
+
+        // Assert: --root wins for the effective root and the job
+        Assert.Equal(root, context.RootDirectory);
+        Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that the config root key is the base directory of config table jobs.</summary>
+    [Fact]
+    public void Context_Create_ConfigRoot_AppliedToConfigTables()
+    {
+        // Arrange: a config whose root key names a sibling directory
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root\n" + OneTableConfig);
+
+        // Act
+        using var context = Context.Create(["--config", path]);
+
+        // Assert
+        Assert.Equal(root, context.RootDirectory);
+        Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that the config root key is the base directory of the command-line job.</summary>
+    [Fact]
+    public void Context_Create_ConfigRoot_AppliedToCommandLineJob()
+    {
+        // Arrange: a config with a root key and no tables
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root\n");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--input", "a.yaml"]);
+
+        // Assert
+        Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that, without a root, config table jobs use the config file's directory.</summary>
+    [Fact]
+    public void Context_Create_NoRoot_ConfigTablesUseConfigDirectory()
+    {
+        // Arrange: a config with tables and no root
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+
+        // Act
+        using var context = Context.Create(["--config", path]);
+
+        // Assert
+        Assert.Null(context.RootDirectory);
+        Assert.Equal(Path.GetDirectoryName(path), Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that, without a root, the command-line job uses the working directory.</summary>
+    [Fact]
+    public void Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory()
+    {
+        // Act
+        using var context = Context.Create(["--input", "a.yaml"]);
+
+        // Assert
+        Assert.Equal(Environment.CurrentDirectory, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that --config is resolved against the working directory, not the root.</summary>
+    [Fact]
+    public void Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot()
+    {
+        // Arrange: a config under a unique working-directory folder, and a root that does not contain it
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "root");
+        var name = "config-" + Guid.NewGuid().ToString("N");
+        var configDirectory = Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, name)).FullName;
+        try
+        {
+            var configPath = Path.Combine(configDirectory, "dictionarymark.yaml");
+            File.WriteAllText(configPath, OneTableConfig);
+
+            // Act: give the config as a working-directory-relative path together with --root
+            using var context = Context.Create(["--root", root, "--config", $"{name}/dictionarymark.yaml"]);
+
+            // Assert: the config was found relative to the working directory
+            Assert.Equal(configPath, context.ConfigFilePath);
+            Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+        }
+        finally
+        {
+            Directory.Delete(configDirectory, recursive: true);
+        }
     }
 }

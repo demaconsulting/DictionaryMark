@@ -1,0 +1,66 @@
+---
+# DictionaryMark PathResolver unit requirements
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        sections:
+          - title: PathResolver Requirements
+            requirements:
+              - id: DictionaryMark-PathResolver-ResolvePath
+                title: >-
+                  The PathResolver unit shall root a relative path at a base directory and normalize
+                  parent-directory segments, leaving absolute paths independent of the base directory.
+                justification: |
+                  Paths from the command line and the configuration file are written relative to different
+                  directories and commonly climb to shared folders.
+                tests:
+                  - PathResolver_ResolvePath_RelativePath_RootedAtBaseDirectory
+                  - PathResolver_ResolvePath_ParentSegments_Normalized
+                  - PathResolver_ResolvePath_AbsolutePath_IgnoresBaseDirectory
+
+              - id: DictionaryMark-PathResolver-EnvironmentVariables
+                title: >-
+                  The PathResolver unit shall expand ${VAR} references in the path, but never in the base
+                  directory, and fail with an error naming the variable, the path's description and the path when a
+                  variable is undefined or empty.
+                justification: |
+                  Environment variables let paths differ between machines; expanding an already resolved base
+                  directory a second time could corrupt it.
+                tests:
+                  - PathResolver_ResolvePath_EnvironmentVariable_Expanded
+                  - PathResolver_ExpandEnvironmentVariables_Undefined_ThrowsNamingVariableAndDescription
+                  - PathResolver_Combine_BaseDirectory_NotExpanded
+
+              - id: DictionaryMark-PathResolver-GlobCombine
+                title: >-
+                  The PathResolver unit shall root a relative glob pattern at a base directory without normalizing
+                  its segments.
+                justification: |
+                  Normalizing a glob would change its meaning, for example by collapsing a recursive wildcard
+                  followed by a parent-directory segment.
+                tests:
+                  - PathResolver_Combine_GlobPattern_NotNormalized
+
+              - id: DictionaryMark-PathResolver-NullValidation
+                title: The PathResolver unit shall reject null arguments.
+                justification: |
+                  Rejecting null arguments makes the contract explicit and prevents null reference failures.
+                tests:
+                  - PathResolver_ResolvePath_NullArguments_Throw
+
+              - id: DictionaryMark-PathResolver-ExistingDirectory
+                title: >-
+                  The PathResolver unit shall resolve a directory path against a base directory and return its
+                  full path, rejecting wildcard characters and directories that do not exist.
+                justification: |
+                  A root directory becomes the literal prefix of every rooted pattern, so it must exist and must
+                  not contain wildcards.
+                tests:
+                  - PathResolver_ResolveExistingDirectory_RelativeDirectory_ReturnsFullPath
+                  - PathResolver_ResolveExistingDirectory_ParentSegments_Normalized
+                  - PathResolver_ResolveExistingDirectory_EnvironmentVariable_Expanded
+                  - PathResolver_ResolveExistingDirectory_MissingDirectory_ThrowsNamingDirectory
+                  - PathResolver_ResolveExistingDirectory_PathIsFile_Throws
+                  - PathResolver_ResolveExistingDirectory_Wildcard_Throws

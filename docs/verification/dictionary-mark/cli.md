@@ -6,14 +6,16 @@ The Cli subsystem is verified through integration tests in `CliSubsystemTests.cs
 `Context` and `Program` together. Tests pass controlled argument arrays to `Context.Create`,
 then invoke `Program.Run` with the resulting context; captured console output and exit codes are
 asserted. No mocking is applied at the subsystem boundary: all collaborators (`Context`,
-`Program`, `Validation`, `DictionaryGenerator`) execute their real logic, exercising the
-argument-parsing and output-routing paths in combination. Tests that write log or results files
+`ConfigFile`, `TableJob`, `Program`, `Validation`, `DictionaryGenerator`) execute their real
+logic, exercising the argument-parsing, configuration, job-building and output-routing paths in
+combination. Error paths that must stop the run are exercised through `Program.Main` so that the
+exit code and stderr message are asserted. Tests that write log or results files
 use `TemporaryDirectory` to create and clean up temporary file-system fixtures automatically.
 
 ### Test Environment
 
-N/A - standard test environment. Tests that write log or results files use `TemporaryDirectory`
-for automatic cleanup.
+N/A - standard test environment. Tests that write log, results, configuration, dictionary or
+output files use `TemporaryDirectory` for automatic cleanup.
 
 ### Acceptance Criteria
 
@@ -94,3 +96,49 @@ to a temporary directory; `Context.Create` is called with `["--input", inputFile
 log file must contain `"## CLI Depth"`, confirming that `--depth 2` produces a level-two
 heading.
 This scenario is tested by `CliSubsystem_DepthFlow_ContextAndProgram_AdjustsHeadingDepth`.
+
+**CliSubsystem_ColumnWidthsFlow_ContextAndProgram_WritesProportionalTable**: A table is generated
+with `--column-widths 25,75`. `context.ColumnWidths` must be `[25, 75]` and the output file must
+contain a separator with 25 and 75 dashes.
+This scenario is tested by `CliSubsystem_ColumnWidthsFlow_ContextAndProgram_WritesProportionalTable`.
+
+**CliSubsystem_ColumnWidthsFlow_InvalidValue_ExitsNonZero**: `Program.Main` is invoked with
+`--column-widths 0,1`. Exit code must be 1 and stderr must explain the valid format.
+This scenario is tested by `CliSubsystem_ColumnWidthsFlow_InvalidValue_ExitsNonZero`.
+
+**CliSubsystem_ConfigFlow_TableJobs_GeneratesEachOutput**: A configuration file with a top-level
+`format: table` and two jobs (the second overriding `format: bullets`) reading `../shared` is
+run. Both outputs must exist, in a newly created `out` directory, with their own formats.
+This scenario is tested by `CliSubsystem_ConfigFlow_TableJobs_GeneratesEachOutput`.
+
+**CliSubsystem_ConfigFlow_CommandLineOverride_AppliesToEveryJob**: A configuration file whose
+default and job both set `bullets` is run with `--format table --column-widths 1,3`. Both outputs
+must be tables with 25 and 75 dashes, confirming the command line wins for every job.
+This scenario is tested by `CliSubsystem_ConfigFlow_CommandLineOverride_AppliesToEveryJob`.
+
+**CliSubsystem_ConfigFlow_InvalidConfig_ExitsNonZero**: `Program.Main` is invoked with a
+configuration file containing an unknown key. Exit code must be 1 and stderr must name the file
+and the key.
+This scenario is tested by `CliSubsystem_ConfigFlow_InvalidConfig_ExitsNonZero`.
+
+**CliSubsystem_ConfigFlow_TablesWithInput_ExitsNonZero**: `Program.Main` is invoked with a
+configuration file that defines tables and with `--input`. Exit code must be 1 and stderr must
+explain the conflict.
+This scenario is tested by `CliSubsystem_ConfigFlow_TablesWithInput_ExitsNonZero`.
+
+**CliSubsystem_RootFlow_CommandLineRoot_ResolvesInputsAndOutput**: `--root` names a directory;
+the relative `--input dict/*.yaml` and `--output out/terms.md` must resolve under it.
+This scenario is tested by `CliSubsystem_RootFlow_CommandLineRoot_ResolvesInputsAndOutput`.
+
+**CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs**: A configuration file two levels below the
+directory named by its `root: ../..` key is run; its job paths must resolve against that root.
+This scenario is tested by `CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs`.
+
+**CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs**: The configuration
+`root` names an empty directory and `--root` names the directory with the dictionary; the job must
+resolve against `--root`.
+This scenario is tested by `CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs`.
+
+**CliSubsystem_RootFlow_MissingRoot_ExitsNonZero**: `Program.Main` is invoked with a `--root`
+that does not exist. Exit code must be 1 and stderr must name the directory and the option.
+This scenario is tested by `CliSubsystem_RootFlow_MissingRoot_ExitsNonZero`.

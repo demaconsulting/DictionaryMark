@@ -224,6 +224,24 @@ public class ValidationTests
     }
 
     /// <summary>
+    ///     Test that Run includes a column widths test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_ColumnWidthsTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_ColumnWidths");
+    }
+
+    /// <summary>
+    ///     Test that Run includes a config tables test that passes.
+    /// </summary>
+    [Fact]
+    public void Validation_Run_WithSilentContext_ConfigTablesTestPasses()
+    {
+        AssertSelfTestPasses("DictionaryMark_ConfigTables");
+    }
+
+    /// <summary>
     ///     Runs <see cref="Validation.Run"/> with a silent context and log file and asserts
     ///     that the log output contains a "Passed" entry for the specified self-test name.
     /// </summary>

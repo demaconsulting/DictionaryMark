@@ -7,8 +7,9 @@
 `Context` constructed from controlled argument arrays and write temporary YAML files to disk using
 `TemporaryDirectory`. Console standard output and standard error are redirected with `StringWriter`
 instances to capture generated output and error messages. All collaborating units (`GlobMatcher`,
-`YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`) run with their real implementations
-against real files; no mocking or stubbing is used.
+`PathResolver`, `YamlDictionaryLoader`, `ConflictDetector`, and `MarkdownFormatter`) run with their real
+implementations against real files; no mocking or stubbing is used. Multi-job scenarios build their jobs
+through `Context` and `TableJob` (documented dependencies) from a real configuration file.
 
 #### Test Environment
 
@@ -62,3 +63,68 @@ directories are reported with distinct errors. This scenario is tested by
 
 **DictionaryGenerator_Generate_OneMissingPattern_Fails**: One unmatched pattern among several fails
 the run. This scenario is tested by `DictionaryGenerator_Generate_OneMissingPattern_Fails`.
+
+**DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput**: Verifies that a configuration file with
+two jobs writes both outputs, each with its own content and format. This scenario is tested by
+`DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput`.
+
+**DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel**: Verifies that when the first
+job matches no files, its error is prefixed with `table job 1 ('a.md')`, it writes no output, and the
+second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_OneJobFails_ContinuesAndReportsJobLabel`.
+
+**DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob**: Verifies that when
+the first job's output path contains a null character, the job is reported as an invalid output path
+with its label, the summary `1 of 2 table jobs failed` is written, the exit code is 1, and the second
+job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob**: Verifies that when
+the first job's input pattern contains a null character, the job is reported as an invalid input
+pattern with its label, the exit code is 1, and the second job still writes its output. This
+scenario is tested by `DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob**: Verifies that when the
+first job's output lies beneath an existing file, the write failure is reported with the job label
+and the output path as written, the exit code is 1, and the second job still writes its output.
+This scenario is tested by `DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob**: Verifies on
+Windows (the test returns early on other platforms, where `*` is a valid file-name character) that
+an output path such as `out/*.md`, which normalizes cleanly but is rejected on write, fails only its
+own job and the second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob**: Verifies that when the first job
+reads a syntactically malformed YAML file, the job is reported as invalid YAML naming the file, writes
+no output, the exit code is 1, and the second job still writes its output. This scenario is tested by
+`DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob`.
+
+**DictionaryGenerator_Generate_MalformedDeprecatedYaml_ContinuesWithLaterJob**: Verifies the same
+behavior for a malformed deprecated-terms file loaded with `kind: deprecated`. This scenario is tested
+by `DictionaryGenerator_Generate_MalformedDeprecatedYaml_ContinuesWithLaterJob`.
+
+An unreadable input file (`UnauthorizedAccessException`) is not tested, because file permissions cannot
+be denied reliably on every platform (for example when tests run as root); it is handled by the same
+code path as other read errors.
+
+**DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne**: Verifies that when both jobs
+fail, both are reported, the summary `2 of 2 table jobs failed` is written, and the exit code is 1.
+This scenario is tested by `DictionaryGenerator_Generate_JobsFailed_WritesSummaryAndExitCodeOne`.
+
+**DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory**: Verifies that an `--output`
+path inside two missing directories is written after the directories are created. This scenario is
+tested by `DictionaryGenerator_Generate_OutputInMissingDirectory_CreatesDirectory`.
+
+**DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput**: Verifies that a job's
+`sub/../../shared/*.yaml` input and `../out/terms.md` output resolve against the job's base directory
+(the configuration file's directory). This scenario is tested by
+`DictionaryGenerator_Generate_JobBaseDirectory_ResolvesRelativeInputsAndOutput`.
+
+**DictionaryGenerator_Generate_ConflictsDetectedPerJob**: Verifies that two conflicting dictionaries
+used by separate jobs produce no error, while one job reading both reports the conflict prefixed with
+its label. This scenario is tested by `DictionaryGenerator_Generate_ConflictsDetectedPerJob`.
+
+**DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput**: Verifies that `--column-widths 25,75`
+reaches the generated table separator. This scenario is tested by
+`DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput`.

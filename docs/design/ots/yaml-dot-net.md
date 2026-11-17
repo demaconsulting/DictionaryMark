@@ -1,14 +1,14 @@
 ## YamlDotNet
 
-YamlDotNet is a .NET YAML parsing and serialization library. DictionaryMark uses it exclusively
-in `YamlDictionaryLoader` to parse YAML input files into an in-memory representation for
-traversal.
+YamlDotNet is a .NET YAML parsing and serialization library. DictionaryMark uses it in
+`YamlDictionaryLoader` to parse YAML dictionary files, and in `ConfigFile` to parse the YAML
+configuration file, into an in-memory representation for traversal.
 
 ### Purpose
 
-YamlDotNet is used exclusively in `YamlDictionaryLoader` to parse YAML input files. It provides
-YAML 1.1/1.2 compliant parsing that converts raw file content into a structured node tree, which
-`YamlDictionaryLoader` traverses to extract flat key-value dictionary entries.
+YamlDotNet provides YAML 1.1/1.2 compliant parsing that converts raw file content into a
+structured node tree. `YamlDictionaryLoader` traverses the tree to extract dictionary entries;
+`ConfigFile` traverses it to read formatting defaults, the root directory and table jobs.
 
 ### Features Used
 
@@ -22,6 +22,9 @@ DictionaryMark uses the following APIs from the `YamlDotNet.RepresentationModel`
 - **`YamlMappingNode.Children`** — enumerates the key-value pairs within the mapping
 - **`YamlScalarNode`** — pattern-matched to verify keys and values are scalars
 - **`YamlScalarNode.Value`** — reads the string value of a scalar key or definition
+- **`YamlSequenceNode`** — pattern-matched by `ConfigFile` for `tables`, sequence `input` values and
+  `column-widths`
+- **`YamlException`** — caught by `ConfigFile` to report invalid configuration YAML
 
 Features not used: serialization, YAML writing, anchors/aliases traversal, merge keys, custom
 type converters, schema validation, and streaming deserialization.
@@ -47,11 +50,12 @@ if (child.Value is not YamlScalarNode valueNode) { throw ... }
 
 ### Error Handling
 
-YAML parse exceptions thrown by `YamlStream.Load` propagate unchanged through
-`YamlDictionaryLoader` and `DictionaryGenerator`; they are not caught in those units and reach
-`Program.Main` as unexpected exceptions. Structural violations — non-mapping root, non-scalar
-keys or values — are detected by `YamlDictionaryLoader` and thrown as `InvalidOperationException`
-with a descriptive message identifying the file and the offending element.
+YAML parse exceptions thrown by `YamlStream.Load` propagate unchanged through `YamlDictionaryLoader` and
+`DictionaryGenerator`; they are not caught in those units and reach `Program.Main` as unexpected exceptions.
+`ConfigFile` instead catches `YamlException` and wraps it in an `InvalidOperationException` whose message names the
+configuration file, so an invalid configuration file is reported as an expected error with exit code 1. Structural
+violations — non-mapping root, non-scalar keys or values — are detected by `YamlDictionaryLoader` and thrown as
+`InvalidOperationException` with a descriptive message identifying the file and the offending element.
 
 ### Design Constraints
 
