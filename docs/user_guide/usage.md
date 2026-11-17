@@ -232,16 +232,16 @@ for JUnit XML format.
 
 The self-validation suite runs the following tests:
 
-| Test                               | What is verified                                                  |
-| :--------------------------------- | :---------------------------------------------------------------- |
-| `DictionaryMark_VersionDisplay`    | `--version` flag outputs a valid version string                   |
-| `DictionaryMark_HelpDisplay`       | `--help` flag outputs usage and options text                      |
-| `DictionaryMark_BulletGeneration`  | Bullet list is generated correctly from a YAML input file         |
-| `DictionaryMark_TableGeneration`   | Markdown table is generated correctly from a YAML input file      |
-| `DictionaryMark_CustomHeaders`     | `--term-header` and `--def-header` override the table column text |
-| `DictionaryMark_ConflictDetection` | Conflicting definitions across files are detected and reported    |
-| `DictionaryMark_HiddenEntry`       | Entries with `visible: false` are omitted from the output         |
-| `DictionaryMark_DeprecatedTable`   | A deprecated-terms table is generated with `--kind deprecated`    |
+| Test | What is verified |
+| :--- | :--- |
+| `DictionaryMark_VersionDisplay` | `--version` flag outputs a valid version string |
+| `DictionaryMark_HelpDisplay` | `--help` flag outputs usage and options text |
+| `DictionaryMark_BulletGeneration` | Bullet list is generated correctly from a YAML input file |
+| `DictionaryMark_TableGeneration` | Markdown table is generated correctly from a YAML input file |
+| `DictionaryMark_CustomHeaders` | `--term-header` and `--def-header` override the table column text |
+| `DictionaryMark_ConflictDetection` | Conflicting definitions across files are detected and reported |
+| `DictionaryMark_HiddenEntry` | Entries with `visible: false` are omitted from the output |
+| `DictionaryMark_DeprecatedTable` | A deprecated-terms table is generated with `--kind deprecated` |
 
 ### Heading Depth
 
@@ -262,25 +262,25 @@ version, timestamp, and test results. On validation failure the tool exits with 
 
 The following command-line options are supported:
 
-| Option                                                  | Description                                                       |
-| :------------------------------------------------------ | :---------------------------------------------------------------- |
-| `-v`, `--version`                                       | Display version information                                       |
-| `-?`, `-h`, `--help`                                    | Display help message                                              |
-| `--silent`                                              | Suppress console output                                           |
-| `--validate`                                            | Run self-validation                                               |
-| `--results <file>`, `--result <file>`                   | Write validation results to file (TRX or JUnit format)            |
-| `--depth <n>`                                           | Set heading depth for Markdown output (default: 1, range: 1–6)    |
-| `--log <file>`                                          | Write output to log file                                          |
-| `-i`, `--input <pattern>`                               | Input YAML file or glob pattern (repeatable)                      |
-| `-o`, `--output <file>`                                 | Output Markdown file (default: stdout)                            |
-| `-f`, `--format <format>`                               | Output format: `bullets` (default) or `table`                     |
-| `-s`, `--section <heading>`                             | Section heading text                                              |
-| `--term-header <header>`                                | Term column header for table format (default: `Term`)             |
-| `--def-header <header>`, `--definition-header <header>` | Definition column header for table format (default: `Definition`) |
-| `--sort <order>`                                        | Sort order: `file` (default) or `alpha`                           |
-| `--kind <kind>`                                         | Input kind: `terms` (default) or `deprecated`                     |
-| `--use-header <header>`                                 | Deprecated "use" column header (default: `Use instead`)           |
-| `--where-header <header>`                               | Deprecated "where" column header (default: `Where it was used`)   |
+| Option | Description |
+| :--- | :--- |
+| `-v`, `--version` | Display version information |
+| `-?`, `-h`, `--help` | Display help message |
+| `--silent` | Suppress console output |
+| `--validate` | Run self-validation |
+| `--results <file>`, `--result <file>` | Write validation results to file (TRX or JUnit format) |
+| `--depth <n>` | Set heading depth for Markdown output (default: 1, range: 1–6) |
+| `--log <file>` | Write output to log file |
+| `-i`, `--input <pattern>` | Input YAML file or glob pattern (repeatable) |
+| `-o`, `--output <file>` | Output Markdown file (default: stdout) |
+| `-f`, `--format <format>` | Output format: `bullets` (default) or `table` |
+| `-s`, `--section <heading>` | Section heading text |
+| `--term-header <header>` | Term column header for table format (default: `Term`) |
+| `--def-header <header>`, `--definition-header <header>` | Table definition column header (default: `Definition`) |
+| `--sort <order>` | Sort order: `file` (default) or `alpha` |
+| `--kind <kind>` | Input kind: `terms` (default) or `deprecated` |
+| `--use-header <header>` | Deprecated "use" column header (default: `Use instead`) |
+| `--where-header <header>` | Deprecated "where" column header (default: `Where it was used`) |
 
 # Examples
 
@@ -318,7 +318,7 @@ ensures compliance evidence is generated automatically on every CI run.
 
 - **Requirements Traceability**: Every requirement is linked to passing tests, and a trace matrix is
   auto-generated on each release
-- **Linting Enforcement**: markdownlint, TextLint, and yamllint are enforced before any build proceeds
+- **Linting Enforcement**: LintMark, TextLint, and yamllint are enforced before any build proceeds
 - **Automated Audit Documentation**: Each release ships with generated requirements, justifications,
   trace matrix, and quality reports
 - **CodeQL and SonarCloud**: Security and quality analysis runs on every build

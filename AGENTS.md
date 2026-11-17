@@ -3,7 +3,8 @@
 - **project-name**: DictionaryMark
 - **organization**: DEMA Consulting
 - **project-tagline**: YAML dictionary to Markdown formatter
-- **description**: A .NET command-line tool that reads YAML dictionary files and generates formatted Markdown output as bullet lists or tables
+- **description**: A .NET command-line tool that reads YAML dictionary files and generates formatted Markdown output as
+  bullet lists or tables
 - **languages**: C#
 - **technologies**: .NET 10/11, YamlDotNet, Microsoft.Extensions.FileSystemGlobbing, DemaConsulting.TestResults
 

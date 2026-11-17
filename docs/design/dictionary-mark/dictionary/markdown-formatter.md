@@ -45,11 +45,11 @@ the Dictionary subsystem data model):
 - *Postconditions*: Returns valid Markdown with all entries deduplicated; an empty entry list
   produces a valid `N/A` table row (not an error).
 
-Processing: (1) Omit invisible entries, then deduplicate — first occurrence of each term (case-insensitive) wins. (2) Sort —
-alphabetical when `options.SortOrder == Alphabetical`; otherwise preserve file order. (3) Emit
-optional section heading when `options.SectionHeading` is non-empty; heading level from
-`options.HeadingDepth` (1–6; values outside range clamped by `Math.Clamp`). (4) Render as bullet
-list (`FormatBullets`) or table (`FormatTable`) based on `options.Format`.
+Processing: (1) Omit invisible entries, then deduplicate — first occurrence of each term (case-insensitive) wins. (2)
+Sort — alphabetical when `options.SortOrder == Alphabetical`; otherwise preserve file order. (3) Emit optional section
+heading when `options.SectionHeading` is non-empty; heading level from `options.HeadingDepth` (1–6; values outside range
+clamped by `Math.Clamp`). (4) Render as bullet list (`FormatBullets`) or table (`FormatTable`) based on
+`options.Format`.
 
 **FormatDeprecated**: Returns the formatted Markdown string for deprecated entries.
 

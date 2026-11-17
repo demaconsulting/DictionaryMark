@@ -74,7 +74,8 @@ everything from resolving input file paths through formatting the final Markdown
    (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
    on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`context.Kind`, approved terms via
-   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or `InvalidOperationException`.
+   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
+   `InvalidOperationException`.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule; report
    each conflict via `context.WriteError` and return early if any are found.
 4. Construct a `MarkdownOptions` bag from `context` properties and call
