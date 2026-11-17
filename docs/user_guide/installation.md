@@ -49,10 +49,10 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 ## Compatibility
 
-| Component | Version | Status    |
-| :-------- | :------ | :-------- |
-| .NET SDK  | 10.0    | Supported |
-| .NET SDK  | 11.0    | Supported |
-| OS        | Windows | Supported |
-| OS        | Linux   | Supported |
-| OS        | macOS   | Supported |
+| Component | Version | Status |
+| :--- | :--- | :--- |
+| .NET SDK | 10.0 | Supported |
+| .NET SDK | 11.0 | Supported |
+| OS | Windows | Supported |
+| OS | Linux | Supported |
+| OS | macOS | Supported |

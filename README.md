@@ -87,13 +87,13 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 ### Compatibility
 
-| Component | Version | Status       |
-|-----------|---------|--------------|
-| .NET SDK  | 10.0    | ✅ Supported |
-| .NET SDK  | 11.0    | ✅ Supported |
-| OS        | Windows | ✅ Supported |
-| OS        | Linux   | ✅ Supported |
-| OS        | macOS   | ✅ Supported |
+| Component | Version | Status |
+| --- | --- | --- |
+| .NET SDK | 10.0 | ✅ Supported |
+| .NET SDK | 11.0 | ✅ Supported |
+| OS | Windows | ✅ Supported |
+| OS | Linux | ✅ Supported |
+| OS | macOS | ✅ Supported |
 
 ## Usage
 
@@ -103,27 +103,27 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 
 ### Options
 
-| Option                         | Description                                         |
-| :----------------------------- | :-------------------------------------------------- |
-| `-v, --version`                | Display version information                         |
-| `-?, -h, --help`               | Display help                                        |
-| `--silent`                     | Suppress console output                             |
-| `--validate`                   | Run self-validation                                 |
-| `-i, --input <pattern>`        | Input YAML file or glob pattern (repeatable)        |
-| `-o, --output <file>`          | Output Markdown file (default: stdout)              |
-| `-f, --format <format>`        | Output format: `bullets` (default) or `table`       |
-| `-s, --section <heading>`      | Section heading text                                |
-| `--term-header <header>`       | Term column header for table format (default: Term) |
-| `--def-header <header>`        | Definition column header (default: Definition)      |
-| `--definition-header <header>` | Alias for `--def-header`                            |
-| `--sort <order>`               | Sort order: `file` (default) or `alpha`             |
-| `--log <file>`                 | Write output to log file                            |
-| `--results <file>`             | Write validation results (.trx or .xml)             |
-| `--result <file>`              | Alias for `--results`                               |
-| `--depth <n>`                  | Set heading depth (default: 1, range: 1–6)          |
-| `--kind <kind>`                | Input kind: `terms` (default) or `deprecated`       |
-| `--use-header <header>`        | Deprecated "use" column header                      |
-| `--where-header <header>`      | Deprecated "where" column header                    |
+| Option | Description |
+| :--- | :--- |
+| `-v, --version` | Display version information |
+| `-?, -h, --help` | Display help |
+| `--silent` | Suppress console output |
+| `--validate` | Run self-validation |
+| `-i, --input <pattern>` | Input YAML file or glob pattern (repeatable) |
+| `-o, --output <file>` | Output Markdown file (default: stdout) |
+| `-f, --format <format>` | Output format: `bullets` (default) or `table` |
+| `-s, --section <heading>` | Section heading text |
+| `--term-header <header>` | Term column header for table format (default: Term) |
+| `--def-header <header>` | Definition column header (default: Definition) |
+| `--definition-header <header>` | Alias for `--def-header` |
+| `--sort <order>` | Sort order: `file` (default) or `alpha` |
+| `--log <file>` | Write output to log file |
+| `--results <file>` | Write validation results (.trx or .xml) |
+| `--result <file>` | Alias for `--results` |
+| `--depth <n>` | Set heading depth (default: 1, range: 1–6) |
+| `--kind <kind>` | Input kind: `terms` (default) or `deprecated` |
+| `--use-header <header>` | Deprecated "use" column header |
+| `--where-header <header>` | Deprecated "where" column header |
 
 ### Examples
 
@@ -258,12 +258,11 @@ The `Where it was used` column appears only when at least one entry has a `where
 
 ### Conflicts
 
-The same term in several files is fine when the entries are identical. Entries that differ in
-`definition`, `pos`, `variants` or `visible` are an error naming the term, the differing fields and
-both files, for example
-`Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` Approved-versus-deprecated conflicts are
-not checked by DictionaryMark; Ste100Mark enforces them. Input paths may contain `${VAR}`
-environment variables, and a pattern that matches no file is an error.
+The same term in several files is fine when the entries are identical. Entries that differ in `definition`, `pos`,
+`variants` or `visible` are an error naming the term, the differing fields and both files, for example
+`Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` Approved-versus-deprecated conflicts
+are not checked by DictionaryMark; Ste100Mark enforces them. Input paths may contain `${VAR}` environment variables, and
+a pattern that matches no file is an error.
 
 ## Building
 
@@ -336,7 +335,7 @@ On validation failure the tool will exit with a non-zero exit code.
 
 The DictionaryMark repository follows these development practices:
 
-- 🔍 **Linting Enforcement** - markdownlint, TextLint, and yamllint enforced on every CI run
+- 🔍 **Linting Enforcement** - LintMark, TextLint, and yamllint enforced on every CI run
 - 📋 **Continuous Compliance** - Compliance evidence generated automatically on every CI run,
   following the [Continuous Compliance](https://github.com/demaconsulting/ContinuousCompliance) methodology
 - ☁️ **SonarCloud Integration** - Quality gate and security analysis on every build
