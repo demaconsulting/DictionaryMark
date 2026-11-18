@@ -190,8 +190,8 @@ sections:
                   The FileReferenceException class shall carry the failure kind, the reference as written (control
                   characters replaced, also when constructed directly), the rule or policy reason, the policy name and
                   hint, the path that was opened and its real path, and the underlying cause, and its message shall
-                  echo the reference as written and name the policy but never add the resolved path, the real path, a
-                  configured directory, nor a policy reason; the FileReferenceResolver class shall report a configured
+                  echo the reference as written and name the policy but never add the resolved path, the real path, the
+                  base directory, nor a policy reason; the FileReferenceResolver class shall report a base
                   directory that is not a valid path as InvalidBaseDirectory and reject invalid options at construction.
                 justification: |
                   Callers map a failure to their own diagnostic without parsing text and must be able to show the

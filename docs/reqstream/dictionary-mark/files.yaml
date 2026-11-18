@@ -112,8 +112,8 @@ sections:
               The Files subsystem shall report every refusal and read failure of a referenced file as an
               exception that carries a failure kind, the reference as written, and - for a policy denial - the
               policy name, its reason and hint, the path that was opened and its real path, while its message
-              echoes the reference as written and names the policy but never adds the resolved or real path, a
-              configured directory, or the policy's reason.
+              echoes the reference as written and names the policy but never adds the resolved or real path, the
+              base directory, or the policy's reason.
             justification: |
               Callers turn a refusal into their own diagnostic with their own wording and location without
               parsing text, and must be able to show the message to the untrusted author of a document safely.

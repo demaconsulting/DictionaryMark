@@ -75,7 +75,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_DotDotLeavingTheBase_IsReadUnderAllowAll()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("base"));
         directory.Write("outside/secret.txt", "outside");
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Combine("base") });
@@ -96,7 +96,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_AbsolutePath_IsASingleCandidateAndIsRead()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("base"));
         directory.Write("elsewhere/abs.txt", "abs");
         var opened = new List<string>();
@@ -124,7 +124,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_BackslashesAndDotSegments_NameOneFile()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("base/sub/a.txt", "a");
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Combine("base") });
 
@@ -159,7 +159,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_HostilePathText_IsRejectedWithoutAnyAccess(string reference, FileReferenceFailureKind kind)
     {
         // Arrange: a file-system resolver that records opens
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var opened = new List<string>();
         var onDisk = Create(new FileReferenceOptions { BaseDirectory = directory.Path }, Recording(opened));
 
@@ -182,7 +182,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_DrivePath_IsAbsoluteOnWindowsAndInvalidElsewhere()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var full = directory.Write("drive/a.txt", "drive");
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path });
 
@@ -218,7 +218,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_MissingFileAndDanglingLink_ReturnNull()
     {
         // Arrange: a link whose target is removed afterwards
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("base"));
         Directory.CreateDirectory(directory.Combine("outside/gone"));
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("base/dangling"), directory.Combine("outside/gone"));
@@ -260,7 +260,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_DirectoryAtFilePath_IsNotARegularFile()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("folder.txt"));
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path });
 
@@ -285,7 +285,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("device.txt", "x");
         var resolver = Create(
             new FileReferenceOptions { BaseDirectory = directory.Path },
@@ -310,7 +310,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.UnixOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path });
 
         // Act
@@ -334,7 +334,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.UnixOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var failure = FileTestSupport.CreateFifo(directory.Combine("pipe"));
         Assert.True(failure.Length == 0, failure);
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path });
@@ -356,7 +356,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_OpenFailure_IsCannotRead(bool denied)
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("base/a.txt", "from base");
         var opened = new List<string>();
         var resolver = Create(
@@ -386,7 +386,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_FileNotFoundFromOpen_ReturnsNull()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("base/a.txt", "from base");
         var first = Path.GetFullPath(directory.Combine("base/a.txt"));
         var resolver = Create(
@@ -407,7 +407,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_FileHeldOpenByWriter_IsStillRead()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = directory.Write("a.txt", "held");
         using var writer = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path });
@@ -426,7 +426,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_MaxFileBytesAtLimitAndOneOver()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("ten.txt", "0123456789");
         directory.Write("eleven.txt", "0123456789A");
         var onDisk = Create(new FileReferenceOptions { BaseDirectory = directory.Path, MaxFileBytes = 10 });
@@ -443,7 +443,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_ReadBounded_EndlessStream_StopsAtTheBound()
     {
         // Arrange
-        var endless = new SandboxEndlessStream();
+        var endless = new EndlessStream();
 
         // Act
         var bytes = FileReferenceResolver.ReadBounded(endless, 20_000);
@@ -461,7 +461,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_SameFileTwice_IsOpenedOnceAndReturnsTheSameInstance()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = directory.Write("a.txt", "first");
         var opened = new List<string>();
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path }, Recording(opened));
@@ -480,7 +480,7 @@ public class FileReferenceResolverTests
     }
 
     /// <summary>
-    ///     Validates what the policy is asked (base directory - the host-chosen directory the chain started from -
+    ///     Validates what the policy is asked (base directory - the host-chosen directory the lookup started from -
     ///     requested and real path) and that a denial is reported with the reason, the hint, the policy name and the
     ///     paths, without a host directory in its message.
     /// </summary>
@@ -488,7 +488,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_PolicyDenial_IsAccessDeniedWithFactsAndNothingRead()
     {
         // Arrange: the policy denies every file
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("base"));
         directory.Write("x.txt", "x");
         var policy = new RecordingPolicy(_ => FileAccessDecision.Deny("not this one", "try another"));
@@ -530,7 +530,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_ThrowingOrNullPolicy_IsAccessDeniedAndCancellationPassesThrough()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         FileReferenceResolver With(FileAccessPolicy policy) =>
             Create(new FileReferenceOptions { BaseDirectory = directory.Path, FileAccess = policy });
@@ -558,7 +558,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_CachedFile_IsReCheckedOnEveryResolveButReadOnce()
     {
         // Arrange: a policy that allows the first two requests and denies the third
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var opened = new List<string>();
         var asked = 0;
@@ -584,7 +584,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_UnderRootsPreCheck_DeniesBeforeTheOpen()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("base/a.txt", "a");
         directory.Write("outside/x.txt", "x");
         var opened = new List<string>();
@@ -616,7 +616,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_RestrictivePolicyWithoutRealPath_IsRealPathUnavailable()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var unavailable = new FileOpenHooks { RealPathOf = _ => null };
         var restrictive = Create(
@@ -644,7 +644,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_UnknownFileType_IsNotARegularFileUnderEveryPolicy()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var unknown = new FileOpenHooks { IsRegularFileOf = _ => null };
         var permissive = Create(new FileReferenceOptions { BaseDirectory = directory.Path }, unknown);
@@ -680,7 +680,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         const string share = @"\\server\share\a.txt";
         var policy = policyName switch
@@ -737,7 +737,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var opened = new List<string>();
         var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path }, Recording(opened));
 
@@ -767,7 +767,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var extended = @"\\?\" + directory.Path;
         var opened = new List<string>();
@@ -836,7 +836,7 @@ public class FileReferenceResolverTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var full = Path.GetFullPath(directory.Path);
         var volume = FileTestSupport.TryGetVolumeGuidPath(full);
@@ -863,7 +863,7 @@ public class FileReferenceResolverTests
     public void FileReferenceResolver_Resolve_AbsoluteReferenceDenied_MessageEchoesItButNotTheRealPathOrBase()
     {
         // Arrange: the file is reached by an absolute reference, and its real path is reported somewhere else entirely
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var file = directory.Write("files/a.txt", "a");
         var baseDirectory = Path.GetFullPath(directory.Combine("base-folder"));
         Directory.CreateDirectory(baseDirectory);
@@ -885,7 +885,7 @@ public class FileReferenceResolverTests
     }
 
     /// <summary>
-    ///     Validates that a configured directory that is not a valid path is reported on first use.
+    ///     Validates that a base directory that is not a valid path is reported on first use.
     /// </summary>
     [Fact]
     public void FileReferenceResolver_Resolve_InvalidBaseDirectory_IsInvalidBaseDirectory()

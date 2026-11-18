@@ -38,7 +38,7 @@ public class FileReferenceResolverLinkTests
     /// </summary>
     /// <param name="directory">The temporary directory.</param>
     /// <returns>The full path of the root.</returns>
-    private static string BuildLinkedTree(SandboxTempDirectory directory)
+    private static string BuildLinkedTree(FileTestDirectory directory)
     {
         directory.Write("root/real/x.txt", "real");
         directory.Write("outside/x.txt", "outside");
@@ -65,7 +65,7 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_DirectoryLinkUnderAllowAll_IsFollowed()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = BuildLinkedTree(directory);
         var resolver = new FileReferenceResolver(new FileReferenceOptions { BaseDirectory = root });
 
@@ -85,7 +85,7 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_DirectoryLinkUnderNoSymlinks_IsAccessDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = BuildLinkedTree(directory);
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = root, FileAccess = FileAccessPolicy.NoSymlinks });
@@ -109,7 +109,7 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_DirectoryLinkStayingInsideTheRoots_IsAllowed()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = BuildLinkedTree(directory);
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = root, FileAccess = FileAccessPolicy.UnderRoots(root) });
@@ -128,7 +128,7 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_DirectoryLinkLeavingTheRoots_IsAccessDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = BuildLinkedTree(directory);
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = root, FileAccess = FileAccessPolicy.UnderRoots(root) });
@@ -150,7 +150,7 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_LinkedBaseDirectoryUnderNoSymlinks_IsTrusted()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = BuildLinkedTree(directory);
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = Path.Combine(root, "alias"), FileAccess = FileAccessPolicy.NoSymlinks });
@@ -171,9 +171,9 @@ public class FileReferenceResolverLinkTests
     public void FileReferenceResolver_Resolve_FileSymbolicLinkUnderNoSymlinks_IsAccessDeniedOrCapabilitySkipped()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/real.txt", "real");
-        if (!SandboxLinkSupport.TryCreateFileLink(directory.Combine("root/link.txt"), directory.Combine("root/real.txt"), out var reason))
+        if (!FileLinkSupport.TryCreateFileLink(directory.Combine("root/link.txt"), directory.Combine("root/real.txt"), out var reason))
         {
             Assert.Skip("File symbolic links need Developer Mode or SeCreateSymbolicLinkPrivilege on Windows: " + reason);
         }

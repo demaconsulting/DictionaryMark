@@ -32,7 +32,7 @@ namespace DemaConsulting.DictionaryMark.Files;
 ///     </para>
 ///     <para>
 ///         <see cref="Message"/> is a complete English sentence that echoes the reference as written (control
-///         characters replaced) and names the policy. It never adds the resolved path, the real path or a configured
+///         characters replaced) and names the policy. It never adds the resolved path, the real path or the base
 ///         directory, nor the reason of a policy (which may name host paths), so it reveals nothing beyond what the
 ///         author of the document wrote and is safe to show to that author: an absolute reference appears as the
 ///         author wrote it. <see cref="RequestedPath"/>, <see cref="RealPath"/> and <see cref="Reason"/> may reveal
@@ -111,7 +111,7 @@ public sealed class FileReferenceException : Exception
 
     /// <summary>
     ///     Gets the message: a complete English sentence that echoes the reference as written and, for a denial, names
-    ///     the policy; it never adds the resolved path, the real path, a configured directory, nor the reason of a policy.
+    ///     the policy; it never adds the resolved path, the real path, the base directory, nor the reason of a policy.
     /// </summary>
     public override string Message => Kind switch
     {
@@ -127,7 +127,7 @@ public sealed class FileReferenceException : Exception
         FileReferenceFailureKind.CannotRead => $"The file '{Reference}' cannot be read.",
         FileReferenceFailureKind.TooLarge => $"The file '{Reference}' is larger than the allowed size.",
         FileReferenceFailureKind.InvalidBaseDirectory =>
-            "A configured directory (BaseDirectory or SearchPaths) is not a valid path.",
+            "The configured base directory is not a valid path.",
         _ => $"The file '{Reference}' was refused.",
     };
 

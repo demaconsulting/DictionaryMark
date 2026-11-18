@@ -61,7 +61,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_InsideRootsWithMissingParents_IsAllowedAndCreatesNothing()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var policy = FileAccessPolicy.Combine(FileAccessPolicy.UnderRoots(root), FileAccessPolicy.NoSymlinks);
         var resolver = Create(root, policy);
@@ -81,7 +81,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_ExistingFileInsideRoots_IsAllowedAndUnchanged()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var output = directory.Write("root/out.md", "old");
         var root = directory.Combine("root");
         var resolver = Create(root, FileAccessPolicy.Combine(FileAccessPolicy.UnderRoots(root), FileAccessPolicy.NoSymlinks));
@@ -101,7 +101,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_OutsideRoots_IsAccessDeniedBeforeAnyOpen()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var opened = new List<string>();
         var resolver = Create(root, FileAccessPolicy.UnderRoots(root), new FileOpenHooks { BeforeOpen = opened.Add });
@@ -132,7 +132,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_NeverListText_IsRefusedUnderAllowAll(string path, FileReferenceFailureKind kind)
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var opened = new List<string>();
         var resolver = Create(directory.Path, null, new FileOpenHooks { BeforeOpen = opened.Add });
 
@@ -160,7 +160,7 @@ public class FileReferenceResolverOutputTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var opened = new List<string>();
         var resolver = Create(directory.Path, null, new FileOpenHooks { BeforeOpen = opened.Add });
 
@@ -179,7 +179,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_ExistingDirectory_IsNotARegularFile()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var folder = Directory.CreateDirectory(directory.Combine("out.md")).FullName;
         var resolver = Create(directory.Path);
 
@@ -197,7 +197,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_ExistingFileThroughDirectoryLinkUnderNoSymlinks_IsAccessDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/real/out.md", "old");
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("root/alias"), directory.Combine("root/real"));
         var resolver = Create(directory.Combine("root"), FileAccessPolicy.NoSymlinks);
@@ -219,7 +219,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_MissingFileUnderParentLinkLeavingTheRoots_IsAccessDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         Directory.CreateDirectory(directory.Combine("outside"));
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("root/link"), directory.Combine("outside"));
@@ -242,7 +242,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_MissingFileUnderDirectoryLinkUnderNoSymlinks_IsAccessDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("root/real"));
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("root/alias"), directory.Combine("root/real"));
         var resolver = Create(directory.Combine("root"), FileAccessPolicy.NoSymlinks);
@@ -265,12 +265,12 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_DanglingLinkAtOutput_IsRefusedUnderEveryPolicy()
     {
         // Arrange: root/out.md is a link to a location outside that does not exist
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         Directory.CreateDirectory(directory.Combine("outside"));
         var target = directory.Combine("outside/target.md");
         var link = Path.Combine(root, "out.md");
-        if (!SandboxLinkSupport.TryCreateFileLink(link, target, out _))
+        if (!FileLinkSupport.TryCreateFileLink(link, target, out _))
         {
             Directory.CreateDirectory(target);
             FileTestSupport.CreateDirectoryLinkOrSkip(link, target);
@@ -301,7 +301,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_RealPathUnavailable_IsRealPathUnavailable()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var existing = directory.Write("root/old.md", "old");
         var unknown = new FileOpenHooks { RealPathOf = _ => null, DirectoryLocationOf = _ => null };
@@ -333,7 +333,7 @@ public class FileReferenceResolverOutputTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var resolver = Create(directory.Path, null, new FileOpenHooks { DirectoryLocationOf = _ => @"\\server\share\docs" });
 
         // Act
@@ -351,7 +351,7 @@ public class FileReferenceResolverOutputTests
     public void FileReferenceResolver_CheckOutputPath_ExistingFileOpenFailure_IsCannotRead()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var output = directory.Write("out.md", "old");
         var resolver = Create(directory.Path, null, new FileOpenHooks { Open = _ => throw new IOException("locked") });
 

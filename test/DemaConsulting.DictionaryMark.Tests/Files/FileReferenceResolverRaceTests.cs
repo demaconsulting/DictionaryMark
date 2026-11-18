@@ -25,11 +25,10 @@ namespace DemaConsulting.DictionaryMark.Tests.Files;
 
 /// <summary>
 ///     Unit tests that prove the check of <see cref="FileReferenceResolver"/> is free of races: the decision is made
-///     about the file the open handle refers to, not about whatever the name refers to later, and a referring document's
-///     folder never becomes a trusted starting point. The file system is changed inside the seams around the open, so
-///     every test is deterministic and asserts outcomes,
-///     never time. The swaps use directory links (a junction on Windows, which needs no privilege) and moves and deletes
-///     that Windows allows while a file is open with delete sharing, so the tests run on every system.
+///     about the file the open handle refers to, not about whatever the name refers to later. The file system is
+///     changed inside the seams around the open, so every test is deterministic and asserts outcomes, never time. The
+///     swaps use directory links (a junction on Windows, which needs no privilege) and moves and deletes that Windows
+///     allows while a file is open with delete sharing, so the tests run on every system.
 /// </summary>
 public class FileReferenceResolverRaceTests
 {
@@ -43,7 +42,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_FileMovedAndFolderSwappedForOutsideLinkAfterOpen_IsAllowedWithOriginalBytes()
     {
         // Arrange: an inside file, an outside file of the same name, and a swap that runs between open and check
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/sub/a.txt", "inside");
         directory.Write("outside/a.txt", "outside");
         Directory.CreateDirectory(directory.Combine("root/kept"));
@@ -84,7 +83,7 @@ public class FileReferenceResolverRaceTests
     {
         // Arrange: the root exists when the policy and the resolver are created; just before the open it is renamed
         // away and an outside folder takes its name through a link
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/a.txt", "inside");
         directory.Write("outside/a.txt", "outside");
         var root = Path.GetFullPath(directory.Combine("root"));
@@ -116,7 +115,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_AnchorLocationNotCaptured_IsAccessDeniedUnderNoSymlinks()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/a.txt", "inside");
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = directory.Combine("root"), FileAccess = FileAccessPolicy.NoSymlinks },
@@ -138,7 +137,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_OutsideLinkReplacedByInsideFolderAfterOpen_IsAccessDeniedUnderUnderRoots()
     {
         // Arrange: the tree exists before the policy is created, so the policy captures the root's real location
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = directory.Combine("root");
         var hooks = SwapLinkForBenignFolder(directory);
         var resolver = new FileReferenceResolver(
@@ -163,7 +162,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_OutsideLinkReplacedByInsideFolderAfterOpen_IsAccessDeniedUnderNoSymlinks()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var resolver = new FileReferenceResolver(
             new FileReferenceOptions { BaseDirectory = directory.Combine("root"), FileAccess = FileAccessPolicy.NoSymlinks },
             SwapLinkForBenignFolder(directory));
@@ -187,7 +186,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_InjectedOutsideRealPath_IsAccessDenied(bool noSymlinks)
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/a.txt", "inside");
         var root = directory.Combine("root");
         var outside = Path.GetFullPath(directory.Combine("outside/a.txt"));
@@ -211,7 +210,7 @@ public class FileReferenceResolverRaceTests
     public void FileReferenceResolver_Resolve_InjectedRealPath_IsTheOneInTheRequestAndTheResult()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("a.txt", "a");
         var reported = Path.GetFullPath(directory.Combine("elsewhere/a.txt"));
         var policy = RecordingPolicy.AllowingAll();
@@ -233,7 +232,7 @@ public class FileReferenceResolverRaceTests
     /// </summary>
     /// <param name="directory">The temporary directory.</param>
     /// <returns>The seams that perform the swap.</returns>
-    private static FileOpenHooks SwapLinkForBenignFolder(SandboxTempDirectory directory)
+    private static FileOpenHooks SwapLinkForBenignFolder(FileTestDirectory directory)
     {
         directory.Write("outside/a.txt", "outside");
         Directory.CreateDirectory(directory.Combine("root"));

@@ -324,7 +324,7 @@ internal abstract partial class FileAccessPolicy
 
         /// <summary>
         ///     Gets the anchor of a reference: the deepest folder shared by the written path and the trusted base
-        ///     directory (the origin of the chain, never a referring document's folder). It and everything above it are
+        ///     directory (chosen by the host, never a folder a document names). It and everything above it are
         ///     trusted, so links there (macOS <c>/var</c>, an 8.3 or linked home folder) do not count.
         /// </summary>
         /// <param name="requestedPath">The full path as written.</param>

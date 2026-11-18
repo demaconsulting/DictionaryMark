@@ -18,7 +18,7 @@ and map every refusal to their own error; they do not repeat the subsystem's mec
 
 - **Framework**: xUnit v3 running under the .NET SDK, invoked by `build.ps1` and the CI pipeline on Windows, Linux
   and macOS with .NET 10 and 11.
-- **Files**: per-test temporary directories (`SandboxTempDirectory`), deleted by the test.
+- **Files**: per-test temporary directories (`FileTestDirectory`), deleted by the test.
 - **Links**: directory links fall back to an NTFS junction on Windows, which needs no privilege, so link and race
   scenarios run everywhere; a file symbolic link needs a privilege on Windows, so the one scenario that needs only
   it skips there with the reason.

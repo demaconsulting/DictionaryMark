@@ -74,6 +74,6 @@ public enum FileReferenceFailureKind
     /// <summary>The file is longer than <see cref="FileReferenceOptions.MaxFileBytes"/>.</summary>
     TooLarge,
 
-    /// <summary>A configured base directory is not a valid path.</summary>
+    /// <summary>The configured base directory is not a valid path.</summary>
     InvalidBaseDirectory,
 }

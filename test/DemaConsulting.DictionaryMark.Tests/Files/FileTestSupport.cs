@@ -104,7 +104,7 @@ internal static class FileTestSupport
     /// <param name="target">The full path of the existing target directory.</param>
     public static void CreateDirectoryLinkOrSkip(string link, string target)
     {
-        if (!SandboxLinkSupport.TryCreateDirectoryLink(link, target, out var reason))
+        if (!FileLinkSupport.TryCreateDirectoryLink(link, target, out var reason))
         {
             Assert.Skip("Directory links cannot be created in this environment: " + reason);
         }

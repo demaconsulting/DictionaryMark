@@ -25,7 +25,7 @@ namespace DemaConsulting.DictionaryMark.Tests.Files;
 /// <summary>
 ///     A readable stream of spaces that never ends and counts the bytes read from it.
 /// </summary>
-internal sealed class SandboxEndlessStream : Stream
+internal sealed class EndlessStream : Stream
 {
     /// <summary>Gets the number of bytes that were read.</summary>
     public long BytesRead { get; private set; }
@@ -75,14 +75,14 @@ internal sealed class SandboxEndlessStream : Stream
 /// <summary>
 ///     A temporary directory that is deleted when disposed.
 /// </summary>
-internal sealed class SandboxTempDirectory : IDisposable
+internal sealed class FileTestDirectory : IDisposable
 {
     /// <summary>
     ///     Initializes a new, empty temporary directory.
     /// </summary>
-    public SandboxTempDirectory()
+    public FileTestDirectory()
     {
-        Path = Directory.CreateTempSubdirectory("sandbox-test").FullName;
+        Path = Directory.CreateTempSubdirectory("files-test").FullName;
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ internal sealed class SandboxTempDirectory : IDisposable
 /// <summary>
 ///     Helpers that create links for the tests that need real ones.
 /// </summary>
-internal static class SandboxLinkSupport
+internal static class FileLinkSupport
 {
     /// <summary>
     ///     Tries to create a directory link (a symbolic link, or on Windows a junction when links need a privilege).

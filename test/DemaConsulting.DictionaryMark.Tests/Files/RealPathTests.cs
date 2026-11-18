@@ -38,7 +38,7 @@ public class RealPathTests
     public void RealPath_Inspect_PlainFile_ReportsItsCanonicalPathAndARegularFile()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = directory.Write("a.txt", "a");
 
         // Act
@@ -59,7 +59,7 @@ public class RealPathTests
     public void RealPath_Inspect_FileThroughADirectoryLink_ReportsTheTarget()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("target/a.txt", "a");
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("link"), directory.Combine("target"));
 
@@ -84,7 +84,7 @@ public class RealPathTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var longFile = directory.Write("a-long-folder-name/a.txt", "a");
         var shortFolder = FileTestSupport.TryGetShortPath(Path.GetDirectoryName(longFile)!);
         if (shortFolder is null || !shortFolder.Contains('~', StringComparison.Ordinal))
@@ -116,7 +116,7 @@ public class RealPathTests
             Assert.Skip("This scenario exists only on macOS.");
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = Path.GetFullPath(directory.Write("a.txt", "a"));
         var linked = path.StartsWith("/var/", StringComparison.Ordinal) || path.StartsWith("/tmp/", StringComparison.Ordinal);
         var expected = linked ? "/private" + path : path;
@@ -143,7 +143,7 @@ public class RealPathTests
             Assert.Skip("This scenario exists only on Linux.");
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = directory.Write("a.txt", "a");
         using var handle = RealPath.OpenForRead(path);
         File.Delete(path);
@@ -164,7 +164,7 @@ public class RealPathTests
     public void RealPath_Inspect_LiveFileNamedLikeADeletedOne_ReportsItsRealPath()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var path = directory.Write("x (deleted)", "a");
 
         // Act
@@ -188,7 +188,7 @@ public class RealPathTests
     public void RealPath_Inspect_DirectoryAndDevice_AreNotRegularFiles()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
 
         // Act / Assert
         if (OperatingSystem.IsWindows())
@@ -220,7 +220,7 @@ public class RealPathTests
             Assert.Skip(FileTestSupport.UnixOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var pipe = directory.Combine("pipe");
         var failure = FileTestSupport.CreateFifo(pipe);
         Assert.True(failure.Length == 0, failure);
@@ -241,7 +241,7 @@ public class RealPathTests
     public void RealPath_OpenForRead_MissingFileAndMissingFolder_MapToNotFoundExceptions()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("file.txt", "f");
 
         // Act
@@ -262,7 +262,7 @@ public class RealPathTests
     public void RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTheTarget()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("target"));
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("link"), directory.Combine("target"));
 
@@ -291,7 +291,7 @@ public class RealPathTests
             Assert.Skip(FileTestSupport.UnixOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var folder = Path.GetFullPath(directory.Combine("search-only"));
         Directory.CreateDirectory(folder);
         var readable = FileTestSupport.Canonical(folder);
@@ -328,7 +328,7 @@ public class RealPathTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var local = Path.GetFullPath(directory.Write("a.txt", "a"));
 
         // Act / Assert

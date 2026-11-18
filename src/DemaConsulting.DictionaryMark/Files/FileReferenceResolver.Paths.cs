@@ -51,7 +51,7 @@ internal sealed partial class FileReferenceResolver
     ///     A place a referenced file may be found.
     /// </summary>
     /// <param name="Key">The full path as written.</param>
-    /// <param name="Origin">The host-chosen directory the lookup chain started from: the base directory.</param>
+    /// <param name="Origin">The host-chosen directory the lookup started from: the base directory.</param>
     private sealed record Candidate(string Key, string Origin);
 
     /// <summary>
@@ -123,7 +123,7 @@ internal sealed partial class FileReferenceResolver
         text.Length >= 3 && char.IsAsciiLetter(text[0]) && text[1] == ':' && text[2] == '/';
 
     /// <summary>
-    ///     Generates the candidates of a reference in search order.
+    ///     Generates the candidate of a reference: its full path against the base directory.
     /// </summary>
     /// <param name="text">The validated text.</param>
     /// <param name="shown">The printable reference.</param>
@@ -132,8 +132,8 @@ internal sealed partial class FileReferenceResolver
     {
         EnsureDirectories();
 
-        // An absolute reference names one file; it is resolved against the starting directory only for its drive. Its
-        // chain starts at the base directory
+        // An absolute reference names one file; it is resolved against the base directory only for its drive, and its
+        // origin is the base directory
         if (Path.IsPathRooted(text))
         {
             yield return FullCandidate(_baseDirectory!, _baseDirectory!, text, shown);
@@ -150,7 +150,7 @@ internal sealed partial class FileReferenceResolver
     ///     Combines a directory and a reference into a file-system candidate.
     /// </summary>
     /// <param name="directory">The full path of the directory.</param>
-    /// <param name="origin">The host-chosen directory the lookup chain started from.</param>
+    /// <param name="origin">The host-chosen directory the lookup started from.</param>
     /// <param name="text">The validated text.</param>
     /// <param name="shown">The printable reference.</param>
     /// <returns>The candidate.</returns>
@@ -213,7 +213,7 @@ internal sealed partial class FileReferenceResolver
     }
 
     /// <summary>
-    ///     Computes the full path of a configured directory.
+    ///     Computes the full path of the configured base directory.
     /// </summary>
     /// <param name="directory">The configured directory.</param>
     /// <returns>The full path.</returns>

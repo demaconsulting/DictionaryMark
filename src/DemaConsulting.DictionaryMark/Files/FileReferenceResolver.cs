@@ -130,7 +130,7 @@ internal sealed partial class FileReferenceResolver
     /// <returns>The file, or <see langword="null"/> when no candidate exists (or no file source is configured).</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="reference"/> is null.</exception>
     /// <exception cref="FileReferenceException">
-    ///     Thrown when the reference is never allowed, a configured directory is invalid, the policy denies the file
+    ///     Thrown when the reference is never allowed, the base directory is invalid, the policy denies the file
     ///     (or cannot be applied), the path is not a regular file, or the file cannot be read or is too large.
     /// </exception>
     public FileReference? Resolve(string reference)
@@ -145,7 +145,7 @@ internal sealed partial class FileReferenceResolver
             return null;
         }
 
-        // Candidates are produced lazily: the first one that exists wins, so later ones are only examined on a miss
+        // A reference has one candidate, resolved against the base directory; a file that does not exist is a miss
         foreach (var candidate in Candidates(text, shown))
         {
             var file = LoadFile(candidate, shown);
@@ -333,7 +333,7 @@ internal sealed partial class FileReferenceResolver
     ///     Reads an approved file from its open handle.
     /// </summary>
     /// <param name="handle">The open handle; disposed by the caller.</param>
-    /// <param name="candidate">The candidate: its key and the origin of its chain.</param>
+    /// <param name="candidate">The candidate: its key and the base directory it was resolved from.</param>
     /// <param name="realPath">The real path, or <see langword="null"/>.</param>
     /// <returns>The outcome.</returns>
     private Outcome Read(SafeFileHandle handle, Candidate candidate, string? realPath)

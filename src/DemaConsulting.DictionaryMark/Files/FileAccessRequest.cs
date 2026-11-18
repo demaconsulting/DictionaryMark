@@ -39,7 +39,7 @@ namespace DemaConsulting.DictionaryMark.Files;
 internal sealed record FileAccessRequest
 {
     /// <summary>
-    ///     Gets the full path of the host-chosen directory this lookup chain started from: the configured base
+    ///     Gets the full path of the host-chosen directory this lookup started from: the configured base
     ///     directory. It is trusted: it never comes from a document.
     /// </summary>
     public required string BaseDirectory { get; init; }

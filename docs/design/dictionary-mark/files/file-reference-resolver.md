@@ -122,7 +122,7 @@ Every refusal and read failure is a `FileReferenceException`; a missing input fi
 before any access. `NotARegularFile`, `RealPathUnavailable`, `CannotRead`, `TooLarge`, and a `NetworkPath` found after
 the open are remembered per key for reads; a denial is not, so the policy decides again on the next resolve. A
 cancellation raised by the policy passes through unwrapped. Invalid options are `ArgumentNullException` /
-`ArgumentOutOfRangeException`; an invalid configured directory is `InvalidBaseDirectory` on first use.
+`ArgumentOutOfRangeException`; an invalid base directory is `InvalidBaseDirectory` on first use.
 
 #### Design Decisions
 

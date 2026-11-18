@@ -103,7 +103,7 @@ a file and a missing file once, returns the same instance for the same file, and
 changed. This scenario is tested by `FileReferenceResolver_Resolve_SameFileTwice_IsOpenedOnceAndReturnsTheSameInstance`.
 
 **FileReferenceResolver_Resolve_PolicyDenial_IsAccessDeniedWithFactsAndNothingRead**: Validates what the policy is asked
-(base directory - the host-chosen directory the chain started from - requested and real path) and that a denial is
+(base directory - the host-chosen directory the lookup started from - requested and real path) and that a denial is
 reported with the reason, the hint, the policy name and the paths, without a host directory in its message. This
 scenario is tested by `FileReferenceResolver_Resolve_PolicyDenial_IsAccessDeniedWithFactsAndNothingRead`.
 
@@ -162,7 +162,7 @@ message of a denied absolute reference echoes the reference exactly as written, 
 adds the real path of the opened file or the base directory; those stay in the properties for trusted callers. This
 scenario is tested by `FileReferenceResolver_Resolve_AbsoluteReferenceDenied_MessageEchoesItButNotTheRealPathOrBase`.
 
-**FileReferenceResolver_Resolve_InvalidBaseDirectory_IsInvalidBaseDirectory**: Validates that a configured directory
+**FileReferenceResolver_Resolve_InvalidBaseDirectory_IsInvalidBaseDirectory**: Validates that a base directory
 that is not a valid path is reported on first use. This scenario is tested by
 `FileReferenceResolver_Resolve_InvalidBaseDirectory_IsInvalidBaseDirectory`.
 

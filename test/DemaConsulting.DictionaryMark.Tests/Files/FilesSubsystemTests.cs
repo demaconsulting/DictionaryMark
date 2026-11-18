@@ -39,7 +39,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_ReferenceResolution_RelativeDotDotAndAbsoluteReferences_AreReadUnderTheDefaultPolicy()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("docs/images/a.txt", "relative");
         directory.Write("assets/b.txt", "dot-dot");
         var absolute = directory.Write("elsewhere/c.txt", "absolute");
@@ -66,7 +66,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_AccessPolicy_RootsAndNoSymlinksCombined_ReadsInsideAndDeniesEscapeAndLink()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("root/real/a.txt", "inside");
         directory.Write("outside.txt", "outside");
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("root/alias"), directory.Combine("root/real"));
@@ -94,7 +94,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_RaceFreeCheck_SwapAfterOpen_DecisionFollowsTheOpenedFile()
     {
         // Arrange: root/sub is a link to the outside; after the open it becomes a real folder with a benign file
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("outside/a.txt", "outside");
         Directory.CreateDirectory(directory.Combine("root"));
         FileTestSupport.CreateDirectoryLinkOrSkip(directory.Combine("root/sub"), directory.Combine("outside"));
@@ -126,7 +126,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_AlwaysRefused_NetworkDeviceAndNonRegularReferences_AreRefusedUnderAllowAll()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         Directory.CreateDirectory(directory.Combine("folder"));
         var resolver = new FileReferenceResolver(new FileReferenceOptions { BaseDirectory = directory.Path });
 
@@ -177,7 +177,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_BoundedReading_SizeLimit_ReadsAtTheLimitAndRefusesALongerFile()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("ten.txt", "0123456789");
         directory.Write("eleven.txt", "0123456789A");
         var held = directory.Write("held.txt", "held");
@@ -204,7 +204,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_ReferenceFailureReporting_DenialCarriesFactsWithoutHostPathInMessage()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         directory.Write("secret/key.txt", "key");
         Directory.CreateDirectory(directory.Combine("docs"));
         var resolver = new FileReferenceResolver(
@@ -239,7 +239,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_OutputPaths_NeverListAndPolicyApplyBeforeAnyWrite()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         Directory.CreateDirectory(directory.Combine("root/folder"));
         var permissive = new FileReferenceResolver(new FileReferenceOptions { BaseDirectory = root });
@@ -269,7 +269,7 @@ public class FilesSubsystemTests
     public void FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var local = Path.Combine(directory.Combine("root"), "*.yaml");
         var url = Path.Combine(directory.Combine("root"), "https://dictionarymark-test.invalid/*.yaml");
 

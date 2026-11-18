@@ -71,7 +71,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_RealPathInsideOrEqualToARoot_IsAllowed()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var canonical = FileTestSupport.Canonical(root);
         var policy = FileAccessPolicy.UnderRoots(directory.Combine("other"), root);
@@ -94,7 +94,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_SiblingWithSharedPrefix_IsDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var sibling = Directory.CreateDirectory(directory.Combine("root-sibling")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
@@ -117,7 +117,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_RootCreatedAfterThePolicy_AllowsNothing()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Path.GetFullPath(directory.Combine("later"));
         var policy = FileAccessPolicy.UnderRoots(root);
         Directory.CreateDirectory(root);
@@ -142,7 +142,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_RealPathOutsideEveryRoot_IsDeniedWithReasonAndHint()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var outside = Directory.CreateDirectory(directory.Combine("outside")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
@@ -164,7 +164,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_WrittenPathOutsideEveryRoot_IsDeniedByThePreCheck()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var outside = Directory.CreateDirectory(directory.Combine("outside")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
@@ -213,7 +213,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_UnderRoots_PlatformCaseRule_IsApplied()
     {
         // Arrange: the written and real paths spell the root in upper case
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
         var upper = Path.Combine(root.ToUpperInvariant(), "A.TXT");
@@ -234,7 +234,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_NoSymlinks_RealPathMatchesTheWrittenPath_IsAllowed()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var baseDirectory = Directory.CreateDirectory(directory.Combine("base")).FullName;
         var policy = FileAccessPolicy.NoSymlinks;
 
@@ -256,7 +256,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_NoSymlinks_RealPathDiffersBelowTheAnchor_IsDenied()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var baseDirectory = Directory.CreateDirectory(directory.Combine("base")).FullName;
 
         // Act
@@ -276,7 +276,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_NoSymlinks_LinkAboveTheAnchor_IsTrusted()
     {
         // Arrange: the base directory is a link to a real folder
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var real = Directory.CreateDirectory(directory.Combine("real-base")).FullName;
         var linked = directory.Combine("linked-base");
         FileTestSupport.CreateDirectoryLinkOrSkip(linked, real);
@@ -302,7 +302,7 @@ public class FileAccessPolicyTests
             Assert.Skip(FileTestSupport.WindowsOnly);
         }
 
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var baseDirectory = Directory.CreateDirectory(directory.Combine("base")).FullName;
         var longFolder = Directory.CreateDirectory(Path.Combine(baseDirectory, "a-long-folder-name")).FullName;
         File.WriteAllText(Path.Combine(longFolder, "a.txt"), "a");
@@ -329,7 +329,7 @@ public class FileAccessPolicyTests
     public void FileAccessPolicy_Combine_FirstDenialWinsAndNamesAreJoined()
     {
         // Arrange
-        using var directory = new SandboxTempDirectory();
+        using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var first = new RecordingPolicy(_ => FileAccessDecision.Deny("first reason"), "first");
         var second = new RecordingPolicy(_ => FileAccessDecision.Deny("second reason"), "second");

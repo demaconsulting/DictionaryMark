@@ -45,8 +45,8 @@ namespace DemaConsulting.DictionaryMark.Files;
 ///         <b>Always refused.</b> Whatever the policy, the resolver refuses a referenced file given as a network path
 ///         (UNC and <c>//host</c>), a device path (on Windows also a reserved device name such as <c>NUL</c>), an
 ///         alternate data stream or a path with control characters, anything that is not a regular file and, on Windows,
-///         a link from a local path to a network share, and keeps every size limit. These refusals keep a
-///         document from reaching devices and the network; the top-level file the caller names is opened as given. A
+///         a link from a local path to a network share, and keeps every size limit. These refusals keep a document
+///         from reaching devices and the network; the configuration file itself is not read through the resolver. A
 ///         restrictive policy (any policy other than
 ///         <see cref="AllowAll"/>) is never consulted without a real path: where the platform cannot tell the real path
 ///         of an open file, the file is refused with <see cref="FileReferenceFailureKind.RealPathUnavailable"/> (fail
@@ -78,7 +78,7 @@ internal abstract partial class FileAccessPolicy
     /// </summary>
     /// <remarks>
     ///     The folder the reference starts from is the deepest folder shared by the path as written and the trusted base
-    ///     directory of the request (the host-chosen base directory the chain of references started from); it and every
+    ///     directory of the request (the host-chosen base directory the lookup started from); it and every
     ///     folder above it are trusted (the host chose them).
     ///     Below it, the real path of the opened file must equal the path as written, so a link anywhere below that
     ///     folder - a directory or the file itself - is denied, whatever its target. A hard link cannot be told apart
@@ -195,7 +195,7 @@ internal abstract partial class FileAccessPolicy
     ///     folder by name after it.
     /// </summary>
     /// <param name="requestedPath">The full path as written.</param>
-    /// <param name="baseDirectory">The trusted directory the lookup chain started from.</param>
+    /// <param name="baseDirectory">The trusted directory the lookup started from.</param>
     /// <returns>The folders, as written; none by default.</returns>
     internal virtual IEnumerable<string> AnchorsOf(string requestedPath, string baseDirectory) => [];
 

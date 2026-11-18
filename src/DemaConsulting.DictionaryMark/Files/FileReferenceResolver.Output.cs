@@ -65,7 +65,7 @@ internal sealed partial class FileReferenceResolver
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the resolver has no base directory.</exception>
     /// <exception cref="FileReferenceException">
-    ///     Thrown when the path is never allowed, the configured directory is invalid, the policy denies the path (or
+    ///     Thrown when the path is never allowed, the base directory is invalid, the policy denies the path (or
     ///     cannot be applied), an existing entry at the path is not a regular file or cannot be opened, or the path
     ///     leads to a network location.
     /// </exception>
