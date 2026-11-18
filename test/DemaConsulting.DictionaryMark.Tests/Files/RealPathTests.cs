@@ -391,8 +391,8 @@ public class RealPathTests
 
     /// <summary>
     ///     Validates that an existing folder named in another letter case is returned in the case stored on disk where
-    ///     the folder is case-insensitive (the Windows and macOS defaults), and that the name is returned unchanged where
-    ///     the folder is case-sensitive (the Linux default), because the name as written does not exist there.
+    ///     the temporary folder is observed to be case-insensitive, and that the name is returned unchanged where it is
+    ///     observed to be case-sensitive, because the name as written does not exist there.
     /// </summary>
     [Fact]
     public void RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists()
@@ -408,10 +408,6 @@ public class RealPathTests
 
         // Assert
         Assert.Equal(expected, exact);
-        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
-        {
-            Assert.True(caseInsensitive, "The temporary folder is expected to be case-insensitive on Windows and macOS.");
-        }
     }
 
     /// <summary>

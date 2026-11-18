@@ -1283,20 +1283,20 @@ public class IntegrationTests
 
     /// <summary>
     ///     Test that an --allow-root folder spelled in another letter case than the folder on disk still allows the
-    ///     config-file tables inside it when run as a process, on the case-insensitive folders of Windows and macOS.
+    ///     config-file tables inside it when run as a process. Skips where the temporary folder is observed to be
+    ///     case-sensitive, because "site" then names no folder.
     /// </summary>
     [Fact]
     public void DictionaryMark_FileAccess_AllowRootInOtherCase_AllowsConfigJobsInside()
     {
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
-        {
-            Assert.Skip("Folders are case-insensitive by default only on Windows and macOS.");
-        }
-
         // Arrange: the folder is stored as "Site" and named as "site" in --allow-root
         using var tmpDir = new TemporaryDirectory();
         WriteFile(tmpDir, "Site/terms.yaml", "API: Application Programming Interface\n");
         var config = WriteFile(tmpDir, "Site/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: inside.md\n");
+        if (!Directory.Exists(PathIn(tmpDir, "site")))
+        {
+            Assert.Skip("The temporary folder is case-sensitive, so \"site\" does not name the \"Site\" folder.");
+        }
 
         // Act
         var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "site"));

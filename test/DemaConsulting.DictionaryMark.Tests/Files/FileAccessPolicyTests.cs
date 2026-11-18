@@ -207,9 +207,9 @@ public class FileAccessPolicyTests
 
     /// <summary>
     ///     Validates that a real path spelled in another letter case is brought to the case stored on disk before it is
-    ///     compared exactly with the root: where the folders are case-insensitive (Windows and macOS) it names the same
-    ///     folder and is allowed; where they are case-sensitive (Linux) it names a folder that does not exist, which is
-    ///     not the root, and is denied by the real-path check although the path as written is inside.
+    ///     compared exactly with the root: where the temporary folder is observed to be case-insensitive it names the
+    ///     same folder and is allowed; where it is observed to be case-sensitive it names a folder that does not exist,
+    ///     which is not the root, and is denied by the real-path check although the path as written is inside.
     /// </summary>
     [Fact]
     public void FileAccessPolicy_UnderRoots_RealPathInOtherCase_IsMatchedByItsStoredCase()
@@ -219,15 +219,15 @@ public class FileAccessPolicyTests
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
         var written = Path.Combine(root, "a.txt");
-        var upperRealPath = Path.Join(FileTestSupport.Canonical(root).ToUpperInvariant(), "A.TXT");
-        var sameFolder = Directory.Exists(root.ToUpperInvariant());
+        var upperRoot = FileTestSupport.Canonical(root).ToUpperInvariant();
+        var upperRealPath = Path.Join(upperRoot, "A.TXT");
+        var sameFolder = Directory.Exists(upperRoot);
 
         // Act
         var decision = policy.Check(Request(root, written, upperRealPath));
 
         // Assert
         Assert.Equal(sameFolder, decision.IsAllowed);
-        Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), sameFolder);
         if (!sameFolder)
         {
             Assert.Equal("its real path is outside the allowed roots", decision.Reason);
@@ -237,7 +237,8 @@ public class FileAccessPolicyTests
     /// <summary>
     ///     Validates that the no-symlinks policy brings the written path below the anchor to the letter case stored on
     ///     disk before it compares it exactly with the real path: a file written in another case is allowed where the
-    ///     folder is case-insensitive (Windows and macOS) and denied where that spelling names no file (Linux).
+    ///     folder is observed to be case-insensitive and denied where it is observed to be case-sensitive, because that
+    ///     spelling names no file there.
     /// </summary>
     [Fact]
     public void FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase()
@@ -255,7 +256,6 @@ public class FileAccessPolicyTests
 
         // Assert
         Assert.Equal(expected, decision.IsAllowed);
-        Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), expected);
     }
 
     /// <summary>

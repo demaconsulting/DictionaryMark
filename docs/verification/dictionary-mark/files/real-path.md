@@ -17,8 +17,9 @@ duration is asserted: an open that blocked would never return, which the time li
 #### Test Environment
 
 - **Files**: per-test temporary directories, deleted by the test; `/dev/null` on Linux and macOS. No file-system or
-  system setting is changed: the letter-case scenarios use the temporary folder as it is (case-insensitive by default on
-  Windows and macOS, case-sensitive on Linux) and never switch its case sensitivity.
+  system setting is changed: the letter-case scenarios use the temporary folder as it is, never switch its case
+  sensitivity, and base their expectations on its observed case behavior (whether a name in another letter case
+  resolves), not on the operating system.
 - **Tools**: `mkfifo` (Linux and macOS) for named pipes; `cmd.exe` (Windows) for junctions and short names;
   `mountvol.exe` (Windows) for the volume GUID path.
 
@@ -96,10 +97,9 @@ separator is the boundary and trailing separators do not matter. This scenario i
 `RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly`.
 
 **RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists**: Validates that a temporary folder
-stored as `Docs` and named as `docs` is returned as `Docs` where the folder is case-insensitive (the Windows and macOS
-defaults, asserted there), and as `docs`, unchanged, where it is case-sensitive (the Linux default), because that
-spelling does not exist. This scenario is tested by
-`RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists`.
+stored as `Docs` and named as `docs` is returned as `Docs` where the folder is observed to be case-insensitive, and as
+`docs`, unchanged, where it is observed to be case-sensitive, because that spelling does not exist. This scenario is
+tested by `RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists`.
 
 **RealPath_GetExactPathName_MissingTail_KeepsItsNamesAndNormalizesTheExistingPart**: Validates that the missing tail
 `Missing/File.TXT` below an existing folder keeps its names as written while the existing part is brought to the stored

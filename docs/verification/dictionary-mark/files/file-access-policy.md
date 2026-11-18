@@ -59,9 +59,10 @@ roots when it is created, and on Windows a root in a device namespace other than
 This scenario is tested by `FileAccessPolicy_UnderRoots_InvalidRoots_Throw`.
 
 **FileAccessPolicy_UnderRoots_RealPathInOtherCase_IsMatchedByItsStoredCase**: Validates that a real path spelled in
-another letter case is brought to the case stored on disk before it is compared exactly with the root: on the
-case-insensitive folders of Windows and macOS it names the root and is allowed; on the case-sensitive folders of Linux
-it names a folder that is not the root and is denied by the real-path check, although the path as written is inside.
+another letter case is brought to the case stored on disk before it is compared exactly with the root: where the
+temporary folder is observed to be case-insensitive it names the root and is allowed; where it is observed to be
+case-sensitive it names a folder that is not the root and is denied by the real-path check, although the path as
+written is inside.
 This scenario is tested by `FileAccessPolicy_UnderRoots_RealPathInOtherCase_IsMatchedByItsStoredCase`.
 
 **FileAccessPolicy_NoSymlinks_RealPathMatchesTheWrittenPath_IsAllowed**: Validates that the no-symlinks policy allows a
@@ -78,9 +79,9 @@ starts from is trusted by the no-symlinks policy. This scenario is tested by
 
 **FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase**: Validates that the no-symlinks policy
 brings the written path below the anchor to the letter case stored on disk before it compares it exactly with the real
-path: a file written in another letter case is allowed on the case-insensitive folders of Windows and macOS, and denied
-on Linux, where that spelling names no file. This scenario is tested by
-`FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase`.
+path: a file written in another letter case is allowed where the temporary folder is observed to be case-insensitive,
+and denied where it is observed to be case-sensitive, because that spelling names no file there. This scenario is tested
+by `FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase`.
 
 **FileAccessPolicy_NoSymlinks_ShortNameSpelling_IsAllowed**: Validates on Windows that a path written with short (8.3)
 names is compared in its long spelling, so it is not mistaken for a link. Skips where the volume does not create short
