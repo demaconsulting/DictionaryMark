@@ -12,6 +12,13 @@
 [![Security](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=security_rating)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![NuGet](https://img.shields.io/nuget/v/DemaConsulting.DictionaryMark?style=plastic)](https://www.nuget.org/packages/DemaConsulting.DictionaryMark)
 
+![DictionaryMark banner: the DictionaryMark name with the tagline 'YAML dictionaries in. Markdown glossaries
+out.' and the command 'dictionarymark --config dictionarymark.yaml'. A YAML glossary, rich entries with definition,
+pos and variants, deprecated terms with use and where, and a configuration file of table jobs flow on curved arrows
+into the dictionarymark .NET tool, and arrows lead out to a Markdown table with 25 to 75 column widths, a bullet
+list, a deprecated-terms table, and Pandoc documents in PDF and
+HTML](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/hero.png)
+
 ## Overview
 
 DictionaryMark is a .NET command-line tool that reads YAML dictionary files and generates
