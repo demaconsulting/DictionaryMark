@@ -270,7 +270,10 @@ internal static class DictionaryGenerator
     /// </summary>
     /// <remarks>
     ///     Files of a configuration-file job are read through the file-access policy, which judges each file by
-    ///     its real path; a denied file fails the job and is never silently skipped.
+    ///     its real path; a denied file fails the job and is never silently skipped. A literal pattern's file is
+    ///     passed with the pattern as written; a file a glob matched is passed with no written path, so the policy
+    ///     applies only its full-path rules (the pattern text was judged before matching) and names it by its full
+    ///     path.
     /// </remarks>
     /// <param name="context">The context for the policy and error reporting.</param>
     /// <param name="job">The job whose files are loaded.</param>
@@ -295,8 +298,9 @@ internal static class DictionaryGenerator
             {
                 if (job.ArePathsJudged)
                 {
-                    // Judge the file and parse the text read from the verified handle
-                    var text = context.FileAccess.ReadAllText(writtenPaths.GetValueOrDefault(file, file), file);
+                    // Judge the file and parse the text read from the verified handle; a file a glob matched has no
+                    // text as written (its pattern was judged), so it is judged and named by its full path
+                    var text = context.FileAccess.ReadAllText(writtenPaths.GetValueOrDefault(file), file);
                     if (asDeprecated)
                     {
                         deprecated.AddRange(YamlDictionaryLoader.LoadDeprecatedText(text, file));

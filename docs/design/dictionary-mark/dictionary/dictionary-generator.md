@@ -39,8 +39,9 @@ roots each pattern with `PathResolver` and remembers the pattern as written for 
 then call `GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
 return early on `FileAccessDeniedException`, `ArgumentException`, `InvalidOperationException`, `IOException`,
 `UnauthorizedAccessException` or empty result. (2) Load entries — for a configuration job, read each file with
-`context.FileAccess.ReadAllText(written, file)` and parse the text with `YamlDictionaryLoader.LoadText` (or
-`LoadDeprecatedText`); for the command-line job, call
+`context.FileAccess.ReadAllText(written, file)`, where `written` is the literal pattern as written or null for a file a
+glob matched (the policy then applies only its full-path rules and names the full path), and parse the text with
+`YamlDictionaryLoader.LoadText` (or `LoadDeprecatedText`); for the command-line job, call
 `YamlDictionaryLoader.Load` (or `LoadDeprecated` when `job.Options.Kind` is deprecated) for each input file; return
 early on `FileAccessDeniedException`, `IOException`, `UnauthorizedAccessException`, `YamlException` or
 `InvalidOperationException`. A denied file fails the job; it is never skipped. (3) Detect

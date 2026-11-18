@@ -107,6 +107,11 @@ rejected with `key 'root' must be a non-empty string`. This scenario is tested b
 This scenario is tested by `ConfigFile_Load_NoRoot_RootDirectoryIsNull`.
 
 **ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied**: A `root` key naming
-`//server/share`, `\\server\share`, an `http:` URL, `\\.\pipe\x` or `docs:stream` is rejected with
+`//server/share`, `\\server\share`, an `http:` URL or `\\.\pipe\x` is rejected with
 `Config file '{path}': file-access-denied: root '{value}': {reason}` before the directory is probed.
 This scenario is tested by `ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied`.
+
+**ConfigFile_Load_RootWithColon_ThrowsFileAccessDeniedOnWindows** (Windows): A `root` key of `docs:stream` is
+rejected with the alternate-data-stream reason. **ConfigFile_Load_RootWithColon_ResolvesOnLinuxAndMac** (Linux
+and macOS): A `root` key of `docs:v1` resolves to the existing folder of that name. Each is skipped with a
+reason on the other platforms. These scenarios are tested by the tests of the same names.

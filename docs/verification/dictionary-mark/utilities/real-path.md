@@ -75,6 +75,10 @@ locations, while device-namespace and local paths are not. Elsewhere nothing is.
 stream suffixes, trailing spaces, superscript digits and any letter case; `null`, `console`, `COM10`
 and `terms.yaml` are not.
 
+**RealPath_IsOrdinaryExtendedPath_Classified**: On every platform, `\\?\C:\docs`, `\\?\C:` and
+`\\?\Volume{GUID}\x` are ordinary extended-length paths, while `\\?\UNC\s\x`, `\\?\pipe\x`, `\\.\C:\x`,
+`C:\x` and a volume with a malformed GUID are not.
+
 **RealPath_IsLink_SymlinkOrJunction_True**: A folder link (symbolic link or junction) is a link; its
 target folder and a missing entry are not.
 

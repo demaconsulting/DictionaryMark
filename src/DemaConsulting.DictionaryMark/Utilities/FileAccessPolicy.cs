@@ -35,10 +35,16 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///     </para>
 ///     <list type="bullet">
 ///         <item>
-///             In every mode, a URL or URI, a <c>file:</c> URI with a host, a UNC or network path, a device path, an
-///             alternate data stream (any colon other than the drive of an absolute Windows path) and anything that
-///             is not a regular file are never accessed. On Windows a path that passes through a symbolic link or
-///             junction whose target is a network location is denied before anything opens it.
+///             In every mode, a URL (<c>scheme://</c>), a <c>file:</c> URI with a host, a path written as a UNC path,
+///             a device path, on Windows an alternate data stream (any colon other than the drive of an absolute
+///             path), on Linux and macOS an output under <c>/dev</c> (also through a link to a folder there), and
+///             anything that is not a regular file are never accessed.
+///         </item>
+///         <item>
+///             Network locations follow CanvasNet: a path written as a UNC path is never accessed, a path that is
+///             itself on a network location (on a mapped network drive, or resolved against a folder on a share) is
+///             accessed, and on Windows a local path that leads to a network location through a symbolic link or
+///             junction is denied, before anything opens it where the links can be read.
 ///         </item>
 ///         <item>
 ///             Under <see cref="FileAccessMode.Roots"/>, both the full path as written (after <c>${VAR}</c>
@@ -60,6 +66,55 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         check and the open is still caught. A write never truncates before the handle is verified. Hard links
 ///         cannot be detected. Instances are immutable and thread-safe; reads and writes perform file-system I/O.
 ///     </para>
+///     <para>Deliberate differences from CanvasNet (see the design):</para>
+///     <list type="bullet">
+///         <item>
+///             The colon rule applies on Windows only, because a configuration path is a host path and a colon is
+///             an ordinary file-name character on Linux and macOS.
+///         </item>
+///         <item>
+///             A URL needs <c>scheme://</c>, because with colons legal on Linux and macOS a scheme alone does not
+///             mark a URL there (on Windows the colon rule still denies <c>urn:x</c>).
+///         </item>
+///         <item>
+///             <c>file:////server</c> gets the URL reason rather than the <c>file:</c> host reason, because no
+///             host follows <c>file://</c>; both deny it.
+///         </item>
+///         <item>
+///             The written-text rules also apply to the expanded <c>root:</c> value (applied by ConfigFile),
+///             because it is written configuration content; CanvasNet has no such key.
+///         </item>
+///         <item>
+///             <c>${VAR}</c> is expanded in <c>--allow-root</c> (applied by Context), because every folder option
+///             is resolved by <see cref="PathResolver"/>, as <c>--root</c> is.
+///         </item>
+///         <item>
+///             An ordinary extended-length <c>--allow-root</c> is rejected (applied by Context), because
+///             <see cref="PathResolver"/> refuses <c>?</c> as a wildcard in every folder option.
+///         </item>
+///         <item>
+///             The path is walked for a link to a network location before it is opened, because matching a glob
+///             and creating an output folder touch the disk before any handle exists.
+///         </item>
+///         <item>
+///             A file a glob matched gets only the full-path rules, because it has no written text; CanvasNet has
+///             no globs.
+///         </item>
+///         <item>
+///             The write rules have no counterpart, because CanvasNet never writes: on Linux and macOS an output
+///             under <c>/dev</c>, or whose deepest existing folder has a real path under <c>/dev</c>, is denied
+///             before the open; a missing output is created exclusively; an existing one is opened without
+///             truncation and verified first; and a dangling output link is denied in a restrictive mode.
+///         </item>
+///         <item>
+///             A named pipe with no reader, whose non-blocking open for writing fails with <c>ENXIO</c> on Linux
+///             and macOS, is denied as not a regular file, so the write never blocks.
+///         </item>
+///         <item>
+///             The denial is reported as <c>file-access-denied</c> in the per-job error of the tool, because that
+///             is its existing error convention; the code name is the same.
+///         </item>
+///     </list>
 /// </remarks>
 internal sealed partial class FileAccessPolicy
 {
@@ -73,8 +128,12 @@ internal sealed partial class FileAccessPolicy
     private const string FileUriHostReason =
         "it is a file: URI with a host, which names a network location and is never accessed";
 
-    /// <summary>The reason for a UNC or network path.</summary>
+    /// <summary>The reason for a path written as a UNC or network path.</summary>
     private const string NetworkReason = "it is a UNC or network path, which is never accessed";
+
+    /// <summary>The reason for a local path that leads to a network location through a link.</summary>
+    private const string NetworkLinkReason =
+        "it leads to a network location through a symbolic link or junction, which is never accessed";
 
     /// <summary>The reason for a device path.</summary>
     private const string DeviceReason = "it is a device path, which is never accessed";
@@ -265,14 +324,22 @@ internal sealed partial class FileAccessPolicy
     ///     Explains why a path text is on the never-accessed list, or returns null when it is not.
     /// </summary>
     /// <remarks>
-    ///     A pure text check, run before anything is touched, in every mode. Backslashes count as slashes. The rules,
-    ///     in order: a device path (<c>\\?\</c>, <c>\\.\</c>, <c>\??\</c>); a network path (<c>\\server</c>,
-    ///     <c>//server</c>); a URL (a scheme of two or more characters followed by <c>://</c>), where a
-    ///     <c>file:</c> URL with a host is a network location; any other colon except the drive of an absolute
-    ///     Windows path (an alternate data stream, a drive-relative path, another URI such as <c>urn:x</c>, or a
-    ///     drive on a system that has none);
-    ///     and a device name (a Windows reserved name in any component on Windows, a path under <c>/dev</c>
-    ///     elsewhere).
+    ///     <para>
+    ///         A pure text check of a path as written (after <c>${VAR}</c> expansion), run before anything is
+    ///         touched, in every mode. Backslashes count as slashes. The rules, in order: a device path
+    ///         (<c>\\?\</c> and <c>\\.\</c> on every platform, <c>\??\</c> on Windows); a path written as a network
+    ///         path (<c>\\server</c>, <c>//server</c>); a URL (a scheme of two or more characters followed by
+    ///         <c>://</c>), where a <c>file:</c> URL with a host is a network location; on Windows, any other colon
+    ///         except the drive of an absolute path (an alternate data stream, a drive-relative path or another URI
+    ///         such as <c>urn:x</c>); and on Windows a reserved device name in any component.
+    ///     </para>
+    ///     <para>
+    ///         These rules apply to the text as written, as in CanvasNet, so a relative path resolved against a
+    ///         folder on a share is not a network path. The colon rule is Windows-only, unlike CanvasNet: a
+    ///         configuration path is a host path, and on Linux and macOS a colon is an ordinary file-name character
+    ///         (so <c>urn:x</c> is a file name there). A device file on Linux and macOS is refused by its handle
+    ///         type after a non-blocking open, and an output under <c>/dev</c> by <see cref="WriteAllText"/>.
+    ///     </para>
     /// </remarks>
     /// <param name="path">The path text. Must not be null.</param>
     /// <returns>The reason, or null when the text may be accessed.</returns>
@@ -285,7 +352,7 @@ internal sealed partial class FileAccessPolicy
         // Device and network prefixes come first, so their reason names them rather than a colon
         var text = path.Replace('\\', '/');
         if (text.StartsWith("//?/", StringComparison.Ordinal) || text.StartsWith("//./", StringComparison.Ordinal)
-            || text.StartsWith("/??/", StringComparison.Ordinal))
+            || (OperatingSystem.IsWindows() && RealPath.IsWindowsDeviceNamespace(text)))
         {
             return DeviceReason;
         }
@@ -305,18 +372,82 @@ internal sealed partial class FileAccessPolicy
                 : UrlReason;
         }
 
-        // The only colon a local path may carry is the drive of an absolute Windows path
-        var allowedColon = OperatingSystem.IsWindows() && HasDrive(text) ? 1 : -1;
+        // Linux and macOS have no streams, drives or reserved names: a colon is an ordinary file-name character
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+
+        // On Windows the only colon a local path may carry is the drive of an absolute path
+        var allowedColon = HasDrive(text) ? 1 : -1;
         if (text.IndexOf(':', allowedColon + 1) >= 0)
         {
             return ColonReason;
         }
 
-        // Device names: reserved names on Windows, the /dev tree elsewhere
-        var isDevice = OperatingSystem.IsWindows()
-            ? RealPath.HasWindowsDeviceName(text)
-            : text == "/dev" || text.StartsWith("/dev/", StringComparison.Ordinal);
-        return isDevice ? DeviceReason : null;
+        // A reserved device name in any component
+        return RealPath.HasWindowsDeviceName(text) ? DeviceReason : null;
+    }
+
+    /// <summary>
+    ///     Explains why a full candidate path is never accessed, or returns null when it is not.
+    /// </summary>
+    /// <remarks>
+    ///     A pure text check of the full path (the written path combined with its base folder), as CanvasNet applies
+    ///     to a full candidate: on Windows only, a path in a device namespace or with a reserved device name in any
+    ///     component is a device path, except under an ordinary extended-length drive or volume root
+    ///     (<c>\\?\C:\</c>, <c>\\?\Volume{GUID}\</c>), where device names are not mapped. The written text cannot
+    ///     itself be extended-length (<see cref="DescribeNeverAccessed(string)"/> denies it), so such a full path
+    ///     only comes from a trusted base folder. The URL, network and colon rules apply only to the text as
+    ///     written, so a path on a share or on a mapped network drive is not denied here. Always null on Linux and
+    ///     macOS.
+    /// </remarks>
+    /// <param name="fullPath">The full path. Must not be null.</param>
+    /// <returns>The reason, or null.</returns>
+    internal static string? DescribeNeverAccessedFullPath(string fullPath) =>
+        OperatingSystem.IsWindows()
+            && !RealPath.IsOrdinaryExtendedPath(fullPath)
+            && (RealPath.IsWindowsDeviceNamespace(fullPath) || RealPath.HasWindowsDeviceName(fullPath))
+            ? DeviceReason
+            : null;
+
+    /// <summary>
+    ///     Determines whether a path that is not itself a network location leads to one.
+    /// </summary>
+    /// <remarks>
+    ///     CanvasNet's network-target rule: a path the host placed on a network drive or share is accessed, but a
+    ///     local path whose real path (or link target) is a network location reached it through a symbolic link or
+    ///     junction, and is never accessed. A mapped network drive counts as a network location, so a path on
+    ///     <c>Z:\</c> whose real path names the share is not denied. Always false on Linux and macOS, where
+    ///     <see cref="RealPath.IsNetworkLocation(string)"/> is false.
+    /// </remarks>
+    /// <param name="fullPath">The full path as written. Must not be null.</param>
+    /// <param name="realPath">The real path, or the path its links lead to. Must not be null.</param>
+    /// <returns>True when the local path leads to a network location.</returns>
+    internal static bool LeadsToNetwork(string fullPath, string realPath) =>
+        RealPath.IsNetworkLocation(realPath) && !RealPath.IsNetworkLocation(fullPath);
+
+    /// <summary>
+    ///     Determines whether a folder offered as an allowed folder is in a Windows device namespace.
+    /// </summary>
+    /// <remarks>
+    ///     An allowed folder confines every configuration-file path, so it must never be a device. The rule is
+    ///     CanvasNet's for its allowed roots: on Windows, a full path in a device namespace (<c>\\.\</c>,
+    ///     <c>\??\</c>, or <c>\\?\</c>) is refused unless it is an ordinary extended-length drive or volume path
+    ///     (<c>\\?\C:\</c>, <c>\\?\Volume{GUID}\</c>). A pure text check, so the caller can apply it before the
+    ///     folder is probed. Always false on Linux and macOS.
+    /// </remarks>
+    /// <param name="fullPath">The full path of the folder. Must not be null.</param>
+    /// <returns>True when the folder must be refused as an allowed folder.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fullPath"/> is null.</exception>
+    public static bool IsDeviceNamespaceFolder(string fullPath)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(fullPath);
+
+        return OperatingSystem.IsWindows()
+            && RealPath.IsWindowsDeviceNamespace(fullPath)
+            && !RealPath.IsOrdinaryExtendedPath(fullPath);
     }
 
     /// <summary>
@@ -324,12 +455,13 @@ internal sealed partial class FileAccessPolicy
     /// </summary>
     /// <remarks>
     ///     Matching touches the disk (existence checks and folder enumeration), so the never-accessed list is
-    ///     applied to the pattern text first. On Windows the literal part of the pattern (the folders before the
-    ///     first wildcard, or the whole of a literal pattern) is then walked for a symbolic link or junction to a
-    ///     network location, so matching never contacts a share through that part. Under
-    ///     <see cref="FileAccessMode.Roots"/> a literal (wildcard-free) pattern must also be inside an allowed folder
-    ///     as written. Every file a glob matches is judged again, individually, when it is read; a link below the
-    ///     first wildcard is reached by the matching itself and is not walked here.
+    ///     applied to the pattern text and to the rooted pattern first. On Windows, unless the rooted pattern is
+    ///     itself on a network location, the literal part of the pattern (the folders before the first wildcard, or
+    ///     the whole of a literal pattern) is then walked for a symbolic link or junction to a network location, so
+    ///     matching never contacts a share through that part. Under <see cref="FileAccessMode.Roots"/> a literal
+    ///     (wildcard-free) pattern must also be inside an allowed folder as written. Every file a glob matches is
+    ///     judged again, individually and by its full path, when it is read; a link below the first wildcard is
+    ///     reached by the matching itself and is not walked here.
     /// </remarks>
     /// <param name="writtenPattern">The pattern as written, used in the message. Must not be null.</param>
     /// <param name="expandedPattern">The pattern after <c>${VAR}</c> expansion. Must not be null.</param>
@@ -351,7 +483,7 @@ internal sealed partial class FileAccessPolicy
             throw new FileAccessDeniedException(writtenPattern, null, reason);
         }
 
-        // The literal part of the pattern must not pass through a link to a network location
+        // The literal part of the pattern must not lead to a network location through a link
         var wildcard = rootedPattern.IndexOfAny(Wildcards);
         var literalPart = wildcard < 0
             ? rootedPattern
@@ -373,37 +505,42 @@ internal sealed partial class FileAccessPolicy
     ///     Reads a text file named in a configuration file, after judging it by the never-accessed list and the mode.
     /// </summary>
     /// <remarks>
-    ///     The checks run in order: the never-accessed list (on Windows including a symbolic link or junction at any
-    ///     folder of the path whose target is a network location) and, under <see cref="FileAccessMode.Roots"/>, the
-    ///     path as written, all before the file is opened; then the open (non-blocking on Linux and macOS); then the
-    ///     facts of the open handle: a regular file, not on a network, and in a restrictive mode a known real path
-    ///     that satisfies the mode. The content is read from the same handle that was judged, decoded as UTF-8 with
+    ///     The checks run in order: the never-accessed list (the text rules on the path as written, the device
+    ///     rules on the full path, and on Windows a symbolic link or junction at any folder of a local path whose
+    ///     target is a network location) and, under <see cref="FileAccessMode.Roots"/>, the path as written, all
+    ///     before the file is opened; then the open (non-blocking on Linux and macOS); then the facts of the open
+    ///     handle: a regular file, not a local path whose real path is on a network location, and in a restrictive
+    ///     mode a known real path that satisfies the mode. A file a glob matched has no text as written: its pattern
+    ///     was already judged by <see cref="CheckPattern"/>, so only the full-path rules apply and the denial names
+    ///     the full path. The content is read from the same handle that was judged, decoded as UTF-8 with
     ///     byte-order-mark detection like <see cref="File.ReadAllText(string)"/>.
     /// </remarks>
-    /// <param name="writtenPath">The path as written (or the matched file), used in the message. Must not be null.</param>
+    /// <param name="writtenPath">
+    ///     The path as written, used in the message, or null for a file a glob matched (named by its full path).
+    /// </param>
     /// <param name="fullPath">The full, normalized path of the file. Must not be null.</param>
     /// <returns>The file content.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fullPath"/> is null.</exception>
     /// <exception cref="FileAccessDeniedException">Thrown when the file is denied.</exception>
     /// <exception cref="IOException">Thrown when the file cannot be opened or read.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when the system denies access to the file.</exception>
-    public string ReadAllText(string writtenPath, string fullPath)
+    public string ReadAllText(string? writtenPath, string fullPath)
     {
         // Validate input
-        ArgumentNullException.ThrowIfNull(writtenPath);
         ArgumentNullException.ThrowIfNull(fullPath);
 
-        // Judge the path before anything is opened
+        // Judge the path before anything is opened; a matched file is named by its full path
+        var shown = writtenPath ?? fullPath;
         CheckBeforeOpen(writtenPath, fullPath);
-        var anchor = CaptureAnchor(writtenPath, fullPath);
+        var anchor = CaptureAnchor(shown, fullPath);
         if (Directory.Exists(fullPath))
         {
-            throw new FileAccessDeniedException(writtenPath, null, NotRegularReason);
+            throw new FileAccessDeniedException(shown, null, NotRegularReason);
         }
 
         // Open the file, judge the handle, and read from the same handle
         using var handle = RealPath.OpenForRead(fullPath);
-        CheckHandle(writtenPath, fullPath, handle, anchor);
+        CheckHandle(shown, fullPath, handle, anchor);
         using var stream = new FileStream(handle, FileAccess.Read, bufferSize: 1);
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         return reader.ReadToEnd();
@@ -414,14 +551,17 @@ internal sealed partial class FileAccessPolicy
     ///     mode, creating missing parent folders.
     /// </summary>
     /// <remarks>
-    ///     Nothing is created or written until the pre-checks pass: the never-accessed list, the path as written,
-    ///     the deepest existing parent folder (its real path, in a restrictive mode), and an existing output (its
-    ///     real path when it may be a link). In a restrictive mode the missing folders are then created one at a
-    ///     time, each verified by its real path. An existing output is opened without truncation and a missing one
-    ///     is created exclusively (which never follows a link at the output name); the handle is judged, and only
-    ///     then is the file truncated and written as UTF-8 without a byte-order mark, like
-    ///     <see cref="File.WriteAllText(string, string)"/>. A folder swapped by another process between its check
-    ///     and the exclusive create can leave an empty file at the swapped location, but no content is written.
+    ///     Nothing is created or written until the pre-checks pass: the never-accessed list, on Linux and macOS an
+    ///     output under <c>/dev</c>, or whose deepest existing folder's real path is under <c>/dev</c> (opening a
+    ///     device node for writing can act on the device before its handle can be judged), the path as written, the
+    ///     deepest existing parent folder (its real path, in a restrictive mode, and on Windows not a local folder
+    ///     that leads to a network location), and an existing output (its real path when it may be a link). In a
+    ///     restrictive mode the missing folders are then created one at a time, each verified by its real path. An
+    ///     existing output is opened without truncation and a missing one is created exclusively (which never
+    ///     follows a link at the output name); the handle is judged, and only then is the file truncated and
+    ///     written as UTF-8 without a byte-order mark, like <see cref="File.WriteAllText(string, string)"/>. A
+    ///     folder swapped by another process between its check and the exclusive create can leave an empty file at
+    ///     the swapped location, but no content is written.
     /// </remarks>
     /// <param name="writtenPath">The output path as written, used in the message. Must not be null.</param>
     /// <param name="fullPath">The full, normalized path of the output. Must not be null.</param>
@@ -439,6 +579,11 @@ internal sealed partial class FileAccessPolicy
 
         // Judge the path and its deepest existing parent folder before anything is created
         CheckBeforeOpen(writtenPath, fullPath);
+        if (IsUnixDevicePath(fullPath))
+        {
+            throw new FileAccessDeniedException(writtenPath, null, DeviceReason);
+        }
+
         var anchor = CaptureAnchor(writtenPath, fullPath);
         var parent = Path.GetDirectoryName(fullPath);
         var missing = new List<string>();
@@ -484,29 +629,31 @@ internal sealed partial class FileAccessPolicy
         $"the real path of the opened file cannot be determined on this system, so --file-access {ModeName} cannot be applied";
 
     /// <summary>
-    ///     Applies the never-accessed list to the path as written and to its full path, including a link on the path
-    ///     whose target is a network location, and, under <see cref="FileAccessMode.Roots"/>, requires the full path
-    ///     as written to be inside an allowed folder.
+    ///     Applies the never-accessed list to the path as written and to its full path, including a link on a local
+    ///     path whose target is a network location, and, under <see cref="FileAccessMode.Roots"/>, requires the full
+    ///     path as written to be inside an allowed folder.
     /// </summary>
-    /// <param name="writtenPath">The path as written.</param>
+    /// <param name="writtenPath">The path as written, or null for a file a glob matched (its pattern was judged).</param>
     /// <param name="fullPath">The full path.</param>
     /// <exception cref="FileAccessDeniedException">Thrown when the path is denied.</exception>
-    private void CheckBeforeOpen(string writtenPath, string fullPath)
+    private void CheckBeforeOpen(string? writtenPath, string fullPath)
     {
-        // The never-accessed list, in every mode
-        var reason = DescribeNeverAccessed(writtenPath) ?? DescribeNeverAccessedFullPath(fullPath);
+        // The never-accessed list, in every mode: the text rules only when there is written text
+        var shown = writtenPath ?? fullPath;
+        var reason = (writtenPath == null ? null : DescribeNeverAccessed(writtenPath))
+            ?? DescribeNeverAccessedFullPath(fullPath);
         if (reason != null)
         {
-            throw new FileAccessDeniedException(writtenPath, null, reason);
+            throw new FileAccessDeniedException(shown, null, reason);
         }
 
-        // A link anywhere on the path that leads to a network location, before anything contacts it
-        CheckNetworkLink(writtenPath, fullPath);
+        // A link anywhere on a local path that leads to a network location, before anything contacts it
+        CheckNetworkLink(shown, fullPath);
 
         // The path as written must be inside an allowed folder
         if (Mode.HasFlag(FileAccessMode.Roots) && !IsWrittenInside(fullPath))
         {
-            throw new FileAccessDeniedException(writtenPath, null, RootsWrittenReason);
+            throw new FileAccessDeniedException(shown, null, RootsWrittenReason);
         }
     }
 
@@ -540,7 +687,8 @@ internal sealed partial class FileAccessPolicy
     }
 
     /// <summary>
-    ///     Judges the deepest existing parent folder of an output.
+    ///     Judges the deepest existing parent folder of an output, including, on Linux and macOS, a folder whose real
+    ///     location is in <c>/dev</c>.
     /// </summary>
     /// <param name="writtenPath">The output path as written.</param>
     /// <param name="fullPath">The full output path.</param>
@@ -553,10 +701,16 @@ internal sealed partial class FileAccessPolicy
         // The real path the output would have, for the message
         var realOutput = canonicalFolder == null ? null : Path.Join(canonicalFolder, Path.GetRelativePath(folder, fullPath));
 
-        // A folder on a network location is never accessed, in every mode
-        if (canonicalFolder != null && DescribeLocation(canonicalFolder) is { } location)
+        // On Linux and macOS a folder whose real location is in /dev holds devices, in every mode
+        if (canonicalFolder != null && IsUnixDevicePath(canonicalFolder))
         {
-            throw new FileAccessDeniedException(writtenPath, realOutput, location);
+            throw new FileAccessDeniedException(writtenPath, realOutput, DeviceReason);
+        }
+
+        // A local folder that leads to a network location is never accessed, in every mode
+        if (canonicalFolder != null && LeadsToNetwork(folder, canonicalFolder))
+        {
+            throw new FileAccessDeniedException(writtenPath, realOutput, NetworkLinkReason);
         }
 
         if (Mode == FileAccessMode.None)
@@ -695,8 +849,8 @@ internal sealed partial class FileAccessPolicy
     }
 
     /// <summary>
-    ///     Judges a real path: never on a network or device location, and in a restrictive mode known and
-    ///     satisfying the mode.
+    ///     Judges a real path: never a local path that leads to a network location, and in a restrictive mode known
+    ///     and satisfying the mode.
     /// </summary>
     /// <param name="writtenPath">The path as written.</param>
     /// <param name="fullPath">The full path as written.</param>
@@ -705,9 +859,9 @@ internal sealed partial class FileAccessPolicy
     /// <exception cref="FileAccessDeniedException">Thrown when the real path is denied.</exception>
     private void CheckRealPath(string writtenPath, string fullPath, string? realPath, AnchorSnapshot? anchor)
     {
-        if (realPath != null && DescribeLocation(realPath) is { } location)
+        if (realPath != null && LeadsToNetwork(fullPath, realPath))
         {
-            throw new FileAccessDeniedException(writtenPath, realPath, location);
+            throw new FileAccessDeniedException(writtenPath, realPath, NetworkLinkReason);
         }
 
         if (Mode == FileAccessMode.None)
@@ -798,50 +952,47 @@ internal sealed partial class FileAccessPolicy
         relative == "." ? canonicalAnchor : Path.Join(canonicalAnchor, relative);
 
     /// <summary>
-    ///     Applies the never-accessed list to a full path: the text rules and a mapped network drive.
-    /// </summary>
-    /// <param name="fullPath">The full path.</param>
-    /// <returns>The reason, or null.</returns>
-    private static string? DescribeNeverAccessedFullPath(string fullPath) =>
-        DescribeNeverAccessed(fullPath) ?? (RealPath.IsNetworkLocation(fullPath) ? NetworkReason : null);
-
-    /// <summary>
-    ///     Classifies a real path reported by the system as a network or device location.
-    /// </summary>
-    /// <param name="realPath">The real path.</param>
-    /// <returns>The reason, or null for an ordinary local path.</returns>
-    private static string? DescribeLocation(string realPath)
-    {
-        if (RealPath.IsNetworkLocation(realPath))
-        {
-            return NetworkReason;
-        }
-
-        var isDevice = OperatingSystem.IsWindows()
-            ? RealPath.IsWindowsDeviceNamespace(realPath)
-            : realPath.StartsWith("/dev/", StringComparison.Ordinal);
-        return isDevice ? DeviceReason : null;
-    }
-
-    /// <summary>
-    ///     Denies, on Windows, a path that passes through a symbolic link or junction whose target is a network
-    ///     location, before anything opens, tests or enumerates the path.
+    ///     Determines whether a full output path, or the real location of its deepest existing folder, is the
+    ///     <c>/dev</c> tree on Linux and macOS.
     /// </summary>
     /// <remarks>
-    ///     Every component of the path is checked, not only the last, and a chain of links is followed by reading
-    ///     each link's target without opening through it (see
+    ///     A write-only rule with no counterpart in CanvasNet, which never writes: a read of a device node is refused
+    ///     by its handle type after a non-blocking open, but opening a device node for writing can already act on
+    ///     the device, so an output there is denied before anything is opened. Always false on Windows, where
+    ///     device names are judged by <see cref="DescribeNeverAccessedFullPath(string)"/>.
+    /// </remarks>
+    /// <param name="fullPath">The full path or real folder path.</param>
+    /// <returns>True when the path is <c>/dev</c> or under it.</returns>
+    private static bool IsUnixDevicePath(string fullPath) =>
+        !OperatingSystem.IsWindows()
+        && (fullPath == "/dev" || fullPath.StartsWith("/dev/", StringComparison.Ordinal));
+
+    /// <summary>
+    ///     Denies, on Windows, a local path that passes through a symbolic link or junction whose target is a
+    ///     network location, before anything opens, tests or enumerates the path.
+    /// </summary>
+    /// <remarks>
+    ///     A path that is itself on a network location (a share, or a mapped network drive) is accessed, as in
+    ///     CanvasNet, so it is not walked. Otherwise every component of the path is checked, not only the last, and
+    ///     a chain of links is followed by reading each link's target without opening through it (see
     ///     <see cref="RealPath.FindNetworkLinkTarget(string, Func{string, string?})"/>), so the share is never
-    ///     contacted. Anything denied here would also be denied by the real path after the open; the check only
-    ///     moves the denial before any network contact. Does nothing on other systems.
+    ///     contacted. Anything denied here would also be denied by the real path after the open (CanvasNet's only
+    ///     check); the walk only moves the denial before any network contact, which matters because matching a glob
+    ///     and creating an output folder touch the disk before any handle exists. Does nothing on other systems.
     /// </remarks>
     /// <param name="writtenPath">The path or pattern as written, used in the message.</param>
     /// <param name="fullPath">The full path to walk.</param>
     /// <exception cref="FileAccessDeniedException">Thrown when a link on the path leads to a network location.</exception>
     private void CheckNetworkLink(string writtenPath, string fullPath)
     {
+        if (RealPath.IsNetworkLocation(fullPath))
+        {
+            return;
+        }
+
         if (RealPath.FindNetworkLinkTarget(fullPath, _linkReader) is { } networkPath)
         {
-            throw new FileAccessDeniedException(writtenPath, networkPath, NetworkReason);
+            throw new FileAccessDeniedException(writtenPath, networkPath, NetworkLinkReason);
         }
     }
 

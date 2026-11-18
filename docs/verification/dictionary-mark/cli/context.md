@@ -323,6 +323,16 @@ through `..` resolves under the working directory even with a `--root` that has 
 name, and a `${VAR}` value is expanded. A missing folder gives the exact message naming the folder and
 the option. These scenarios are tested by the tests of the same names.
 
+**Context_Create_AllowRootInDeviceNamespace_Throws** (Windows): An existing folder written as `\\.\{folder}`
+is refused before it is probed, with the exact message naming the folder, the option and the device
+namespace. It is skipped with a reason on Linux and macOS. This scenario is tested by
+`Context_Create_AllowRootInDeviceNamespace_Throws`.
+
+**Context_Create_AllowRootExtendedLength_ThrowsWildcard** (Windows): An existing folder written as the
+ordinary extended-length path `\\?\{folder}` passes the device-namespace check and is refused by the wildcard
+rule with the exact message naming the option and the folder, as for `--root`. It is skipped with a reason on
+Linux and macOS. This scenario is tested by `Context_Create_AllowRootExtendedLength_ThrowsWildcard`.
+
 **Context_Create_AllowRootWithAny_ThrowsNamingConflict** and
 **Context_Create_AllowRootWithNoSymlinks_ThrowsNamingConflict**: Verify that `--allow-root` with
 `--file-access any` or `No-Symlinks` (in either order) is rejected with a message naming the conflict

@@ -511,7 +511,6 @@ public class ConfigFileTests
     [InlineData(@"\\server\share", "it is a UNC or network path")]
     [InlineData("http://example.com/docs", "it is a URL or URI")]
     [InlineData(@"\\.\pipe\x", "it is a device path")]
-    [InlineData("docs:stream", "it names an alternate data stream")]
     public void ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied(string value, string reason)
     {
         // Arrange: a root that names a never-accessed location
@@ -521,6 +520,43 @@ public class ConfigFileTests
         // Act / Assert: the error names the file, the code, the root and the reason
         var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
         Assert.StartsWith($"Config file '{path}': file-access-denied: root '{value}': {reason}", ex.Message);
+    }
+
+    /// <summary>Test that on Windows a root naming an alternate data stream is denied before it is probed.</summary>
+    [Fact]
+    public void ConfigFile_Load_RootWithColon_ThrowsFileAccessDeniedOnWindows()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The colon rule applies on Windows only.");
+
+        // Arrange: a root with a stream suffix
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: 'docs:stream'\n" + MinimalTables);
+
+        // Act / Assert: the error names the file, the code, the root and the reason
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.StartsWith(
+            $"Config file '{path}': file-access-denied: root 'docs:stream': it names an alternate data stream",
+            ex.Message);
+    }
+
+    /// <summary>Test that on Linux and macOS a root whose folder name contains a colon is resolved.</summary>
+    [Fact]
+    public void ConfigFile_Load_RootWithColon_ResolvesOnLinuxAndMac()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is an ordinary file-name character on Linux and macOS only.");
+
+        // Arrange: a folder named with a colon next to the config file
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "docs:v1")).FullName;
+        var path = WriteConfig(tmpDir, "root: 'docs:v1'\n" + MinimalTables);
+
+        // Act
+        var config = ConfigFile.Load(path);
+
+        // Assert
+        Assert.Equal(folder, config.RootDirectory);
     }
 
     /// <summary>Test that the root key inside a job is rejected.</summary>

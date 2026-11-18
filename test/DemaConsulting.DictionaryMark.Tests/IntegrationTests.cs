@@ -1671,10 +1671,12 @@ public class IntegrationTests
         Assert.Contains($"file-access-denied: '{device}': it is a device path, which is never accessed", output);
     }
 
-    /// <summary>Test that an alternate data stream output is never written.</summary>
+    /// <summary>Test that on Windows an alternate data stream output is never written.</summary>
     [Fact]
     public void DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied()
     {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The colon rule applies on Windows only.");
+
         // Arrange
         using var tmpDir = new TemporaryDirectory();
         WriteFile(tmpDir, "config/terms.yaml", Terms);
@@ -1687,6 +1689,54 @@ public class IntegrationTests
         Assert.Equal(1, exitCode);
         Assert.Contains("file-access-denied: 'out.md:hidden': it names an alternate data stream", output);
         Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that on Linux and macOS input and output file names with a colon are read and written under roots.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is an ordinary file-name character on Linux and macOS only.");
+
+        // Arrange: an input and an output whose names contain a colon
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms:v1.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: 'terms:v1.yaml'\n    output: 'out:1.md'\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots");
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "config/out:1.md")));
+    }
+
+    /// <summary>
+    ///     Test that a config file on a share, with relative paths, works in the default mode (skipped unless the
+    ///     administrative share of the temporary folder's drive is reachable; supplementary, not requirement
+    ///     evidence).
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigOnShare_RelativePathsAllowed()
+    {
+        // Arrange: a config with relative paths, reached through \\localhost\<drive>$ (skipped when not reachable)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: gen/terms.md\n");
+        var shareFolder = LinkSupport.AdminShareFolderOrSkip(tmpDir.DirectoryPath);
+
+        // Act
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet",
+            _dllPath,
+            "--config",
+            Path.Combine(shareFolder, "config", "dictionarymark.yaml"));
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "config/gen/terms.md")));
     }
 
     /// <summary>Test that a folder at the output path is never written.</summary>

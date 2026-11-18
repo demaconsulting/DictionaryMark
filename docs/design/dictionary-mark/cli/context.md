@@ -112,7 +112,13 @@ path of the configuration jobs.
    returns `FileAccessPolicy.Any` without touching the file system. Otherwise the allowed folders
    are the `--allow-root` values, each resolved with `PathResolver.ResolveExistingDirectory`
    against the working directory, never the root (description `--allow-root option`), or else the
-   working directory and the configuration file's folder. The policy is created with
+   working directory and the configuration file's folder. On Windows each `--allow-root` folder is
+   first resolved with `PathResolver.ResolvePath` and refused when
+   `FileAccessPolicy.IsDeviceNamespaceFolder` is true (a device namespace other than an ordinary
+   extended-length path), before its existence is checked. An ordinary extended-length path
+   (`\\?\C:\`, `\\?\Volume{GUID}\`) passes that check. It is then rejected by the wildcard rule of
+   `PathResolver.ResolveExistingDirectory`, as for `--root`, because it contains `?`. So no `\\?\`
+   spelling is accepted. The policy is created with
    `FileAccessPolicy.Create(mode, folders, configFolder)`; the configuration file's folder is the
    trusted base of `no-symlinks`.
 6. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
@@ -136,7 +142,8 @@ Throws `ArgumentException` when an argument is unknown, invalid, repeated or mis
 when the `--file-access` value is not a mode, when `--allow-root` is combined with
 `--file-access any` or `no-symlinks`, when `--input`/`--output` is combined with configuration
 tables, or when a column-width count does not match the table. Throws `InvalidOperationException`
-when the root directory or an `--allow-root` folder is invalid or missing, the `--root` or `--config`
+when the root directory or an `--allow-root` folder is invalid or missing (or, on Windows, an
+`--allow-root` folder is in a device namespace), the `--root` or `--config`
 path is malformed (reported by `PathResolver` as
 `Invalid --root option '...': ...` or `Invalid config file path '...': ...`), the configuration
 file is invalid, or the log file cannot be opened.
@@ -206,8 +213,8 @@ case); `--allow-root <dir>` → `FileAccess.AllowedFolders` (repeatable, non-emp
 - **TableJob** and **FormattingSettings** — Cli unit and supporting type; the generation jobs and
   the formatting precedence layers.
 - **PathResolver** — Utilities unit; resolves `--config`, `--root` and `--allow-root`.
-- **FileAccessPolicy** — Utilities unit; parses the `--file-access` mode and holds the allowed
-  folders.
+- **FileAccessPolicy** — Utilities unit; parses the `--file-access` mode, refuses a device-namespace
+  `--allow-root` folder and holds the allowed folders.
 
 #### Callers
 

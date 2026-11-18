@@ -92,6 +92,28 @@ internal static class LinkSupport
     }
 
     /// <summary>
+    ///     Spells a local Windows folder through the administrative share of its drive on this machine
+    ///     (<c>C:\x</c> as <c>\\localhost\C$\x</c>); skips the test elsewhere or when the share is not reachable.
+    /// </summary>
+    /// <remarks>
+    ///     Gives a real network location without a server: administrative shares need an administrator account and
+    ///     the Server service, so a test that uses this is supplementary and never requirement evidence.
+    /// </remarks>
+    /// <param name="localFolder">The full path of an existing local folder.</param>
+    /// <returns>The folder's path on the administrative share.</returns>
+    public static string AdminShareFolderOrSkip(string localFolder)
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Network shares are tested on Windows only.");
+        var hasDrive = localFolder.Length >= 3 && char.IsAsciiLetter(localFolder[0])
+            && localFolder[1] == ':' && localFolder[2] == '\\';
+        var shareFolder = hasDrive ? $@"\\localhost\{localFolder[0]}${localFolder[2..]}" : string.Empty;
+        Assert.SkipUnless(
+            hasDrive && Directory.Exists(shareFolder),
+            $"The administrative share of '{localFolder}' is not reachable on this machine.");
+        return shareFolder;
+    }
+
+    /// <summary>
     ///     Creates a junction with <c>cmd /c mklink /J</c>.
     /// </summary>
     /// <param name="linkPath">The full path of the junction.</param>

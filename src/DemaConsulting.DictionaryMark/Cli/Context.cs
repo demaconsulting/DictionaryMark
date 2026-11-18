@@ -181,8 +181,8 @@ internal sealed class Context : IDisposable
     /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the root directory or config file path is malformed, invalid or missing, the config file is
-    ///     missing or invalid, an --allow-root folder is malformed or missing, or the specified log file cannot be
-    ///     opened.
+    ///     missing or invalid, an --allow-root folder is malformed, missing or (on Windows) in a device namespace, or
+    ///     the specified log file cannot be opened.
     /// </exception>
     public static Context Create(string[] args)
     {
@@ -263,14 +263,18 @@ internal sealed class Context : IDisposable
     ///     The mode is the --file-access value, or roots when only --allow-root is given, or any. Under roots the
     ///     allowed folders are the --allow-root folders, each resolved against the working directory (never the
     ///     root directory) with <c>${VAR}</c> expansion and <c>..</c> normalization and required to exist; without
-    ///     --allow-root they are the working directory and the config file's folder. The config file's folder is
-    ///     the trusted base of the no-symlinks rule. Neither --root nor the config <c>root</c> key adds an allowed
-    ///     folder: they only set the base directory of relative paths.
+    ///     --allow-root they are the working directory and the config file's folder. On Windows an --allow-root
+    ///     folder in a device namespace other than an ordinary extended-length drive or volume path is rejected
+    ///     before its existence is checked, as in CanvasNet, so an allowed folder can never be a device. The config
+    ///     file's folder is the trusted base of the no-symlinks rule. Neither --root nor the config <c>root</c> key
+    ///     adds an allowed folder: they only set the base directory of relative paths.
     /// </remarks>
     /// <param name="parser">The parsed arguments.</param>
     /// <param name="configPath">The full path of the config file, or null.</param>
     /// <returns>The policy.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an --allow-root folder is malformed or missing.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when an --allow-root folder is malformed, missing, or (on Windows) in a device namespace.
+    /// </exception>
     private static FileAccessPolicy BuildFileAccessPolicy(ArgumentParser parser, string? configPath)
     {
         // The default needs no folders and no file-system access
@@ -285,8 +289,7 @@ internal sealed class Context : IDisposable
         var folders = new List<string>();
         if (parser.AllowRoots.Count > 0)
         {
-            folders.AddRange(parser.AllowRoots.Select(folder =>
-                PathResolver.ResolveExistingDirectory(folder, Environment.CurrentDirectory, "--allow-root option")));
+            folders.AddRange(parser.AllowRoots.Select(ResolveAllowRoot));
         }
         else
         {
@@ -298,6 +301,38 @@ internal sealed class Context : IDisposable
         }
 
         return FileAccessPolicy.Create(mode, folders, configFolder);
+    }
+
+    /// <summary>
+    ///     Resolves one --allow-root folder against the working directory and requires it to exist.
+    /// </summary>
+    /// <remarks>
+    ///     An allowed folder confines every configuration-file path, so on Windows it must not be in a device
+    ///     namespace (<c>\\.\</c>, <c>\??\</c>, or <c>\\?\</c> other than an ordinary extended-length drive or volume
+    ///     path), the same rule CanvasNet applies to its allowed roots. The namespace is checked on the full path
+    ///     before the folder's existence, so a device is never probed. An extended-length spelling, ordinary or not,
+    ///     is then still refused by the wildcard rule of <see cref="PathResolver.ResolveExistingDirectory"/>, as for
+    ///     --root, because it contains <c>?</c>.
+    /// </remarks>
+    /// <param name="folder">The folder as written on the command line.</param>
+    /// <returns>The normalized full path of the existing folder.</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the folder is malformed, does not exist, or (on Windows) is in a device namespace; the
+    ///     message names the --allow-root option and the folder as written.
+    /// </exception>
+    private static string ResolveAllowRoot(string folder)
+    {
+        // Reject a device namespace on the full path, before anything touches the file system
+        const string Description = "--allow-root option";
+        var full = PathResolver.ResolvePath(folder, Environment.CurrentDirectory, Description);
+        if (FileAccessPolicy.IsDeviceNamespaceFolder(full))
+        {
+            throw new InvalidOperationException(
+                $"Directory '{full}' specified by {Description} '{folder}' must not be in a device namespace.");
+        }
+
+        // Expand, normalize and require the folder to exist
+        return PathResolver.ResolveExistingDirectory(folder, Environment.CurrentDirectory, Description);
     }
 
     /// <summary>

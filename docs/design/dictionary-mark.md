@@ -102,8 +102,10 @@ The system has two security boundaries, both enforced entirely within the Utilit
 - **File-access confinement**: a configuration file may come from someone the user does not trust, for
   example a pull request built by CI. `FileAccessPolicy` judges every input and output path the file names
   before it is used:
-  - the never-accessed list (URLs, UNC and network paths, device paths, alternate data streams, anything
-    that is not a regular file) applies in every mode;
+  - the never-accessed list (URLs, paths written as UNC paths, local paths that lead to a share through a
+    link, device paths, alternate data streams on Windows, anything that is not a regular file) applies in
+    every mode. As in CanvasNet, a path that is itself on a share or mapped network drive is accessed, so a
+    configuration file on a share keeps working;
   - `--file-access roots` confines the paths to the allowed folders, and `no-symlinks` refuses symbolic
     links and junctions, both judged by the real path of the opened file.
 

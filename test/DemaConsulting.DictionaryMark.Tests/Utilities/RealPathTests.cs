@@ -275,6 +275,30 @@ public class RealPathTests
         Assert.False(RealPath.IsNetworkLocation(Path.GetFullPath("a.yaml")));
     }
 
+    /// <summary>
+    ///     Test that only an extended-length drive or volume path is an ordinary extended-length path, on every
+    ///     platform (a pure text check).
+    /// </summary>
+    /// <param name="path">The path text.</param>
+    /// <param name="expected">Whether it is an ordinary extended-length path.</param>
+    [Theory]
+    [InlineData(@"\\?\C:\docs", true)]
+    [InlineData(@"\\?\C:", true)]
+    [InlineData(@"\\?\Volume{12345678-1234-1234-1234-123456789abc}\x", true)]
+    [InlineData(@"\\?\UNC\s\x", false)]
+    [InlineData(@"\\?\pipe\x", false)]
+    [InlineData(@"\\.\C:\x", false)]
+    [InlineData(@"C:\x", false)]
+    [InlineData(@"\\?\Volume{bad}\x", false)]
+    public void RealPath_IsOrdinaryExtendedPath_Classified(string path, bool expected)
+    {
+        // Act
+        var result = RealPath.IsOrdinaryExtendedPath(path);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
     /// <summary>Test that every reserved Windows device spelling is recognized, and ordinary names are not.</summary>
     /// <param name="component">The path component.</param>
     /// <param name="expected">Whether it is a device name.</param>

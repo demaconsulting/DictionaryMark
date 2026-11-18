@@ -104,11 +104,17 @@ sections:
 
               - id: DictionaryMark-ConfigFile-RootNeverAccessed
                 title: >-
-                  The ConfigFile unit shall reject a root key that, after ${VAR} expansion, names a URL or URI, a
-                  UNC or network path, a device path or an alternate data stream, with an error containing
-                  file-access-denied, before the file system is touched.
+                  The ConfigFile unit shall reject a root key that, after ${VAR} expansion, names a URL, a path
+                  written as a UNC path, a device path or, on Windows, an alternate data stream, with an error
+                  containing file-access-denied, before the file system is touched, and on Linux and macOS shall
+                  resolve a root whose folder name contains a colon.
                 justification: |
                   The root key only sets a base directory and never grants access, but checking that it exists
-                  would still contact a network host or a device named by an untrusted configuration file.
+                  would still contact a network host or a device named by an untrusted configuration file. Only the
+                  text is judged, so a relative root on a share still resolves, and a colon is an ordinary file-name
+                  character on Linux and macOS.
                 tests:
                   - ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied
+                  - windows@ConfigFile_Load_RootWithColon_ThrowsFileAccessDeniedOnWindows
+                  - ubuntu@ConfigFile_Load_RootWithColon_ResolvesOnLinuxAndMac
+                  - macos@ConfigFile_Load_RootWithColon_ResolvesOnLinuxAndMac

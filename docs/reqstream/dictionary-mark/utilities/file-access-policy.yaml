@@ -31,27 +31,71 @@ sections:
 
               - id: DictionaryMark-FileAccessPolicy-NeverAccessed
                 title: >-
-                  In every mode, the FileAccessPolicy unit shall deny a URL or URI, a file: URI with a host, a UNC
-                  or network path, a device path (including Windows reserved device names and paths under /dev),
-                  an alternate data stream or drive-relative path, and anything that is not a regular file, without
-                  blocking on a named pipe, and on Windows a path or literal pattern prefix that passes through a
-                  symbolic link or junction to a network location, before it is opened or matched.
+                  In every mode, the FileAccessPolicy unit shall deny a URL (a scheme followed by ://), a file: URI
+                  with a host, a path written as a UNC path, a device path (a written \\?\ or \\.\ path, on Windows
+                  a written \??\ path, a full path in a device namespace other than an ordinary extended-length
+                  drive or volume path, or a reserved device name), on Windows a colon other than the drive of an
+                  absolute path, on Linux and macOS an output under /dev or whose deepest existing folder's real path
+                  is under /dev, and anything that is not a regular file, without blocking on a named pipe, before it
+                  is opened, created or matched.
                 justification: |
-                  These locations can leak credentials, hang the run or reach hidden data.
+                  These locations can leak credentials, hang the run, act on a device or reach hidden data. The rules
+                  follow the DEMA Consulting CanvasNet tool, except that the colon rule applies on Windows only
+                  (on Linux and macOS a colon is an ordinary file-name character in a host path) and outputs under
+                  /dev are denied before the open (CanvasNet never writes), including through a link to a folder
+                  there.
                 tests:
                   - FileAccessPolicy_DescribeNeverAccessed_HostileText_ReturnsReason
                   - FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull
                   - FileAccessPolicy_ReadAllText_Directory_Denied
                   - FileAccessPolicy_WriteAllText_ExistingDirectory_Denied
                   - FileAccessPolicy_ReadAllText_NotRegularHandle_Denied
+                  - windows@FileAccessPolicy_DescribeNeverAccessed_ColonOnWindows_ReturnsReason
                   - windows@FileAccessPolicy_ReadAllText_WindowsDeviceName_Denied
-                  - ubuntu@FileAccessPolicy_ReadAllText_DevNull_Denied
-                  - macos@FileAccessPolicy_ReadAllText_DevNull_Denied
+                  - windows@FileAccessPolicy_DescribeNeverAccessedFullPath_SharesAndExtendedPaths
+                  - windows@FileAccessPolicy_ReadAllText_ExtendedLengthBase_ReturnsContent
+                  - ubuntu@FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular
+                  - macos@FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular
+                  - ubuntu@FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen
+                  - macos@FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen
+                  - ubuntu@FileAccessPolicy_WriteAllText_FolderLinkToDev_DeniedBeforeOpen
+                  - macos@FileAccessPolicy_WriteAllText_FolderLinkToDev_DeniedBeforeOpen
+                  - ubuntu@FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull
+                  - macos@FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull
                   - ubuntu@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
                   - macos@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
+
+              - id: DictionaryMark-FileAccessPolicy-NetworkLocations
+                title: >-
+                  On Windows, the FileAccessPolicy unit shall access a path that is itself a network location (on a
+                  mapped network drive, or resolved against a folder on a share), and shall deny a path that is not a
+                  network location but leads to one through a symbolic link or junction, before it is opened,
+                  created or matched where the links can be read, and otherwise by the real path of the opened file.
+                justification: |
+                  This is the network rule of the DEMA Consulting CanvasNet tool. A configuration file kept on a share
+                  or a mapped network drive must keep working with relative paths, while a local path must not be
+                  able to reach a share, and leak credentials to it, through a link.
+                tests:
+                  - windows@FileAccessPolicy_LeadsToNetwork_LocalToShareOnly
+                  - windows@FileAccessPolicy_CheckPattern_PatternOnShare_AllowedWithoutWalk
+                  - windows@FileAccessPolicy_ReadAllText_LocalPathRealPathOnShare_Denied
                   - windows@FileAccessPolicy_ReadAllText_IntermediateLinkToShare_DeniedBeforeOpen
                   - windows@FileAccessPolicy_WriteAllText_IntermediateLinkToShare_DeniedNothingCreated
                   - windows@FileAccessPolicy_CheckPattern_PrefixLinkToShare_DeniedBeforeMatching
+                  - windows@FileAccessPolicy_DescribeNeverAccessedFullPath_SharesAndExtendedPaths
+
+              - id: DictionaryMark-FileAccessPolicy-ColonFileNames
+                title: >-
+                  On Linux and macOS, the FileAccessPolicy unit shall read and write a path whose file or folder
+                  names contain a colon.
+                justification: |
+                  A colon is a legal file-name character on Linux and macOS, and alternate data streams and drives
+                  do not exist there, so denying it would break valid configurations for no protection.
+                tests:
+                  - ubuntu@FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull
+                  - macos@FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull
+                  - ubuntu@FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac
+                  - macos@FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac
 
               - id: DictionaryMark-FileAccessPolicy-RootsWrittenPath
                 title: >-

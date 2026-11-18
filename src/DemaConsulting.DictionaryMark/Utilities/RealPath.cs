@@ -197,6 +197,44 @@ internal static partial class RealPath
         && path[3] is '\\' or '/';
 
     /// <summary>
+    ///     Determines whether a full path is an ordinary extended-length path: <c>\\?\</c> followed by a drive
+    ///     (<c>\\?\C:\docs</c>) or a volume GUID (<c>\\?\Volume{GUID}\docs</c>).
+    /// </summary>
+    /// <remarks>
+    ///     These name a file on a local volume with no device names mapped, so a base folder written that way is
+    ///     trusted like an ordinary drive path; every other extended-length or device-namespace root
+    ///     (<c>\\?\UNC\</c>, <c>\\?\pipe\</c>, another <c>\\?\</c> object path, <c>\\.\</c>, <c>\??\</c>) is not
+    ///     ordinary. The same rule as CanvasNet. A pure text check that gives the same answer on every platform;
+    ///     the callers apply it on Windows only.
+    /// </remarks>
+    /// <param name="path">The full path. Must not be null.</param>
+    /// <returns>True when it is an ordinary extended-length path.</returns>
+    internal static bool IsOrdinaryExtendedPath(string path)
+    {
+        if (!path.StartsWith(WindowsExtendedPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // A drive: \\?\X: alone or followed by a backslash
+        var rest = path.AsSpan(WindowsExtendedPrefix.Length);
+        if (rest.Length >= 2 && char.IsAsciiLetter(rest[0]) && rest[1] == ':')
+        {
+            return rest.Length == 2 || rest[2] == '\\';
+        }
+
+        // A volume: \\?\Volume{GUID} alone or followed by a backslash
+        const string VolumePrefix = "Volume{";
+        const int GuidLength = 36;
+        var close = VolumePrefix.Length + GuidLength;
+        return rest.StartsWith(VolumePrefix, StringComparison.OrdinalIgnoreCase)
+            && rest.Length > close
+            && rest[close] == '}'
+            && Guid.TryParseExact(rest.Slice(VolumePrefix.Length, GuidLength), "D", out _)
+            && (rest.Length == close + 1 || rest[close + 1] == '\\');
+    }
+
+    /// <summary>
     ///     Determines whether a path names a symbolic link or junction, including one whose target does not exist.
     /// </summary>
     /// <remarks>

@@ -74,8 +74,8 @@ Algorithm:
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
 5. When `root` was given, expand its `${VAR}` references and check the expanded text with
-   `FileAccessPolicy.DescribeNeverAccessed`. A URL or URI, a UNC or network path, a device path or a
-   colon (alternate data stream) is rejected before the file system is touched, because checking
+   `FileAccessPolicy.DescribeNeverAccessed`. A URL, a path written as a UNC path, a device path or, on
+   Windows, a colon (alternate data stream) is rejected before the file system is touched, because checking
    that the directory exists would contact the network host or device. The `root` key only sets the
    base directory and never grants file access. Then resolve it with
    `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key")`. This expands

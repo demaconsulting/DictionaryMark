@@ -114,8 +114,6 @@ public class FileAccessPolicyTests
     [InlineData("//server/share/a.yaml", "it is a UNC or network path")]
     [InlineData(@"\\.\pipe\x", "it is a device path")]
     [InlineData(@"\\?\C:\a.yaml", "it is a device path")]
-    [InlineData("a.yaml:stream", "it names an alternate data stream")]
-    [InlineData("C:a.yaml", "it names an alternate data stream")]
     public void FileAccessPolicy_DescribeNeverAccessed_HostileText_ReturnsReason(string path, string reason)
     {
         // Act
@@ -125,6 +123,93 @@ public class FileAccessPolicyTests
         Assert.NotNull(result);
         Assert.StartsWith(reason, result);
         Assert.EndsWith("is never accessed", result);
+    }
+
+    /// <summary>
+    ///     Test that on Windows a colon other than the drive of an absolute path, and the NT object namespace, are on
+    ///     the never-accessed list.
+    /// </summary>
+    /// <param name="path">The path text.</param>
+    /// <param name="reason">A fragment of the expected reason.</param>
+    [Theory]
+    [InlineData("a.yaml:stream", "it names an alternate data stream")]
+    [InlineData("C:a.yaml", "it names an alternate data stream")]
+    [InlineData("docs/terms.yaml:hidden", "it names an alternate data stream")]
+    [InlineData(@"\??\C:\a.yaml", "it is a device path")]
+    public void FileAccessPolicy_DescribeNeverAccessed_ColonOnWindows_ReturnsReason(string path, string reason)
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The colon and NT namespace rules apply on Windows only.");
+
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessed(path);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.StartsWith(reason, result);
+        Assert.EndsWith("is never accessed", result);
+    }
+
+    /// <summary>Test that on Linux and macOS a colon is ordinary text.</summary>
+    /// <param name="path">The path text.</param>
+    [Theory]
+    [InlineData("a.yaml:stream")]
+    [InlineData("terms:v1.yaml")]
+    [InlineData("C:a.yaml")]
+    public void FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull(string path)
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is an ordinary file-name character on Linux and macOS only.");
+
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessed(path);
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS the Windows <c>\??\</c> namespace and a path under /dev are ordinary text (a
+    ///     device is refused by its handle type).
+    /// </summary>
+    /// <param name="path">The path text.</param>
+    [Theory]
+    [InlineData("/??/a.yaml")]
+    [InlineData("/dev/null")]
+    public void FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull(string path)
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "The Windows namespace and /dev text rules are tested on Linux and macOS only.");
+
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessed(path);
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    /// <summary>Test that on Linux and macOS a file whose name contains a colon is read and written under roots.</summary>
+    [Fact]
+    public void FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is an ordinary file-name character on Linux and macOS only.");
+
+        // Arrange: a dictionary named with a colon inside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "allowed/terms:v1.yaml");
+        var output = PathIn(tmpDir, "allowed/out:1.md");
+        var policy = Roots(tmpDir, "allowed");
+
+        // Act
+        var text = policy.ReadAllText("terms:v1.yaml", input);
+        policy.WriteAllText("out:1.md", output, "# Out\n");
+
+        // Assert
+        Assert.Equal(Content, text);
+        Assert.Equal("# Out\n", File.ReadAllText(output));
     }
 
     /// <summary>Test that ordinary relative, parent-segment, glob and absolute paths are not on the list.</summary>
@@ -161,15 +246,85 @@ public class FileAccessPolicyTests
         Assert.Equal("it is a device path, which is never accessed", ex.Reason);
     }
 
-    /// <summary>Test that a path under /dev is denied on Linux and macOS.</summary>
+    /// <summary>Test that a device node is read only to be denied as not a regular file on Linux and macOS.</summary>
     [Fact]
-    public void FileAccessPolicy_ReadAllText_DevNull_Denied()
+    public void FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
 
-        // Act / Assert
+        // Act / Assert: the non-blocking open succeeds and the handle type refuses the device
         var ex = Assert.Throws<FileAccessDeniedException>(() => FileAccessPolicy.Any.ReadAllText("/dev/null", "/dev/null"));
+        Assert.StartsWith("it is not a regular file", ex.Reason);
+    }
+
+    /// <summary>Test that an output under /dev is denied on Linux and macOS before anything is opened.</summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: an inspector that records any open
+        var opened = false;
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.None,
+            [],
+            null,
+            handle =>
+            {
+                opened = true;
+                return RealPath.Inspect(handle);
+            });
+
+        // Act
+        var direct = Record.Exception(() => policy.WriteAllText("/dev/null", "/dev/null", "x"));
+        var rooted = Record.Exception(() => policy.WriteAllText("/tmp/../dev/x.md", Path.GetFullPath("/tmp/../dev/x.md"), "x"));
+
+        // Assert
+        Assert.Equal("it is a device path, which is never accessed", Assert.IsType<FileAccessDeniedException>(direct).Reason);
+        Assert.Equal("it is a device path, which is never accessed", Assert.IsType<FileAccessDeniedException>(rooted).Reason);
+        Assert.False(opened);
+        Assert.False(File.Exists("/dev/x.md"));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS an output in a folder whose real path is /dev is denied before the open.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_FolderLinkToDev_DeniedBeforeOpen()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "/dev is tested on Linux and macOS only.");
+
+        // Arrange: a folder link to /dev (no privilege needed on Linux and macOS) and an inspector recording any open
+        using var tmpDir = new TemporaryDirectory();
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "devices"), "/dev");
+        var opened = false;
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.None,
+            [],
+            null,
+            handle =>
+            {
+                opened = true;
+                return RealPath.Inspect(handle);
+            });
+
+        // Act: an existing device through the link, and a missing folder below the link
+        var direct = Record.Exception(
+            () => policy.WriteAllText("devices/null", PathIn(tmpDir, "devices/null"), "x"));
+        var nested = Record.Exception(
+            () => policy.WriteAllText("devices/new/x.md", PathIn(tmpDir, "devices/new/x.md"), "x"));
+
+        // Assert: both are denied with the device reason in mode any, and nothing is opened or created
+        var ex = Assert.IsType<FileAccessDeniedException>(direct);
         Assert.Equal("it is a device path, which is never accessed", ex.Reason);
+        Assert.Equal("/dev/null", ex.RealPath);
+        Assert.Equal(
+            "it is a device path, which is never accessed",
+            Assert.IsType<FileAccessDeniedException>(nested).Reason);
+        Assert.False(opened);
+        Assert.False(Directory.Exists("/dev/new"));
     }
 
     /// <summary>Test that a named pipe is denied as not a regular file without blocking the read.</summary>
@@ -613,7 +768,7 @@ public class FileAccessPolicyTests
         // Act / Assert
         var ex = Assert.Throws<FileAccessDeniedException>(
             () => policy.ReadAllText("lnk/sub/terms.yaml", PathIn(tmpDir, "lnk/sub/terms.yaml")));
-        Assert.Equal("it is a UNC or network path, which is never accessed", ex.Reason);
+        Assert.Equal("it leads to a network location through a symbolic link or junction, which is never accessed", ex.Reason);
         Assert.StartsWith(@"\\server\share", ex.RealPath);
         Assert.False(opened);
     }
@@ -636,7 +791,7 @@ public class FileAccessPolicyTests
         // Act / Assert
         var ex = Assert.Throws<FileAccessDeniedException>(
             () => policy.WriteAllText("lnk/out/g.md", PathIn(tmpDir, "lnk/out/g.md"), "x"));
-        Assert.Equal("it is a UNC or network path, which is never accessed", ex.Reason);
+        Assert.Equal("it leads to a network location through a symbolic link or junction, which is never accessed", ex.Reason);
         Assert.False(Directory.Exists(PathIn(tmpDir, "lnk")));
     }
 
@@ -660,10 +815,10 @@ public class FileAccessPolicyTests
 
         // Assert
         var glob = Assert.IsType<FileAccessDeniedException>(globException);
-        Assert.Equal("it is a UNC or network path, which is never accessed", glob.Reason);
+        Assert.Equal("it leads to a network location through a symbolic link or junction, which is never accessed", glob.Reason);
         Assert.StartsWith(@"\\server\share", glob.RealPath);
         Assert.Equal(
-            "it is a UNC or network path, which is never accessed",
+            "it leads to a network location through a symbolic link or junction, which is never accessed",
             Assert.IsType<FileAccessDeniedException>(literalException).Reason);
         Assert.Null(localException);
     }
@@ -692,7 +847,135 @@ public class FileAccessPolicyTests
         // Act / Assert: without the walk the open would fail with an I/O error after contacting the network
         var denied = Assert.Throws<FileAccessDeniedException>(
             () => FileAccessPolicy.Any.ReadAllText("lnk/a.yaml", Path.Combine(link, "a.yaml")));
-        Assert.Equal("it is a UNC or network path, which is never accessed", denied.Reason);
+        Assert.Equal("it leads to a network location through a symbolic link or junction, which is never accessed", denied.Reason);
+    }
+
+    /// <summary>
+    ///     Test that on Windows the full-path rule accepts a share and an ordinary extended-length path, and denies
+    ///     every other device-namespace path and a reserved device name.
+    /// </summary>
+    /// <param name="fullPath">The full path.</param>
+    /// <param name="denied">True when the path must be denied as a device path.</param>
+    [Theory]
+    [InlineData(@"\\server\share\cfg\a.yaml", false)]
+    [InlineData(@"\\?\C:\cfg\a.yaml", false)]
+    [InlineData(@"\\?\C:\cfg\NUL.txt", false)]
+    [InlineData(@"C:\x\NUL", true)]
+    [InlineData(@"\\.\C:\x\a.yaml", true)]
+    [InlineData(@"\\?\pipe\x\a.yaml", true)]
+    [InlineData(@"\\?\UNC\s\x\a.yaml", true)]
+    public void FileAccessPolicy_DescribeNeverAccessedFullPath_SharesAndExtendedPaths(string fullPath, bool denied)
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The full-path device rules apply on Windows only.");
+
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessedFullPath(fullPath);
+
+        // Assert
+        Assert.Equal(denied ? "it is a device path, which is never accessed" : null, result);
+    }
+
+    /// <summary>Test that on Windows only a local path whose real path is on a network location leads to the network.</summary>
+    [Fact]
+    public void FileAccessPolicy_LeadsToNetwork_LocalToShareOnly()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Network locations are classified on Windows only.");
+
+        // Act
+        var localToShare = FileAccessPolicy.LeadsToNetwork(@"C:\x\a.yaml", @"\\server\share\a.yaml");
+        var shareToSameShare = FileAccessPolicy.LeadsToNetwork(@"\\server\share\a.yaml", @"\\server\share\a.yaml");
+        var shareToOtherShare = FileAccessPolicy.LeadsToNetwork(@"\\server\share\a.yaml", @"\\other\x\a.yaml");
+        var localToLocal = FileAccessPolicy.LeadsToNetwork(@"C:\x", @"C:\y");
+
+        // Assert
+        Assert.True(localToShare);
+        Assert.False(shareToSameShare);
+        Assert.False(shareToOtherShare);
+        Assert.False(localToLocal);
+    }
+
+    /// <summary>Test that on Windows a pattern rooted on a share is allowed and its folders are not walked for links.</summary>
+    [Fact]
+    public void FileAccessPolicy_CheckPattern_PatternOnShare_AllowedWithoutWalk()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Network locations are classified on Windows only.");
+
+        // Arrange: mode any with a link reader that records every call
+        var reads = 0;
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.None,
+            [],
+            null,
+            RealPath.Inspect,
+            _ =>
+            {
+                reads++;
+                return null;
+            });
+
+        // Act
+        var glob = Record.Exception(() => policy.CheckPattern("*.yaml", "*.yaml", @"\\server\share\cfg\*.yaml"));
+        var literal = Record.Exception(() => policy.CheckPattern("a.yaml", "a.yaml", @"\\server\share\cfg\a.yaml"));
+
+        // Assert
+        Assert.Null(glob);
+        Assert.Null(literal);
+        Assert.Equal(0, reads);
+    }
+
+    /// <summary>Test that on Windows a local path whose opened file is on a network location is denied.</summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_LocalPathRealPathOnShare_Denied()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Network locations are classified on Windows only.");
+
+        // Arrange: a local file whose handle reports a real path on a share
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "a.yaml");
+        var policy = FileAccessPolicy.Create(FileAccessMode.None, [], null, _ => new HandleFacts(true, @"\\server\share\a.yaml"));
+
+        // Act / Assert
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText("a.yaml", file));
+        Assert.Equal("it leads to a network location through a symbolic link or junction, which is never accessed", ex.Reason);
+        Assert.Equal(@"\\server\share\a.yaml", ex.RealPath);
+    }
+
+    /// <summary>Test that on Windows a relative path resolved against an ordinary extended-length base folder is read.</summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_ExtendedLengthBase_ReturnsContent()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Extended-length paths exist on Windows only.");
+
+        // Arrange: the full path of a file under the extended-length spelling of the temporary folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "a.yaml");
+        var fullPath = @"\\?\" + PathIn(tmpDir, "a.yaml");
+
+        // Act
+        var text = FileAccessPolicy.Any.ReadAllText("a.yaml", fullPath);
+
+        // Assert
+        Assert.Equal(Content, text);
+    }
+
+    /// <summary>
+    ///     Test, end to end, that a relative path resolved against a folder on a share is read (skipped unless the
+    ///     administrative share of the temporary folder's drive is reachable; supplementary, not requirement
+    ///     evidence).
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_RelativePathOnAdminShare_Allowed()
+    {
+        // Arrange: the temporary folder reached through \\localhost\<drive>$ (skipped when not reachable)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "a.yaml");
+        var shareFolder = LinkSupport.AdminShareFolderOrSkip(tmpDir.DirectoryPath);
+
+        // Act
+        var text = FileAccessPolicy.Any.ReadAllText("a.yaml", Path.Combine(shareFolder, "a.yaml"));
+
+        // Assert
+        Assert.Equal(Content, text);
     }
 
     /// <summary>Test that the denial message holds the code, the written path, the real path and the reason.</summary>

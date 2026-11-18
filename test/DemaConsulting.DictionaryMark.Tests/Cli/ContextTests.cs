@@ -1342,6 +1342,44 @@ public class ContextTests
         Assert.Equal($"Directory '{missing}' specified by --allow-root option '{missing}' does not exist.", ex.Message);
     }
 
+    /// <summary>Test that on Windows an --allow-root folder in a device namespace is a usage error.</summary>
+    [Fact]
+    public void Context_Create_AllowRootInDeviceNamespace_Throws()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Device namespaces exist on Windows only.");
+
+        // Arrange: an existing folder spelled in the Win32 device namespace
+        using var tmpDir = new TemporaryDirectory();
+        var device = @"\\.\" + tmpDir.DirectoryPath;
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--allow-root", device]));
+
+        // Assert: the error names the folder and the option
+        Assert.Equal(
+            $"Directory '{device}' specified by --allow-root option '{device}' must not be in a device namespace.",
+            ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that on Windows an extended-length --allow-root is rejected by the wildcard rule, as for --root.
+    /// </summary>
+    [Fact]
+    public void Context_Create_AllowRootExtendedLength_ThrowsWildcard()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Extended-length paths exist on Windows only.");
+
+        // Arrange: an existing folder spelled as an ordinary extended-length drive path
+        using var tmpDir = new TemporaryDirectory();
+        var extended = @"\\?\" + tmpDir.DirectoryPath;
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--allow-root", extended]));
+
+        // Assert: the device-namespace check passes it, and the wildcard rule refuses it
+        Assert.Equal($"--allow-root option '{extended}' must not contain wildcard characters.", ex.Message);
+    }
+
     /// <summary>Test that --allow-root with --file-access any is a usage error naming the conflict.</summary>
     [Fact]
     public void Context_Create_AllowRootWithAny_ThrowsNamingConflict()

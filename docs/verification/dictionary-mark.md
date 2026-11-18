@@ -300,14 +300,24 @@ These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_De
 
 **FileAccessNeverAccessed**: In the default mode the never-accessed list still applies:
 
-- a URL input and a UNC input are denied;
+- a URL input and an input written as a UNC path are denied;
 - a device output (`NUL` on Windows, `/dev/null` elsewhere) is denied;
-- an alternate-data-stream output is denied, and the host file is not created;
+- on Windows, an alternate-data-stream output is denied, and the host file is not created;
+- on Linux and macOS, an input and an output whose file names contain a colon are read and written under
+  `--file-access roots`;
 - a folder at the output path is denied.
 
 These scenarios are tested by `DictionaryMark_FileAccess_UrlInput_Denied`,
 `DictionaryMark_FileAccess_UncInput_Denied`, `DictionaryMark_FileAccess_DeviceOutput_Denied`,
-`DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied` and `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`.
+`DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied` (Windows),
+`DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac` (Linux and macOS) and
+`DictionaryMark_FileAccess_DirectoryAsOutput_Denied`. The platform tests are skipped with a reason elsewhere.
+
+**FileAccessConfigOnShare** (supplementary, not requirement evidence): On Windows, a configuration file with
+relative paths, reached through the administrative share `\\localhost\{drive}$`, runs in the default mode
+and writes its output. The test needs an administrator account and the Server service and is skipped with a
+reason when the share is not reachable. This scenario is tested by
+`DictionaryMark_FileAccess_ConfigOnShare_RelativePathsAllowed`.
 
 **FileAccessErrors**: A denied job is reported as `Error: table job 2 ('../b.md'): file-access-denied:
 '../b.md': ...`, the other jobs write their outputs, the summary counts the failure, and the exit code is

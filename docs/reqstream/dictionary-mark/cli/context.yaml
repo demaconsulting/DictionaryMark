@@ -220,16 +220,22 @@ sections:
                 title: >-
                   The Context class shall accept a repeatable --allow-root that implies the roots mode and replaces
                   the default folders, resolving each folder against the working directory (never --root) with
-                  ${VAR} expansion and parent-directory normalization, and shall reject a missing folder or the
-                  option combined with --file-access any or no-symlinks with an error naming the conflict.
+                  ${VAR} expansion and parent-directory normalization, and shall reject a missing folder, on Windows
+                  a folder in a device namespace other than an ordinary extended-length path and, as for --root, a
+                  folder containing a wildcard character (so every \\?\ spelling), or the option combined with
+                  --file-access any or no-symlinks with an error naming the conflict.
                 justification: |
                   The allowed folders must be the ones the user named, wherever the configuration file sets its base
-                  directory, and contradictory options must not silently pick one meaning.
+                  directory, and contradictory options must not silently pick one meaning. An allowed folder in a
+                  device namespace would confine paths to a device, so it is refused as in CanvasNet. An
+                  extended-length --allow-root is rejected by the shared wildcard rule, unlike CanvasNet.
                 tests:
                   - Context_Create_AllowRoot_ImpliesRootsAndReplacesDefaults
                   - Context_Create_AllowRootRelative_ResolvedAgainstWorkingDirectoryNotRoot
                   - Context_Create_AllowRootEnvironmentVariable_Expanded
                   - Context_Create_AllowRootMissing_Throws
+                  - windows@Context_Create_AllowRootInDeviceNamespace_Throws
+                  - windows@Context_Create_AllowRootExtendedLength_ThrowsWildcard
                   - Context_Create_AllowRootWithAny_ThrowsNamingConflict
                   - Context_Create_AllowRootWithNoSymlinks_ThrowsNamingConflict
 

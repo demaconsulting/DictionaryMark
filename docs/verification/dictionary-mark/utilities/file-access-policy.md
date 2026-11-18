@@ -24,19 +24,28 @@ that such a path is denied before any handle is opened.
 - A file symbolic link has no fallback: on a Windows machine without the privilege (for example without
   Developer Mode), the file-link tests are skipped with `Assert.Skip` and a reason. Their requirements
   take evidence only from Linux and macOS runs, where they always run.
-- Named-pipe and `/dev/null` tests run on Linux and macOS only, and Windows device-name tests on Windows
-  only; elsewhere they are skipped with a reason. A named-pipe test fails when the read does not finish
-  within 10 seconds, so a blocking open cannot hang the run.
+- Named-pipe and `/dev` tests (including a folder link to `/dev`, which needs no privilege there) run on Linux
+  and macOS only, and Windows device-name tests on Windows only; elsewhere they are skipped with a reason. A
+  named-pipe test fails when the read does not finish within 10 seconds, so a blocking open cannot hang the
+  run.
 - The link-to-share tests run on Windows only, because network locations exist only there; elsewhere they
   are skipped with a reason. The injected link reader needs no privilege and no share.
+- The colon tests run per platform: the Windows colon rule is verified on Windows only, and colon file
+  names are verified on Linux and macOS only. Elsewhere they are skipped with a reason.
+- The network-decision tests (`LeadsToNetwork`, the full-path rule and a pattern on a share) are pure
+  string checks or use an injected link reader or inspector, so they need no share. They run on Windows
+  only, because network locations and device namespaces exist only there.
 - **FileAccessPolicy_ReadAllText_RealSymlinkToShare_DeniedBeforeOpen** creates a real symbolic link to an
   unreachable share. It needs the symbolic-link privilege and is skipped with a reason without it. It is
   supplementary and is not requirement evidence.
+- **FileAccessPolicy_ReadAllText_RelativePathOnAdminShare_Allowed** reads through the administrative share
+  `\\localhost\{drive}$`. It needs an administrator account and the Server service and is skipped with a
+  reason when the share is not reachable. It is supplementary and is not requirement evidence.
 
 #### Acceptance Criteria
 
 - All unit tests in `FileAccessPolicyTests.cs` pass with zero failures on Windows, Linux and macOS.
-- A test may be skipped only for the platform or link-privilege reasons above, and every requirement
+- A test may be skipped only for the platform, link-privilege or share reasons above, and every requirement
   has at least one passing test on each platform its source filter names.
 
 #### Test Scenarios
@@ -54,28 +63,75 @@ creates missing output folders.
 **FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull**:
 
 - `http:`, `https:`, `ftp:` and host-less `file:` URLs give the URL reason.
-- `file://server/...` gives the network reason, and so do `\\server\share` and `//server/share`.
+- `file://server/...` gives the file-host reason, and `\\server\share` and `//server/share` give the network
+  reason.
 - `\\.\pipe\x` and `\\?\C:\a.yaml` give the device reason.
-- `a.yaml:stream` and `C:a.yaml` give the alternate-data-stream reason.
 - Relative, `..`, glob, `${VAR}` and absolute local paths are not on the list.
 
-**FileAccessPolicy_ReadAllText_WindowsDeviceName_Denied** (Windows), and
-**FileAccessPolicy_ReadAllText_DevNull_Denied** and **FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking**
-(Linux and macOS): Device names, `/dev` and a named pipe are denied, the pipe without blocking.
+**FileAccessPolicy_DescribeNeverAccessed_ColonOnWindows_ReturnsReason** (Windows): `a.yaml:stream`,
+`C:a.yaml` and `docs/terms.yaml:hidden` give the alternate-data-stream reason, and `\??\C:\a.yaml` gives the
+device reason.
+
+**FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull** and
+**FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac** (Linux and macOS): `a.yaml:stream`,
+`terms:v1.yaml` and `C:a.yaml` are not on the text list. Under roots, a real file `terms:v1.yaml` is read
+and `out:1.md` is written.
+
+**FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull** (Linux and macOS):
+`/??/a.yaml` and `/dev/null` are not on the text list. `\??\` is a Windows namespace, and a device is refused
+by its handle type.
+
+**FileAccessPolicy_ReadAllText_WindowsDeviceName_Denied** (Windows): A reserved device name in any component
+is denied before the open.
+
+**FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular** and
+**FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking** (Linux and macOS): No text rule applies.
+`/dev/null` and a named pipe are denied as not a regular file after a non-blocking open, the pipe without
+blocking.
+
+**FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen** (Linux and macOS): The outputs `/dev/null` and
+`/tmp/../dev/x.md` are denied with the device reason, and the recording inspector shows that nothing was
+opened.
+
+**FileAccessPolicy_WriteAllText_FolderLinkToDev_DeniedBeforeOpen** (Linux and macOS): In mode any, the
+outputs `devices/null` and `devices/new/x.md` below a folder link to `/dev` are denied with the device reason,
+and the direct output reports the real path `/dev/null`. The recording inspector shows that nothing was opened,
+and no folder is created under `/dev`.
+
+**FileAccessPolicy_DescribeNeverAccessedFullPath_SharesAndExtendedPaths** (Windows): `\\server\share\cfg\a.yaml`,
+`\\?\C:\cfg\a.yaml` and `\\?\C:\cfg\NUL.txt` are accepted. `C:\x\NUL`, `\\.\C:\x\a.yaml`,
+`\\?\pipe\x\a.yaml` and `\\?\UNC\s\x\a.yaml` give the device reason.
+
+**FileAccessPolicy_ReadAllText_ExtendedLengthBase_ReturnsContent** (Windows): A relative path whose full path
+is under the extended-length spelling `\\?\` of the temporary folder is read.
+
+**FileAccessPolicy_LeadsToNetwork_LocalToShareOnly** (Windows): A local path whose real path is on a share
+leads to the network. A share path whose real path is on the same or another share, and a local path whose
+real path is local, do not.
+
+**FileAccessPolicy_CheckPattern_PatternOnShare_AllowedWithoutWalk** (Windows): In mode any, a glob and a
+literal pattern rooted at `\\server\share\cfg` are allowed, and the recording link reader shows that their
+folders were not walked.
+
+**FileAccessPolicy_ReadAllText_LocalPathRealPathOnShare_Denied** (Windows): A local file whose handle reports a
+real path on a share is denied with the network-link reason, naming the share path as its real path.
+
+**FileAccessPolicy_ReadAllText_RelativePathOnAdminShare_Allowed** (Windows, supplementary): A relative path
+resolved against the temporary folder on `\\localhost\{drive}$` is read.
 
 **FileAccessPolicy_ReadAllText_IntermediateLinkToShare_DeniedBeforeOpen**,
 **FileAccessPolicy_WriteAllText_IntermediateLinkToShare_DeniedNothingCreated** and
 **FileAccessPolicy_CheckPattern_PrefixLinkToShare_DeniedBeforeMatching** (Windows): A fake link reader makes
 the folder `lnk` a link to `\\server\share`.
 
-- A read through `lnk` is denied with the network reason and the share path as its real path, and the
+- A read through `lnk` is denied with the network-link reason and the share path as its real path, and the
   recording inspector shows that no handle was opened.
-- A write through `lnk` under roots is denied with the network reason, and no folder is created.
+- A write through `lnk` under roots is denied with the network-link reason, and no folder is created.
 - A glob pattern and a literal pattern whose folders pass through `lnk` are denied before matching, while a
   glob pattern in another folder is not.
 
 **FileAccessPolicy_ReadAllText_RealSymlinkToShare_DeniedBeforeOpen** (Windows, supplementary): A real
-symbolic link to an unreachable share is denied with the network reason before the open, which would
+symbolic link to an unreachable share is denied with the network-link reason before the open, which would
 otherwise fail with an I/O error after contacting the network.
 
 **FileAccessPolicy_ReadAllText_Directory_Denied**, **FileAccessPolicy_WriteAllText_ExistingDirectory_Denied**

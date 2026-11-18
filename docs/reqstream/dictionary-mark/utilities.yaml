@@ -84,6 +84,8 @@ sections:
               - DictionaryMark-FileAccessPolicy-ModeParsing
               - DictionaryMark-FileAccessPolicy-AnyMode
               - DictionaryMark-FileAccessPolicy-NeverAccessed
+              - DictionaryMark-FileAccessPolicy-NetworkLocations
+              - DictionaryMark-FileAccessPolicy-ColonFileNames
               - DictionaryMark-FileAccessPolicy-RootsWrittenPath
               - DictionaryMark-FileAccessPolicy-RootsRealPath
               - DictionaryMark-FileAccessPolicy-NoSymlinks

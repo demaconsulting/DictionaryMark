@@ -80,8 +80,16 @@ drives.
 - What follows a name (an extension, trailing spaces, or a stream suffix) is ignored.
 - The device namespaces are `\\.\`, `\\?\` and `\??\`, with either slash.
 
-**IsNetworkLocation(fullPath)**: On Windows, true for `\\server\share`, `\\?\UNC\...` and a mapped network
-drive (`DriveType.Network`). Always false elsewhere.
+**IsNetworkLocation(fullPath)**: On Windows, true for `\\server\share`, `\\?\UNC\...` and a mapped network drive
+(`DriveType.Network`). Always false elsewhere. The file-access policy asks it about both the path as written and the
+real path: a path that is itself a network location is accessed, and only a local path whose real path is a network
+location (one that leads there through a link) is denied, as in CanvasNet.
+
+**IsOrdinaryExtendedPath(path)**: A pure text check with the same rule as CanvasNet. True for an
+extended-length path whose root is a drive (`\\?\C:`, alone or followed by `\`) or a volume GUID
+(`\\?\Volume{GUID}`, alone or followed by `\`). Such a path names a file on a local volume with no device
+names mapped, so the policy trusts it like a drive path. Every other extended-length or device-namespace
+root (`\\?\UNC\`, `\\?\pipe\`, another `\\?\` object path, `\\.\`, `\??\`) is not ordinary.
 
 **IsLink(fullPath)**: True when the entry is a symbolic link or junction, even a dangling one
 (`ReadLinkTarget` is not null).

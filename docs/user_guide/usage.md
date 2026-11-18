@@ -383,18 +383,34 @@ Without `--allow-root`, `roots` allows the working directory and the configurati
 
 In every mode, including `any`, a configuration-file path is never read or written when it is:
 
-- a URL or URI (`http:`, `https:` and other schemes);
+- a URL (`http://`, `https://` and other `scheme://` forms);
 - a `file:` URI with a host;
-- a UNC or network path (`\\server\share`, `//server/share`, a mapped network drive);
-- a device path (`\\.\`, `\\?\`, a Windows reserved name such as `NUL` or `COM1`, `/dev/...`);
-- an alternate data stream (any `:` other than the drive of a Windows path);
+- a path written as a UNC path (`\\server\share`, `//server/share`);
+- a device path (`\\.\`, `\\?\`, a Windows reserved name such as `NUL` or `COM1`);
+- on Windows, an alternate data stream (any `:` other than the drive of an absolute path);
 - anything that is not a regular file (a folder, a named pipe, a device).
+
+On Linux and macOS a `:` is an ordinary file-name character, so `terms:v1.yaml` is a valid file name
+there. A device such as `/dev/null` is refused when it is read, as not a regular file. An output under
+`/dev`, or in a folder whose real path is under `/dev` (for example through a link), is never written.
 
 A `root` key that names such a path is an error when the configuration file is loaded.
 
-On Windows, a path that passes through a symbolic link or junction whose target is a network location
-is also denied, at any folder of the path and through a chain of links. The links are read without
-being followed, so the share is never contacted.
+On Windows, an `--allow-root` folder in a device namespace (`\\.\`, `\??\`, or a `\\?\` path other than a
+drive or volume) is an error. A `\\?\` drive or volume path such as `\\?\C:\docs` is an error too, because
+`?` is a wildcard character, as for `--root`. No `\\?\` spelling of `--allow-root` is accepted.
+
+### Network Shares
+
+The network rule is the same as in the DEMA Consulting CanvasNet tool:
+
+- A path written as a UNC path is never accessed.
+- A path that is itself on a share or a mapped network drive is used. A configuration file on a share or a
+  mapped network drive therefore works: its relative inputs and outputs, and a `--root` or `root` key on
+  that share, resolve to the share.
+- On Windows, a local path that leads to a network share through a symbolic link or junction is denied,
+  at any folder of the path and through a chain of links. The links are read without being followed, so
+  the share is never contacted.
 
 ### Real Paths
 
@@ -414,9 +430,9 @@ replaced. `no-symlinks` applies to outputs too. A denied job writes nothing, not
 
 ### Denials
 
-A denied path fails only its job. The error has the code `file-access-denied`, the path as written, the
-real path when one is known, and a reason that names the mode. The other jobs still run, and the exit
-code is non-zero:
+A denied path fails only its job. The error has the code `file-access-denied`, the path as written (for a
+file a glob pattern matched, its full path), the real path when one is known, and a reason that names the
+mode. The other jobs still run, and the exit code is non-zero:
 
 ```text
 Error: table job 1 ('link/terms.yaml'): file-access-denied: 'link/terms.yaml' (real path '/home/ci/secrets/terms.yaml'): its real path is outside the allowed folders, so it leads out through a symbolic link or junction (--file-access roots)

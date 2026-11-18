@@ -74,12 +74,14 @@ sections:
               - id: DictionaryMark-RealPath-Classification
                 title: >-
                   The RealPath unit shall classify UNC and mapped-drive paths as network locations on Windows,
-                  recognize every Windows reserved device name, and recognize symbolic links and junctions.
+                  recognize every Windows reserved device name, recognize an ordinary extended-length drive or
+                  volume path, and recognize symbolic links and junctions.
                 justification: |
                   The never-accessed list and the output checks depend on these classifications.
                 tests:
                   - windows@RealPath_IsNetworkLocation_UncAndLocal_Classified
                   - RealPath_IsWindowsDeviceName_ReservedSpellings
+                  - RealPath_IsOrdinaryExtendedPath_Classified
                   - windows@RealPath_IsLink_SymlinkOrJunction_True
                   - ubuntu@RealPath_IsLink_SymlinkOrJunction_True
                   - macos@RealPath_IsLink_SymlinkOrJunction_True
