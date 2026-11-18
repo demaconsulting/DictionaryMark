@@ -22,6 +22,9 @@ sections:
               - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
               - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
               - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
+              - YamlDictionaryLoader_Load_ObjectEntry_ReadsAllFields
               - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
+              - YamlDictionaryLoader_Load_SequenceValue_Throws
               - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
               - YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException
+              - YamlDictionaryLoader_LoadDeprecated_ValidEntries_ReturnsEntries

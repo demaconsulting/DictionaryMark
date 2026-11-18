@@ -24,8 +24,8 @@ DictionaryMark uses the following APIs from the `YamlDotNet.RepresentationModel`
 - **`YamlScalarNode`** — pattern-matched to verify keys are scalars and to read definition strings and
   field values
 - **`YamlScalarNode.Value`** — reads the string value of a scalar key or definition
-- **`YamlSequenceNode`** — pattern-matched by `ConfigFile` for `tables`, sequence `input` values and
-  `column-widths`
+- **`YamlSequenceNode`** — pattern-matched by `YamlDictionaryLoader` for `pos` and `variants` lists,
+  and by `ConfigFile` for `tables`, sequence `input` values and `column-widths`
 - **`YamlException`** — caught by `ConfigFile` to report invalid configuration YAML
 
 Features not used: serialization, YAML writing, anchors/aliases traversal, merge keys, custom

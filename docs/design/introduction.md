@@ -44,7 +44,8 @@ the Cli subsystem, can supply formatting defaults, a root directory and several 
 
 ![DictionaryMark architecture: the dictionarymark command drives Program, which uses the Cli, SelfTest,
 Utilities and Dictionary subsystems to turn YAML dictionary files, and an optional YAML configuration file of
-table jobs, into one or more Markdown bullet lists or tables](architecture.svg)
+table jobs, into one or more Markdown bullet lists or tables written to files or stdout, with an optional
+log file](architecture.svg)
 
 ## Folder Layout
 
