@@ -106,6 +106,16 @@ the disk, that real paths are compared exactly on every platform: `C:\work\ALLOW
 separator is the boundary and trailing separators do not matter. This scenario is tested by
 `RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly`.
 
+**RealPath_CommonAncestor_DriveLettersDifferingOnlyInCase_AreTheSameRoot**: Validates on Windows, on path strings
+without touching the disk, that `C:\a\b` and `c:\a\c` share `C:\a`, that `C:\A\b` and `c:\a\c` share only `C:\`, and
+that paths on different drives share nothing. This scenario is tested by
+`RealPath_CommonAncestor_DriveLettersDifferingOnlyInCase_AreTheSameRoot`.
+
+**RealPath_IsUnderExactly_DriveLettersDifferingOnlyInCase_AreTheSameRoot**: Validates on Windows, on path strings
+without touching the disk, that `c:\root\x` is inside `C:\root` (and the reverse) and `c:\root` equals `C:\root`, while
+`C:\Root\x` is outside `C:\root` and `c:\Root` does not equal `C:\root`. This scenario is tested by
+`RealPath_IsUnderExactly_DriveLettersDifferingOnlyInCase_AreTheSameRoot`.
+
 **RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists**: Validates that a temporary folder
 stored as `Docs` and named as `docs` is returned as `Docs` where the folder is observed to be case-insensitive, and as
 `docs`, unchanged, where it is observed to be case-sensitive, because that spelling does not exist. This scenario is

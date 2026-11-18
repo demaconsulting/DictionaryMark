@@ -105,17 +105,21 @@ sections:
                   elsewhere), treating a folder as containing itself and what lies below its separator but not a
                   sibling that shares its name as a prefix nor a folder whose name differs only in letter case,
                   ignoring trailing separators, finding the deepest folder two paths share by whole components
-                  compared exactly, and keying every path cache exactly (ordinal) on every platform.
+                  compared exactly, comparing a Windows drive letter in either letter case as the same drive, and
+                  keying every path cache exactly (ordinal) on every platform.
                 justification: |
                   Every containment decision of the policies rests on these rules; a prefix match on text would let a
                   sibling folder pass. Whether a folder is case-sensitive cannot be told reliably on any platform, so
                   the real path that decides, the trusted folder of no-symlinks and every cache key must be compared
-                  exactly; the written path is only a pre-filter.
+                  exactly; the written path is only a pre-filter. A Windows drive letter is always case-insensitive,
+                  so a root differing from another only in its drive letter's case is the same root.
                 tests:
                   - RealPath_IsUnder_BoundaryIsTheSeparator
                   - RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly
                   - RealPath_KeyComparer_PathsDifferingOnlyInCase_AreSeparateKeys
                   - RealPath_CommonAncestor_ComponentsDifferingOnlyInCase_AreNotShared
+                  - "windows@RealPath_CommonAncestor_DriveLettersDifferingOnlyInCase_AreTheSameRoot"
+                  - "windows@RealPath_IsUnderExactly_DriveLettersDifferingOnlyInCase_AreTheSameRoot"
 
               - id: DictionaryMark-RealPath-ExactCase
                 title: >-

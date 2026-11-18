@@ -83,6 +83,12 @@ path: a file written in another letter case is allowed where the temporary folde
 and denied where it is observed to be case-sensitive, because that spelling names no file there. This scenario is tested
 by `FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase`.
 
+**FileAccessPolicy_NoSymlinks_DriveLetterInOtherCase_AnchorIsTheBaseDirectory**: Validates on Windows, on path strings
+without touching the disk, that the anchor of the no-symlinks policy for `c:\work\base\a.txt` with the base
+`C:\work\base` is `c:\work\base` (and the reverse), not the drive root, while `c:\work\Base\a.txt` with that base is
+anchored at `c:\work`, because only the drive letter is compared case-insensitively. This scenario is tested by
+`FileAccessPolicy_NoSymlinks_DriveLetterInOtherCase_AnchorIsTheBaseDirectory`.
+
 **FileAccessPolicy_NoSymlinks_ShortNameSpelling_IsAllowed**: Validates on Windows that a path written with short (8.3)
 names is compared in its long spelling, so it is not mistaken for a link. Skips where the volume does not create short
 names. This scenario is tested by `FileAccessPolicy_NoSymlinks_ShortNameSpelling_IsAllowed`.

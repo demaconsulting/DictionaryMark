@@ -82,7 +82,8 @@ other code, with no open in progress) is evaluated by resolving now.
   letter case on a case-insensitive folder still contains its files.
 - `NoSymlinks.Check` - the anchor is `RealPath.CommonAncestor(RequestedPath, BaseDirectory)` (the drive root when they
   share none), whose components are compared exactly, so a folder that differs from the base directory only in letter
-  case is never trusted; the anchor and everything above it are trusted. The expected real path is the anchor's real
+  case is never trusted, while a drive letter is compared in either case (`c:` is `C:`); the anchor and everything
+  above it are trusted. The expected real path is the anchor's real
   location from the snapshot (looked up by the anchor compared exactly) joined with the written path below the anchor;
   the expected and the real path are both brought to
   stored case with `RealPath.GetExactPathName`, and the file is allowed when they are equal exactly

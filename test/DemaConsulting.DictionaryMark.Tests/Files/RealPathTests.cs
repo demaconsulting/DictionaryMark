@@ -436,6 +436,55 @@ public class RealPathTests
     }
 
     /// <summary>
+    ///     Validates on Windows that the deepest shared folder compares a drive letter case-insensitively, because
+    ///     <c>c:</c> and <c>C:</c> always name the same drive: <c>C:\a\b</c> and <c>c:\a\c</c> share <c>C:\a</c>, while
+    ///     a component that differs only in letter case is still not shared (pure text, no disk).
+    /// </summary>
+    [Fact]
+    public void RealPath_CommonAncestor_DriveLettersDifferingOnlyInCase_AreTheSameRoot()
+    {
+        // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Act
+        var ancestor = RealPath.CommonAncestor(@"C:\a\b", @"c:\a\c");
+        var otherFolderCase = RealPath.CommonAncestor(@"C:\A\b", @"c:\a\c");
+        var otherDrive = RealPath.CommonAncestor(@"C:\a\b", @"D:\a\b");
+
+        // Assert: only the drive letter is case-insensitive, every component after the root stays exact
+        Assert.Equal(@"C:\a", ancestor);
+        Assert.Equal(@"C:\", otherFolderCase);
+        Assert.Null(otherDrive);
+    }
+
+    /// <summary>
+    ///     Validates on Windows that the exact containment and equality of real paths compare a drive letter
+    ///     case-insensitively, because <c>c:</c> and <c>C:</c> always name the same drive: <c>c:\root\x</c> lies below
+    ///     <c>C:\root</c>, while <c>C:\Root\x</c> does not, because every component after the root stays exact (pure
+    ///     text, no disk).
+    /// </summary>
+    [Fact]
+    public void RealPath_IsUnderExactly_DriveLettersDifferingOnlyInCase_AreTheSameRoot()
+    {
+        // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Act / Assert: only the drive letter is case-insensitive, every component after the root stays exact
+        Assert.True(RealPath.IsUnderExactly(@"c:\root\x", @"C:\root"));
+        Assert.True(RealPath.IsUnderExactly(@"C:\root\x", @"c:\root"));
+        Assert.True(RealPath.PathsEqualExactly(@"c:\root", @"C:\root"));
+        Assert.False(RealPath.IsUnderExactly(@"C:\Root\x", @"C:\root"));
+        Assert.False(RealPath.IsUnderExactly(@"c:\Root\x", @"C:\root"));
+        Assert.False(RealPath.PathsEqualExactly(@"c:\Root", @"C:\root"));
+    }
+
+    /// <summary>
     ///     Validates that an existing folder named in another letter case is returned in the case stored on disk where
     ///     the temporary folder is observed to be case-insensitive, and that the name is returned unchanged where it is
     ///     observed to be case-sensitive, because the name as written does not exist there.

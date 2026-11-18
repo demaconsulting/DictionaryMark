@@ -259,6 +259,32 @@ public class FileAccessPolicyTests
     }
 
     /// <summary>
+    ///     Validates on Windows that the anchor of the no-symlinks policy is the base directory when the written path
+    ///     spells the drive letter in another case, because <c>c:</c> and <c>C:</c> name the same drive; it does not
+    ///     fall back to the drive root, while a folder that differs only in letter case is still not trusted (pure
+    ///     text, no disk).
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_NoSymlinks_DriveLetterInOtherCase_AnchorIsTheBaseDirectory()
+    {
+        // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Act
+        var lowerWritten = FileAccessPolicy.NoSymlinks.AnchorsOf(@"c:\work\base\a.txt", @"C:\work\base").ToList();
+        var lowerBase = FileAccessPolicy.NoSymlinks.AnchorsOf(@"C:\work\base\a.txt", @"c:\work\base").ToList();
+        var otherFolderCase = FileAccessPolicy.NoSymlinks.AnchorsOf(@"c:\work\Base\a.txt", @"C:\work\base").ToList();
+
+        // Assert: the anchor keeps the written path's spelling of the drive letter
+        Assert.Equal([@"c:\work\base"], lowerWritten);
+        Assert.Equal([@"C:\work\base"], lowerBase);
+        Assert.Equal([@"c:\work"], otherFolderCase);
+    }
+
+    /// <summary>
     ///     Validates that the no-symlinks policy allows a file whose real path is the written path below the folder the
     ///     reference starts from.
     /// </summary>

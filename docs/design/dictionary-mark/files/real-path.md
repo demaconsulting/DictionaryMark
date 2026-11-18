@@ -100,7 +100,9 @@ Per system:
   component that differs only in letter case is not shared (on a case-insensitive folder this only makes the shared
   folder shallower, so more of the path is checked). `IsUnderExactly(path, root)` and `PathsEqualExactly` apply the
   same rules to real paths with an `Ordinal` comparison on every platform (in Unicode composed form on macOS); both
-  arguments must already be in stored case.
+  arguments must already be in stored case. In these three exact comparisons a Windows drive letter is upper-cased on
+  both sides first (`UpperDriveLetter`), because `c:` and `C:` always name the same drive; every component after the
+  root stays exact.
 - `GetExactPathName(path)` - a .NET-only helper (no native call) that spells a path in the letter case stored on disk.
   The path is made full (`Path.GetFullPath`); a root keeps its spelling except a drive letter, which is upper-cased
   (`c:\` to `C:\`), so `/` and UNC roots (server and share names) are kept as written. Each other component is
