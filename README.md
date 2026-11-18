@@ -397,7 +397,10 @@ not race-proof (the write follows by name); a literal configuration input is jud
 existence is never revealed outside the allowed folders; a configuration input pattern that breaks one of the rules
 above (such as a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but
 listing the local folders of a wildcard pattern can reveal file names outside the allowed folders before the match is
-refused, although no content is read; and an `--allow-root` folder must exist when the run starts.
+refused, although no content is read; and an `--allow-root` folder must exist when the run starts. Whether a file is
+inside an allowed folder is decided by the letter case stored on disk, so a folder named in another letter case works
+where the file system ignores case, while a folder that differs only in letter case on a case-sensitive file system
+stays outside.
 See the User Guide for details.
 
 ### Conflicts

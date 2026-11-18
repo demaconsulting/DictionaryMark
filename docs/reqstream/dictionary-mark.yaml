@@ -644,6 +644,23 @@ sections:
         tests:
           - DictionaryMark_FileAccess_RootsWithoutAllowRoot_AllowsWorkingAndConfigFolders
 
+      - id: DictionaryMark-System-FileAccess-LetterCase
+        title: >-
+          The tool shall decide whether a configuration-file table input or output lies inside an allowed folder by
+          the letter case stored on disk, so that an allow-root folder named in another letter case on a
+          case-insensitive file system still allows the files inside it, while a folder whose name differs from an
+          allowed folder only in letter case on a case-sensitive file system is outside it.
+        justification: |
+          Users type folder names in any letter case where the file system ignores it, and must not be refused for
+          that; a file system or folder may also be case-sensitive on any platform, which cannot be detected
+          reliably, and there a folder that differs only in letter case is a different folder that must stay outside.
+        tags: [system]
+        children:
+          - DictionaryMark-Files-AccessPolicy
+        tests:
+          - "windows@DictionaryMark_FileAccess_AllowRootInOtherCase_AllowsConfigJobsInside"
+          - "macos@DictionaryMark_FileAccess_AllowRootInOtherCase_AllowsConfigJobsInside"
+
       - id: DictionaryMark-System-FileAccess-ConfigPathsJudged
         title: >-
           The tool shall judge every input file of a configuration-file table - each literal input and every

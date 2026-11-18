@@ -146,15 +146,14 @@ cancellation raised by the policy passes through unwrapped. Invalid options are 
   decides where the write lands. A dangling link on the way up is refused rather than treated as a missing folder,
   because the write would follow it once its target appears.
 
-**Known limits**: where Windows cannot tell the real path, the default policy reads the file without the network
-check (a restrictive policy fails closed with `RealPathUnavailable`); a SUBST or DFS path whose drive is local but
-whose target is remote is refused (fail closed); paths are compared case-insensitively on Windows and macOS (see
-*FileAccessPolicy Design*); a hard link cannot be told apart from the file itself; a file deleted after it is opened
-has no real path on Linux, so a restrictive policy refuses it; the output check is not free of races, because the
-write goes by name (a link swapped in between the check and the write is not caught), and a missing parent folder that
-is a dangling link is judged by the folder above it; an existing output that cannot be opened for reading is refused
-(`CannotRead`); and an output that does not exist yet, spelled with short (8.3) names below the anchor, is refused
-under `no-symlinks` (fail closed).
+**Known limits**: where Windows cannot tell the real path, the default policy reads the file without the network check
+(a restrictive policy fails closed with `RealPathUnavailable`); a SUBST or DFS path whose drive is local but whose
+target is remote is refused (fail closed); a hard link cannot be told apart from the file itself; a file deleted after
+it is opened has no real path on Linux, so a restrictive policy refuses it; the output check is not free of races,
+because the write goes by name (a link swapped in between the check and the write is not caught), and a missing parent
+folder that is a dangling link is judged by the folder above it; an existing output that cannot be opened for reading is
+refused (`CannotRead`); and an output that does not exist yet, spelled with short (8.3) names below the anchor, is
+refused under `no-symlinks` (fail closed).
 
 #### Dependencies
 

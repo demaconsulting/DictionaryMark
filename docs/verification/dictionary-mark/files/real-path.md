@@ -16,7 +16,9 @@ duration is asserted: an open that blocked would never return, which the time li
 
 #### Test Environment
 
-- **Files**: per-test temporary directories, deleted by the test; `/dev/null` on Linux and macOS.
+- **Files**: per-test temporary directories, deleted by the test; `/dev/null` on Linux and macOS. No file-system or
+  system setting is changed: the letter-case scenarios use the temporary folder as it is (case-insensitive by default on
+  Windows and macOS, case-sensitive on Linux) and never switch its case sensitivity.
 - **Tools**: `mkfifo` (Linux and macOS) for named pipes; `cmd.exe` (Windows) for junctions and short names;
   `mountvol.exe` (Windows) for the volume GUID path.
 
@@ -86,6 +88,36 @@ not covered here. This scenario is tested by `RealPath_IsNetworkLocation_UncAndL
 below its separator but not a sibling that shares its name as a prefix, trailing separators do not matter, and the
 deepest shared folder is found by whole components. This scenario is tested by
 `RealPath_IsUnder_BoundaryIsTheSeparator`.
+
+**RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly**: Validates on stored-case path strings, without touching
+the disk, that real paths are compared exactly on every platform: `C:\work\ALLOWED\x` is outside `C:\work\allowed` and
+`C:\work\allowed\x` is inside it (Windows), with the same for `/work/ALLOWED/x` and `/work/allowed` elsewhere; the
+separator is the boundary and trailing separators do not matter. This scenario is tested by
+`RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly`.
+
+**RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists**: Validates that a temporary folder
+stored as `Docs` and named as `docs` is returned as `Docs` where the folder is case-insensitive (the Windows and macOS
+defaults, asserted there), and as `docs`, unchanged, where it is case-sensitive (the Linux default), because that
+spelling does not exist. This scenario is tested by
+`RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists`.
+
+**RealPath_GetExactPathName_MissingTail_KeepsItsNamesAndNormalizesTheExistingPart**: Validates that the missing tail
+`Missing/File.TXT` below an existing folder keeps its names as written while the existing part is brought to the stored
+case. This scenario is tested by `RealPath_GetExactPathName_MissingTail_KeepsItsNamesAndNormalizesTheExistingPart`.
+
+**RealPath_GetExactPathName_LowerCaseDriveLetter_IsUpperCased**: Validates on Windows that a drive letter written in
+lower case is returned in upper case, for a drive root and for a path on the drive. This scenario is tested by
+`RealPath_GetExactPathName_LowerCaseDriveLetter_IsUpperCased`.
+
+**RealPath_GetExactPathName_NameWithWildcards_ReturnsTheExactEntry**: Validates on Linux and macOS that a name
+containing `*` or `?` returns the entry with exactly that name, not another entry it matches as a pattern, and that a
+missing name with a wildcard is kept as written. This scenario is tested by
+`RealPath_GetExactPathName_NameWithWildcards_ReturnsTheExactEntry`.
+
+**RealPath_GetExactPathName_CaseSensitiveFolder_PrefersTheExactEntry**: Validates on a case-sensitive temporary folder
+(the Linux default) that, of the entries `Docs` and `docs`, the one named exactly is returned, and that the spelling
+`DOCS`, which neither has, is kept as written. Skips where the temporary folder is case-insensitive. This scenario is
+tested by `RealPath_GetExactPathName_CaseSensitiveFolder_PrefersTheExactEntry`.
 
 **RealPath_IsOrdinaryExtendedPath_AcceptsOnlyDriveAndVolumeRoots**: Validates the classification of extended-length and
 device-namespace paths (pure text, so it runs on every system): only `\\?\` followed by a drive or a volume GUID is an

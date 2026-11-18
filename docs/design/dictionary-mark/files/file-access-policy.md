@@ -50,13 +50,16 @@ fail-closed handling of a policy that throws or answers nothing.
 | `Combine(policies)` | parts joined with `+` | every part must allow; the first denial wins |
 
 **`UnderRootsPolicy`** keeps each root as its lexical full path and its real location
-(`RealPath.TryGetCanonicalDirectory`), both captured when the policy is created and never looked up again. A root that
+(`RealPath.TryGetCanonicalDirectory`, then `RealPath.GetExactPathName` so it is in the letter case stored on disk),
+both captured when the policy is created and never looked up again. A root that
 does not exist then (or whose real location cannot be determined) has no captured location and allows no file, even
 once it exists (fail closed; the denial says so and hints to create the folder first). This closes the root
 rename-and-replace race: a root renamed and replaced by a link after creation leads an open elsewhere, and the real
 path no longer lies under the captured location.
 
-**Pre-open snapshot.** A built-in policy never resolves a folder by name after a file was opened. The internal
+**Pre-open snapshot.** A built-in policy never resolves a folder by name after a file was opened (the only lookup by
+name after the open is the stored letter case of the paths it compares, which changes nothing but letter case and
+follows no link). The internal
 `AnchorsOf(requestedPath, baseDirectory)` names the trusted folders a policy compares against (`NoSymlinks`: its
 anchor; `Combine`: the union of its parts; others: none). `FileReferenceResolver` captures their real locations (once
 per resolver, before the first file below them is opened) and the long (8.3-expanded) spelling of the written path
@@ -70,18 +73,24 @@ other code, with no open in progress) is evaluated by resolving now.
   path: `ArgumentException`) and captures their real locations. `PreCheck` denies a written path outside every root,
   in the root's given or captured real spelling (`the path as written is outside the allowed roots`); a written path
   with `~` is also compared in its long spelling (Windows). `Check` repeats the written-path test (with the long
-  spelling from the snapshot) and then requires the real path inside the captured real location of a root (`its real
-  path is outside the allowed roots`). Containment is `RealPath.IsUnder` (platform case rule, the separator as the
-  boundary).
+  spelling from the snapshot) and then requires the real path, brought to stored case with
+  `RealPath.GetExactPathName`, inside the captured real location of a root (`its real path is outside the allowed
+  roots`). The written-path tests use `RealPath.IsUnder` (platform case rule: case-insensitive on Windows and macOS);
+  they are only a pre-filter that keeps a file clearly outside every root from being opened. The real-path test, which
+  decides, uses `RealPath.IsUnderExactly` (ordinal on every platform, the separator as the boundary), so on a
+  case-sensitive folder `C:\work\ALLOWED\x` is outside the root `C:\work\allowed`, while a root given in another
+  letter case on a case-insensitive folder still contains its files.
 - `NoSymlinks.Check` - the anchor is `RealPath.CommonAncestor(RequestedPath, BaseDirectory)` (the drive root when they
   share none); the anchor and everything above it are trusted. The expected real path is the anchor's real location
-  from the snapshot joined with the written path below the anchor; the file is allowed when it equals the real path
-  (`RealPath.PathsEqual`). When it does not and the snapshot's long spelling differs from the written path, the
+  from the snapshot joined with the written path below the anchor; the expected and the real path are both brought to
+  stored case with `RealPath.GetExactPathName`, and the file is allowed when they are equal exactly
+  (`RealPath.PathsEqualExactly`), so a path written in another letter case on a case-insensitive folder is not
+  mistaken for a link. When they differ and the snapshot's long spelling differs from the written path, the
   comparison is repeated with the same number of trailing components of the long spelling; this only rewrites the
   expected text, so a link still shows up as a different real path. An anchor whose real location is unknown, or was
-  not captured, is a denial. The comparison itself is the internal static `MatchesWithoutLinks`, which resolves
-  nothing and answers `true` (no link below the anchor), `false` (a link), or `null` (the anchor's real location is
-  unknown).
+  not captured, is a denial. The comparison itself is the internal static `MatchesWithoutLinks`, which resolves no
+  folder by name (it only looks up letter case) and answers `true` (no link below the anchor), `false` (a link), or
+  `null` (the anchor's real location is unknown).
 - `Combine(...)` - validates the list, flattens nested combinations, returns a single policy unchanged.
   `RequiresRealPath` is true when any part needs it; `PreCheck` returns the first part's denial; `Check` returns the
   first denial and treats a part that returns `null` as a failure (`InvalidOperationException`), which the resolver
@@ -90,20 +99,22 @@ other code, with no open in progress) is evaluated by resolving now.
 #### Error Handling
 
 Factories throw `ArgumentNullException` / `ArgumentException` for invalid arguments. `Check` never throws for a valid
-request of the built-ins; a request that is `null` is an `ArgumentNullException`. An exception or a `null` decision of
-a policy is handled by the caller (`FileReferenceResolver` denies the file).
+request of the built-ins, except when the file system fails while the letter case is looked up (`IOException`,
+`UnauthorizedAccessException`); a request that is `null` is an `ArgumentNullException`. An exception or a `null`
+decision of a policy is handled by the caller (`FileReferenceResolver` denies the file). A root whose stored-case
+spelling cannot be looked up when the policy is created has no captured location and allows no file (fail closed).
 
-**Known limit (case-insensitive comparison)**: `RealPath.PathComparison` is case-insensitive on Windows and macOS. On
-a case-sensitive APFS volume, or a Windows directory with case sensitivity enabled, a sibling folder whose name differs
-from a root only in letter case counts as inside that root for `UnderRoots`. **Known limit (roots fixed at
+**Letter case**: a path as written is compared case-insensitively on Windows and macOS only as a pre-filter; the
+real path decides and is compared exactly in the letter case stored on disk, so no case sensitivity has to be
+detected. The server and share names of a UNC path are compared as spelled. **Known limit (roots fixed at
 creation)**: a root that does not exist when the policy is created (at startup, before any job runs) allows nothing
 for the whole run, even if a job creates it. **Known limit (hard links)**: a hard link cannot be told apart from the
 file itself and is not denied by `NoSymlinks`.
 
 #### Dependencies
 
-- **RealPath** (same subsystem) - `IsUnder`, `PathsEqual`, `CommonAncestor`, `TryGetCanonicalDirectory`, and
-  `ExpandShortNames`.
+- **RealPath** (same subsystem) - `IsUnder`, `IsUnderExactly`, `PathsEqualExactly`, `GetExactPathName`,
+  `CommonAncestor`, `TryGetCanonicalDirectory`, and `ExpandShortNames`.
 - **.NET base class library** - `System.IO.Path` and LINQ.
 
 #### Callers

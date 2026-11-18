@@ -365,6 +365,167 @@ public class RealPathTests
     }
 
     /// <summary>
+    ///     Validates that the exact containment of real paths compares stored-case paths exactly on every platform: a
+    ///     folder that differs from the root only in letter case is outside it, the root and what lies below it are
+    ///     inside, and a sibling sharing the root's name as a prefix is outside (pure text, no disk).
+    /// </summary>
+    [Fact]
+    public void RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly()
+    {
+        // Arrange: stored-case spellings in the platform's own path syntax
+        var windows = OperatingSystem.IsWindows();
+        var root = windows ? @"C:\work\allowed" : "/work/allowed";
+        var inside = windows ? @"C:\work\allowed\x" : "/work/allowed/x";
+        var otherCase = windows ? @"C:\work\ALLOWED\x" : "/work/ALLOWED/x";
+        var sibling = windows ? @"C:\work\allowed-sibling\x" : "/work/allowed-sibling/x";
+
+        // Act / Assert
+        Assert.True(RealPath.IsUnderExactly(inside, root));
+        Assert.True(RealPath.IsUnderExactly(root, root));
+        Assert.True(RealPath.IsUnderExactly(inside, root + Path.DirectorySeparatorChar));
+        Assert.False(RealPath.IsUnderExactly(otherCase, root));
+        Assert.False(RealPath.IsUnderExactly(sibling, root));
+        Assert.True(RealPath.PathsEqualExactly(root + Path.DirectorySeparatorChar, root));
+        Assert.False(RealPath.PathsEqualExactly(root.ToUpperInvariant(), root));
+    }
+
+    /// <summary>
+    ///     Validates that an existing folder named in another letter case is returned in the case stored on disk where
+    ///     the folder is case-insensitive (the Windows and macOS defaults), and that the name is returned unchanged where
+    ///     the folder is case-sensitive (the Linux default), because the name as written does not exist there.
+    /// </summary>
+    [Fact]
+    public void RealPath_GetExactPathName_FolderInOtherCase_ReturnsTheStoredCaseWhereItExists()
+    {
+        // Arrange: a folder stored as "Docs"; whether "docs" names it too is the file system's own answer
+        using var directory = new FileTestDirectory();
+        Directory.CreateDirectory(directory.Combine("Docs"));
+        var caseInsensitive = Directory.Exists(directory.Combine("docs"));
+        var expected = Path.Combine(RealPath.GetExactPathName(directory.Path), caseInsensitive ? "Docs" : "docs");
+
+        // Act
+        var exact = RealPath.GetExactPathName(directory.Combine("docs"));
+
+        // Assert
+        Assert.Equal(expected, exact);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+        {
+            Assert.True(caseInsensitive, "The temporary folder is expected to be case-insensitive on Windows and macOS.");
+        }
+    }
+
+    /// <summary>
+    ///     Validates that a missing tail below an existing folder keeps its names as written, while the existing part of
+    ///     the path is still brought to the stored case.
+    /// </summary>
+    [Fact]
+    public void RealPath_GetExactPathName_MissingTail_KeepsItsNamesAndNormalizesTheExistingPart()
+    {
+        // Arrange: "Docs" exists, "Missing/File.TXT" below it does not
+        using var directory = new FileTestDirectory();
+        Directory.CreateDirectory(directory.Combine("Docs"));
+        var existingSpelling = Directory.Exists(directory.Combine("docs")) ? "Docs" : "docs";
+        var expected = Path.Combine(RealPath.GetExactPathName(directory.Path), existingSpelling, "Missing", "File.TXT");
+
+        // Act
+        var exact = RealPath.GetExactPathName(Path.Combine(directory.Path, "docs", "Missing", "File.TXT"));
+
+        // Assert
+        Assert.Equal(expected, exact);
+        Assert.EndsWith(Path.Combine("Missing", "File.TXT"), exact, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     Validates on Windows that a drive letter written in lower case is returned in upper case, for a drive root
+    ///     and for a path on the drive.
+    /// </summary>
+    [Fact]
+    public void RealPath_GetExactPathName_LowerCaseDriveLetter_IsUpperCased()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Arrange: the temporary folder and its drive root, with the drive letter in lower case
+        using var directory = new FileTestDirectory();
+        var full = Path.GetFullPath(directory.Path);
+        var lower = char.ToLowerInvariant(full[0]) + full[1..];
+        var driveRoot = lower[..3];
+
+        // Act
+        var exactRoot = RealPath.GetExactPathName(driveRoot);
+        var exactPath = RealPath.GetExactPathName(lower);
+
+        // Assert
+        Assert.Equal(char.ToUpperInvariant(full[0]) + @":\", exactRoot);
+        Assert.Equal(char.ToUpperInvariant(full[0]), exactPath[0]);
+        Assert.Equal(RealPath.GetExactPathName(full), exactPath);
+    }
+
+    /// <summary>
+    ///     Validates on Linux and macOS that a name containing <c>*</c> or <c>?</c> returns the entry with exactly that
+    ///     name rather than another entry the name matches as a pattern, and that a missing name with a wildcard is kept
+    ///     as written.
+    /// </summary>
+    [Fact]
+    public void RealPath_GetExactPathName_NameWithWildcards_ReturnsTheExactEntry()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.UnixOnly);
+        }
+
+        // Arrange: entries a wildcard name also matches as a pattern
+        using var directory = new FileTestDirectory();
+        directory.Write("a*c", "star");
+        directory.Write("abc", "plain");
+        directory.Write("a?c", "question");
+        directory.Write("xyz", "plain");
+        var folder = RealPath.GetExactPathName(directory.Path);
+
+        // Act
+        var star = RealPath.GetExactPathName(directory.Combine("a*c"));
+        var question = RealPath.GetExactPathName(directory.Combine("a?c"));
+        var missing = RealPath.GetExactPathName(directory.Combine("x*"));
+
+        // Assert
+        Assert.Equal(Path.Combine(folder, "a*c"), star);
+        Assert.Equal(Path.Combine(folder, "a?c"), question);
+        Assert.Equal(Path.Combine(folder, "x*"), missing);
+    }
+
+    /// <summary>
+    ///     Validates on a case-sensitive folder (the Linux default) that, of several entries that differ only in letter
+    ///     case, the one named exactly is returned, and that a spelling none of them has is kept as written. Skips where
+    ///     the temporary folder is case-insensitive.
+    /// </summary>
+    [Fact]
+    public void RealPath_GetExactPathName_CaseSensitiveFolder_PrefersTheExactEntry()
+    {
+        // Arrange: "Docs" exists; a second folder "docs" can only be created on a case-sensitive folder
+        using var directory = new FileTestDirectory();
+        Directory.CreateDirectory(directory.Combine("Docs"));
+        if (Directory.Exists(directory.Combine("docs")))
+        {
+            Assert.Skip("The temporary folder is case-insensitive, so entries cannot differ only in letter case.");
+        }
+
+        Directory.CreateDirectory(directory.Combine("docs"));
+        var folder = RealPath.GetExactPathName(directory.Path);
+
+        // Act
+        var upper = RealPath.GetExactPathName(directory.Combine("Docs"));
+        var lower = RealPath.GetExactPathName(directory.Combine("docs"));
+        var missing = RealPath.GetExactPathName(directory.Combine("DOCS"));
+
+        // Assert
+        Assert.Equal(Path.Combine(folder, "Docs"), upper);
+        Assert.Equal(Path.Combine(folder, "docs"), lower);
+        Assert.Equal(Path.Combine(folder, "DOCS"), missing);
+    }
+
+    /// <summary>
     ///     Validates the classification of extended-length and device-namespace paths (pure text, so it runs on every
     ///     system): only <c>\\?\</c> followed by a drive or a volume GUID is an ordinary extended-length path; every
     ///     device-namespace spelling is recognized as one.

@@ -36,9 +36,11 @@ internal abstract partial class FileAccessPolicy
     ///     unknown anchor from a link.
     /// </summary>
     /// <remarks>
-    ///     Nothing is resolved by name here: the real location of the anchor and the long spelling of the written path
+    ///     No folder is resolved by name here: the real location of the anchor and the long spelling of the written path
     ///     are captured by the caller <b>before</b> the file is opened. An anchor renamed and replaced by a link after
-    ///     that capture therefore leads the open elsewhere, and the real path no longer matches.
+    ///     that capture therefore leads the open elsewhere, and the real path no longer matches. The expected and the
+    ///     real path are only brought to the letter case stored on disk (<see cref="RealPath.GetExactPathName"/>, which
+    ///     changes nothing but letter case and follows no link) and then compared exactly.
     /// </remarks>
     /// <param name="anchor">The trusted folder as written, an ancestor-or-self of <paramref name="requestedPath"/>.</param>
     /// <param name="canonicalAnchor">The real location of the anchor captured before the open, or <see langword="null"/> when unknown.</param>
@@ -49,6 +51,8 @@ internal abstract partial class FileAccessPolicy
     ///     <see langword="true"/> when no link lies below the anchor, <see langword="false"/> when one does, and
     ///     <see langword="null"/> when the real location of the anchor is unknown.
     /// </returns>
+    /// <exception cref="IOException">Thrown when a folder cannot be listed while the letter case is looked up.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access is refused while the letter case is looked up.</exception>
     internal static bool? MatchesWithoutLinks(
         string anchor, string? canonicalAnchor, string requestedPath, string longRequestedPath, string realPath)
     {
@@ -57,9 +61,13 @@ internal abstract partial class FileAccessPolicy
             return null;
         }
 
-        // Below the anchor the real path must equal the written path: any link there changes the real path
+        // Below the anchor the real path must equal the written path: any link there changes the real path. Both sides
+        // are brought to the letter case stored on disk and compared exactly, so a folder that differs only in case on
+        // a case-sensitive folder is a different folder, while a path written in another case on a case-insensitive
+        // folder still matches
+        var exactRealPath = RealPath.GetExactPathName(realPath);
         var relative = Path.GetRelativePath(anchor, requestedPath);
-        if (RealPath.PathsEqual(Expected(canonicalAnchor, relative), realPath))
+        if (RealPath.PathsEqualExactly(RealPath.GetExactPathName(Expected(canonicalAnchor, relative)), exactRealPath))
         {
             return true;
         }
@@ -75,9 +83,9 @@ internal abstract partial class FileAccessPolicy
         var count = relative.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
         var longParts = longRequestedPath.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries);
         return longParts.Length >= count
-            && RealPath.PathsEqual(
-                Expected(canonicalAnchor, string.Join(Path.DirectorySeparatorChar, longParts[^count..])),
-                realPath);
+            && RealPath.PathsEqualExactly(
+                RealPath.GetExactPathName(Expected(canonicalAnchor, string.Join(Path.DirectorySeparatorChar, longParts[^count..]))),
+                exactRealPath);
     }
 
     /// <summary>
@@ -197,7 +205,10 @@ internal abstract partial class FileAccessPolicy
                 return FileAccessDecision.Deny("the path as written is outside the allowed roots", RootsHint);
             }
 
-            if (Array.Exists(_roots, root => root.ContainsRealPath(request.RealPath)))
+            // The real path decides: brought to the letter case stored on disk and compared exactly with the roots,
+            // which were brought to stored case when the policy was created
+            var realPath = RealPath.GetExactPathName(request.RealPath);
+            if (Array.Exists(_roots, root => root.ContainsRealPath(realPath)))
             {
                 return FileAccessDecision.Allow;
             }
@@ -213,6 +224,11 @@ internal abstract partial class FileAccessPolicy
         /// <summary>
         ///     Determines whether a path as written lies inside a root, in the root's written or real spelling.
         /// </summary>
+        /// <remarks>
+        ///     The written path is compared under <see cref="RealPath.PathComparison"/> (case-insensitive on Windows and
+        ///     macOS). That is only a pre-filter that keeps a file clearly outside every root from being opened: the
+        ///     real path, compared exactly in stored case, is what decides.
+        /// </remarks>
         /// <param name="path">The full path as written.</param>
         /// <param name="longPath">
         ///     The path with short (8.3) names expanded, captured before the open; <see langword="null"/> to expand it now
@@ -240,17 +256,21 @@ internal abstract partial class FileAccessPolicy
         ///     the open of a file and its check) cannot widen the policy: the real path of a file is compared only with
         ///     the location captured here. A root that does not exist (or whose real location cannot be determined) when
         ///     the policy is created has no captured location and allows no file (fail closed), even once it is created.
+        ///     The captured location is in the letter case stored on disk (<see cref="RealPath.GetExactPathName"/>), so
+        ///     a root given in another letter case on a case-insensitive folder still contains its files when the real
+        ///     path is compared exactly.
         /// </remarks>
         private sealed class Root
         {
             /// <summary>
-            ///     Initializes a new instance of the <see cref="Root"/> class, capturing the real location of the root.
+            ///     Initializes a new instance of the <see cref="Root"/> class, capturing the real location of the root in
+            ///     stored case.
             /// </summary>
             /// <param name="lexical">The full path of the root as given.</param>
             public Root(string lexical)
             {
                 Lexical = lexical;
-                Canonical = RealPath.TryGetCanonicalDirectory(lexical);
+                Canonical = ExactLocationOf(lexical);
             }
 
             /// <summary>Gets the full path of the root as given.</summary>
@@ -268,11 +288,38 @@ internal abstract partial class FileAccessPolicy
                 RealPath.IsUnder(path, Lexical) || (Canonical is { } canonical && RealPath.IsUnder(path, canonical));
 
             /// <summary>
-            ///     Determines whether a real path lies inside the real location captured when the policy was created.
+            ///     Determines whether a real path lies inside the real location captured when the policy was created,
+            ///     comparing exactly.
             /// </summary>
-            /// <param name="path">The real path.</param>
+            /// <param name="path">The real path, in the letter case stored on disk.</param>
             /// <returns><see langword="true"/> when it is inside.</returns>
-            public bool ContainsRealPath(string path) => Canonical is { } canonical && RealPath.IsUnder(path, canonical);
+            public bool ContainsRealPath(string path) => Canonical is { } canonical && RealPath.IsUnderExactly(path, canonical);
+
+            /// <summary>
+            ///     Gets the real location of a root in the letter case stored on disk.
+            /// </summary>
+            /// <param name="lexical">The full path of the root as given.</param>
+            /// <returns>
+            ///     The location, or <see langword="null"/> when it cannot be determined (the root then allows no file).
+            /// </returns>
+            private static string? ExactLocationOf(string lexical)
+            {
+                var canonical = RealPath.TryGetCanonicalDirectory(lexical);
+                if (canonical is null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return RealPath.GetExactPathName(canonical);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // A location whose letter case cannot be looked up is unknown, like one that cannot be resolved
+                    return null;
+                }
+            }
         }
     }
 
