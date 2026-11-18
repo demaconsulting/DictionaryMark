@@ -74,7 +74,8 @@ default. Per-job values are in `Jobs`.
 `${VAR}` expansion and resolution against the working directory; `null` when not given.
 
 **RootDirectory**: `string?` — Effective root directory: the resolved `--root`, else the
-configuration file's resolved `root` key, else `null`. Always an existing full path when set.
+configuration file's resolved `root` key, else `null`. A full path when set; it exists when it came
+from `--root`, while a `root` key is resolved as text only and is never probed.
 
 **CommandLineFormatting**: `FormattingSettings` — The formatting options given explicitly on the
 command line; options not given are `null`. Highest-precedence formatting layer.
@@ -104,7 +105,8 @@ configuration-table jobs, built from `--file-access` and `--allow-root`; default
 4. Build the file-access policy with `ReadFileAccess` (see below), with the configuration file as
    the only input whose folder joins the default roots. A mistake is reported here, before the
    configuration file or any input is read.
-5. If `--config` was given, load it with `ConfigFile.Load`.
+5. If `--config` was given, load it with `ConfigFile.Load`, which resolves its `root` key as text
+   only (see *ConfigFile Design*).
 6. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
 7. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
    `--output` throws `ArgumentException` naming the file; otherwise each table becomes
@@ -125,7 +127,7 @@ configuration-table jobs, built from `--file-access` and `--allow-root`; default
 
 Throws `ArgumentException` when an argument is unknown, invalid, repeated or missing its value,
 when `--input`/`--output` is combined with configuration tables, or when a column-width count does
-not match the table. Throws `InvalidOperationException` when the root directory is invalid or
+not match the table. Throws `InvalidOperationException` when the `--root` directory is invalid or
 missing, the `--root` or `--config` path is malformed (reported by `PathResolver` as
 `Invalid --root option '...': ...` or `Invalid config file path '...': ...`), the configuration
 file is invalid, or the log file cannot be opened.
@@ -202,7 +204,7 @@ case rule), without duplicates. An input whose path cannot be read is skipped.
   invalid, repeated or missing its required value, when `--input`/`--output` is combined with
   configuration tables, when a column-width count does not match the table, or when the
   file-access options are invalid; throws
-  `InvalidOperationException` when the root directory is invalid or missing, the configuration
+  `InvalidOperationException` when the `--root` directory is invalid or missing, the configuration
   file is invalid, or the log file cannot be opened. `Program.Main` is expected to catch both
   types. All of these stop the run before any job runs.
 - Runtime errors: `WriteError` does not throw; it records the error message and sets

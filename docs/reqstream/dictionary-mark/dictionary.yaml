@@ -104,14 +104,16 @@ sections:
           - id: DictionaryMark-Dictionary-FileAccess
             title: >-
               The Dictionary subsystem shall read every input file of a configuration-file table job through the
-              file-access policy of the run, parsing exactly the bytes the policy approved, shall refuse an input
+              file-access policy of the run, parsing exactly the bytes the policy approved, shall judge a literal
+              input before looking it up, shall refuse an input
               pattern that breaks a never-list rule before any of its folders is listed, shall check the job's
               output path by the same policy before creating anything, shall fail only that job when a path is
               refused (with a file-access-denied error when the policy denies it, or with a read or write error for
               any other refusal), and shall read and write the paths of the command-line job without judging them.
             justification: |
               The dictionary pipeline is where table inputs are read and outputs are written, so it is where the
-              policy must be applied; a refusal must not stop the other jobs.
+              policy must be applied; a refusal must not stop the other jobs, and configuration content must not
+              learn whether a file it may not read exists.
             children:
               - DictionaryMark-DictionaryGenerator-FileAccessInputs
               - DictionaryMark-DictionaryGenerator-FileAccessOutputs
@@ -120,3 +122,4 @@ sections:
             tests:
               - DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun
               - DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun
+              - DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup

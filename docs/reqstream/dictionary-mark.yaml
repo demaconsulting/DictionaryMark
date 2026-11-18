@@ -543,17 +543,24 @@ sections:
         title: >-
           The tool shall use the configuration file's top-level root key as the base directory for every relative
           input pattern and output path, resolving the key relative to the configuration file's directory with
-          ${VAR} references and parent-directory segments.
+          ${VAR} references and parent-directory segments as text only, without accessing the file system, so
+          that a root key naming a folder that does not exist or a network location fails only the table jobs
+          whose inputs and outputs the file-access checks then refuse or do not find.
         justification: |
           A configuration file kept in a tools folder can then use repository-relative paths, independent of
-          where the file itself is stored.
+          where the file itself is stored. The content of a configuration file is not trusted, so its root key
+          may only move where relative paths point; probing it would let the file make the tool touch a folder,
+          or contact a host, outside the file-access checks.
         tags: [system]
         children:
           - DictionaryMark-Cli-RootDirectory
           - DictionaryMark-Cli-ConfigFile
+          - DictionaryMark-Dictionary-FileAccess
         tests:
           - DictionaryMark_Config_Root_TablesResolvedAgainstRoot
           - DictionaryMark_Config_Root_CommandLineInputsResolvedAgainstRoot
+          - DictionaryMark_Config_NonexistentRoot_JobFailsThroughResolver
+          - DictionaryMark_Config_NetworkRoot_JobFailsThroughResolverWithoutProbing
 
       - id: DictionaryMark-System-RootDirectory-Precedence
         title: >-
@@ -573,11 +580,12 @@ sections:
 
       - id: DictionaryMark-System-RootDirectory-Validation
         title: >-
-          The tool shall reject a root directory that does not exist (from either source), a repeated or empty
-          root option, and a root key inside a table job, with an error and a non-zero exit code.
+          The tool shall reject a root option naming a directory that does not exist, a repeated or empty root
+          option, and a root key inside a table job, with an error and a non-zero exit code.
         justification: |
-          Resolving paths against a missing or ambiguous root would fail later with confusing per-file errors;
-          rejecting it up front names the actual problem.
+          Resolving paths against a missing or ambiguous root option would fail later with confusing per-file
+          errors; rejecting it up front names the actual problem. The root option is typed by the person running
+          the tool and is trusted, so checking it on disk is safe.
         tags: [system]
         children:
           - DictionaryMark-Cli-RootDirectory
@@ -585,7 +593,6 @@ sections:
         tests:
           - DictionaryMark_Root_MissingDirectory_ReturnsError
           - DictionaryMark_Root_SpecifiedTwice_ReturnsError
-          - DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile
           - DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob
 
       - id: DictionaryMark-System-FileAccess-Modes
@@ -640,12 +647,15 @@ sections:
       - id: DictionaryMark-System-FileAccess-ConfigPathsJudged
         title: >-
           The tool shall judge every input file of a configuration-file table - each literal input and every
-          match of a glob pattern - by the file that was actually opened (its real path), shall parse exactly
-          the bytes that were judged, and shall read at most 16 MiB of each such file.
+          match of a glob pattern - by the file that was actually opened (its real path), shall judge a literal
+          input before looking it up, so that a literal input the file-access mode refuses is reported as
+          file-access-denied whether or not it exists, shall parse exactly the bytes that were judged, and shall
+          read at most 16 MiB of each such file.
         justification: |
           A glob or a link can lead a table to a file the user never intended to expose; judging the opened file,
           not its name, keeps a link swapped in by another process from slipping past the check, and the size
-          limit bounds the work an untrusted configuration file can cause.
+          limit bounds the work an untrusted configuration file can cause. Looking a literal input up before it
+          is judged would reveal to the configuration file whether a file outside the allowed folders exists.
         tags: [system]
         children:
           - DictionaryMark-Dictionary-FileAccess
@@ -656,6 +666,7 @@ sections:
           - DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs
           - DictionaryMark_FileAccess_GlobMatchOutsideRoots_IsDeniedNotSkipped
           - DictionaryMark_FileAccess_NoSymlinksAsProcess_DeniesLinkedConfigInput
+          - DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup
 
       - id: DictionaryMark-System-FileAccess-Outputs
         title: >-

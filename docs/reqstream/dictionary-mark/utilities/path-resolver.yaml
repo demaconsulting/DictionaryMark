@@ -55,8 +55,8 @@ sections:
                   The PathResolver unit shall resolve a directory path against a base directory and return its
                   full path, rejecting wildcard characters and directories that do not exist.
                 justification: |
-                  A root directory becomes the literal prefix of every rooted pattern, so it must exist and must
-                  not contain wildcards.
+                  The root option becomes the literal prefix of every rooted pattern, so it must exist and must
+                  not contain wildcards; it is trusted command-line input, so checking it on disk is safe.
                 tests:
                   - PathResolver_ResolveExistingDirectory_RelativeDirectory_ReturnsFullPath
                   - PathResolver_ResolveExistingDirectory_ParentSegments_Normalized
@@ -64,3 +64,17 @@ sections:
                   - PathResolver_ResolveExistingDirectory_MissingDirectory_ThrowsNamingDirectory
                   - PathResolver_ResolveExistingDirectory_PathIsFile_Throws
                   - PathResolver_ResolveExistingDirectory_Wildcard_Throws
+
+              - id: DictionaryMark-PathResolver-TextDirectory
+                title: >-
+                  The PathResolver unit shall resolve a directory path against a base directory as text only,
+                  expanding ${VAR} references and normalizing parent-directory segments, returning its full path
+                  without accessing the file system, and rejecting wildcard characters.
+                justification: |
+                  The configuration file root key is untrusted content whose only role is the base that relative
+                  paths are combined with, so it must be resolved without probing the disk; it still becomes the
+                  literal prefix of every rooted pattern, so it must not contain wildcards.
+                tests:
+                  - PathResolver_ResolveDirectory_MissingDirectory_ReturnsNormalizedFullPath
+                  - PathResolver_ResolveDirectory_EnvironmentVariable_Expanded
+                  - PathResolver_ResolveDirectory_Wildcard_Throws

@@ -1177,20 +1177,67 @@ public class IntegrationTests
         Assert.Contains("--root requires a non-empty directory path", empty);
     }
 
-    /// <summary>Test that a config root naming a missing directory is an error naming the file.</summary>
+    /// <summary>
+    ///     Test that a config root naming a folder that does not exist is not rejected when the file is loaded: the
+    ///     root is never probed, and the table job that uses it fails through the file-access resolver because its
+    ///     input is not found.
+    /// </summary>
     [Fact]
-    public void DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile()
+    public void DictionaryMark_Config_NonexistentRoot_JobFailsThroughResolver()
     {
-        // Arrange: a config whose root does not exist
+        // Arrange: a config whose root does not exist, with one table relative to it
         using var tmpDir = new TemporaryDirectory();
-        var config = WriteFile(tmpDir, "dictionarymark.yaml", "root: missing\n");
+        var config = WriteFile(tmpDir, "dictionarymark.yaml", "root: missing\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+        var input = PathIn(tmpDir, "missing/terms.yaml");
 
         // Act
         var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
 
-        // Assert
+        // Assert: the job reports its input as not found; the load did not reject the root; nothing was created
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Config file '{config}': Directory '{PathIn(tmpDir, "missing")}' specified by root key", output);
+        Assert.Contains($"Error: table job 1 ('out.md'): Input file '{input}' was not found.", output);
+        Assert.DoesNotContain("does not exist", output);
+        Assert.False(Directory.Exists(PathIn(tmpDir, "missing")));
+    }
+
+    /// <summary>
+    ///     Test that a config root naming a network share (with forward slashes, and on Windows also with backslashes)
+    ///     is never probed: loading succeeds and the table job fails through the file-access resolver, which refuses the
+    ///     network path (or, where the platform reads the root as a local folder, denies it under the roots mode).
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_Config_NetworkRoot_JobFailsThroughResolverWithoutProbing()
+    {
+        // Arrange: one config per spelling of the share; the host is under the .invalid top-level domain
+        using var tmpDir = new TemporaryDirectory();
+        var roots = OperatingSystem.IsWindows()
+            ? new[] { "\"//dictionarymark-test.invalid/share\"", "'\\\\dictionarymark-test.invalid\\share'" }
+            : ["\"//dictionarymark-test.invalid/share\""];
+
+        for (var index = 0; index < roots.Length; index++)
+        {
+            var config = WriteFile(
+                tmpDir,
+                $"config{index}/dictionarymark.yaml",
+                $"root: {roots[index]}\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+            // Act
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots");
+
+            // Assert: the job (not the load) failed, refused by the resolver before anything was looked up
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Error: table job 1 ('out.md'): ", output);
+            Assert.True(
+                output.Contains("network paths are not permitted", StringComparison.Ordinal)
+                || output.Contains("file-access-denied:", StringComparison.Ordinal),
+                output);
+            Assert.DoesNotContain("does not exist", output);
+            Assert.DoesNotContain("was not found", output);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Contains("is not allowed: network paths are not permitted.", output);
+            }
+        }
     }
 
     /// <summary>Test that a root key inside a table job is an error naming the job.</summary>
@@ -1449,6 +1496,32 @@ public class IntegrationTests
         Assert.Contains("file-access-denied:", output);
         Assert.Contains("terms-b.yaml", output);
         Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a literal config-file table input outside the allowed folder is judged before it is looked up: a
+    ///     file that does not exist there is reported as file-access-denied, not as not found, while a missing literal
+    ///     input inside the folder is reported as not found.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup()
+    {
+        // Arrange: neither input exists; one lies outside the allowed folder and one inside it
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(
+            tmpDir,
+            "config/dictionarymark.yaml",
+            "tables:\n  - input: ../other/missing.yaml\n    output: outside.md\n  - input: missing.yaml\n    output: inside.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert: the outside input is denied without revealing whether it exists; the inside one is not found
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('outside.md'): file-access-denied:", output);
+        Assert.DoesNotContain($"Input file '{PathIn(tmpDir, "other/missing.yaml")}' was not found", output);
+        Assert.Contains($"Error: table job 2 ('inside.md'): Input file '{PathIn(tmpDir, "config/missing.yaml")}' was not found.", output);
+        Assert.Contains("Error: 2 of 2 table jobs failed.", output);
     }
 
     /// <summary>

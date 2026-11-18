@@ -235,4 +235,42 @@ public class DictionarySubsystemTests
         Assert.False(File.Exists(Path.Combine(root, "share.md")));
         Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
     }
+
+    /// <summary>
+    ///     Test that a literal configuration input is judged before it is looked up: a missing file outside the allowed
+    ///     root is denied (not reported as not found), a missing file inside it is not found, and the other table runs.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup()
+    {
+        // Arrange: the config folder is the only allowed root; two tables name missing files, one outside and one inside
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../other/missing.yaml\n    output: outside.md\n"
+            + "  - input: missing.yaml\n    output: inside.md\n  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var originalError = Console.Error;
+        using var errWriter = new StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            using var context = Context.Create(["--config", config, "--allow-root", root]);
+
+            // Act
+            DictionaryGenerator.Generate(context);
+
+            // Assert: denied outside, not found inside, and the valid table ran
+            var err = errWriter.ToString();
+            Assert.Equal(1, context.ExitCode);
+            Assert.Contains("Error: table job 1 ('outside.md'): file-access-denied:", err);
+            Assert.Contains($"Error: table job 2 ('inside.md'): Input file '{Path.Combine(root, "missing.yaml")}' was not found.", err);
+            Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
 }

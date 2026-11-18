@@ -165,10 +165,11 @@ internal sealed partial class Context : IDisposable
     ///     fully initialized or never created. The steps are, in order: parse the arguments; resolve --root
     ///     against the working directory; resolve --config against the working directory (never the root);
     ///     build the file-access policy from --file-access and --allow-root, so a mistake there is reported
-    ///     before any input is opened; load the config, which also resolves its <c>root</c> key; reject
+    ///     before any input is opened; load the config, which also resolves its <c>root</c> key as text only (the
+    ///     key is untrusted content and is never probed); reject
     ///     --input/--output when the config defines tables; build the jobs with the base directory --root, else
     ///     config <c>root</c>, else the path's origin default; and finally open the log file. Every validation failure stops the run before any job runs.
-    ///     Performs file-system I/O (root existence, config file, log file). Stateless after construction;
+    ///     Performs file-system I/O (--root existence, config file, log file). Stateless after construction;
     ///     thread-safe for concurrent reads.
     /// </remarks>
     /// <param name="args">Command-line arguments. Must not be null.</param>
@@ -180,7 +181,7 @@ internal sealed partial class Context : IDisposable
     ///     --allow-root folder that does not exist).
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the root directory or config file path is malformed, invalid or missing, the config file is
+    ///     Thrown when the --root directory or config file path is malformed, invalid or missing, the config file is
     ///     missing or invalid, or the specified log file cannot be opened.
     /// </exception>
     public static Context Create(string[] args)

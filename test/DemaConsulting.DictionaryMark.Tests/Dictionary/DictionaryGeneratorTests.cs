@@ -596,6 +596,54 @@ public class DictionaryGeneratorTests
     }
 
     /// <summary>
+    ///     Test that a literal config input outside the allowed roots is judged before it is looked up: a file that does
+    ///     not exist there is reported as file-access-denied, not as not found, so its existence is never probed.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup()
+    {
+        // Arrange: the input names a missing file next to the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/missing.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var missing = Path.Combine(tmpDir.DirectoryPath, "shared", "missing.yaml");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the policy refused the path as written; nothing reports whether the file exists
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): file-access-denied: The file '", err);
+        Assert.Contains("was denied by the file-access policy 'roots'.", err);
+        Assert.DoesNotContain("was not found", err);
+        Assert.DoesNotContain("Input directory", err);
+        Assert.False(File.Exists(missing));
+    }
+
+    /// <summary>
+    ///     Test that a literal config input inside the allowed roots that does not exist is reported clearly as not
+    ///     found, through the resolver's outcome.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound()
+    {
+        // Arrange: the input names a missing file in a missing folder below the config folder (the allowed root)
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: sub/missing.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var missing = Path.Combine(root, "sub", "missing.yaml");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: a not-found error naming the full path; no output was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('out.md'): Input file '{missing}' was not found.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
     ///     Test that a glob whose matches lie both inside and outside the allowed roots fails its job: the match outside
     ///     is denied rather than skipped, and the match inside is not used alone.
     /// </summary>

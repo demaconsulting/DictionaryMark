@@ -6,7 +6,8 @@
 
 `DictionaryGenerator` is a static class that orchestrates the full dictionary generation pipeline.
 The `Generate` static method runs every job of the context. For each job, `GenerateJob` resolves
-input file paths using `GlobMatcher`, loads entries from each file via `YamlDictionaryLoader`,
+input file paths (using `GlobMatcher` for wildcard patterns and every command-line pattern), loads entries from each
+file via `YamlDictionaryLoader`,
 detects conflicts with `ConflictDetector`, formats output with `MarkdownFormatter`, and writes the
 result to the output file or stdout. A configuration-table job is judged by the run's file-access
 policy: its input files are read, and its output path is checked, through one `FileReferenceResolver`
@@ -40,13 +41,13 @@ Processing steps: (0) For a configuration-table job (`job.Index` is set), create
 configuration `root` key, so a configuration file cannot move its own trusted origin) and `FileAccess` =
 `context.FileAccess`; the command-line job gets none and is never judged. (0a) For a configuration-table job, check
 each input pattern before anything is listed (`CheckPatterns`). (1) Resolve input file paths — call
-`GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
+`ResolveInputs(job)`;
 return early on `ArgumentException`, `InvalidOperationException`, `IOException`, `UnauthorizedAccessException` or empty
 result. (2) Load entries — with a resolver, read every
-matched file with `resolver.Resolve(file)` (every glob match is judged; nothing is skipped) and call
+literal input and every matched file with `resolver.Resolve(file)` (every file is judged; nothing is skipped) and call
 `YamlDictionaryLoader.Load(file, content)` (or `LoadDeprecated(file, content)`) on the bytes it returned; without a
 resolver, call `YamlDictionaryLoader.Load(file)` (or `LoadDeprecated(file)`). Return early at the first failure:
-`FileReferenceException`, a match that is no longer found, `IOException`, `UnauthorizedAccessException`,
+`FileReferenceException`, a literal input or match that is not found, `IOException`, `UnauthorizedAccessException`,
 `YamlException` or `InvalidOperationException`. (3) Detect
 conflicts — call
 `ConflictDetector.Detect(approved, deprecated)` for this job's files; if any conflicts found, report each and return.
@@ -60,12 +61,22 @@ directories with
 directory may be a root directory, the configuration file's directory, or the working directory; the generator does
 not distinguish them.
 
+**ResolveInputs** *(private)*: Resolves a job's input patterns to the sorted (ordinal, case-insensitive),
+deduplicated list of full file paths to read. The command-line job is trusted, so every pattern goes to
+`GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`, which requires each literal file to exist. The patterns
+of a configuration-table job are untrusted content: each is expanded and rooted with
+`PathResolver.Combine(pattern, job.BaseDirectory, "glossary path")`; one without `*` or `?` is a literal input, which
+is only normalized with `Path.GetFullPath` (text arithmetic) and never looked up, because the resolver applies the
+policy before it looks for the file and reports a missing file as not found; the others are real wildcard patterns,
+which have already passed `CheckPatterns` and go to `GlobMatcher.Resolve`. Listing the folders of a wildcard pattern is
+the one access made for configuration content outside the resolver.
+
 **CheckPatterns** *(private)*: For a configuration-table job, roots each input pattern with
 `PathResolver.Combine(pattern, job.BaseDirectory, "glossary path")` (the path that would be listed) and passes it, and
 its `Path.GetFullPath` form with `.` and `..` collapsed, to `FileReferenceResolver.CheckPatternText`. A
 `FileReferenceException` fails the job with `DescribeRefusal(ex, "Failed to resolve input pattern '{pattern}'")`
 before any folder is listed, so a network, device or URL-like pattern never contacts a host. An undefined `${VAR}` or a
-malformed path is left to `GlobMatcher.Resolve`, which reports it as before. Command-line patterns are not checked.
+malformed path is left to `ResolveInputs`, which reports it as before. Command-line patterns are not checked.
 
 **DescribeRefusal** *(private)*: Turns a `FileReferenceException` into the error text. A policy denial or a policy
 that cannot be applied (`AccessDenied` or `RealPathUnavailable`) reads
@@ -89,8 +100,9 @@ Error cases:
 
 - **Invalid or unresolved input** — `InvalidOperationException` or a path-validation exception
   (`PathResolver.IsInvalidPathException`: `ArgumentException`, `NotSupportedException` or
-  `PathTooLongException`) from `GlobMatcher.Resolve`. An `InvalidOperationException` reports
-  `"Error: {message}"` (pattern matched no files, file or directory not found, undefined `${VAR}`).
+  `PathTooLongException`) from `ResolveInputs` (`PathResolver.Combine`, `Path.GetFullPath` or
+  `GlobMatcher.Resolve`). An `InvalidOperationException` reports
+  `"Error: {message}"` (pattern matched no files, a command-line file or directory not found, undefined `${VAR}`).
   A path-validation exception reports `"Error: Invalid input pattern: {message}"` (for example a
   glob rejected by the globbing library, or a null character in a command-line pattern).
 - **Refused input pattern** — `FileReferenceException` from `CheckPatterns` (a configuration-table pattern that breaks
@@ -108,8 +120,10 @@ Error cases:
 - **Other refusal of a judged path** — any other `FileReferenceException` (a never-list path, a file that is not a
   regular file, a file larger than 16 MiB, a file that cannot be opened); reports
   `"Error: Failed to read file '{file}': {message}"` or `"Error: Failed to write output file '{file}': {message}"`.
-- **Match no longer found** — `Resolve` returned no file for a glob match (the file vanished after the glob ran);
-  reports `"Error: Input file '{file}' was not found."`.
+- **Input not found** — `Resolve` returned no file for a configuration-table input: a literal input that does not
+  exist (in a folder the policy allows), or a glob match that vanished after the glob ran; reports
+  `"Error: Input file '{file}' was not found."` with the full path, the same message the command-line job gets for a
+  missing literal file.
 - **I/O or access error reading YAML** — `IOException`, `UnauthorizedAccessException` or a
   path-validation exception from `YamlDictionaryLoader.Load`; reports
   `"Error: Failed to read file '{file}': {message}"`.
@@ -134,11 +148,12 @@ For configuration jobs, every message above is prefixed with the job label, for 
 
 - **Context** — CLI subsystem; provides the jobs, output channel, and exit code.
 - **TableJob** — CLI subsystem; one job's inputs, output, base directory, label and options.
-- **GlobMatcher** — Utilities subsystem; resolves glob patterns to concrete file paths.
+- **GlobMatcher** — Utilities subsystem; resolves the command-line job's patterns and the wildcard patterns of a
+  configuration-table job to concrete file paths.
 - **FileReferenceResolver**, **FileReferenceOptions**, **FileReference**, **FileReferenceException** — Files
   subsystem; read and judge the input files of a configuration-table job and check its output path.
-- **PathResolver** — Utilities subsystem; resolves the output path against the job's base
-  directory.
+- **PathResolver** — Utilities subsystem; expands and roots the input patterns of a configuration-table job and
+  resolves the output path against the job's base directory.
 - **YamlDictionaryLoader** — Dictionary subsystem unit; loads approved-term and deprecated-term entries
   from each YAML file.
 - **ConflictDetector** — Dictionary subsystem unit; detects term conflicts across loaded entries.

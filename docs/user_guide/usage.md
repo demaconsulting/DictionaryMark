@@ -148,7 +148,10 @@ dictionarymark --input terms/*.yaml --input extra/more-terms.yaml --output docs/
 ```
 
 Input patterns may contain `${VAR}` environment variables. A pattern that matches no file, a
-literal file that does not exist and an undefined variable are all errors.
+literal file that does not exist and an undefined variable are all errors. For the tables of a
+configuration file, a literal input (one without wildcards) is not looked up in advance: it is read
+through the file-access checks (see *File Access*), which report a file that does not exist as
+`Input file '...' was not found.` once the file-access mode allows its path.
 
 The same term in several files is fine when the entries are identical. Entries that differ in
 `definition`, `pos`, `variants` or `visible` conflict. DictionaryMark does not check approved terms
@@ -241,7 +244,7 @@ dictionarymark --config docs/glossary/dictionarymark.yaml
 | `use-header` | top level or job | Deprecated "use" column header |
 | `where-header` | top level or job | Deprecated "where" column header |
 | `column-widths` | top level or job | YAML sequence of 2 or 3 positive integers, for example `[25, 75]` |
-| `root` | top level only | Base directory for relative paths, relative to the file; must exist |
+| `root` | top level only | Base directory for relative paths, relative to the file; never checked on disk |
 | `tables` | top level only | Non-empty list of table jobs |
 | `input` | job only, required | A pattern, or a list of patterns |
 | `output` | job only, required | Output Markdown file |
@@ -279,7 +282,8 @@ a bullet list.
   `sub/../../shared/*.yaml`.
 - `${VAR}` environment variables are expanded in the `--config` path and in every input and output
   path. An undefined variable is an error.
-- A pattern that matches no file is an error for that job.
+- A pattern that matches no file is an error for that job, and so is a literal input that does not
+  exist (reported by the file-access checks; see *File Access*).
 - Missing parent directories of every output file are created (also for `--output` on the command
   line).
 
@@ -325,15 +329,24 @@ The base directory for a relative path is chosen as follows:
 - A relative `--root` is resolved against the working directory; a relative `root` key is resolved
   against the configuration file's directory. Both support `${VAR}` and `..`.
 - Absolute input and output paths ignore the root.
-- The root must be an existing directory and must not contain wildcards. `--root` may be given only
-  once and must not be empty. The `root` key is checked even when `--root` overrides it.
+- Neither root may contain wildcards. `--root` must be an existing directory, may be given only once
+  and must not be empty. The `root` key is configuration content, so it is only the base that relative
+  job paths are combined with: it is resolved as text and never checked on disk, and it never grants
+  access to anything. A `root` key that does not exist, or that names a network share, makes each table
+  that uses it fail through the file-access checks (its inputs are not found or are refused). The
+  `root` key is checked for wildcards and undefined variables even when `--root` overrides it.
 
 ## File Access
 
-A configuration file may come from a source you do not fully trust, for example a pull request or a shared
-repository. DictionaryMark therefore judges every input and output its tables name by a file-access mode. The paths you
-name on the command line yourself (`--config`, `--input`, `--output`, `--log` and `--results`) are trusted and never
-judged.
+The trust boundary is the command line. Everything you type there is trusted, including `--file-access`,
+`--allow-root`, `--root` and the `--config` path itself, and reading the configuration file is never judged. The
+content of the configuration file is not trusted, because it may come from a source you do not fully trust, for example
+a pull request or a shared repository. Everything that content names reaches the disk only through the file-access
+checks: DictionaryMark judges every input and output its tables name by a file-access mode, and its `root:` key only
+moves where relative table paths point (it never grants access, and the allowed folders never come from it). The one
+accepted exception is listing the folders of a wildcard pattern, which happens only after the pattern has passed the
+rules that refuse network paths. The paths you name on the command line yourself (`--config`, `--input`, `--output`,
+`--log` and `--results`) are trusted and never judged.
 
 | Mode | What configuration tables may read and write |
 | :--- | :--- |
@@ -358,7 +371,8 @@ dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-
 How the files are judged:
 
 - Every input is judged, including every match of a glob pattern. A match outside the allowed folders fails the
-  table; it is never skipped.
+  table; it is never skipped. A literal input (one without wildcards) is judged before it is looked up, so a file
+  outside the allowed folders is refused whether or not it exists.
 - The decision is about the file that was actually opened (its real path), and the bytes that were judged are the
   bytes that are parsed, so a link swapped in by another process cannot slip past the check.
 - Every output is judged before anything is written, so a refused output creates neither the file nor any folder.
@@ -401,8 +415,9 @@ Known limits:
   the write is not caught.
 - A configuration input pattern is checked against the rules that apply under every mode before anything is listed,
   so a network or URL-like pattern (such as `//host/share/*.yaml`) is refused without contacting the host. Under local
-  folders, glob matching lists folders and checks that literal inputs exist before each match is judged, so file names
-  outside the allowed folders can still be learned; no content of such a file is read.
+  folders, glob matching lists the folders of a wildcard pattern before each match is judged, so file names outside the
+  allowed folders can still be learned; no content of such a file is read. Literal inputs are not listed or looked up
+  in advance.
 - The real location of each allowed folder is captured when the run starts; a folder that does not exist then allows
   nothing, even if a table creates it.
 - Paths are compared case-insensitively on Windows and macOS; on a case-sensitive volume, a sibling folder whose name

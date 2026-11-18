@@ -352,14 +352,21 @@ tables:
 
 The base directory is `--root` if given, else the configuration `root`, else the configuration file's
 directory (for paths from the file) or the working directory (for command-line paths). Absolute paths
-ignore the root, and `--config`, `--log` and `--results` are never resolved against it. The root must
-exist; `${VAR}` and `..` are supported.
+ignore the root, and `--config`, `--log` and `--results` are never resolved against it. `--root` must
+exist. The configuration `root:` is only the base that relative job paths are combined with: it is
+resolved as text and never checked on disk, so a `root:` that does not exist (or names a network share)
+makes the tables that use it fail through the file-access checks below (not found, or refused). Both
+support `${VAR}` and `..`, and neither may contain wildcards.
 
 ### File Access
 
-A configuration file may come from a source you do not fully trust (for example a pull request). Its table inputs
-(every match of every glob) and outputs are judged by a file-access mode; the paths you name on the command line
-(`--config`, `--input`, `--output`, `--log`, `--results`) are never judged.
+The command line is trusted: every option, including `--config`, `--file-access`, `--allow-root` and `--root`, is
+taken as given, and reading the configuration file itself is never judged. The content of the configuration file is
+not trusted, because it may come from a source you do not fully trust (for example a pull request). Everything it
+names, including its `root:` key, reaches the disk only through the file-access checks: its table inputs (each literal
+input and every match of every glob) and outputs are judged by a file-access mode, and `root:` only moves where its
+relative paths point. The paths you name on the command line (`--config`, `--input`, `--output`, `--log`,
+`--results`) are never judged.
 
 ```pwsh
 # Confine the tables of a configuration file to the repository folder
@@ -380,10 +387,11 @@ A table whose input or output the file-access mode denies fails with `file-acces
 the rules above (or names a file over 16 MiB) fails with the ordinary `Failed to read file` or
 `Failed to write output file` error, which names the rule. Either way the table writes nothing, the other tables still
 run, and the exit code is non-zero. Known limits: a hard link cannot be told apart from its file; the output check is
-not race-proof (the write follows by name); a configuration input pattern that breaks one of the rules above (such as
-a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but glob matching under
-local folders can reveal file names outside the allowed folders before the match is refused, although no content is
-read; and an `--allow-root` folder must exist when the run starts.
+not race-proof (the write follows by name); a literal configuration input is judged before it is looked up, so its
+existence is never revealed outside the allowed folders; a configuration input pattern that breaks one of the rules
+above (such as a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but
+listing the local folders of a wildcard pattern can reveal file names outside the allowed folders before the match is
+refused, although no content is read; and an `--allow-root` folder must exist when the run starts.
 See the User Guide for details.
 
 ### Conflicts

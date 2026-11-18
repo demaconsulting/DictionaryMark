@@ -62,8 +62,8 @@ internal sealed class ConfigFile
     public string BaseDirectory { get; }
 
     /// <summary>
-    ///     Gets the resolved, existing full path of the top-level <c>root</c> key, or null when the
-    ///     key is absent.
+    ///     Gets the full path of the top-level <c>root</c> key, resolved as text only, or null when the key
+    ///     is absent. The folder is never probed, so it may not exist.
     /// </summary>
     public string? RootDirectory { get; }
 
@@ -97,17 +97,20 @@ internal sealed class ConfigFile
     ///     keys are the formatting keys (<c>format</c>, <c>section</c>, <c>depth</c>, <c>sort</c>,
     ///     <c>term-header</c>, <c>def-header</c> or <c>definition-header</c>, <c>kind</c>,
     ///     <c>use-header</c>, <c>where-header</c>, <c>column-widths</c>), <c>root</c> and
-    ///     <c>tables</c>. The <c>root</c> value is resolved relative to the file's directory, with
-    ///     <c>${VAR}</c> expansion and <c>..</c> normalization, and must name an existing directory.
-    ///     Performs file-system I/O; stateless and thread-safe.
+    ///     <c>tables</c>. The <c>root</c> value is untrusted content whose only role is the base that relative
+    ///     job paths are combined with: it is resolved as text relative to the file's directory, with
+    ///     <c>${VAR}</c> expansion and <c>..</c> normalization, and is never probed, so a folder that does not
+    ///     exist (or a network location) is left to the file-access resolver when the jobs run. Reads the
+    ///     configuration file itself; stateless and thread-safe.
     /// </remarks>
     /// <param name="path">Path of the configuration file; normally already a full path. Must not be null.</param>
     /// <returns>The validated configuration.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the path is malformed, the file is missing or unreadable, is not valid YAML, is empty, does not have a
-    ///     mapping root, or contains an unknown, disallowed, missing or invalid key (including a malformed or missing
-    ///     root directory); the message names the file, the key, and the job when the problem is inside one.
+    ///     mapping root, or contains an unknown, disallowed, missing or invalid key (including a malformed root, one with
+    ///     an undefined variable or one with wildcard characters); the message names the file, the key, and the job when
+    ///     the problem is inside one.
     /// </exception>
     public static ConfigFile Load(string path)
     {
@@ -493,24 +496,28 @@ internal sealed class ConfigFile
             : throw new InvalidOperationException($"{prefix}contains a non-scalar key");
 
     /// <summary>
-    ///     Resolves the <c>root</c> value relative to the configuration file's directory.
+    ///     Resolves the <c>root</c> value relative to the configuration file's directory, as text only.
     /// </summary>
+    /// <remarks>
+    ///     The value is untrusted content, so it is never probed: it only decides where relative job paths
+    ///     point, and the file-access resolver judges those paths when the jobs run.
+    /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>
     /// <param name="prefix">The error-message prefix naming the file.</param>
-    /// <returns>The full path of the existing root directory.</returns>
+    /// <returns>The full path of the root directory, which may not exist.</returns>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the root is malformed, cannot be resolved or does not exist; the message starts
-    ///     with <paramref name="prefix"/>.
+    ///     Thrown when the root is malformed, contains wildcard characters or references an undefined
+    ///     variable; the message starts with <paramref name="prefix"/>.
     /// </exception>
     private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
     {
         // PathResolver reports every root problem (undefined variable, wildcard, malformed or
-        // overlong path, missing directory) as InvalidOperationException; add the file's context
+        // overlong path) as InvalidOperationException; add the file's context
         try
         {
             var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
-            return PathResolver.ResolveExistingDirectory(rawRoot, configDirectory, RootKeyDescription);
+            return PathResolver.ResolveDirectory(rawRoot, configDirectory, RootKeyDescription);
         }
         catch (InvalidOperationException ex)
         {

@@ -643,6 +643,30 @@ public class CliSubsystemTests
     }
 
     /// <summary>
+    ///     Test that a config root key naming a folder that does not exist is resolved as text only: the run is not
+    ///     stopped while the file is loaded, the table job uses the missing folder as its base directory, and the job
+    ///     then fails because its input is not found.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_RootFlow_NonexistentConfigRoot_FailsJobNotLoad()
+    {
+        // Arrange: a config whose root does not exist, with one table relative to it
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "root: ../missing\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act
+        using var context = Context.Create(["--silent", "--config", config]);
+        Program.Run(context);
+
+        // Assert: the root was accepted as the job's base directory; the job failed; nothing was created
+        Assert.Equal(missing, context.RootDirectory);
+        Assert.Equal(missing, context.Jobs[0].BaseDirectory);
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(Directory.Exists(missing));
+    }
+
+    /// <summary>
     ///     Test that --allow-root confines the config-file table jobs: a table inside the folder is generated and a
     ///     table writing outside it fails with file-access-denied and a non-zero exit code.
     /// </summary>

@@ -67,6 +67,7 @@ sections:
               - DictionaryMark-PathResolver-GlobCombine
               - DictionaryMark-PathResolver-NullValidation
               - DictionaryMark-PathResolver-ExistingDirectory
+              - DictionaryMark-PathResolver-TextDirectory
               - DictionaryMark-GlobMatcher-BaseDirectory
             tests:
               - UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles

@@ -88,6 +88,8 @@ internal static class DictionaryGenerator
     ///     directory is the config file's folder, and the output path is checked by the same
     ///     resolver before anything is created. Before any folder is listed, each of its input patterns is checked
     ///     against the resolver's never list, so a network or device pattern is refused without contacting a host.
+    ///     A literal input of such a job (one without wildcard characters) is not looked up first: its path is handed
+    ///     straight to the resolver, which applies the policy before it checks that the file exists.
     ///     A denial fails the job with <c>file-access-denied</c>.
     ///     The command-line job is never judged.
     /// </remarks>
@@ -108,7 +110,7 @@ internal static class DictionaryGenerator
         IReadOnlyList<string> files;
         try
         {
-            files = GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory);
+            files = ResolveInputs(job);
         }
         catch (Exception ex) when (PathResolver.IsInvalidPathException(ex))
         {
@@ -254,6 +256,62 @@ internal static class DictionaryGenerator
         context.WriteError(job.Label == null ? $"Error: {text}" : $"Error: {job.Label}: {text}");
 
     /// <summary>
+    ///     Resolves the input patterns of a job to the files to read.
+    /// </summary>
+    /// <remarks>
+    ///     The command-line job is trusted, so every pattern goes through the strict
+    ///     <see cref="GlobMatcher.Resolve(IEnumerable{string}, string)"/>, which checks that each literal file
+    ///     exists. A config-file table job's patterns are untrusted content: a pattern without wildcard characters
+    ///     (after <c>${VAR}</c> expansion) is only expanded, rooted at the job's base directory and normalized as
+    ///     text, never probed, because its file is read through the resolver, which applies the policy before it
+    ///     looks for the file and reports a missing file as not found. Only a real wildcard pattern, which has already
+    ///     passed the never-list check, is listed by the glob matcher; listing is the one access made for config
+    ///     content outside the resolver.
+    /// </remarks>
+    /// <param name="job">The job whose patterns are resolved.</param>
+    /// <returns>Sorted (ordinal, case-insensitive), deduplicated list of absolute file paths.</returns>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when a pattern is empty or malformed, or a glob is rejected by the globbing library.
+    /// </exception>
+    /// <exception cref="PathTooLongException">Thrown when a literal path exceeds the platform's maximum length.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when an environment variable is undefined or empty, a glob matches no files, or (command-line job
+    ///     only) a literal directory or file does not exist.
+    /// </exception>
+    private static IReadOnlyList<string> ResolveInputs(TableJob job)
+    {
+        // The command-line job is trusted: the strict glob matcher resolves every pattern
+        if (job.Index == null)
+        {
+            return GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory);
+        }
+
+        // Split the config patterns: literal paths are resolved as text; wildcard patterns are listed
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var globs = new List<string>();
+        foreach (var pattern in job.InputPatterns)
+        {
+            var expanded = PathResolver.Combine(pattern, job.BaseDirectory, "glossary path");
+            if (expanded.Contains('*') || expanded.Contains('?'))
+            {
+                globs.Add(pattern);
+            }
+            else
+            {
+                files.Add(Path.GetFullPath(expanded));
+            }
+        }
+
+        // List the wildcard patterns (they passed the never-list check before this call)
+        if (globs.Count > 0)
+        {
+            files.UnionWith(GlobMatcher.Resolve(globs, job.BaseDirectory));
+        }
+
+        return [.. files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
     ///     Checks the input patterns of a config-file table job against the resolver's never list before any folder is
     ///     listed.
     /// </summary>
@@ -310,10 +368,10 @@ internal static class DictionaryGenerator
     ///     Loads files of one kind into the matching list, reporting the first error.
     /// </summary>
     /// <remarks>
-    ///     With a resolver (a config-file table job), every file the glob matched is read through it, so the
-    ///     file-access policy judges each match and the loader parses exactly the bytes that were approved; the
-    ///     first refused match fails the job, so a denied match is never skipped. Without a resolver the files
-    ///     are read by name.
+    ///     With a resolver (a config-file table job), every literal input and every file the glob matched is read
+    ///     through it, so the file-access policy judges each one and the loader parses exactly the bytes that were
+    ///     approved; the first refused file fails the job, so a denied match is never skipped. Without a resolver the
+    ///     files are read by name.
     /// </remarks>
     /// <returns>True when every file loaded; false after writing an error.</returns>
     private static bool LoadFiles(
@@ -331,7 +389,8 @@ internal static class DictionaryGenerator
             {
                 if (resolver != null)
                 {
-                    // Read the match through the resolver; a file that vanished since the glob ran is not found
+                    // Read the file through the resolver; a literal input that does not exist, or a match that vanished
+                    // since the glob ran, is not found
                     var read = resolver.Resolve(file);
                     if (read == null)
                     {

@@ -42,19 +42,29 @@ collapsed. No file-system access.
 
 **IsInvalidPathException**: Returns `true` for `ArgumentException` (other than
 `ArgumentNullException`), `NotSupportedException` and `PathTooLongException`. This is the single
-definition of a path-validation exception. `ResolvePath` and `ResolveExistingDirectory` use it, and
+definition of a path-validation exception. `ResolvePath`, `ResolveDirectory` and `ResolveExistingDirectory` use it, and
 so do the callers' exception filters around their own `File` and `Directory` calls.
 
-**ResolveExistingDirectory**: Resolves a root directory.
+**ResolveDirectory**: Resolves the configuration `root` key as text only.
+
+- *Parameters*: `string path`; `string baseDirectory`; `string description`.
+- *Returns*: `string` — the normalized full path; the directory may or may not exist.
+- *Postconditions*: No file-system access was made.
+
+Algorithm: compute `Combine`; reject the result if it contains `*` or `?`, because a root becomes
+the literal prefix of every rooted glob and a wildcard would corrupt the split between the literal
+base directory and the wildcard remainder; normalize with `Path.GetFullPath`. The `root` key is
+untrusted configuration content whose only role is the base that relative job paths are combined
+with, so it is never probed; the file-access resolver judges the paths the jobs reach through it.
+
+**ResolveExistingDirectory**: Resolves the trusted `--root` directory.
 
 - *Parameters*: `string path`; `string baseDirectory`; `string description`.
 - *Returns*: `string` — the normalized full path of the existing directory.
 - *Postconditions*: The directory exists.
 
-Algorithm: compute `Combine`; reject the result if it contains `*` or `?`, because a root becomes
-the literal prefix of every rooted glob and a wildcard would corrupt the split between the literal
-base directory and the wildcard remainder; normalize with `Path.GetFullPath`; require
-`Directory.Exists`, which is `false` for files and missing paths.
+Algorithm: compute `ResolveDirectory`; require `Directory.Exists`, which is `false` for files and
+missing paths.
 
 #### Error Handling
 
@@ -65,9 +75,10 @@ All errors are `InvalidOperationException` (except null arguments, which throw
   `Environment variable '{name}' referenced by {description} '{path}' is not defined.`
 - Wildcard in a directory: `{Description} '{path}' must not contain wildcard characters.` (the
   description is capitalized).
-- Missing directory: `Directory '{full}' specified by {description} '{path}' does not exist.`
+- Missing directory (`ResolveExistingDirectory` only): `Directory '{full}' specified by {description} '{path}' does not
+  exist.`
 - Malformed or overlong path (a path-validation exception from `Path.GetFullPath` in
-  `ResolvePath` or `ResolveExistingDirectory`, for example a null character):
+  `ResolvePath`, `ResolveDirectory` or `ResolveExistingDirectory`, for example a null character):
   `Invalid {description} '{path}': {message}`, with the original exception as the inner exception.
 
 Callers either report the message as a per-job error (`DictionaryGenerator`, `GlobMatcher` via
@@ -81,8 +92,9 @@ N/A - uses only .NET base class library path and environment APIs.
 
 - **GlobMatcher.Resolve** — `Combine` for every input pattern (description `glossary path`).
 - **DictionaryGenerator.GenerateJob** — `ResolvePath` for the output file (description
-  `output path`).
+  `output path`), and `Combine` for the input patterns of a configuration-table job (description
+  `glossary path`).
 - **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`.
-- **ConfigFile.Load** — `ResolveExistingDirectory` for the `root` key.
+- **ConfigFile.Load** — `ResolveDirectory` for the `root` key.
 - **IsInvalidPathException** — used by `DictionaryGenerator` (input resolution, reading and
   writing) and `ConfigFile` (config path normalization and reading) in their exception filters.

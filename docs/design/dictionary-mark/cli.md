@@ -39,8 +39,9 @@ instance and the `TableJob` instances it exposes.
   `ArgumentException` for unknown flags, invalid option values, repeated `--config` or `--root`, `--input`/`--output`
   combined with configuration tables, and a column-width count that does not match the table, and for invalid
   file-access options (an unknown mode, `--allow-root` with `any` or `no-symlinks`, an `--allow-root` folder that does
-  not exist). Throws `InvalidOperationException` for an invalid or missing root directory, an invalid configuration
-  file, and an unopenable log file.
+  not exist). Throws `InvalidOperationException` for an invalid or missing `--root` directory, an invalid configuration
+  file (including a `root` key that is malformed, has wildcards or an undefined variable; the key is never probed),
+  and an unopenable log file.
 
 **TableJob**: One generation job, consumed by the Dictionary subsystem.
 
@@ -66,7 +67,8 @@ subsystem.
 
 - *Type*: In-process .NET API
 - *Role*: Consumer — `Context` resolves `--config` and `--root`; `ConfigFile` resolves `root`
-- *Contract*: `ResolvePath` and `ResolveExistingDirectory` (see *PathResolver Design*)
+- *Contract*: `ResolvePath`, `ResolveExistingDirectory` (for `--root`) and `ResolveDirectory` (for the
+  configuration `root` key, text only) (see *PathResolver Design*)
 - *Constraints*: N/A
 
 **FileAccessPolicy**: The file-access policy from the Files subsystem.
@@ -90,7 +92,8 @@ command-line `FormattingSettings` layer. `Context.Create` then:
 2. Resolves `--config` against the working directory (never the root), then builds the file-access policy from
    `--file-access` and `--allow-root` (`Context.FileAccess.cs`, see *Context Design*), so a mistake there is
    reported before any input is read, and then loads the configuration file with `ConfigFile.Load`, which also
-   resolves the file's `root` key against the file's directory.
+   resolves the file's `root` key against the file's directory as text only: the key is untrusted content and is
+   never probed, so a `root` that does not exist is left to the file-access resolver when the jobs run.
 3. Selects the effective root: `--root`, else the configuration `root`, else none.
 4. Builds the jobs. With configuration tables, one `TableJob` per table, with formatting layers
    command line, job, configuration defaults, and base directory root, else the configuration

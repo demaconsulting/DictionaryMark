@@ -134,6 +134,16 @@ reaches the generated table separator. This scenario is tested by
 roots fails its job with file-access-denied. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied`.
 
+**DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup**: Test that a literal config input
+that does not exist, outside the allowed roots, fails its job with file-access-denied rather than a not-found error, so
+its existence is never probed. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup`.
+
+**DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound**: Test that a literal config input
+inside the allowed roots that does not exist (in a folder that does not exist either) fails its job with
+`Input file '{full path}' was not found.`, the resolver's outcome, and writes no output. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound`.
+
 **DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped**: Test that a glob whose matches lie both
 inside and outside the allowed roots fails its job: the match outside is denied rather than skipped, and the match
 inside is not used alone. This scenario is tested by

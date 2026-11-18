@@ -143,6 +143,11 @@ This scenario is tested by `CliSubsystem_RootFlow_CommandLineRootOverridesConfig
 that does not exist. Exit code must be 1 and stderr must name the directory and the option.
 This scenario is tested by `CliSubsystem_RootFlow_MissingRoot_ExitsNonZero`.
 
+**CliSubsystem_RootFlow_NonexistentConfigRoot_FailsJobNotLoad**: A configuration file whose `root` key names a folder
+that does not exist is loaded without error, because the key is resolved as text only; the context's root and the
+table job's base directory must be that folder, the job must fail when it runs (exit code 1), and nothing may be
+created. This scenario is tested by `CliSubsystem_RootFlow_NonexistentConfigRoot_FailsJobNotLoad`.
+
 **CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs**: Test that --allow-root confines the config-file table
 jobs: a table inside the folder is generated and a table writing outside it fails with file-access-denied and a non-zero
 exit code. This scenario is tested by `CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs`.

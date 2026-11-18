@@ -39,8 +39,10 @@ None of these units depends on any other DictionaryMark subsystem.
 - *Role*: Provider — `GlobMatcher`, `DictionaryGenerator`, `Context` and `ConfigFile` consume this
 - *Contract*: `ExpandEnvironmentVariables(path, description)`, `Combine(path, baseDirectory,
   description)` (rooted, not normalized; for globs), `ResolvePath(path, baseDirectory,
-  description)` (rooted and normalized; for literal paths) and `ResolveExistingDirectory(path,
-  baseDirectory, description)` (for root directories; rejects wildcards and missing directories).
+  description)` (rooted and normalized; for literal paths), `ResolveDirectory(path, baseDirectory,
+  description)` (for the configuration `root` key; text only, rejects wildcards, never probes) and
+  `ResolveExistingDirectory(path, baseDirectory, description)` (for `--root`; rejects wildcards and
+  missing directories).
   Throws `InvalidOperationException` with a message naming the description and path.
 - *Constraints*: Only the path argument is expanded, never the base directory. Absolute paths
   ignore the base directory.

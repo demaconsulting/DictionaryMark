@@ -65,7 +65,8 @@ everything from resolving input file paths through formatting the final Markdown
 **GlobMatcher.Resolve**: Strict file pattern resolution from the Utilities subsystem.
 
 - *Type*: In-process .NET public API
-- *Role*: Consumer — `DictionaryGenerator` calls this to resolve patterns to file paths
+- *Role*: Consumer — `DictionaryGenerator` calls this to resolve every pattern of the command-line job and the
+  wildcard patterns of a configuration-table job to file paths
 - *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` returns a sorted,
   deduplicated list of absolute file paths after expanding `${VAR}` references and rooting relative
   patterns at the base directory.
@@ -94,14 +95,19 @@ everything from resolving input file paths through formatting the final Markdown
 `DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
 job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. Call `GlobMatcher.Resolve` for the job's input patterns and base directory
-   (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
-   on `ArgumentException` or `InvalidOperationException`, or when no files are found.
+1. Resolve the job's input patterns against its base directory. The command-line job calls
+   `GlobMatcher.Resolve` for every pattern (strict: `${VAR}` expansion, every pattern must match,
+   literal paths must exist). A configuration-table job's patterns are untrusted content: a literal
+   pattern (no wildcard after `${VAR}` expansion) is only expanded, rooted and normalized as text and
+   is never looked up, because its file is read through the resolver in step 2, which applies the
+   policy before it looks for the file; only its wildcard patterns go to `GlobMatcher.Resolve`. Return
+   early on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
-   `InvalidOperationException`. For a configuration-table job each match is first read through the job's
-   `FileReferenceResolver` (every match is judged by the file-access policy; a refused match fails the job, it is
-   never skipped) and the loader parses the bytes the resolver returned.
+   `InvalidOperationException`. For a configuration-table job each literal input and each match is first read
+   through the job's `FileReferenceResolver` (every file is judged by the file-access policy; a refused match fails
+   the job, it is never skipped; a literal input that does not exist is reported as not found) and the loader parses
+   the bytes the resolver returned.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
    job; report each conflict and return early if any are found. Different jobs may use different or
    overlapping dictionaries.
