@@ -292,6 +292,12 @@ included) and its target is never created. The link is a file symbolic link, or,
 directory link (a junction on Windows) whose target was removed; the test skips when the host can create neither. This
 scenario is tested by `FileReferenceResolver_CheckOutputPath_DanglingLinkAtOutput_IsRefusedUnderEveryPolicy`.
 
+**FileReferenceResolver_CheckOutputPath_DanglingLinkAboveMissingOutput_IsRefusedUnderEveryPolicy**: Validates that an
+output that does not exist yet, below a dangling directory link (a junction on Windows, a symbolic link on Linux and
+macOS) whose target was removed, is refused as `CannotRead` under every policy (the default included) and the link's
+target is never created; the test skips when the host cannot create a directory link. This scenario is tested by
+`FileReferenceResolver_CheckOutputPath_DanglingLinkAboveMissingOutput_IsRefusedUnderEveryPolicy`.
+
 **FileReferenceResolver_CheckOutputPath_RealPathUnavailable_IsRealPathUnavailable**: Validates that a restrictive policy
 fails closed when the real path of an output cannot be determined, for an output that does not exist yet and for an
 existing one, while the default policy allows both. This scenario is tested by
@@ -327,3 +333,8 @@ that starts with two backslashes is refused as a network path. This scenario is 
 **FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath**: Validates that a URL-like pattern rooted at a
 local folder is refused by the colon rule. This scenario is tested by
 `FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath`.
+
+**FileReferenceResolver_CheckPatternText_ReservedDeviceNameOnWindows_IsInvalidPath**: Validates on Windows that a
+pattern with a reserved device-name component (`C:/NUL/*.yaml`, `NUL/*.yaml`, `CON`, `AUX`, `COM1`, `LPT1`, `nul.txt`)
+is refused as `InvalidPath` with the reason a read gets ("the path names a device"), so listing it never probes the
+device. This scenario is tested by `FileReferenceResolver_CheckPatternText_ReservedDeviceNameOnWindows_IsInvalidPath`.

@@ -107,10 +107,12 @@ configuration-table jobs, built from `--file-access` and `--allow-root`; default
    configuration file or any input is read.
 5. If `--config` was given, load it with `ConfigFile.Load`, which resolves its `root` key as text
    only (see *ConfigFile Design*).
-6. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
+6. Select the effective root: `--root`, else the configuration file's `RootDirectory`; and its text
+   before normalization: `--root`, else the configuration file's `RootText`.
 7. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
    `--output` throws `ArgumentException` naming the file; otherwise each table becomes
-   `TableJob.Create(index, inputs, output, base, [command line, job, config defaults])`. A
+   `TableJob.Create(index, inputs, output, base, [command line, job, config defaults], baseText)`,
+   where `baseText` is the root's text (or the configuration file's directory) chosen the same way. A
    column-width error from `TableJob.Create` is re-thrown with the `Config file '{path}': `
    prefix. Without tables, when `--input` was given, one command-line job
    `TableJob.Create(null, inputs, output, base, [command line, config defaults])` is created.

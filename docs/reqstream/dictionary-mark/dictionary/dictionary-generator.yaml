@@ -121,8 +121,8 @@ sections:
                   The DictionaryGenerator shall read every file a configuration-file table job's input patterns
                   match through one file-access resolver per job, whose base directory is the configuration file's
                   folder, shall hand each literal input pattern (one without wildcard characters) to the resolver
-                  without looking it up first, reporting one the resolver does not find as an input file that was not
-                  found, shall parse the bytes the resolver returned, shall fail the job at the first refused match
+                  without looking it up first, reporting one that the resolver does not find as an input file that was
+                  not found, shall parse the bytes the resolver returned, shall fail the job at the first refused match
                   (never skipping it) with a file-access-denied error naming the file and the policy when the policy
                   denies it or cannot be applied, or with a read error for any other refusal (including a file larger
                   than 16 MiB), and shall read the inputs of the command-line job by name without judging them.
@@ -143,25 +143,30 @@ sections:
               - id: DictionaryMark-DictionaryGenerator-FileAccessOutputs
                 title: >-
                   The DictionaryGenerator shall check the output path of a configuration-file table job with the
-                  job's file-access resolver before creating any folder or writing the file, shall fail the job with
+                  job's file-access resolver before creating any folder or writing the file, giving the resolver the
+                  path with variables expanded and rooted at the job's base directory as text, before normalization,
+                  and using the normalized path only for the write, shall fail the job with
                   a file-access-denied error when the policy denies it or cannot be applied, or with a write error for
                   any other refusal, and shall still run the other jobs.
                 justification: |
                   A refused output must leave no trace on disk, and one refused job must not hide the results of the
-                  others.
+                  others. Normalization can turn a network path into a local one (on Linux and macOS a leading // is
+                  collapsed to /), so the resolver must see the path before it is normalized.
                 tests:
                   - DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated
                   - DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess
+                  - DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization
+                  - DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization
                   - DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne
 
               - id: DictionaryMark-DictionaryGenerator-FileAccessPatterns
                 title: >-
                   The DictionaryGenerator shall check every input pattern of a configuration-file table job, rooted
-                  and with variables expanded exactly as it would be listed (and again with its relative segments
-                  collapsed), against the file-access resolver's path-text refusals before any folder is listed, shall
-                  fail only that job with an error naming the pattern and the broken rule when a pattern is refused, and shall
-                  not
-                  check the input patterns of the command-line job.
+                  at the job's base directory as text before normalization and with variables expanded exactly as it
+                  would be listed (and again with its relative segments collapsed), against the file-access
+                  resolver's path-text refusals before any folder is listed, shall fail only that job with an error
+                  naming the pattern and the broken rule when a pattern is refused, and shall not check the input
+                  patterns of the command-line job.
                 justification: |
                   A pattern such as //host/share/*.yaml would contact the host while it is listed, before any match
                   reaches the resolver; refusing it first means no connection is made and no credentials can leak.
@@ -169,4 +174,6 @@ sections:
                   - DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing
                   - "windows@DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing"
                   - DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing
+                  - DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization
+                  - "windows@DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing"
                   - DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged

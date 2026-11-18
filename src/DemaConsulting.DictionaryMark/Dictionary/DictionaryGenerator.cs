@@ -189,6 +189,11 @@ internal static class DictionaryGenerator
     /// <summary>
     ///     Writes a job's output to its output file, creating missing parent directories.
     /// </summary>
+    /// <remarks>
+    ///     The output path is expanded and rooted at <see cref="TableJob.BaseDirectoryText"/> as text; a judged output
+    ///     is checked by the resolver on that text, before normalization, and the normalized path is used only for the
+    ///     write.
+    /// </remarks>
     /// <param name="context">The context for error reporting.</param>
     /// <param name="job">The job whose output file is written.</param>
     /// <param name="resolver">The resolver that judges the output path of a config-file table job, or null for a trusted job.</param>
@@ -198,12 +203,14 @@ internal static class DictionaryGenerator
     {
         var outputFile = job.OutputFile!;
 
-        // Resolve the output path (expanding ${VAR}) against the job's base directory; malformed or
-        // overlong paths are reported by the resolver as InvalidOperationException
+        // Expand ${VAR} in the output path and root it at the job's base directory as text, then normalize it;
+        // malformed or overlong paths are reported by the path resolver as InvalidOperationException
+        string pathText;
         string fullPath;
         try
         {
-            fullPath = PathResolver.ResolvePath(outputFile, job.BaseDirectory, "output path");
+            pathText = PathResolver.Combine(outputFile, job.BaseDirectoryText, "output path");
+            fullPath = PathResolver.ResolvePath(outputFile, job.BaseDirectoryText, "output path");
         }
         catch (InvalidOperationException ex)
         {
@@ -211,12 +218,14 @@ internal static class DictionaryGenerator
             return false;
         }
 
-        // A judged output is checked before anything is created, so a refused output writes nothing
+        // A judged output is checked before anything is created, so a refused output writes nothing; the resolver gets
+        // the text before normalization, because normalization can hide a never-list path (on Linux and macOS a
+        // leading "//" collapses to "/"), and the normalized path is used only for the write
         if (resolver != null)
         {
             try
             {
-                resolver.CheckOutputPath(fullPath);
+                resolver.CheckOutputPath(pathText);
             }
             catch (FileReferenceException ex)
             {
@@ -317,8 +326,10 @@ internal static class DictionaryGenerator
     /// </summary>
     /// <remarks>
     ///     Each pattern is checked as it would be listed: with <c>${VAR}</c> references expanded and rooted at the
-    ///     job's base directory, and again with <c>.</c> and <c>..</c> segments collapsed. A pattern that names a
-    ///     network share, a device path or a path with a colon therefore fails the job without contacting any host.
+    ///     job's base directory as text (<see cref="TableJob.BaseDirectoryText"/>, before normalization, so a root key
+    ///     such as <c>//host/share</c> is not collapsed to a local path on Linux and macOS), and again with <c>.</c> and
+    ///     <c>..</c> segments collapsed. A pattern that names a network share, a device path, a reserved Windows device
+    ///     name or a path with a colon therefore fails the job without contacting any host or device.
     ///     Problems other than a never-list rule (an undefined variable, a malformed path) are left to the pattern
     ///     resolution that follows, which reports them as before.
     /// </remarks>
@@ -331,8 +342,9 @@ internal static class DictionaryGenerator
         {
             try
             {
-                // The rooted pattern as written, then with its relative segments collapsed
-                var expanded = PathResolver.Combine(pattern, job.BaseDirectory, "glossary path");
+                // The pattern rooted at the base directory's text as written (never-list paths survive, as a leading
+                // "//" collapses on Linux and macOS when normalized), then with its relative segments collapsed
+                var expanded = PathResolver.Combine(pattern, job.BaseDirectoryText, "glossary path");
                 FileReferenceResolver.CheckPatternText(expanded);
                 FileReferenceResolver.CheckPatternText(Path.GetFullPath(expanded));
             }

@@ -1203,7 +1203,7 @@ public class IntegrationTests
     /// <summary>
     ///     Test that a config root naming a network share (with forward slashes, and on Windows also with backslashes)
     ///     is never probed: loading succeeds and the table job fails through the file-access resolver, which refuses the
-    ///     network path (or, where the platform reads the root as a local folder, denies it under the roots mode).
+    ///     network path on every platform, because the root is joined with the job's paths as text before normalization.
     /// </summary>
     [Fact]
     public void DictionaryMark_Config_NetworkRoot_JobFailsThroughResolverWithoutProbing()
@@ -1227,16 +1227,9 @@ public class IntegrationTests
             // Assert: the job (not the load) failed, refused by the resolver before anything was looked up
             Assert.Equal(1, exitCode);
             Assert.Contains("Error: table job 1 ('out.md'): ", output);
-            Assert.True(
-                output.Contains("network paths are not permitted", StringComparison.Ordinal)
-                || output.Contains("file-access-denied:", StringComparison.Ordinal),
-                output);
+            Assert.Contains("is not allowed: network paths are not permitted.", output);
             Assert.DoesNotContain("does not exist", output);
             Assert.DoesNotContain("was not found", output);
-            if (OperatingSystem.IsWindows())
-            {
-                Assert.Contains("is not allowed: network paths are not permitted.", output);
-            }
         }
     }
 

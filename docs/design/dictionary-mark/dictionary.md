@@ -115,9 +115,9 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
    (deprecated terms) with `job.Options`, using only entries from the primary input files, to
    produce the Markdown string. When `job.Options.ColumnWidths` is set, table separators are sized
    in proportion to the widths.
-5. Write the string to the job's output file — resolved against the job's base directory with
-   `PathResolver.ResolvePath`, checked with `CheckOutputPath` for a configuration-table job before anything is
-   created, creating missing parent directories — or to stdout (via
+5. Write the string to the job's output file — rooted at the job's base directory as text and checked, before
+   normalization, with `CheckOutputPath` for a configuration-table job before anything is created, then normalized
+   with `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
    report the error and return.
 

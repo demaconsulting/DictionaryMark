@@ -53,10 +53,12 @@ conflicts — call
 `ConflictDetector.Detect(approved, deprecated)` for this job's files; if any conflicts found, report each and return.
 (4) Format output — call `MarkdownFormatter.Format` or `FormatDeprecated` with `job.Options` (already merged by
 `TableJob`, including the `Not used` deprecated term header and the column widths) using only entries from the primary
-input files. (5) Write output — if `job.OutputFile` is set, resolve it with
-`PathResolver.ResolvePath(job.OutputFile, job.BaseDirectory, "output path")`, check it with
-`resolver.CheckOutputPath(fullPath)` when the job has a resolver (before anything is created), create missing parent
-directories with
+input files. (5) Write output — if `job.OutputFile` is set, expand and root it as text with
+`PathResolver.Combine(job.OutputFile, job.BaseDirectoryText, "output path")` and normalize it with
+`PathResolver.ResolvePath(job.OutputFile, job.BaseDirectoryText, "output path")`, check the text (not the normalized
+path) with `resolver.CheckOutputPath(pathText)` when the job has a resolver (before anything is created), because
+normalization can hide a never-list path (on Linux and macOS a leading `//` collapses to `/`), then use the
+normalized path to create missing parent directories with
 `Directory.CreateDirectory`, and write via `File.WriteAllText`; otherwise write via `context.WriteLine`. The base
 directory may be a root directory, the configuration file's directory, or the working directory; the generator does
 not distinguish them.
@@ -72,10 +74,13 @@ which have already passed `CheckPatterns` and go to `GlobMatcher.Resolve`. Listi
 the one access made for configuration content outside the resolver.
 
 **CheckPatterns** *(private)*: For a configuration-table job, roots each input pattern with
-`PathResolver.Combine(pattern, job.BaseDirectory, "glossary path")` (the path that would be listed) and passes it, and
+`PathResolver.Combine(pattern, job.BaseDirectoryText, "glossary path")` (the path that would be listed, rooted at the
+base directory's text before normalization so a `root` key such as `//host/share` stays a network path on Linux and
+macOS) and passes it, and
 its `Path.GetFullPath` form with `.` and `..` collapsed, to `FileReferenceResolver.CheckPatternText`. A
 `FileReferenceException` fails the job with `DescribeRefusal(ex, "Failed to resolve input pattern '{pattern}'")`
-before any folder is listed, so a network, device or URL-like pattern never contacts a host. An undefined `${VAR}` or a
+before any folder is listed, so a network, device, reserved Windows device-name or URL-like pattern never contacts a
+host or device. An undefined `${VAR}` or a
 malformed path is left to `ResolveInputs`, which reports it as before. Command-line patterns are not checked.
 
 **DescribeRefusal** *(private)*: Turns a `FileReferenceException` into the error text. A policy denial or a policy

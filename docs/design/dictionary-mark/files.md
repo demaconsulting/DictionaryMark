@@ -90,11 +90,12 @@ to compare paths and to find the real location of a root or anchor folder.
 
 For an output, `CheckOutputPath` applies the same steps in the same order without reading: an existing entry at the
 path is opened and inspected on its handle, and for an output that does not exist yet the real path is the real
-location of its deepest existing folder followed by the rest of the path. It is not free of races: the write that
-follows goes by name.
+location of its deepest existing folder followed by the rest of the path; a dangling link on the way up to that folder
+is refused. It is not free of races: the write that follows goes by name.
 
-For an input pattern, `CheckPatternText` applies only the text rules, before the pattern is listed, so a network,
-device or URL-like pattern is refused without contacting any host. Names under local folders may still be listed
+For an input pattern, `CheckPatternText` applies only the text rules and, on Windows, the reserved device-name check,
+before the pattern is listed, so a network, device or URL-like pattern is refused without contacting any host or
+device. Names under local folders may still be listed
 before each match is judged; no content is read until `Resolve` allows it.
 
 The subsystem depends only on the .NET base class library (`System.IO`, `System.Runtime.InteropServices`,

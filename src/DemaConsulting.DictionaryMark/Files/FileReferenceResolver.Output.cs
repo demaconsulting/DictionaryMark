@@ -32,7 +32,8 @@ namespace DemaConsulting.DictionaryMark.Files;
 ///     order: the text rules, the Windows device names, the pre-check of the path as written, the snapshot of the
 ///     trusted folders, the open and inspection of an existing file, the network-target rule, the fail-closed real-path
 ///     rule and the policy. The only new logic is the real path of an output that does not exist yet: the real
-///     location of its deepest existing folder followed by the missing part of the path.
+///     location of its deepest existing folder followed by the missing part of the path, with a dangling link among
+///     the missing folders refused like a dangling link at the output.
 /// </remarks>
 internal sealed partial class FileReferenceResolver
 {
@@ -54,7 +55,9 @@ internal sealed partial class FileReferenceResolver
     ///     </para>
     ///     <para>
     ///         <b>Output that does not exist yet.</b> When no directory entry exists at the path, its real path is the
-    ///         real location of the deepest existing folder above it, followed by the rest of the path as written.
+    ///         real location of the deepest existing folder above it, followed by the rest of the path as written. A
+    ///         folder above it that is a dangling link (a link whose target cannot be resolved) is refused as an entry
+    ///         that cannot be read, because the write would follow it.
     ///     </para>
     ///     <para>
     ///         The output is never cached and never read, and the size limit does not apply. The check is not free of
@@ -66,8 +69,8 @@ internal sealed partial class FileReferenceResolver
     /// <exception cref="InvalidOperationException">Thrown when the resolver has no base directory.</exception>
     /// <exception cref="FileReferenceException">
     ///     Thrown when the path is never allowed, the base directory is invalid, the policy denies the path (or
-    ///     cannot be applied), an existing entry at the path is not a regular file or cannot be opened, or the path
-    ///     leads to a network location.
+    ///     cannot be applied), an existing entry at the path is not a regular file or cannot be opened, a folder above an
+    ///     output that does not exist yet is a dangling link, or the path leads to a network location.
     /// </exception>
     internal void CheckOutputPath(string path)
     {
@@ -121,7 +124,7 @@ internal sealed partial class FileReferenceResolver
         }
         else
         {
-            realPath = RealPathOfMissing(key);
+            realPath = RealPathOfMissing(key, shown);
 
             // A local path that leads to a network share is refused under every policy, as for a read
             if (OperatingSystem.IsWindows() && realPath is not null
@@ -185,14 +188,34 @@ internal sealed partial class FileReferenceResolver
     ///     Computes the real path of an output that does not exist yet: the real location of its deepest existing
     ///     folder, followed by the rest of the path as written.
     /// </summary>
+    /// <remarks>
+    ///     A folder above the output may be a link whose target is missing (Windows even reports a dangling junction as
+    ///     an existing folder). The write would follow that link once its target appears, so such a dangling link is
+    ///     refused as an entry that cannot be read, exactly like a dangling link at the output itself. A link whose
+    ///     target exists is judged by its real location.
+    /// </remarks>
     /// <param name="key">The full path as written.</param>
+    /// <param name="shown">The path as shown in messages.</param>
     /// <returns>The real path, or <see langword="null"/> when no folder above it exists or its location is unknown.</returns>
-    private string? RealPathOfMissing(string key)
+    /// <exception cref="FileReferenceException">Thrown when a folder above the output is a dangling link.</exception>
+    private string? RealPathOfMissing(string key, string shown)
     {
-        // Walk up to the deepest folder that exists; the folders below it are created by the write
+        // Walk up to the deepest folder that exists; the folders below it are created by the write, so neither they
+        // nor that folder may be a dangling link the write would follow (Windows reports a dangling junction as an
+        // existing folder)
         var directory = Path.GetDirectoryName(key);
-        while (directory is not null && !Directory.Exists(directory))
+        while (directory is not null)
         {
+            if (IsDanglingLink(directory))
+            {
+                throw RefuseOutput(FileReferenceFailureKind.CannotRead, null, null, shown, key);
+            }
+
+            if (Directory.Exists(directory))
+            {
+                break;
+            }
+
             directory = Path.GetDirectoryName(directory);
         }
 
@@ -231,6 +254,43 @@ internal sealed partial class FileReferenceResolver
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
         {
             // The entry cannot be examined: it is treated as existing, so the output is refused
+            return true;
+        }
+    }
+
+    /// <summary>
+    ///     Determines whether a folder above an output is a link whose target cannot be resolved, without following the
+    ///     link to open anything.
+    /// </summary>
+    /// <param name="directory">The full path of a folder above the output, up to and including its deepest existing folder.</param>
+    /// <returns>
+    ///     <see langword="true"/> when the entry is a link whose final target does not exist, or when the link cannot be
+    ///     examined or resolved (fail closed); <see langword="false"/> when no link exists at the path, or the link's
+    ///     target exists.
+    /// </returns>
+    private static bool IsDanglingLink(string directory)
+    {
+        try
+        {
+            // The link itself is examined, never followed; only its final target's path is looked up
+            var info = new DirectoryInfo(directory);
+            if (info.LinkTarget is null)
+            {
+                return false;
+            }
+
+            var target = info.ResolveLinkTarget(returnFinalTarget: true);
+            return target is null || !Path.Exists(target.FullName);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // Nothing exists at the path, so it is no link
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        {
+            // The link cannot be examined or resolved (a loop, for example): it is treated as dangling, so the output is
+            // refused
             return true;
         }
     }

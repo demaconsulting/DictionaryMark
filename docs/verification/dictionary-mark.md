@@ -241,8 +241,8 @@ This scenario is tested by `DictionaryMark_Root_MissingDirectory_ReturnsError`,
 does not exist must not be rejected when the file is loaded; its table must fail with `Input file '...' was not found.`
 reported by the file-access resolver, and nothing may be created. A `root` naming a network share
 (`//dictionarymark-test.invalid/share`, and on Windows also `\\dictionarymark-test.invalid\share`) must fail its table
-through the resolver - refused as a network path on Windows, or denied by `--file-access roots` where the platform
-reads it as a local folder - with no "does not exist" or "not found" error.
+through the resolver - refused as a network path on every platform, because the root is joined with the table's paths
+as text before normalization - with no "does not exist" or "not found" error.
 This scenario is tested by `DictionaryMark_Config_NonexistentRoot_JobFailsThroughResolver` and
 `DictionaryMark_Config_NetworkRoot_JobFailsThroughResolverWithoutProbing`.
 

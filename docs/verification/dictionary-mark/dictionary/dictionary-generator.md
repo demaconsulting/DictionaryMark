@@ -162,6 +162,18 @@ config output that breaks a never-list rule (a colon outside a drive, and on Win
 anything is accessed or created. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess`.
 
+**DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization**: Test that a config output naming a
+network share (`//dictionarymark-test.invalid/share/out.md` on every platform, and on Windows also the backslash
+spelling) is refused by the network-path rule before anything is accessed or created, because the resolver sees the
+path before a leading `//` can collapse to `/` on Linux and macOS. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization**: Test that a relative config
+output under a `root` key naming a network share (`//dictionarymark-test.invalid/share`, and on Windows also
+`\\dictionarymark-test.invalid\share`) is refused by the network-path rule on every platform, because the root is
+joined with the output as text before normalization. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization`.
+
 **DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError**: Test that a config input longer than the 16 MiB
 size limit is an ordinary read error. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError`.
@@ -186,3 +198,13 @@ runs. This scenario is tested by
 **DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing**: Test that a URL-like config pattern is refused
 by the colon rule before any folder is listed, with the ordinary error rather than `file-access-denied`, and the other
 job still runs. This scenario is tested by `DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization**: Test that a relative config
+input under a `root` key naming a network share is refused by the network-path rule on every platform before it is
+looked up, because the root is joined with the pattern as text before normalization. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing**: Test on Windows that a config
+pattern with a reserved device-name component (`NUL`, `C:/NUL`, `CON`, `AUX`, `COM1`, `LPT1`) is refused by the
+device-name rule before any folder is listed, and the other job still runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing`.

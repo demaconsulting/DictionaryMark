@@ -67,6 +67,17 @@ internal sealed class ConfigFile
     /// </summary>
     public string? RootDirectory { get; }
 
+    /// <summary>
+    ///     Gets the top-level <c>root</c> key with <c>${VAR}</c> references expanded and rooted at the file's
+    ///     directory, but not normalized, or null when the key is absent.
+    /// </summary>
+    /// <remarks>
+    ///     Normalization can change what the text names (on Linux and macOS a leading <c>//</c> collapses to
+    ///     <c>/</c>), so the file-access resolver's text rules are given the paths built on this text rather than on
+    ///     <see cref="RootDirectory"/>.
+    /// </remarks>
+    public string? RootText { get; }
+
     /// <summary>Gets the top-level formatting defaults.</summary>
     public FormattingSettings Defaults { get; }
 
@@ -77,14 +88,19 @@ internal sealed class ConfigFile
     ///     Private constructor - use <see cref="Load"/> instead.
     /// </summary>
     /// <param name="filePath">The full path of the file.</param>
-    /// <param name="rootDirectory">The resolved root directory, or null.</param>
+    /// <param name="root">The resolved root directory and its unnormalized text, or null.</param>
     /// <param name="defaults">The top-level formatting defaults.</param>
     /// <param name="tables">The table jobs.</param>
-    private ConfigFile(string filePath, string? rootDirectory, FormattingSettings defaults, IReadOnlyList<ConfigTable> tables)
+    private ConfigFile(
+        string filePath,
+        (string Directory, string Text)? root,
+        FormattingSettings defaults,
+        IReadOnlyList<ConfigTable> tables)
     {
         FilePath = filePath;
         BaseDirectory = Path.GetDirectoryName(filePath) ?? filePath;
-        RootDirectory = rootDirectory;
+        RootDirectory = root?.Directory;
+        RootText = root?.Text;
         Defaults = defaults;
         Tables = tables;
     }
@@ -166,9 +182,9 @@ internal sealed class ConfigFile
         }
 
         // Resolve and validate the root directory relative to the configuration file
-        var rootDirectory = rawRoot != null ? ResolveRoot(rawRoot, fullPath, prefix) : null;
+        (string Directory, string Text)? rootPaths = rawRoot != null ? ResolveRoot(rawRoot, fullPath, prefix) : null;
 
-        return new ConfigFile(fullPath, rootDirectory, defaults, tables);
+        return new ConfigFile(fullPath, rootPaths, defaults, tables);
     }
 
     /// <summary>
@@ -500,24 +516,29 @@ internal sealed class ConfigFile
     /// </summary>
     /// <remarks>
     ///     The value is untrusted content, so it is never probed: it only decides where relative job paths
-    ///     point, and the file-access resolver judges those paths when the jobs run.
+    ///     point, and the file-access resolver judges those paths when the jobs run. The unnormalized text is
+    ///     returned as well, because the resolver's text rules must see the paths before normalization.
     /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>
     /// <param name="prefix">The error-message prefix naming the file.</param>
-    /// <returns>The full path of the root directory, which may not exist.</returns>
+    /// <returns>
+    ///     The full path of the root directory, which may not exist, and the expanded and rooted text before
+    ///     normalization.
+    /// </returns>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the root is malformed, contains wildcard characters or references an undefined
     ///     variable; the message starts with <paramref name="prefix"/>.
     /// </exception>
-    private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
+    private static (string Directory, string Text) ResolveRoot(string rawRoot, string fullPath, string prefix)
     {
         // PathResolver reports every root problem (undefined variable, wildcard, malformed or
         // overlong path) as InvalidOperationException; add the file's context
         try
         {
             var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
-            return PathResolver.ResolveDirectory(rawRoot, configDirectory, RootKeyDescription);
+            var directory = PathResolver.ResolveDirectory(rawRoot, configDirectory, RootKeyDescription);
+            return (directory, PathResolver.Combine(rawRoot, configDirectory, RootKeyDescription));
         }
         catch (InvalidOperationException ex)
         {

@@ -481,8 +481,10 @@ public class ConfigFileTests
         // Act: load the config
         var config = ConfigFile.Load(path);
 
-        // Assert: the root is the normalized text of the share; on Windows it is the UNC path
+        // Assert: the root is the normalized text of the share; on Windows it is the UNC path. The root text keeps
+        // the leading "//" that normalization collapses on Linux and macOS
         Assert.NotNull(config.RootDirectory);
+        Assert.Equal("//dictionarymark-test.invalid/share", config.RootText);
         if (OperatingSystem.IsWindows())
         {
             Assert.Equal(@"\\dictionarymark-test.invalid\share", config.RootDirectory);

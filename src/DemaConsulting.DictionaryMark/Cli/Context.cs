@@ -213,13 +213,14 @@ internal sealed partial class Context : IDisposable
         // Load the config file
         var config = configPath != null ? ConfigFile.Load(configPath) : null;
 
-        // Select the effective root and the effective top-level formatting settings
+        // Select the effective root (and its text before normalization) and the effective top-level formatting settings
         var rootDirectory = commandLineRoot ?? config?.RootDirectory;
+        var rootText = commandLineRoot ?? config?.RootText;
         var commandLine = parser.Formatting;
         var effective = commandLine.Over(config?.Defaults ?? FormattingSettings.Empty);
 
         // Build the generation jobs
-        var jobs = BuildJobs(parser, config, rootDirectory);
+        var jobs = BuildJobs(parser, config, rootDirectory, rootText);
 
         var result = new Context
         {
@@ -268,17 +269,19 @@ internal sealed partial class Context : IDisposable
     ///     precedence order, the command line, the job, and the config defaults, and whose base directory is
     ///     the root or else the config file's directory. Otherwise, when --input was given, a single
     ///     command-line job is created with the command line and config defaults as layers and the root or
-    ///     else the working directory as base directory.
+    ///     else the working directory as base directory. A config table job also receives the root's text before
+    ///     normalization, so the file-access resolver's text rules see its paths as written.
     /// </remarks>
     /// <param name="parser">The parsed arguments.</param>
     /// <param name="config">The loaded config file, or null.</param>
     /// <param name="rootDirectory">The effective root directory, or null.</param>
+    /// <param name="rootText">The effective root directory as text before normalization, or null.</param>
     /// <returns>The jobs; empty when there is nothing to generate.</returns>
     /// <exception cref="ArgumentException">
     ///     Thrown when --input or --output is combined with config tables, or a job's column-width count does
     ///     not match its table shape.
     /// </exception>
-    private static List<TableJob> BuildJobs(ArgumentParser parser, ConfigFile? config, string? rootDirectory)
+    private static List<TableJob> BuildJobs(ArgumentParser parser, ConfigFile? config, string? rootDirectory, string? rootText)
     {
         var commandLine = parser.Formatting;
 
@@ -298,12 +301,19 @@ internal sealed partial class Context : IDisposable
             }
 
             var baseDirectory = SelectBaseDirectory(rootDirectory, config.BaseDirectory);
+            var baseDirectoryText = SelectBaseDirectory(rootText, config.BaseDirectory);
             var jobs = new List<TableJob>();
             foreach (var table in config.Tables)
             {
                 try
                 {
-                    jobs.Add(TableJob.Create(table.Index, table.Inputs, table.Output, baseDirectory, [commandLine, table.Settings, config.Defaults]));
+                    jobs.Add(TableJob.Create(
+                        table.Index,
+                        table.Inputs,
+                        table.Output,
+                        baseDirectory,
+                        [commandLine, table.Settings, config.Defaults],
+                        baseDirectoryText));
                 }
                 catch (ArgumentException ex)
                 {

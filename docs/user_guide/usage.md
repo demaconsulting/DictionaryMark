@@ -377,7 +377,8 @@ How the files are judged:
   bytes that are parsed, so a link swapped in by another process cannot slip past the check.
 - Every output is judged before anything is written, so a refused output creates neither the file nor any folder.
   An output that does not exist yet is judged by the real location of its deepest existing folder. An existing entry
-  at the output path that cannot be opened (for example a dangling link) is refused.
+  at the output path that cannot be opened (for example a dangling link) is refused, and so is an output below a
+  dangling folder link.
 - The `no-symlinks` rule trusts the configuration file's folder and the folders above it; a link below it is refused.
 - `--root` and the configuration `root:` key move the base of relative paths, but never widen the allowed folders.
 

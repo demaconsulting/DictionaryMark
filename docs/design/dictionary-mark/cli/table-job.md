@@ -23,6 +23,12 @@ command-line job.
 **BaseDirectory**: `string` — Directory that relative input patterns and the relative output
 resolve against: a root directory, the configuration file's directory, or the working directory.
 
+**BaseDirectoryText**: `string` — The base directory as text before normalization (`${VAR}`
+expanded and rooted, `.`, `..` and repeated separators kept); equal to `BaseDirectory` unless the
+base is the configuration file's `root` key. The file-access resolver's text rules are given the
+job's paths rooted at this text, because normalization can hide a network path (on Linux and macOS
+a leading `//` collapses to `/`).
+
 **Label**: `string?` — `table job {index} ('{output}')` for configuration jobs; `null` for the
 command-line job, so its error messages stay unchanged.
 
@@ -34,7 +40,8 @@ command-line job, so its error messages stay unchanged.
 
 - *Parameters*: `int? index`; `IReadOnlyList<string> inputPatterns`; `string? outputFile`;
   `string baseDirectory`; `IReadOnlyList<FormattingSettings?> layers` — highest precedence first,
-  `null` elements skipped.
+  `null` elements skipped; `string? baseDirectoryText` — optional, the base directory as text before
+  normalization (`null` means `baseDirectory`).
 - *Returns*: `TableJob`.
 - *Preconditions*: `inputPatterns`, `baseDirectory` and `layers` are not null; `inputPatterns` is
   not empty.
@@ -72,4 +79,4 @@ Algorithm:
 
 - **Context.Create** — creates every job.
 - **DictionaryGenerator.GenerateJob** — reads `InputPatterns`, `OutputFile`, `BaseDirectory`,
-  `Label` and `Options` to run the job.
+  `BaseDirectoryText`, `Label` and `Options` to run the job.

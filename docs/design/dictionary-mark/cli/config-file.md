@@ -43,6 +43,11 @@ directory for the paths of table jobs.
 **RootDirectory**: `string?` — Full path of the top-level `root` key, resolved as text only; `null`
 when the key is absent. The folder is never probed, so it may not exist.
 
+**RootText**: `string?` — The `root` key with `${VAR}` expanded and rooted at the file's directory, but
+not normalized; `null` when the key is absent. Normalization can change what the text names (on Linux
+and macOS a leading `//` collapses to `/`), so the file-access resolver's text rules are given the
+job paths built on this text.
+
 **Defaults**: `FormattingSettings` — Top-level formatting defaults; members not given are `null`.
 
 **Tables**: `IReadOnlyList<ConfigTable>` — Table jobs in file order; empty when there is no
@@ -76,6 +81,8 @@ Algorithm:
 5. When `root` was given, resolve it with
    `PathResolver.ResolveDirectory(root, BaseDirectory, "root key")`. This expands `${VAR}`,
    roots the value at the file's directory, normalizes `..` and rejects wildcards, as text only.
+   The expanded and rooted text before normalization is kept as `RootText`
+   (`PathResolver.Combine(root, BaseDirectory, "root key")`).
    The key is untrusted content whose only role is the base that relative job paths are combined
    with, so it is never probed: a folder that does not exist, or a network share, is left to the
    file-access resolver, which judges each job's inputs and outputs when the job runs (denied or not

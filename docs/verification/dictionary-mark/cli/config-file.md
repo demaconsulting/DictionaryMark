@@ -91,8 +91,9 @@ the resolver's message. This scenario is tested by `ConfigFile_Load_RootUndefine
 **ConfigFile_Load_RootMissingDirectory_ResolvedAsTextWithoutError** and
 **ConfigFile_Load_RootNetworkShare_ResolvedAsTextWithoutError**: `root: missing` (a folder that does not exist) loads
 without error, `RootDirectory` is its full path and nothing is created; `root: //dictionarymark-test.invalid/share`
-loads without contacting the host, and on Windows `RootDirectory` is the UNC path
-`\\dictionarymark-test.invalid\share`. These scenarios are tested by the tests of the same names.
+loads without contacting the host, `RootText` keeps the unnormalized `//dictionarymark-test.invalid/share`, and on
+Windows `RootDirectory` is the UNC path `\\dictionarymark-test.invalid\share`. These scenarios are tested by the tests
+of the same names.
 
 **ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile** and
 **ConfigFile_Load_PathInvalidCharacter_ThrowsNamingFile**: A `root` value and a configuration file

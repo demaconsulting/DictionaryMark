@@ -103,13 +103,17 @@ file; `CheckOutputPath` creates, writes and reads nothing and caches nothing.
   (6) for an existing entry, the handle's real path, the network-target rule and the regular-file rule, as for a read;
   for an output that does not exist yet, the real path is the real location (`RealPath.TryGetCanonicalDirectory`, or
   the `DirectoryLocationOf` hook) of its deepest existing folder joined with the rest of the path
-  (`RealPathOfMissing`), followed by the network-target rule; (7) `RealPathUnavailable` when the policy needs a real
+  (`RealPathOfMissing`), followed by the network-target rule; while walking up to that folder, a folder (the deepest
+  existing one included) that is a link whose target cannot be resolved (`FileSystemInfo.LinkTarget` and
+  `ResolveLinkTarget(true)`, never followed) is refused as `CannotRead`, like a dangling link at the output; (7) `RealPathUnavailable` when the policy needs a real
   path that is unknown; (8) `CheckPolicy`. A failure is turned into its exception exactly as for a read (`Deliver`).
   Without a base directory it throws `InvalidOperationException`.
 - `CheckPatternText(pattern)` (internal static, DictionaryMark addition) - runs the text rules of a read
   (`ValidateText`) on an input pattern exactly as it would be listed, without touching the file system; wildcards are
-  ordinary characters to these rules. A broken rule throws the `FileReferenceException` a read of that path gets (for
-  example `NetworkPath` for `//host/share/*.yaml`, `InvalidPath` for a colon). It adds no rule.
+  ordinary characters to these rules. On Windows it then applies the reserved device-name check a read applies to its
+  full path (`RealPath.HasWindowsDeviceName`), so `C:/NUL/*.yaml` or `COM1/*.yaml` is refused before the device is
+  probed by listing. A broken rule throws the `FileReferenceException` a read of that path gets (for example
+  `NetworkPath` for `//host/share/*.yaml`, `InvalidPath` for a colon or a device name). It adds no rule.
 
 **Preconditions and postconditions**: the path is untrusted text; on return from `Resolve` the file is a regular file
 that the policy allowed (or the policy needs no real path) and its bytes are within the limit, or `null` was returned
@@ -134,11 +138,13 @@ cancellation raised by the policy passes through unwrapped. Invalid options are 
   file. A key that is itself a network location (a UNC base directory or a mapped network drive) is exempt.
 - **An input pattern gets the text rules before it is listed.** Listing a pattern such as `//host/share/*.yaml`
   contacts the host before any match reaches `Resolve`, which on Windows can expose the user's credentials; running
-  the read's own text rules on the pattern first refuses it with no connection. No other check applies to a pattern:
-  each match is still judged by `Resolve`.
+  the read's own text rules on the pattern first refuses it with no connection. On Windows the read's reserved
+  device-name check also applies, because listing below a device-name component probes the device. No other check
+  applies to a pattern: each match is still judged by `Resolve`.
 - **An output that does not exist yet is judged by its deepest existing folder.** There is no open file to inspect,
   and the folders below the deepest existing one are created by the write, so the real location of that folder
-  decides where the write lands.
+  decides where the write lands. A dangling link on the way up is refused rather than treated as a missing folder,
+  because the write would follow it once its target appears.
 
 **Known limits**: where Windows cannot tell the real path, the default policy reads the file without the network
 check (a restrictive policy fails closed with `RealPathUnavailable`); a SUBST or DFS path whose drive is local but

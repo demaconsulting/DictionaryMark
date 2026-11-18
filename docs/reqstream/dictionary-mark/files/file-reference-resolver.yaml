@@ -212,7 +212,8 @@ sections:
                   before anything is opened; for an existing directory entry at the path (a link, including a dangling
                   link, counting as one), the open and inspection of that entry, refusing an entry that cannot be
                   opened and one that is not a regular file; for an output that does not exist yet, a real path made
-                  of the real location of its deepest existing folder followed by the rest of the path; on Windows,
+                  of the real location of its deepest existing folder followed by the rest of the path, refusing as
+                  CannotRead a folder above it that is a link whose target cannot be resolved; on Windows,
                   the NetworkPath refusal of a local path whose real path is a network location; the
                   RealPathUnavailable refusal when a restrictive policy needs a real path that cannot be determined;
                   and the policy's check of the real path.
@@ -232,6 +233,7 @@ sections:
                   - FileReferenceResolver_CheckOutputPath_MissingFileUnderParentLinkLeavingTheRoots_IsAccessDenied
                   - FileReferenceResolver_CheckOutputPath_MissingFileUnderDirectoryLinkUnderNoSymlinks_IsAccessDenied
                   - FileReferenceResolver_CheckOutputPath_DanglingLinkAtOutput_IsRefusedUnderEveryPolicy
+                  - FileReferenceResolver_CheckOutputPath_DanglingLinkAboveMissingOutput_IsRefusedUnderEveryPolicy
                   - FileReferenceResolver_CheckOutputPath_RealPathUnavailable_IsRealPathUnavailable
                   - "windows@FileReferenceResolver_CheckOutputPath_ParentOnNetworkShare_IsNetworkPath"
                   - FileReferenceResolver_CheckOutputPath_ExistingFileOpenFailure_IsCannotRead
@@ -241,8 +243,9 @@ sections:
                 title: >-
                   The FileReferenceResolver class shall check the text of an input pattern against its path-text
                   refusals (the never list) without touching the file system, refusing a pattern that is empty,
-                  contains a control character, names a network location or a device path, or carries a colon outside
-                  a Windows drive, with the same failure kind and reason a read of that path gets.
+                  contains a control character, names a network location or a device path, carries a colon outside
+                  a Windows drive, or (on Windows) has a reserved device-name component, with the same failure kind
+                  and reason a read of that path gets.
                 justification: |
                   Listing the folders of a network pattern contacts the host before any match can be judged, which on
                   Windows can expose the user's credentials; the read's own text rules refuse it first.
@@ -252,3 +255,4 @@ sections:
                   - FileReferenceResolver_CheckPatternText_ForwardSlashShare_IsNetworkPath
                   - "windows@FileReferenceResolver_CheckPatternText_BackslashShareOnWindows_IsNetworkPath"
                   - FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath
+                  - "windows@FileReferenceResolver_CheckPatternText_ReservedDeviceNameOnWindows_IsInvalidPath"

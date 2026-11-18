@@ -734,6 +734,133 @@ public class DictionaryGeneratorTests
         }
     }
 
+    /// <summary>
+    ///     Test that a config output naming a network share is refused on every platform before anything is accessed or
+    ///     created: on Linux and macOS a leading "//" would collapse to a local "/" if normalized before the check, and
+    ///     on Windows the backslash spelling is refused as well.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization()
+    {
+        // Arrange: a forward-slash share on every platform; on Windows also a backslash share
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var backslash = OperatingSystem.IsWindows()
+            ? "  - input: terms.yaml\n    output: '\\\\dictionarymark-test.invalid\\share\\out.md'\n"
+            : string.Empty;
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: \"//dictionarymark-test.invalid/share/out.md\"\n" + backslash);
+        var jobs = OperatingSystem.IsWindows() ? 2 : 1;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: every job is refused by the network-path rule, so nothing was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('//dictionarymark-test.invalid/share/out.md'): Failed to write output file " +
+            "'//dictionarymark-test.invalid/share/out.md': The path '//dictionarymark-test.invalid/share/out.md' is not " +
+            "allowed: network paths are not permitted.",
+            err);
+        Assert.Contains($"Error: {jobs} of {jobs} table jobs failed.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+    }
+
+    /// <summary>
+    ///     Test that a relative config output under a root key naming a network share is refused on every platform
+    ///     before anything is accessed or created: the root is joined with the output as text, so a leading "//" is not
+    ///     collapsed to a local "/" on Linux and macOS, and on Windows the backslash spelling is refused as well.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization()
+    {
+        // Arrange: one config per spelling of the share; the input is an absolute local file, so only the output is
+        // rooted at the share
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("local", "terms.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var roots = OperatingSystem.IsWindows()
+            ? new[] { "\"//dictionarymark-test.invalid/share\"", "'\\\\dictionarymark-test.invalid\\share'" }
+            : ["\"//dictionarymark-test.invalid/share\""];
+
+        foreach (var root in roots)
+        {
+            var config = WriteConfig(tmpDir, $"root: {root}\ntables:\n  - input: '{input}'\n    output: out.md\n");
+
+            // Act
+            var (_, err, exitCode) = Run("--config", config);
+
+            // Assert: the output is refused by the network-path rule; the input was not the problem
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Error: table job 1 ('out.md'): Failed to write output file 'out.md': The path '", err);
+            Assert.Contains("is not allowed: network paths are not permitted.", err);
+            Assert.DoesNotContain("file-access-denied", err);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a relative config input under a root key naming a network share is refused on every platform before
+    ///     it is looked up: the root is joined with the pattern as text, so a leading "//" is not collapsed to a local "/"
+    ///     on Linux and macOS.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization()
+    {
+        // Arrange: the root names a share; the literal input and the output are relative to it
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir,
+            "root: \"//dictionarymark-test.invalid/share\"\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the input pattern is refused by the network-path rule before any lookup
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): Failed to resolve input pattern 'terms.yaml': The path '", err);
+        Assert.Contains("is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("was not found", err);
+    }
+
+    /// <summary>
+    ///     Test that on Windows a config pattern with a reserved device-name component is refused before any folder is
+    ///     listed, so the device is never probed, and the other job still runs.
+    /// </summary>
+    /// <param name="pattern">The input pattern.</param>
+    [Theory]
+    [InlineData("NUL/*.yaml")]
+    [InlineData("C:/NUL/*.yaml")]
+    [InlineData("CON/*.yaml")]
+    [InlineData("AUX/*.yaml")]
+    [InlineData("COM1/*.yaml")]
+    [InlineData("LPT1/*.yaml")]
+    public void DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing(string pattern)
+    {
+        // Reserved device names exist only on Windows
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            $"tables:\n  - input: \"{pattern}\"\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: refused by the device-name rule, so nothing was listed; the other job wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('a.md'): Failed to resolve input pattern '{pattern}': The path '", err);
+        Assert.Contains("is not allowed: the path names a device.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
     /// <summary>Test that a config input longer than the 16 MiB size limit is an ordinary read error.</summary>
     [Fact]
     public void DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError()

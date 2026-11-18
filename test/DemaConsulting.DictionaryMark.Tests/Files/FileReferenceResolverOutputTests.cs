@@ -294,6 +294,36 @@ public class FileReferenceResolverOutputTests
     }
 
     /// <summary>
+    ///     Validates that an output that does not exist yet, below a dangling directory link (a junction on Windows, a
+    ///     symbolic link on Linux and macOS) whose target was removed, is refused under every policy (the default
+    ///     included) as an entry that cannot be read, and that the link's target is never created; the test skips when
+    ///     the host cannot create a directory link.
+    /// </summary>
+    [Fact]
+    public void FileReferenceResolver_CheckOutputPath_DanglingLinkAboveMissingOutput_IsRefusedUnderEveryPolicy()
+    {
+        // Arrange: root/link is a directory link to outside/target, which is then removed
+        using var directory = new FileTestDirectory();
+        var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
+        var target = Directory.CreateDirectory(directory.Combine("outside/target")).FullName;
+        var link = Path.Combine(root, "link");
+        FileTestSupport.CreateDirectoryLinkOrSkip(link, target);
+        Directory.Delete(target);
+        var output = Path.Combine(link, "sub", "out.md");
+        var permissive = Create(root);
+        var confined = Create(root, FileAccessPolicy.Combine(FileAccessPolicy.UnderRoots(root), FileAccessPolicy.NoSymlinks));
+
+        // Act
+        var permissiveError = Assert.Throws<FileReferenceException>(() => permissive.CheckOutputPath(output));
+        var confinedError = Assert.Throws<FileReferenceException>(() => confined.CheckOutputPath(output));
+
+        // Assert: refused as an entry that cannot be read, and nothing was created through the link
+        Assert.Equal(FileReferenceFailureKind.CannotRead, permissiveError.Kind);
+        Assert.Equal(FileReferenceFailureKind.CannotRead, confinedError.Kind);
+        Assert.False(Directory.Exists(target));
+    }
+
+    /// <summary>
     ///     Validates that a restrictive policy fails closed when the real path of an output cannot be determined, for
     ///     an output that does not exist yet and for an existing one, while the default policy allows both.
     /// </summary>

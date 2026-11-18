@@ -90,6 +90,35 @@ public class FileReferenceResolverPatternTests
     }
 
     /// <summary>
+    ///     Validates on Windows that a pattern with a reserved device-name component is refused with the device-name rule
+    ///     a read gets, so listing it never probes the device.
+    /// </summary>
+    /// <param name="pattern">The pattern.</param>
+    [Theory]
+    [InlineData("C:/NUL/*.yaml")]
+    [InlineData("NUL/*.yaml")]
+    [InlineData("C:/docs/CON/*.yaml")]
+    [InlineData("AUX/*.yaml")]
+    [InlineData("C:\\docs\\COM1\\*.yaml")]
+    [InlineData("LPT1/*.yaml")]
+    [InlineData("C:/docs/nul.txt/*.yaml")]
+    public void FileReferenceResolver_CheckPatternText_ReservedDeviceNameOnWindows_IsInvalidPath(string pattern)
+    {
+        // Reserved device names exist only on Windows
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Act
+        var error = Assert.Throws<FileReferenceException>(() => FileReferenceResolver.CheckPatternText(pattern));
+
+        // Assert
+        Assert.Equal(FileReferenceFailureKind.InvalidPath, error.Kind);
+        Assert.Equal("the path names a device", error.Reason);
+    }
+
+    /// <summary>
     ///     Validates that a URL-like pattern is refused by the colon rule.
     /// </summary>
     [Fact]
