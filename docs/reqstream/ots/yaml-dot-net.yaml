@@ -8,20 +8,28 @@ sections:
         requirements:
           - id: DictionaryMark-OTS-YamlDotNet
             title: >-
-              YamlDotNet shall parse YAML dictionary files into an in-memory node representation
-              for key-value extraction.
+              YamlDotNet shall parse YAML dictionary files, including mappings, nested mappings, and
+              sequences, into an in-memory node representation that the dictionary loader can read.
             justification: |
-              DemaConsulting.DictionaryMark uses YamlDotNet in YamlDictionaryLoader to convert raw
-              YAML file content into a structured node tree via YamlStream, YamlMappingNode, and
-              YamlScalarNode from the YamlDotNet.RepresentationModel namespace. Correct parsing is
-              verified indirectly by the YamlDictionaryLoaderTests unit tests, which exercise all
-              required YamlDotNet APIs through normal class-level calls. ConfigFile uses the same API
-              family, plus YamlSequenceNode, to read configuration files.
+              DemaConsulting.DictionaryMark dictionary files are YAML mappings of terms to entries. An
+              approved-term entry is either a plain definition string or a nested mapping of fields
+              whose pos and variants values may be sequences; a deprecated-term entry is a nested
+              mapping with a use field and an optional where field. DictionaryMark relies on YamlDotNet
+              to parse these mappings, nested mappings, sequences, and scalars into a node
+              representation that the dictionary loader can traverse and validate, rather than
+              implementing its own YAML parser. Correct parsing is verified indirectly by the
+              YamlDictionaryLoaderTests unit tests, which load plain-string, object-form, and
+              deprecated-term entries, empty files, and invalid structures such as a sequence root, a
+              sequence entry value, an unknown nested key, and duplicate terms. The configuration file
+              reader relies on the same YamlDotNet parsing capability.
             tags: [ots]
             tests:
               - YamlDictionaryLoader_Load_ValidFlatYaml_ReturnsEntries
               - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
               - YamlDictionaryLoader_Load_EmptyFile_ReturnsEmptyList
+              - YamlDictionaryLoader_Load_ObjectEntry_ReadsAllFields
               - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException
+              - YamlDictionaryLoader_Load_SequenceValue_Throws
               - YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException
               - YamlDictionaryLoader_Load_DuplicateKey_ThrowsInvalidOperationException
+              - YamlDictionaryLoader_LoadDeprecated_ValidEntries_ReturnsEntries

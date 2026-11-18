@@ -21,15 +21,18 @@ Local items:
   - **Program**: entry point and execution orchestrator.
   - **Cli**: command-line interface subsystem.
     - **Context**: argument parser and I/O owner.
+    - **ConfigFile**: YAML configuration file loader and validator.
+    - **TableJob**: resolved table generation job with merged formatting settings.
   - **Dictionary**: dictionary processing subsystem.
     - **DictionaryGenerator**: orchestrates dictionary generation.
-    - **YamlDictionaryLoader**: loads YAML flat-dictionary files.
+    - **YamlDictionaryLoader**: loads YAML approved-term and deprecated-term files.
     - **ConflictDetector**: detects term conflicts across files.
     - **MarkdownFormatter**: formats entries as Markdown.
   - **SelfTest**: self-validation subsystem.
     - **Validation**: self-validation test runner.
   - **Utilities**: shared utility subsystem.
     - **GlobMatcher**: file-matching via glob patterns.
+    - **PathResolver**: path resolution against a root, with `..` and `${VAR}` support.
     - **PathHelpers**: safe path combination utilities.
     - **TemporaryDirectory**: disposable temporary directory helper.
 

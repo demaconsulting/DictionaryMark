@@ -2,7 +2,7 @@ package DictionaryMark {
     private import SoftwareItemMetadata::*;
 
     part def YamlDictionaryLoader {
-        doc /* Loads YAML flat-dictionary files. */
+        doc /* Loads YAML approved-term and deprecated-term files. */
 
         metadata info : SoftwareInfo {
             sourceFiles = ("src/DemaConsulting.DictionaryMark/Dictionary/YamlDictionaryLoader.cs");

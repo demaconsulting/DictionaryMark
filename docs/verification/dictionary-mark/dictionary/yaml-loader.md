@@ -35,8 +35,8 @@ errors from the file system are surfaced to the caller as documented. This scena
 `YamlDictionaryLoader_Load_NonExistentFile_ThrowsFileNotFoundException`.
 
 **YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException**: Verifies that a YAML file
-containing a nested mapping structure (a value that is itself a mapping) causes `Load` to throw
-`InvalidOperationException`, confirming that non-scalar values are rejected as invalid structure.
+containing a nested mapping with an unsupported key causes `Load` to throw
+`InvalidOperationException`, confirming that invalid entry objects are rejected as invalid structure.
 This scenario is tested by `YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException`.
 
 **YamlDictionaryLoader_Load_ListYaml_ThrowsInvalidOperationException**: Verifies that a YAML file
