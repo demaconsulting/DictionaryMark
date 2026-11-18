@@ -30,8 +30,10 @@ that such a path is denied before any handle is opened.
   run.
 - The link-to-share tests run on Windows only, because network locations exist only there; elsewhere they
   are skipped with a reason. The injected link reader needs no privilege and no share.
-- The colon tests run per platform: the Windows colon rule is verified on Windows only, and colon file
-  names are verified on Linux and macOS only. Elsewhere they are skipped with a reason.
+- The colon tests run on every platform, except the drive-path test, which runs on Linux and macOS only (on
+  Windows a drive path is an ordinary absolute path, verified by
+  `FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull`), and the NT-namespace test, which runs
+  on Windows only. Elsewhere they are skipped with a reason.
 - The network-decision tests (`LeadsToNetwork`, the full-path rule and a pattern on a share) are pure
   string checks or use an injected link reader or inspector, so they need no share. They run on Windows
   only, because network locations and device namespaces exist only there.
@@ -68,14 +70,18 @@ creates missing output folders.
 - `\\.\pipe\x` and `\\?\C:\a.yaml` give the device reason.
 - Relative, `..`, glob, `${VAR}` and absolute local paths are not on the list.
 
-**FileAccessPolicy_DescribeNeverAccessed_ColonOnWindows_ReturnsReason** (Windows): `a.yaml:stream`,
-`C:a.yaml` and `docs/terms.yaml:hidden` give the alternate-data-stream reason, and `\??\C:\a.yaml` gives the
-device reason.
+**FileAccessPolicy_DescribeNeverAccessed_Colon_ReturnsReason**: On every platform, `a.yaml:stream`,
+`C:a.yaml`, `docs/terms.yaml:hidden`, `terms:v1.yaml`, `urn:x` and `file:/tmp/a.yaml` give the colon reason.
 
-**FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull** and
-**FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac** (Linux and macOS): `a.yaml:stream`,
-`terms:v1.yaml` and `C:a.yaml` are not on the text list. Under roots, a real file `terms:v1.yaml` is read
-and `out:1.md` is written.
+**FileAccessPolicy_DescribeNeverAccessed_NtNamespaceOnWindows_ReturnsReason** (Windows): `\??\C:\a.yaml`
+gives the device reason.
+
+**FileAccessPolicy_DescribeNeverAccessed_DrivePathOnLinuxAndMac_ReturnsColonReason** (Linux and macOS):
+`C:/a.yaml` and `C:\a.yaml` give the colon reason, because those systems have no drives.
+
+**FileAccessPolicy_ColonInWrittenPath_DeniedBeforeOpenNothingWritten**: On every platform, under roots, a
+read of `terms:v1.yaml` and a write of `sub/out:1.md` are denied with the colon reason before anything is
+opened, and nothing is created in the allowed folder.
 
 **FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull** (Linux and macOS):
 `/??/a.yaml` and `/dev/null` are not on the text list. `\??\` is a Windows namespace, and a device is refused

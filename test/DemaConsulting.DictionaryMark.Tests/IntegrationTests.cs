@@ -1671,12 +1671,10 @@ public class IntegrationTests
         Assert.Contains($"file-access-denied: '{device}': it is a device path, which is never accessed", output);
     }
 
-    /// <summary>Test that on Windows an alternate data stream output is never written.</summary>
+    /// <summary>Test that an output whose name contains a colon is never written, on every platform.</summary>
     [Fact]
-    public void DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied()
+    public void DictionaryMark_FileAccess_ColonOutput_Denied()
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "The colon rule applies on Windows only.");
-
         // Arrange
         using var tmpDir = new TemporaryDirectory();
         WriteFile(tmpDir, "config/terms.yaml", Terms);
@@ -1685,31 +1683,18 @@ public class IntegrationTests
         // Act
         var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
 
-        // Assert: denied, and the host file was not created either
+        // Assert: denied, and neither the output nor the host file of a stream was created
         Assert.Equal(1, exitCode);
-        Assert.Contains("file-access-denied: 'out.md:hidden': it names an alternate data stream", output);
+        Assert.Contains(
+            "file-access-denied: 'out.md:hidden': it contains a colon other than the drive of an absolute path on " +
+            "Windows, which is never accessed",
+            output);
         Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
-    }
-
-    /// <summary>Test that on Linux and macOS input and output file names with a colon are read and written under roots.</summary>
-    [Fact]
-    public void DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac()
-    {
-        Assert.SkipUnless(
-            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
-            "A colon is an ordinary file-name character on Linux and macOS only.");
-
-        // Arrange: an input and an output whose names contain a colon
-        using var tmpDir = new TemporaryDirectory();
-        WriteFile(tmpDir, "config/terms:v1.yaml", Terms);
-        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: 'terms:v1.yaml'\n    output: 'out:1.md'\n");
-
-        // Act
-        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots");
-
-        // Assert
-        Assert.True(exitCode == 0, output);
-        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "config/out:1.md")));
+        var entries = Directory.EnumerateFileSystemEntries(PathIn(tmpDir, "config"))
+            .Select(Path.GetFileName)
+            .Order()
+            .ToArray();
+        Assert.Equal(new string?[] { "dictionarymark.yaml", "terms.yaml" }, entries);
     }
 
     /// <summary>

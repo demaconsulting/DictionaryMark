@@ -65,9 +65,10 @@ that returns a reason or null. Backslashes count as slashes. The rules are check
 2. A path written as a network path: `\\server` or `//server`.
 3. A URL: a scheme of two or more characters followed by `://`. A `file:` URL with a host is a network
    location.
-4. On Windows only, any other colon, except the drive of an absolute path. This covers an alternate data
-   stream, a drive-relative path and another URI such as `urn:x`. On Linux and macOS a colon is an ordinary
-   file-name character, so `urn:x` and `terms:v1.yaml` are file names there.
+4. Any other colon, on every platform, except the drive of an absolute path on Windows, as in CanvasNet. This
+   covers an alternate data stream, a drive-relative path, another URI such as `urn:x` or `file:/x`, and on
+   Linux and macOS a drive path such as `C:/x` and a file name such as `terms:v1.yaml`. A URL is recognized by
+   `://` in rule 3, so `docs:stream` is never mistaken for a scheme.
 5. On Windows only, a reserved device name in any component.
 
 **DescribeNeverAccessedFullPath(string fullPath)**: A pure text check of the full candidate path (the written
@@ -153,13 +154,6 @@ pre-checks pass.
 
 **Differences from CanvasNet.** These are deliberate:
 
-- **Colon rule on Windows only.** CanvasNet refuses every colon on Linux and macOS too, to keep references
-  written inside documents portable. A DictionaryMark configuration path is a host path for the machine that
-  runs the tool, and on Linux and macOS a colon is a legal file-name character, so the user asked that it is
-  not denied there.
-- **A URL needs `scheme://`.** CanvasNet's colon rule catches every scheme on every platform. With colons legal
-  on Linux and macOS, DictionaryMark knows a URL only by `scheme://`, so `urn:x` and `file:/x` are file names
-  there. On Windows the colon rule still denies them.
 - **`file:////server` reason.** CanvasNet gives the `file:` host reason. DictionaryMark gives the URL reason,
   because no host follows `file://`. Both deny it.
 - **The `root:` key.** CanvasNet has no base-folder key in its documents. DictionaryMark applies the
@@ -176,7 +170,8 @@ pre-checks pass.
   an output folder touch the disk before any handle exists. The walk is skipped for a path that is itself a
   network location, so its outcomes are the same as CanvasNet's.
 - **Matched glob files.** CanvasNet has no globs. A file a glob matched has no written text, so it gets only
-  the full-path rules, as a CanvasNet candidate does.
+  the full-path rules, as a CanvasNet candidate does. On Linux and macOS a matched file whose name contains a
+  colon is therefore read.
 - **Write rules.** CanvasNet never writes. DictionaryMark does the following:
   - On Linux and macOS, it denies, before the open, an output under `/dev` or one whose deepest existing folder
     has a real path under `/dev`.
@@ -210,7 +205,7 @@ Reasons (they name the mode when the mode caused the denial):
 - Local path leading to a network location: `it leads to a network location through a symbolic link or junction,
   which is never accessed`.
 - Device: `it is a device path, which is never accessed`.
-- Colon: `it names an alternate data stream, a drive-relative path or a URI, which is never accessed`.
+- Colon: `it contains a colon other than the drive of an absolute path on Windows, which is never accessed`.
 - Not a regular file: `it is not a regular file (a folder, device, pipe or other special file), which is
   never accessed`.
 

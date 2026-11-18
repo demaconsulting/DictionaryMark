@@ -385,9 +385,9 @@ configuration file's folder.
   `--log` and `--results`) are never judged.
 - **Never accessed**, in every mode: a URL (`http://`, `https://` and other `scheme://` forms, and a `file:`
   URI with a host), a path written as a UNC path (`\\server\share`, `//server/share`), a device path (`\\.\`,
-  `\\?\`, `NUL`), on Windows an alternate data stream (any `:` other than a drive), and anything that is not
-  a regular file (a folder, pipe or device). Outputs under `/dev` are never written. A `root:` key naming
-  such a path is an error. On Linux and macOS a `:` is an ordinary file-name character.
+  `\\?\`, `NUL`), a path with a `:` other than the drive of an absolute Windows path (on Linux and macOS, any
+  `:`), and anything that is not a regular file (a folder, pipe or device). Outputs under `/dev` are never
+  written. A `root:` key naming such a path is an error.
 - **Network shares**: as in CanvasNet, a configuration file on a share or mapped network drive works with
   relative paths. On Windows, a local path that leads to a network share through a symbolic link or junction
   is denied.

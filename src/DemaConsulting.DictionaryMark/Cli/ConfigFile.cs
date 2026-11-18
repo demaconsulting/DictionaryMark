@@ -499,9 +499,10 @@ internal sealed class ConfigFile
     /// <remarks>
     ///     The <c>root</c> value only sets the base directory of relative paths; it never grants file access. It is
     ///     still configuration content, so after <c>${VAR}</c> expansion it is checked against the file-access
-    ///     never-accessed list (URLs, UNC paths written as such, device paths, and on Windows alternate data
-    ///     streams) before its existence is checked, so that a configuration file cannot make the tool probe a
-    ///     network share or a device. Only the text is checked, so a relative root on a share is resolved.
+    ///     never-accessed list (URLs, UNC paths written as such, device paths, and colons other than the drive of an
+    ///     absolute path on Windows) before its existence is checked, so that a configuration file cannot make the
+    ///     tool probe a network share or a device. Only the text is checked, so a relative root on a share is
+    ///     resolved.
     /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>

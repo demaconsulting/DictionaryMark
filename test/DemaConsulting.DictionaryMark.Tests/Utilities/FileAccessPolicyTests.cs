@@ -126,46 +126,66 @@ public class FileAccessPolicyTests
     }
 
     /// <summary>
-    ///     Test that on Windows a colon other than the drive of an absolute path, and the NT object namespace, are on
-    ///     the never-accessed list.
+    ///     Test that a colon other than the drive of an absolute path on Windows is on the never-accessed list, on
+    ///     every platform.
     /// </summary>
     /// <param name="path">The path text.</param>
-    /// <param name="reason">A fragment of the expected reason.</param>
     [Theory]
-    [InlineData("a.yaml:stream", "it names an alternate data stream")]
-    [InlineData("C:a.yaml", "it names an alternate data stream")]
-    [InlineData("docs/terms.yaml:hidden", "it names an alternate data stream")]
-    [InlineData(@"\??\C:\a.yaml", "it is a device path")]
-    public void FileAccessPolicy_DescribeNeverAccessed_ColonOnWindows_ReturnsReason(string path, string reason)
+    [InlineData("a.yaml:stream")]
+    [InlineData("C:a.yaml")]
+    [InlineData("docs/terms.yaml:hidden")]
+    [InlineData("terms:v1.yaml")]
+    [InlineData("urn:x")]
+    [InlineData("file:/tmp/a.yaml")]
+    public void FileAccessPolicy_DescribeNeverAccessed_Colon_ReturnsReason(string path)
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "The colon and NT namespace rules apply on Windows only.");
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessed(path);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.StartsWith("it contains a colon", result);
+        Assert.EndsWith("is never accessed", result);
+    }
+
+    /// <summary>Test that on Windows a path in the NT object namespace is on the never-accessed list.</summary>
+    /// <param name="path">The path text.</param>
+    [Theory]
+    [InlineData(@"\??\C:\a.yaml")]
+    public void FileAccessPolicy_DescribeNeverAccessed_NtNamespaceOnWindows_ReturnsReason(string path)
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The NT object namespace rule applies on Windows only.");
 
         // Act
         var result = FileAccessPolicy.DescribeNeverAccessed(path);
 
         // Assert
         Assert.NotNull(result);
-        Assert.StartsWith(reason, result);
+        Assert.StartsWith("it is a device path", result);
         Assert.EndsWith("is never accessed", result);
     }
 
-    /// <summary>Test that on Linux and macOS a colon is ordinary text.</summary>
+    /// <summary>
+    ///     Test that on Linux and macOS a drive path is on the never-accessed list for its colon, because those
+    ///     systems have no drives.
+    /// </summary>
     /// <param name="path">The path text.</param>
     [Theory]
-    [InlineData("a.yaml:stream")]
-    [InlineData("terms:v1.yaml")]
-    [InlineData("C:a.yaml")]
-    public void FileAccessPolicy_DescribeNeverAccessed_ColonOnLinuxAndMac_ReturnsNull(string path)
+    [InlineData("C:/a.yaml")]
+    [InlineData(@"C:\a.yaml")]
+    public void FileAccessPolicy_DescribeNeverAccessed_DrivePathOnLinuxAndMac_ReturnsColonReason(string path)
     {
         Assert.SkipUnless(
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
-            "A colon is an ordinary file-name character on Linux and macOS only.");
+            "A drive path is an ordinary absolute path on Windows; it is refused on Linux and macOS only.");
 
         // Act
         var result = FileAccessPolicy.DescribeNeverAccessed(path);
 
         // Assert
-        Assert.Null(result);
+        Assert.NotNull(result);
+        Assert.StartsWith("it contains a colon", result);
+        Assert.EndsWith("is never accessed", result);
     }
 
     /// <summary>
@@ -189,27 +209,29 @@ public class FileAccessPolicyTests
         Assert.Null(result);
     }
 
-    /// <summary>Test that on Linux and macOS a file whose name contains a colon is read and written under roots.</summary>
+    /// <summary>
+    ///     Test that a written path containing a colon is denied before it is opened, on every platform, and that
+    ///     nothing is created.
+    /// </summary>
     [Fact]
-    public void FileAccessPolicy_ColonFileName_ReadAndWrittenOnLinuxAndMac()
+    public void FileAccessPolicy_ColonInWrittenPath_DeniedBeforeOpenNothingWritten()
     {
-        Assert.SkipUnless(
-            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
-            "A colon is an ordinary file-name character on Linux and macOS only.");
-
-        // Arrange: a dictionary named with a colon inside the allowed folder
+        // Arrange: an empty allowed folder (no colon-named file is created, which on Windows would be a stream)
         using var tmpDir = new TemporaryDirectory();
-        var input = WriteFile(tmpDir, "allowed/terms:v1.yaml");
-        var output = PathIn(tmpDir, "allowed/out:1.md");
         var policy = Roots(tmpDir, "allowed");
+        var allowed = PathIn(tmpDir, "allowed");
 
-        // Act
-        var text = policy.ReadAllText("terms:v1.yaml", input);
-        policy.WriteAllText("out:1.md", output, "# Out\n");
+        // Act: a missing input would fail with FileNotFoundException if it were opened
+        var read = Assert.Throws<FileAccessDeniedException>(
+            () => policy.ReadAllText("terms:v1.yaml", PathIn(tmpDir, "allowed/terms:v1.yaml")));
+        var write = Assert.Throws<FileAccessDeniedException>(
+            () => policy.WriteAllText("sub/out:1.md", PathIn(tmpDir, "allowed/sub/out:1.md"), "# Out\n"));
 
-        // Assert
-        Assert.Equal(Content, text);
-        Assert.Equal("# Out\n", File.ReadAllText(output));
+        // Assert: both are denied for the colon and the allowed folder is still empty
+        Assert.StartsWith("it contains a colon", read.Reason);
+        Assert.StartsWith("it contains a colon", write.Reason);
+        Assert.False(Directory.Exists(PathIn(tmpDir, "allowed/sub")));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(allowed));
     }
 
     /// <summary>Test that ordinary relative, parent-segment, glob and absolute paths are not on the list.</summary>

@@ -36,8 +36,8 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///     <list type="bullet">
 ///         <item>
 ///             In every mode, a URL (<c>scheme://</c>), a <c>file:</c> URI with a host, a path written as a UNC path,
-///             a device path, on Windows an alternate data stream (any colon other than the drive of an absolute
-///             path), on Linux and macOS an output under <c>/dev</c> (also through a link to a folder there), and
+///             a device path, a colon other than the drive of an absolute path on Windows (on Linux and macOS, any
+///             colon), on Linux and macOS an output under <c>/dev</c> (also through a link to a folder there), and
 ///             anything that is not a regular file are never accessed.
 ///         </item>
 ///         <item>
@@ -68,14 +68,6 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///     </para>
 ///     <para>Deliberate differences from CanvasNet (see the design):</para>
 ///     <list type="bullet">
-///         <item>
-///             The colon rule applies on Windows only, because a configuration path is a host path and a colon is
-///             an ordinary file-name character on Linux and macOS.
-///         </item>
-///         <item>
-///             A URL needs <c>scheme://</c>, because with colons legal on Linux and macOS a scheme alone does not
-///             mark a URL there (on Windows the colon rule still denies <c>urn:x</c>).
-///         </item>
 ///         <item>
 ///             <c>file:////server</c> gets the URL reason rather than the <c>file:</c> host reason, because no
 ///             host follows <c>file://</c>; both deny it.
@@ -138,9 +130,9 @@ internal sealed partial class FileAccessPolicy
     /// <summary>The reason for a device path.</summary>
     private const string DeviceReason = "it is a device path, which is never accessed";
 
-    /// <summary>The reason for a colon other than a Windows drive.</summary>
+    /// <summary>The reason for a colon other than the drive of an absolute path on Windows.</summary>
     private const string ColonReason =
-        "it names an alternate data stream, a drive-relative path or a URI, which is never accessed";
+        "it contains a colon other than the drive of an absolute path on Windows, which is never accessed";
 
     /// <summary>The reason for anything that is not a regular file.</summary>
     private const string NotRegularReason =
@@ -329,15 +321,15 @@ internal sealed partial class FileAccessPolicy
     ///         touched, in every mode. Backslashes count as slashes. The rules, in order: a device path
     ///         (<c>\\?\</c> and <c>\\.\</c> on every platform, <c>\??\</c> on Windows); a path written as a network
     ///         path (<c>\\server</c>, <c>//server</c>); a URL (a scheme of two or more characters followed by
-    ///         <c>://</c>), where a <c>file:</c> URL with a host is a network location; on Windows, any other colon
-    ///         except the drive of an absolute path (an alternate data stream, a drive-relative path or another URI
-    ///         such as <c>urn:x</c>); and on Windows a reserved device name in any component.
+    ///         <c>://</c>), where a <c>file:</c> URL with a host is a network location; any other colon, on every
+    ///         platform, except the drive of an absolute path on Windows (an alternate data stream, a drive-relative
+    ///         path, another URI such as <c>urn:x</c>, and on Linux and macOS a drive path such as <c>C:/x</c>), as
+    ///         in CanvasNet; and on Windows a reserved device name in any component.
     ///     </para>
     ///     <para>
     ///         These rules apply to the text as written, as in CanvasNet, so a relative path resolved against a
-    ///         folder on a share is not a network path. The colon rule is Windows-only, unlike CanvasNet: a
-    ///         configuration path is a host path, and on Linux and macOS a colon is an ordinary file-name character
-    ///         (so <c>urn:x</c> is a file name there). A device file on Linux and macOS is refused by its handle
+    ///         folder on a share is not a network path. A URL is recognized by <c>://</c>, so a colon in a file
+    ///         name is never mistaken for a scheme. A device file on Linux and macOS is refused by its handle
     ///         type after a non-blocking open, and an output under <c>/dev</c> by <see cref="WriteAllText"/>.
     ///     </para>
     /// </remarks>
@@ -372,21 +364,16 @@ internal sealed partial class FileAccessPolicy
                 : UrlReason;
         }
 
-        // Linux and macOS have no streams, drives or reserved names: a colon is an ordinary file-name character
-        if (!OperatingSystem.IsWindows())
-        {
-            return null;
-        }
-
-        // On Windows the only colon a local path may carry is the drive of an absolute path
-        var allowedColon = HasDrive(text) ? 1 : -1;
+        // The only colon a path may carry is the drive of an absolute path on Windows; any other is an alternate
+        // data stream, a drive-relative path, another URI, or a drive on a system that has none (as in CanvasNet)
+        var allowedColon = OperatingSystem.IsWindows() && HasDrive(text) ? 1 : -1;
         if (text.IndexOf(':', allowedColon + 1) >= 0)
         {
             return ColonReason;
         }
 
-        // A reserved device name in any component
-        return RealPath.HasWindowsDeviceName(text) ? DeviceReason : null;
+        // On Windows, a reserved device name in any component
+        return OperatingSystem.IsWindows() && RealPath.HasWindowsDeviceName(text) ? DeviceReason : null;
     }
 
     /// <summary>

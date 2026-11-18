@@ -723,14 +723,14 @@ sections:
         title: >-
           In every file-access mode, the tool shall never read or write a configuration-file path that is a URL,
           a path written as a UNC path, on Windows a local path that leads to a network location through a link,
-          a device path, on Windows an alternate data stream, or anything that is not a regular file, while a path
-          on a share reached from a configuration file, root or --root on that share, a path on a mapped network
-          drive, and on Linux and macOS a file name with a colon, are accessed.
+          a device path, a path with a colon other than the drive of an absolute path on Windows, or anything that
+          is not a regular file, while a path on a share reached from a configuration file, root or --root on that
+          share, and a path on a mapped network drive, are accessed.
         justification: |
           These locations can leak credentials to a network host, block the run, or reach hidden data, and no
           dictionary or Markdown output is ever stored in them. The network rule matches the DEMA Consulting
-          CanvasNet tool so configuration files kept on shares and mapped network drives keep working, and a
-          colon is an ordinary file-name character on Linux and macOS.
+          CanvasNet tool so configuration files kept on shares and mapped network drives keep working, and the
+          colon rule matches it on every platform, so a configuration file is judged the same everywhere.
         tags: [system, security]
         children:
           - DictionaryMark-Utilities-FileAccessConfinement
@@ -740,9 +740,7 @@ sections:
           - DictionaryMark_FileAccess_UrlInput_Denied
           - DictionaryMark_FileAccess_UncInput_Denied
           - DictionaryMark_FileAccess_DeviceOutput_Denied
-          - windows@DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied
-          - ubuntu@DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac
-          - macos@DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac
+          - DictionaryMark_FileAccess_ColonOutput_Denied
           - DictionaryMark_FileAccess_DirectoryAsOutput_Denied
 
       - id: DictionaryMark-System-FileAccess-Errors

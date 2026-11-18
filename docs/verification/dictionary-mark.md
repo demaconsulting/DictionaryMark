@@ -302,16 +302,12 @@ These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_De
 
 - a URL input and an input written as a UNC path are denied;
 - a device output (`NUL` on Windows, `/dev/null` elsewhere) is denied;
-- on Windows, an alternate-data-stream output is denied, and the host file is not created;
-- on Linux and macOS, an input and an output whose file names contain a colon are read and written under
-  `--file-access roots`;
+- an output whose name contains a colon (`out.md:hidden`) is denied on every platform, and nothing is created;
 - a folder at the output path is denied.
 
 These scenarios are tested by `DictionaryMark_FileAccess_UrlInput_Denied`,
 `DictionaryMark_FileAccess_UncInput_Denied`, `DictionaryMark_FileAccess_DeviceOutput_Denied`,
-`DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied` (Windows),
-`DictionaryMark_FileAccess_ColonFileNames_AllowedOnLinuxAndMac` (Linux and macOS) and
-`DictionaryMark_FileAccess_DirectoryAsOutput_Denied`. The platform tests are skipped with a reason elsewhere.
+`DictionaryMark_FileAccess_ColonOutput_Denied` and `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`.
 
 **FileAccessConfigOnShare** (supplementary, not requirement evidence): On Windows, a configuration file with
 relative paths, reached through the administrative share `\\localhost\{drive}$`, runs in the default mode

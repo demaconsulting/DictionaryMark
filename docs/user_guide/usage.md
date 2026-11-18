@@ -387,12 +387,14 @@ In every mode, including `any`, a configuration-file path is never read or writt
 - a `file:` URI with a host;
 - a path written as a UNC path (`\\server\share`, `//server/share`);
 - a device path (`\\.\`, `\\?\`, a Windows reserved name such as `NUL` or `COM1`);
-- on Windows, an alternate data stream (any `:` other than the drive of an absolute path);
+- a path with a `:` other than the drive of an absolute path on Windows (an alternate data stream, a
+  drive-relative path); on Linux and macOS any `:`, so `terms:v1.yaml` and `C:/x` are refused there too;
 - anything that is not a regular file (a folder, a named pipe, a device).
 
-On Linux and macOS a `:` is an ordinary file-name character, so `terms:v1.yaml` is a valid file name
-there. A device such as `/dev/null` is refused when it is read, as not a regular file. An output under
-`/dev`, or in a folder whose real path is under `/dev` (for example through a link), is never written.
+This matches CanvasNet, so a configuration file is judged the same on every platform. A file whose name
+contains a colon can still be named on the command line, which is trusted. A device such as `/dev/null` is
+refused when it is read, as not a regular file. An output under `/dev`, or in a folder whose real path is
+under `/dev` (for example through a link), is never written.
 
 A `root` key that names such a path is an error when the configuration file is loaded.
 
