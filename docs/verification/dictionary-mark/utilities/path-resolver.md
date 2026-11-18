@@ -73,6 +73,12 @@ be rejected. This scenario is tested by `PathResolver_ResolveExistingDirectory_P
 with the capitalized description in the message. This scenario is tested by
 `PathResolver_ResolveExistingDirectory_Wildcard_Throws`.
 
+**PathResolver_ResolveExistingDirectory_ExistencePredicate_DecidesWithoutProbe**: With a caller-supplied
+existence check, a missing folder that the check accepts is returned by its normalized full path, which is what
+the check receives, and an existing folder that the check refuses is reported as missing; a wildcard is rejected
+before the check is called. This scenario is tested by
+`PathResolver_ResolveExistingDirectory_ExistencePredicate_DecidesWithoutProbe`.
+
 **PathResolver_ResolvePath_NullCharacter_ThrowsInvalidOperationExceptionNamingPath** and
 **PathResolver_ResolveExistingDirectory_NullCharacter_ThrowsInvalidOperationExceptionNamingPath**:
 A path containing a null character (invalid on every platform) must be reported as

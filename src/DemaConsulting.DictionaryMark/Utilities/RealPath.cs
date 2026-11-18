@@ -35,6 +35,33 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 internal readonly record struct HandleFacts(bool? IsRegularFile, string? FinalPath);
 
 /// <summary>
+///     Whether a path names an existing entry, as told by an attempt to open it.
+/// </summary>
+internal enum PathState
+{
+    /// <summary>The entry does not exist (or a folder of its path does not), so the open found nothing.</summary>
+    Missing,
+
+    /// <summary>The entry exists: it was opened.</summary>
+    Exists,
+
+    /// <summary>The open failed for another reason, so it is not known whether the entry exists.</summary>
+    Unknown,
+}
+
+/// <summary>
+///     The facts about a path that a file-access decision needs before anything is read, written, listed or
+///     created through it, taken from a handle (Windows, Linux) or <c>realpath(3)</c> (macOS) whose result is judged.
+/// </summary>
+/// <param name="State">Whether the entry exists.</param>
+/// <param name="IsDirectory">
+///     True for a folder, false for anything else, or null when the entry does not exist or the platform cannot
+///     tell (always null on macOS, except from a folder check).
+/// </param>
+/// <param name="FinalPath">The real (final) path of the entry, or null when it is missing or cannot be told.</param>
+internal readonly record struct PathFacts(PathState State, bool? IsDirectory, string? FinalPath);
+
+/// <summary>
 ///     Opens files and reports, per operating system, whether an open handle is a regular file and what its real
 ///     path is, plus the path-comparison and path-classification rules the file-access policy relies on.
 /// </summary>
@@ -66,6 +93,9 @@ internal static partial class RealPath
 
     /// <summary>The <c>S_IFREG</c> file type of a regular file.</summary>
     private const int UnixRegularFile = 0x8000;
+
+    /// <summary>The <c>S_IFDIR</c> file type of a folder.</summary>
+    private const int UnixDirectory = 0x4000;
 
     /// <summary>The directory separators accepted when a path is split into components.</summary>
     private static readonly char[] Separators = ['/', '\\'];
@@ -238,9 +268,10 @@ internal static partial class RealPath
     ///     Determines whether a path names a symbolic link or junction, including one whose target does not exist.
     /// </summary>
     /// <remarks>
-    ///     A by-name check used only to decide how to handle an existing entry before an open; the decisions that
-    ///     matter are always made on the real path of the open handle. Never throws: an entry that cannot be
-    ///     examined is reported as not a link.
+    ///     A link-safe check: only the entry's own link data is read, so its target is never followed or
+    ///     contacted. Used only to decide how to handle an entry before an open; the decisions that matter are
+    ///     always made on the real path of a handle. Never throws: an entry that cannot be examined is reported as
+    ///     not a link.
     /// </remarks>
     /// <param name="fullPath">The full path. Must not be null.</param>
     /// <returns>True when the entry is a symbolic link or junction.</returns>
@@ -281,11 +312,16 @@ internal static partial class RealPath
     ///     Opens an existing file for reading: read-only with full sharing on Windows, non-blocking and not inherited
     ///     on Linux and macOS.
     /// </summary>
+    /// <remarks>
+    ///     A folder opens too (on Windows with backup semantics), so the caller learns that the entry is a folder
+    ///     from the handle it judges, not from a by-name probe; <see cref="Inspect(SafeFileHandle)"/> then reports it
+    ///     as not a regular file.
+    /// </remarks>
     /// <param name="fullPath">The full path of the file. Must not be null.</param>
     /// <returns>The open handle; the caller disposes it.</returns>
     /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
     /// <exception cref="DirectoryNotFoundException">Thrown when a folder of the path does not exist.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access is denied (on Windows also for a folder).</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access is denied.</exception>
     /// <exception cref="IOException">Thrown for any other failure.</exception>
     internal static SafeFileHandle OpenForRead(string fullPath)
     {
@@ -295,7 +331,12 @@ internal static partial class RealPath
                 $"The file '{fullPath}' is not a regular file and cannot be opened without blocking.");
         }
 
-        // Windows (and any other platform): the framework's open, read-only with the most permissive sharing
+        if (OperatingSystem.IsWindows())
+        {
+            return OpenForReadWindows(fullPath);
+        }
+
+        // Any other platform: the framework's open, read-only with the most permissive sharing
         return File.OpenHandle(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
     }
 
@@ -305,12 +346,13 @@ internal static partial class RealPath
     /// </summary>
     /// <remarks>
     ///     On Linux and macOS the open is non-blocking, so a named pipe with no reader is reported (as null) instead
-    ///     of hanging the open. On Windows the file is opened for writing with read sharing.
+    ///     of hanging the open, and a folder (which cannot be opened for writing) is reported as null too. On Windows
+    ///     the file is opened for writing with read sharing.
     /// </remarks>
     /// <param name="fullPath">The full path of the file. Must not be null.</param>
     /// <returns>
     ///     The open handle, which the caller disposes; or null when the operating system reports that the entry is a
-    ///     special file (a named pipe or device) that cannot be opened for writing without blocking.
+    ///     special file (a named pipe or device) that cannot be opened for writing without blocking, or a folder.
     /// </returns>
     /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
     /// <exception cref="DirectoryNotFoundException">Thrown when a folder of the path does not exist.</exception>
@@ -382,39 +424,97 @@ internal static partial class RealPath
     ///     short names are resolved.
     /// </summary>
     /// <remarks>
-    ///     Used for the allowed folders, the trusted anchor, the deepest existing parent folder of an output and the
-    ///     folders created for it. A folder that may be searched but not read has a real location too: Linux opens
-    ///     it with <c>O_PATH</c> and macOS asks <c>realpath(3)</c>. Never throws.
+    ///     The final path of <see cref="InspectPath(string)"/>; used for the allowed folders. Never throws.
     /// </remarks>
     /// <param name="fullPath">The full path. Must not be null.</param>
     /// <returns>The real path, or null when it does not exist, cannot be opened, or the platform cannot tell.</returns>
-    internal static string? TryGetCanonicalDirectory(string fullPath)
+    internal static string? TryGetCanonicalDirectory(string fullPath) => InspectPath(fullPath).FinalPath;
+
+    /// <summary>
+    ///     Reports whether a path exists, whether it is a folder and what its real path is, from a handle opened
+    ///     without access rights (Windows, Linux) or <c>realpath(3)</c> (macOS), never from a by-name probe.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         The open follows every link on the path, as any later open would, and the facts are those of the
+    ///         entry the handle reaches, so a link swapped in before the open is seen by its real path. Windows opens
+    ///         with no access rights and backup semantics (a folder opens too), adding the extended-length prefix to
+    ///         a long path; Linux opens with <c>O_PATH</c> (a folder that may be searched but not read opens too)
+    ///         and reads the type with <c>fstat</c>; macOS asks <c>realpath(3)</c>, which cannot tell a folder.
+    ///     </para>
+    ///     <para>
+    ///         A missing entry or folder (Windows error 2 or 3, <c>ENOENT</c>, <c>ENOTDIR</c>) is
+    ///         <see cref="PathState.Missing"/>, which includes a link whose target does not exist; any other
+    ///         failure is <see cref="PathState.Unknown"/>, and the caller fails closed in a restrictive mode. Never
+    ///         throws.
+    ///     </para>
+    /// </remarks>
+    /// <param name="fullPath">The full path. Must not be null.</param>
+    /// <returns>The facts.</returns>
+    internal static PathFacts InspectPath(string fullPath)
     {
         try
         {
             if (OperatingSystem.IsWindows())
             {
-                return TryGetFinalPathOfPath(fullPath);
+                return InspectPathWindows(fullPath);
             }
 
             if (OperatingSystem.IsLinux())
             {
-                using var handle = OpenNonBlocking(fullPath, UnixOpenKind.PathOnly);
-                return handle == null ? null : Inspect(handle).FinalPath;
+                return InspectPathLinux(fullPath);
             }
 
             if (OperatingSystem.IsMacOS())
             {
-                return TryRealPath(fullPath);
+                return InspectPathMac(fullPath);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException
             or DllNotFoundException or EntryPointNotFoundException or ArgumentException)
         {
-            // A folder that cannot be opened has no known real location
+            // A path that cannot be opened for a reason other than a missing entry has unknown facts
         }
 
-        return null;
+        return new PathFacts(PathState.Unknown, null, null);
+    }
+
+    /// <summary>
+    ///     Reports whether a path is an existing folder and what its real path is, from one open of the folder,
+    ///     never from a by-name probe.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Windows and Linux are <see cref="InspectPath(string)"/>, whose handle already tells a folder. macOS
+    ///         opens the path with <c>O_DIRECTORY</c>, because <c>realpath(3)</c> cannot tell a folder there: a
+    ///         folder is <see cref="PathState.Exists"/> with <see cref="PathFacts.IsDirectory"/> true and the real
+    ///         path of the descriptor; a file, a link whose target is missing or a missing folder is
+    ///         <see cref="PathState.Missing"/>; a folder that cannot be read is <see cref="PathState.Unknown"/>.
+    ///     </para>
+    ///     <para>
+    ///         The caller decides existence from these facts alone: the path exists as a folder when the state is
+    ///         <see cref="PathState.Exists"/> and <see cref="PathFacts.IsDirectory"/> is not false. Never throws.
+    ///     </para>
+    /// </remarks>
+    /// <param name="fullPath">The full path. Must not be null.</param>
+    /// <returns>The facts.</returns>
+    internal static PathFacts InspectFolder(string fullPath)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return InspectPath(fullPath);
+        }
+
+        try
+        {
+            return InspectFolderMac(fullPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException
+            or DllNotFoundException or EntryPointNotFoundException or ArgumentException)
+        {
+            // A folder that cannot be opened for a reason other than a missing entry has unknown facts
+            return new PathFacts(PathState.Unknown, null, null);
+        }
     }
 
     /// <summary>

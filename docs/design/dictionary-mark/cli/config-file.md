@@ -73,15 +73,21 @@ Algorithm:
 4. `ReadTables` requires a non-empty `YamlSequenceNode`; `ReadTable` requires each item to be a
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
-5. When `root` was given, expand its `${VAR}` references and check the expanded text with
-   `FileAccessPolicy.DescribeNeverAccessed`. A URL, a path written as a UNC path, a device path or a colon
-   other than the drive of an absolute path on Windows is rejected before the file system is touched, because
-   checking that the directory exists would contact the network host or device. The `root` key only sets the
-   base directory and never grants file access. Then resolve it with
-   `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key")`. This expands
+5. When `root` was given, expand its `${VAR}` references, resolve its full path with
+   `PathResolver.ResolvePath`, and check both with
+   `FileAccessPolicy.DescribeNeverAccessedFolder(expanded, fullPath, out exists)`. A URL, a path
+   written as a UNC path, a device path or a colon other than the drive of an absolute path on Windows is
+   rejected by the text, and on Windows a root that leads to a network location through a symbolic link or
+   junction by the walk and the folder's real path, before its existence is decided, because checking that the
+   directory exists would contact the network host or device. The `root` key only sets the base directory and
+   never grants file access. Whether the directory exists comes from the folder's own open that was judged
+   (`RealPath.InspectFolder`; on macOS an open with `O_DIRECTORY`), so a symbolic link or junction whose target
+   is missing, or a file, is reported as a missing directory. A root that is itself on a network location is
+   opened the same way, without the walk. Then resolve it with
+   `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key", _ => exists)`. This expands
    `${VAR}`, roots the value at the file's directory, normalizes `..`, rejects wildcards, and
-   requires the directory to exist. The root is validated even when `--root` will override it, so
-   a file's validity does not depend on the command line.
+   requires the directory to exist from the verdict of that open, with no second by-name probe. The root is
+   validated even when `--root` will override it, so a file's validity does not depend on the command line.
 
 Value parsing uses the same rules as the command line: choices are case-insensitive; `depth` and
 the `column-widths` items are parsed with `NumberStyles.None` and the invariant culture, which
@@ -122,7 +128,8 @@ File-system and YAML parser exceptions are wrapped, so callers only handle
 
 - **FormattingSettings** — supporting Cli type; the defaults and job layers.
 - **PathResolver** — Utilities unit; resolves the `root` key.
-- **FileAccessPolicy** — Utilities unit; its never-accessed text check is applied to the `root` key.
+- **FileAccessPolicy** — Utilities unit; its never-accessed check and the existence of the `root` key's
+  folder.
 - **YamlDotNet** — OTS library; `YamlStream`, `YamlMappingNode`, `YamlSequenceNode`,
   `YamlScalarNode` and `YamlException`.
 

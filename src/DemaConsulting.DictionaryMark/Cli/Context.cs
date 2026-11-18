@@ -311,8 +311,9 @@ internal sealed class Context : IDisposable
     ///     namespace (<c>\\.\</c>, <c>\??\</c>, or <c>\\?\</c> other than an ordinary extended-length drive or volume
     ///     path), the same rule CanvasNet applies to its allowed roots. The namespace is checked on the full path
     ///     before the folder's existence, so a device is never probed. An extended-length spelling, ordinary or not,
-    ///     is then still refused by the wildcard rule of <see cref="PathResolver.ResolveExistingDirectory"/>, as for
-    ///     --root, because it contains <c>?</c>.
+    ///     is then still refused by the wildcard rule of
+    ///     <see cref="PathResolver.ResolveExistingDirectory(string, string, string)"/>, as for --root, because it
+    ///     contains <c>?</c>.
     /// </remarks>
     /// <param name="folder">The folder as written on the command line.</param>
     /// <returns>The normalized full path of the existing folder.</returns>

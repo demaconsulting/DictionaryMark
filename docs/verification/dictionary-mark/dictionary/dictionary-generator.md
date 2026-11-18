@@ -64,6 +64,18 @@ directories are reported with distinct errors. This scenario is tested by
 **DictionaryGenerator_Generate_OneMissingPattern_Fails**: One unmatched pattern among several fails
 the run. This scenario is tested by `DictionaryGenerator_Generate_OneMissingPattern_Fails`.
 
+**DictionaryGenerator_GenerateJob_ConfigMissingLiteralInput_ReportsInputFileNotFound**: A configuration job whose
+literal input file does not exist fails with `Input file '{full}' was not found.`, naming the job, with exit code 1
+and no output written, on every platform. This scenario is tested by the test of the same name.
+
+**DictionaryGenerator_GenerateJob_ConfigMissingInputFolder_ReportsInputDirectoryNotFound** (Windows) and
+**DictionaryGenerator_GenerateJob_ConfigMissingInputFolderUnix_ReportsInputFileNotFound** (Linux and macOS): A
+configuration job whose literal input is in a missing folder fails without writing output. The message follows
+what the read open reports, because no by-name probe of the folder precedes it: Windows reports the missing folder
+(`ERROR_PATH_NOT_FOUND`) as `Input directory '{folder}' was not found (pattern '{pattern}').`, while Linux and
+macOS report `ENOENT` for a missing folder too, giving `Input file '{full}' was not found.`. Each test is skipped
+with a reason on the other platforms. These scenarios are tested by the tests of the same names.
+
 **DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput**: Verifies that a configuration file with
 two jobs writes both outputs, each with its own content and format. This scenario is tested by
 `DictionaryGenerator_Generate_MultipleJobs_WritesEachOutput`.
@@ -135,10 +147,23 @@ input `../shared/a.yaml` outside the only allowed folder must fail the job with
 allowed folders (--file-access roots)` and write nothing. This scenario is tested by
 `DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied`.
 
-**DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped**: A job whose glob matches a file
-outside the allowed folder, next to an allowed literal input, must fail with the outside file named
-rather than skip it, and write nothing. This scenario is tested by
-`DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped`.
+**DictionaryGenerator_GenerateJob_GlobFolderOutside_DeniedBeforeMatching**: Under roots, a job whose glob
+`../shared/*.yaml` lists a folder outside the allowed folder, next to an allowed literal input, must fail with
+`file-access-denied: '../shared/*.yaml': the path as written is outside the allowed folders (--file-access
+roots)` before the folder is listed, and write nothing. This scenario is tested by
+`DictionaryGenerator_GenerateJob_GlobFolderOutside_DeniedBeforeMatching`.
+
+**DictionaryGenerator_GenerateJob_ColonGlobMatch_FailsJobNotSkipped** (Linux and macOS): In mode any, a job
+whose glob `terms/*.yaml` matches `terms:v1.yaml` next to an ordinary file must fail with the colon reason,
+naming the matched file by its full path, rather than read or skip it, and write nothing. On Windows a colon
+in a file name is a stream separator, so the test is skipped there with a reason. This scenario is tested by
+`DictionaryGenerator_GenerateJob_ColonGlobMatch_FailsJobNotSkipped`.
+
+**DictionaryGenerator_GenerateJob_OutputVariableExpandingToNeverAccessed_Denied**: An output written as
+`${DICTIONARYMARK_GENERATOR_TEST}/out.md` whose variable expands to `//nonexistent.invalid/share` or `a:b` must
+fail with the network or colon reason, the message showing the output as written, and nothing may be created
+in the configuration folder. This scenario is tested by
+`DictionaryGenerator_GenerateJob_OutputVariableExpandingToNeverAccessed_Denied`.
 
 **DictionaryGenerator_GenerateJob_CommandLineInputOutsideFolders_Read** and
 **DictionaryGenerator_GenerateJob_CommandLineOutputOutsideFolders_Written**: A command-line input and

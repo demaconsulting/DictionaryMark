@@ -75,10 +75,11 @@ everything from resolving input file paths through formatting the final Markdown
 **FileAccessPolicy**: File-access confinement from the Utilities subsystem.
 
 - *Type*: In-process .NET API
-- *Role*: Consumer — `DictionaryGenerator` judges every input pattern, reads every input and writes
+- *Role*: Consumer — `DictionaryGenerator` resolves every input pattern, reads every input and writes
   the output of a configuration job through `context.FileAccess`
-- *Contract*: `CheckPattern`, `ReadAllText` and `WriteAllText` (see *FileAccessPolicy Design*); a
-  denial throws `FileAccessDeniedException`.
+- *Contract*: `ResolvePattern`, `ReadAllText` and `WriteAllText`, which take a `JudgedPath` (the path as
+  written, after `${VAR}` expansion, and in full; see *FileAccessPolicy Design*); a denial throws
+  `FileAccessDeniedException`.
 - *Constraints*: Used only for configuration jobs (`TableJob.ArePathsJudged`); command-line paths are
   trusted.
 
@@ -95,16 +96,18 @@ everything from resolving input file paths through formatting the final Markdown
 `DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
 job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. For a configuration job, judge each input pattern with `FileAccessPolicy.CheckPattern`. Call
-   `GlobMatcher.Resolve` for the job's input patterns and base directory
-   (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
-   on a file-access denial, `ArgumentException` or `InvalidOperationException`, or when no files are
-   found.
+1. For a configuration job, resolve each input pattern with `FileAccessPolicy.ResolvePattern`, which
+   judges the pattern and every folder it lists before matching (strict: `${VAR}` expansion, every glob
+   must match; a missing literal file is reported when it is read). For the command-line job, call
+   `GlobMatcher.Resolve` for the job's input patterns and base directory (strict: every pattern must
+   match, literal paths must exist). Return early on a file-access denial, `ArgumentException`,
+   `InvalidOperationException`, an I/O error, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`). A configuration job reads
-   each file through `FileAccessPolicy.ReadAllText`, which judges it by its real path, and parses the
-   text with `LoadText` or `LoadDeprecatedText`. Return early on a file-access denial, `IOException` or
-   `InvalidOperationException`; a denied file is never skipped.
+   each file through `FileAccessPolicy.ReadAllText`, which judges every form of its path and then its
+   handle, and parses the text with `LoadText` or `LoadDeprecatedText`. Return early on a file-access
+   denial, a missing file or folder, `IOException` or `InvalidOperationException`; a denied file is never
+   skipped.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
    job; report each conflict and return early if any are found. Different jobs may use different or
    overlapping dictionaries.

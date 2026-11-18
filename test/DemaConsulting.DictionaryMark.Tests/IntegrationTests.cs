@@ -1412,14 +1412,125 @@ public class IntegrationTests
         // Arrange
         using var tmpDir = new TemporaryDirectory();
         WriteFile(tmpDir, "shared/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../shared/terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert: the input is denied as written; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: '../shared/terms.yaml': the path as written is outside the allowed folders", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a glob whose literal folder is outside the allowed folders is denied before that folder is
+    ///     listed, naming the pattern as written.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_RootsGlobFolderOutside_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", Terms);
         var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../shared/*.yaml\n    output: out.md\n");
 
         // Act
         var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
 
-        // Assert: the matched file is denied by its path; nothing is written
+        // Assert: the pattern is denied as written; nothing is written
         Assert.Equal(1, exitCode);
-        Assert.Contains($"file-access-denied: '{PathIn(tmpDir, "shared/terms.yaml")}': the path as written is outside the allowed folders", output);
+        Assert.Contains(
+            "Error: table job 1 ('out.md'): file-access-denied: '../shared/*.yaml': the path as written is outside the allowed folders (--file-access roots)",
+            output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that no-symlinks denies a glob whose literal folder is a link below the config folder.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_NoSymlinksGlobThroughLink_Denied()
+    {
+        // Arrange: config/link -> config/real (a link that stays inside the folder is still a link)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/real/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: link/*.yaml\n    output: out.md\n");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "config/link"), PathIn(tmpDir, "config/real"));
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "no-symlinks");
+
+        // Assert: the pattern is denied by its folder before it is listed; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'link/*.yaml' (real path '", output);
+        Assert.Contains(
+            $"its folder '{PathIn(tmpDir, "config/link")}' passes through a symbolic link or junction (--file-access no-symlinks)",
+            output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>
+    ///     Test that an input or output whose <c>${VAR}</c> expands to a never-accessed path is denied by its expanded
+    ///     text, reported as written, in the default mode, and nothing is written.
+    /// </summary>
+    /// <param name="isInput">True to name the input through the variable, false the output.</param>
+    /// <param name="value">The value of the variable.</param>
+    /// <param name="reason">The expected reason.</param>
+    [Theory]
+    [InlineData(true, "//nonexistent.invalid/share", "it is a UNC or network path, which is never accessed")]
+    [InlineData(true, "a:b", "it contains a colon other than the drive of an absolute path on Windows, which is never accessed")]
+    [InlineData(false, "//nonexistent.invalid/share", "it is a UNC or network path, which is never accessed")]
+    [InlineData(false, "a:b", "it contains a colon other than the drive of an absolute path on Windows, which is never accessed")]
+    public void DictionaryMark_FileAccess_VariableExpandingToNeverAccessed_Denied(bool isInput, string value, string reason)
+    {
+        // Arrange: a job whose input or output is named through a variable
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var written = isInput ? "${" + VariableName + "}/terms.yaml" : "${" + VariableName + "}/out.md";
+        var job = isInput ? $"  - input: {written}\n    output: out.md\n" : $"  - input: terms.yaml\n    output: {written}\n";
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n" + job);
+        Environment.SetEnvironmentVariable(VariableName, value);
+        try
+        {
+            // Act
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+            // Assert: denied by the expanded text, shown as written, and the config folder is unchanged
+            Assert.Equal(1, exitCode);
+            Assert.Contains($"file-access-denied: '{written}': {reason}", output);
+            var entries = Directory.EnumerateFileSystemEntries(PathIn(tmpDir, "config"))
+                .Select(Path.GetFileName)
+                .Order()
+                .ToArray();
+            Assert.Equal(new string?[] { "dictionarymark.yaml", "terms.yaml" }, entries);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a file a glob matched whose name contains a colon is denied, in the default
+    ///     mode, and nothing is written.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ColonGlobMatch_Denied()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is a stream separator on Windows, so a file name with a colon is tested on Linux and macOS only.");
+
+        // Arrange: a glob that matches a file whose name contains a colon
+        using var tmpDir = new TemporaryDirectory();
+        var colon = WriteFile(tmpDir, "config/terms/terms:v1.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms/*.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"file-access-denied: '{colon}': it contains a colon", output);
         Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
     }
 

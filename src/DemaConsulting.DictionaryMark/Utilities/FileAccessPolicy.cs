@@ -37,8 +37,8 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         <item>
 ///             In every mode, a URL (<c>scheme://</c>), a <c>file:</c> URI with a host, a path written as a UNC path,
 ///             a device path, a colon other than the drive of an absolute path on Windows (on Linux and macOS, any
-///             colon), on Linux and macOS an output under <c>/dev</c> (also through a link to a folder there), and
-///             anything that is not a regular file are never accessed.
+///             colon, also in the name of a file a glob matched), on Linux and macOS an output under <c>/dev</c>
+///             (also through a link), and anything that is not a regular file are never accessed.
 ///         </item>
 ///         <item>
 ///             Network locations follow CanvasNet: a path written as a UNC path is never accessed, a path that is
@@ -62,9 +62,20 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         </item>
 ///     </list>
 ///     <para>
+///         Every judged path is carried as a <see cref="JudgedPath"/>: the text shown in messages (as written), the
+///         text the written-text rules apply to (after <c>${VAR}</c> expansion), and the full path the full-path,
+///         network-link, roots and real-path rules apply to. Each is judged before any operation touches it: the
+///         text rules, the full-path rules, a walk for links to a network location that reads each link's own target
+///         and never follows one, and under roots the full path as written. After that, the file system is touched
+///         only by opening a handle whose facts (folder or file, real path) are judged before anything is read,
+///         written, listed or created through it; there is no by-name existence or attribute probe. A glob's literal
+///         folder, and every link folder a wildcard would descend into, is judged that way before it is listed.
+///     </para>
+///     <para>
 ///         Decisions are made on the real path of the open handle, not on the name, so a link swapped in between a
 ///         check and the open is still caught. A write never truncates before the handle is verified. Hard links
-///         cannot be detected. Instances are immutable and thread-safe; reads and writes perform file-system I/O.
+///         cannot be detected. Instances are immutable and thread-safe; reads, writes and pattern resolution perform
+///         file-system I/O.
 ///     </para>
 ///     <para>Deliberate differences from CanvasNet (see the design):</para>
 ///     <list type="bullet">
@@ -73,8 +84,9 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///             host follows <c>file://</c>; both deny it.
 ///         </item>
 ///         <item>
-///             The written-text rules also apply to the expanded <c>root:</c> value (applied by ConfigFile),
-///             because it is written configuration content; CanvasNet has no such key.
+///             The written-text rules also apply to the expanded <c>root:</c> value (applied by ConfigFile through
+///             <see cref="DescribeNeverAccessedFolder(string, string, out bool)"/>), because it is written
+///             configuration content; CanvasNet has no such key.
 ///         </item>
 ///         <item>
 ///             <c>${VAR}</c> is expanded in <c>--allow-root</c> (applied by Context), because every folder option
@@ -86,17 +98,19 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         </item>
 ///         <item>
 ///             The path is walked for a link to a network location before it is opened, because matching a glob
-///             and creating an output folder touch the disk before any handle exists.
+///             and creating an output folder touch the disk before the file's own handle exists.
 ///         </item>
 ///         <item>
-///             A file a glob matched gets only the full-path rules, because it has no written text; CanvasNet has
-///             no globs.
+///             A glob's literal folder, and every link folder a wildcard would descend into, is judged by the rules
+///             of a folder before it is listed, and a file a glob matched is judged by the written-text rules on the
+///             pattern's literal part followed by the matched path; CanvasNet has no globs.
 ///         </item>
 ///         <item>
 ///             The write rules have no counterpart, because CanvasNet never writes: on Linux and macOS an output
-///             under <c>/dev</c>, or whose deepest existing folder has a real path under <c>/dev</c>, is denied
-///             before the open; a missing output is created exclusively; an existing one is opened without
-///             truncation and verified first; and a dangling output link is denied in a restrictive mode.
+///             under <c>/dev</c>, whose real path is under <c>/dev</c>, or whose deepest existing folder has a real
+///             path under <c>/dev</c>, is denied before the open; a missing output is created exclusively; an
+///             existing one is opened without truncation and verified first; missing folders are created one at a
+///             time and each verified; and a dangling output link is denied in a restrictive mode.
 ///         </item>
 ///         <item>
 ///             A named pipe with no reader, whose non-blocking open for writing fails with <c>ENXIO</c> on Linux
@@ -327,9 +341,9 @@ internal sealed partial class FileAccessPolicy
     ///         in CanvasNet; and on Windows a reserved device name in any component.
     ///     </para>
     ///     <para>
-    ///         These rules apply to the text as written, as in CanvasNet, so a relative path resolved against a
-    ///         folder on a share is not a network path. A URL is recognized by <c>://</c>, so a colon in a file
-    ///         name is never mistaken for a scheme. A device file on Linux and macOS is refused by its handle
+    ///         These rules apply to the text as written after expansion, as in CanvasNet, so a relative path resolved
+    ///         against a folder on a share is not a network path. A URL is recognized by <c>://</c>, so a colon in a
+    ///         file name is never mistaken for a scheme. A device file on Linux and macOS is refused by its handle
     ///         type after a non-blocking open, and an output under <c>/dev</c> by <see cref="WriteAllText"/>.
     ///     </para>
     /// </remarks>
@@ -438,25 +452,122 @@ internal sealed partial class FileAccessPolicy
     }
 
     /// <summary>
-    ///     Judges an input pattern of a configuration-file job before it is matched against the file system.
+    ///     Explains why a folder named in a configuration file as a base folder (the <c>root:</c> key) is never
+    ///     accessed, or returns null when it may be used, and reports whether it exists.
     /// </summary>
     /// <remarks>
-    ///     Matching touches the disk (existence checks and folder enumeration), so the never-accessed list is
-    ///     applied to the pattern text and to the rooted pattern first. On Windows, unless the rooted pattern is
-    ///     itself on a network location, the literal part of the pattern (the folders before the first wildcard, or
-    ///     the whole of a literal pattern) is then walked for a symbolic link or junction to a network location, so
-    ///     matching never contacts a share through that part. Under <see cref="FileAccessMode.Roots"/> a literal
-    ///     (wildcard-free) pattern must also be inside an allowed folder as written. Every file a glob matches is
-    ///     judged again, individually and by its full path, when it is read; a link below the first wildcard is
-    ///     reached by the matching itself and is not walked here.
+    ///     The <c>root:</c> key only sets the base folder of relative paths and never grants access, so the mode does
+    ///     not apply to it, but its existence check must not reach a network location or a device. The written-text
+    ///     rules apply to the expanded text and the full-path rules to the full path; then, on Windows, unless the
+    ///     full path is itself on a network location, the path is walked for a symbolic link or junction whose
+    ///     target is a network location (reading each link's own target). Finally the folder is opened once
+    ///     (<see cref="RealPath.InspectFolder(string)"/>; on macOS with <c>O_DIRECTORY</c>), also when the full path
+    ///     is itself on a network location: unless it is, its real path must not lead to a network location, and
+    ///     whether the folder exists is decided from the facts of that open alone, never from a separate by-name
+    ///     probe. A link or junction whose target is missing, or a file, is not an existing folder. Performs
+    ///     file-system I/O.
+    /// </remarks>
+    /// <param name="expandedText">The folder text after <c>${VAR}</c> expansion. Must not be null.</param>
+    /// <param name="fullPath">The full, normalized path of the folder. Must not be null.</param>
+    /// <param name="exists">
+    ///     Set to true when the folder was opened and is a folder; false when it is missing, is not a folder, cannot
+    ///     be told, or a reason is returned.
+    /// </param>
+    /// <returns>The reason, or null.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    public static string? DescribeNeverAccessedFolder(string expandedText, string fullPath, out bool exists) =>
+        DescribeNeverAccessedFolder(
+            expandedText, fullPath, RealPath.ReadLinkTarget, RealPath.InspectFolder, out exists);
+
+    /// <summary>
+    ///     Explains why a base folder is never accessed, and reports whether it exists, with a given link reader and
+    ///     folder inspector, so tests can simulate links that lead to a network location and the facts of the open.
+    /// </summary>
+    /// <param name="expandedText">The folder text after <c>${VAR}</c> expansion. Must not be null.</param>
+    /// <param name="fullPath">The full, normalized path of the folder. Must not be null.</param>
+    /// <param name="linkReader">The function that reads the immediate target of a link. Must not be null.</param>
+    /// <param name="folderInspector">
+    ///     The function that opens the folder once and reports its facts. Must not be null.
+    /// </param>
+    /// <param name="exists">Set to true when the facts show an existing folder and no reason is returned.</param>
+    /// <returns>The reason, or null.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    internal static string? DescribeNeverAccessedFolder(
+        string expandedText,
+        string fullPath,
+        Func<string, string?> linkReader,
+        Func<string, PathFacts> folderInspector,
+        out bool exists)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(expandedText);
+        ArgumentNullException.ThrowIfNull(fullPath);
+        ArgumentNullException.ThrowIfNull(linkReader);
+        ArgumentNullException.ThrowIfNull(folderInspector);
+
+        // The text and full-path rules come first, before anything touches the file system
+        exists = false;
+        var reason = DescribeNeverAccessed(expandedText) ?? DescribeNeverAccessedFullPath(fullPath);
+        if (reason != null)
+        {
+            return reason;
+        }
+
+        // Then the links on the path, unless the path is itself on a network location (a relative root on a share)
+        var onNetwork = RealPath.IsNetworkLocation(fullPath);
+        if (!onNetwork && RealPath.FindNetworkLinkTarget(fullPath, linkReader) != null)
+        {
+            return NetworkLinkReason;
+        }
+
+        // Then one open of the folder: its real path is judged, and its facts alone decide whether it exists
+        var facts = folderInspector(fullPath);
+        if (!onNetwork && facts.FinalPath != null && LeadsToNetwork(fullPath, facts.FinalPath))
+        {
+            return NetworkLinkReason;
+        }
+
+        // A null folder flag (Linux where fstat cannot be read) is accepted, as an existing entry of unknown type
+        exists = facts.State == PathState.Exists && facts.IsDirectory != false;
+        return null;
+    }
+
+    /// <summary>
+    ///     Judges an input pattern of a configuration-file job and resolves it to the files it names, judging every
+    ///     folder before it is listed.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         The written-text rules apply to the expanded pattern and the full-path rules to the rooted pattern,
+    ///         in every mode. A literal (wildcard-free) pattern names one file: it is judged by
+    ///         <see cref="CheckPath(JudgedPath)"/> and returned without touching the file system (the read decides
+    ///         whether it exists).
+    ///     </para>
+    ///     <para>
+    ///         A glob is split into its literal folder and its wildcard remainder. Before the folder is listed it
+    ///         is judged by <see cref="CheckPath(JudgedPath)"/> (so under <see cref="FileAccessMode.Roots"/> it must
+    ///         be inside an allowed folder as written) and then by its handle: on Windows a local folder whose real
+    ///         path is on a network location is denied in every mode; under roots its real path must be inside an
+    ///         allowed folder; under <see cref="FileAccessMode.NoSymlinks"/> no link may lie below the trusted
+    ///         anchor. A folder that does not exist, or is not a folder, gives no matches. While matching, every
+    ///         folder that is a symbolic link or junction is judged the same way before a wildcard descends into it,
+    ///         and a denial fails the pattern; a link folder whose target is missing is not listed. Each match is
+    ///         returned with the pattern's literal part followed by its matched path as the text the written-text
+    ///         rules apply to, and it is judged again, in full, when it is read.
+    ///     </para>
     /// </remarks>
     /// <param name="writtenPattern">The pattern as written, used in the message. Must not be null.</param>
     /// <param name="expandedPattern">The pattern after <c>${VAR}</c> expansion. Must not be null.</param>
     /// <param name="rootedPattern">The expanded pattern rooted at the job's base folder. Must not be null.</param>
+    /// <returns>The judged path of the literal file, or of every matched file (empty when nothing matched).</returns>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when the literal part of the pattern is not a valid path.</exception>
-    /// <exception cref="FileAccessDeniedException">Thrown when the pattern is denied.</exception>
-    public void CheckPattern(string writtenPattern, string expandedPattern, string rootedPattern)
+    /// <exception cref="ArgumentException">
+    ///     Thrown when the literal part of the pattern is not a valid path, or the globbing library rejects it.
+    /// </exception>
+    /// <exception cref="FileAccessDeniedException">Thrown when the pattern or a folder it lists is denied.</exception>
+    /// <exception cref="IOException">Thrown when a folder cannot be listed.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the system denies listing a folder.</exception>
+    public IReadOnlyList<JudgedPath> ResolvePattern(string writtenPattern, string expandedPattern, string rootedPattern)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(writtenPattern);
@@ -470,64 +581,62 @@ internal sealed partial class FileAccessPolicy
             throw new FileAccessDeniedException(writtenPattern, null, reason);
         }
 
-        // The literal part of the pattern must not lead to a network location through a link
-        var wildcard = rootedPattern.IndexOfAny(Wildcards);
-        var literalPart = wildcard < 0
-            ? rootedPattern
-            : rootedPattern[..(rootedPattern.LastIndexOfAny(ComponentSeparators, wildcard) + 1)];
-        if (literalPart.Length > 0)
+        // A literal pattern names exactly one file, judged now and in full when it is read
+        if (rootedPattern.IndexOfAny(Wildcards) < 0)
         {
-            CheckNetworkLink(writtenPattern, Path.GetFullPath(literalPart));
+            var literal = new JudgedPath(writtenPattern, expandedPattern, Path.GetFullPath(rootedPattern));
+            CheckPath(literal);
+            return [literal];
         }
 
-        // A literal pattern names exactly one path, which must be inside an allowed folder as written
-        var isLiteral = wildcard < 0;
-        if (Mode.HasFlag(FileAccessMode.Roots) && isLiteral && !IsWrittenInside(Path.GetFullPath(rootedPattern)))
+        // A glob: judge the literal folder by its text and by its handle before it is listed
+        var (folderText, remainder) = GlobMatcher.SplitGlob(rootedPattern);
+        var folder = Path.GetFullPath(folderText);
+        var prefixText = GlobMatcher.SplitGlob(expandedPattern).Folder;
+        if (!CheckListedFolder(new JudgedPath(writtenPattern, expandedPattern, folder)))
         {
-            throw new FileAccessDeniedException(writtenPattern, null, RootsWrittenReason);
+            return [];
         }
+
+        // Match below the folder, judging every link folder before a wildcard descends into it
+        var matches = GlobMatcher.MatchUnder(
+            folder,
+            remainder,
+            link => CheckListedFolder(
+                new JudgedPath(writtenPattern, JoinExpanded(prefixText, Path.GetRelativePath(folder, link)), link)));
+        return [.. matches.Select(match => new JudgedPath(match.FullPath, JoinExpanded(prefixText, match.RelativePath), match.FullPath))];
     }
 
     /// <summary>
     ///     Reads a text file named in a configuration file, after judging it by the never-accessed list and the mode.
     /// </summary>
     /// <remarks>
-    ///     The checks run in order: the never-accessed list (the text rules on the path as written, the device
-    ///     rules on the full path, and on Windows a symbolic link or junction at any folder of a local path whose
-    ///     target is a network location) and, under <see cref="FileAccessMode.Roots"/>, the path as written, all
-    ///     before the file is opened; then the open (non-blocking on Linux and macOS); then the facts of the open
-    ///     handle: a regular file, not a local path whose real path is on a network location, and in a restrictive
-    ///     mode a known real path that satisfies the mode. A file a glob matched has no text as written: its pattern
-    ///     was already judged by <see cref="CheckPattern"/>, so only the full-path rules apply and the denial names
-    ///     the full path. The content is read from the same handle that was judged, decoded as UTF-8 with
+    ///     The checks run in order: <see cref="CheckPath(JudgedPath)"/> (the text rules on the expanded text, the
+    ///     device rules on the full path, on Windows a symbolic link or junction at any folder of a local path whose
+    ///     target is a network location, and under <see cref="FileAccessMode.Roots"/> the full path as written), all
+    ///     before anything is opened; then the open (non-blocking on Linux and macOS; a folder opens too, so it is
+    ///     told by its handle, never by a by-name probe); then the facts of the open handle: a regular file, not a
+    ///     local path whose real path is on a network location, and in a restrictive mode a known real path that
+    ///     satisfies the mode. The content is read from the same handle that was judged, decoded as UTF-8 with
     ///     byte-order-mark detection like <see cref="File.ReadAllText(string)"/>.
     /// </remarks>
-    /// <param name="writtenPath">
-    ///     The path as written, used in the message, or null for a file a glob matched (named by its full path).
-    /// </param>
-    /// <param name="fullPath">The full, normalized path of the file. Must not be null.</param>
+    /// <param name="path">The judged path of the file.</param>
     /// <returns>The file content.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fullPath"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when a form of <paramref name="path"/> is null.</exception>
     /// <exception cref="FileAccessDeniedException">Thrown when the file is denied.</exception>
+    /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
+    /// <exception cref="DirectoryNotFoundException">Thrown when a folder of the path does not exist.</exception>
     /// <exception cref="IOException">Thrown when the file cannot be opened or read.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when the system denies access to the file.</exception>
-    public string ReadAllText(string? writtenPath, string fullPath)
+    public string ReadAllText(JudgedPath path)
     {
-        // Validate input
-        ArgumentNullException.ThrowIfNull(fullPath);
-
-        // Judge the path before anything is opened; a matched file is named by its full path
-        var shown = writtenPath ?? fullPath;
-        CheckBeforeOpen(writtenPath, fullPath);
-        var anchor = CaptureAnchor(shown, fullPath);
-        if (Directory.Exists(fullPath))
-        {
-            throw new FileAccessDeniedException(shown, null, NotRegularReason);
-        }
+        // Judge every form of the path before anything is opened
+        CheckPath(path);
+        var anchor = CaptureAnchor(path.Shown, path.FullPath);
 
         // Open the file, judge the handle, and read from the same handle
-        using var handle = RealPath.OpenForRead(fullPath);
-        CheckHandle(shown, fullPath, handle, anchor);
+        using var handle = RealPath.OpenForRead(path.FullPath);
+        CheckHandle(path.Shown, path.FullPath, handle, anchor);
         using var stream = new FileStream(handle, FileAccess.Read, bufferSize: 1);
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         return reader.ReadToEnd();
@@ -538,65 +647,95 @@ internal sealed partial class FileAccessPolicy
     ///     mode, creating missing parent folders.
     /// </summary>
     /// <remarks>
-    ///     Nothing is created or written until the pre-checks pass: the never-accessed list, on Linux and macOS an
-    ///     output under <c>/dev</c>, or whose deepest existing folder's real path is under <c>/dev</c> (opening a
-    ///     device node for writing can act on the device before its handle can be judged), the path as written, the
-    ///     deepest existing parent folder (its real path, in a restrictive mode, and on Windows not a local folder
-    ///     that leads to a network location), and an existing output (its real path when it may be a link). In a
-    ///     restrictive mode the missing folders are then created one at a time, each verified by its real path. An
-    ///     existing output is opened without truncation and a missing one is created exclusively (which never
-    ///     follows a link at the output name); the handle is judged, and only then is the file truncated and
-    ///     written as UTF-8 without a byte-order mark, like <see cref="File.WriteAllText(string, string)"/>. A
-    ///     folder swapped by another process between its check and the exclusive create can leave an empty file at
-    ///     the swapped location, but no content is written.
+    ///     Nothing is created or written until the pre-checks pass: <see cref="CheckPath(JudgedPath)"/>, on Linux and
+    ///     macOS an output under <c>/dev</c>, then the deepest existing parent folder, found and judged by handles
+    ///     (on Linux and macOS a real path under <c>/dev</c>, because opening a device node for writing can act on
+    ///     the device before its handle can be judged; on Windows a local folder that leads to a network location;
+    ///     in a restrictive mode its real path), and an existing output, judged by its handle (a folder, on Linux and
+    ///     macOS a real path under <c>/dev</c>, and its real path). The missing folders are then created one at a
+    ///     time, each verified by its real path when its parent's real path is known. An existing output is opened
+    ///     without truncation and a missing one is created exclusively (which never follows a link at the output
+    ///     name); the handle is judged, and only then is the file truncated and written as UTF-8 without a
+    ///     byte-order mark, like <see cref="File.WriteAllText(string, string)"/>. A folder swapped by another process
+    ///     between its check and the exclusive create can leave an empty file at the swapped location, but no
+    ///     content is written.
     /// </remarks>
-    /// <param name="writtenPath">The output path as written, used in the message. Must not be null.</param>
-    /// <param name="fullPath">The full, normalized path of the output. Must not be null.</param>
+    /// <param name="path">The judged path of the output.</param>
     /// <param name="content">The text to write. Must not be null.</param>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     /// <exception cref="FileAccessDeniedException">Thrown when the output, or a folder it needs, is denied.</exception>
     /// <exception cref="IOException">Thrown when a folder or the file cannot be created, opened or written.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when the system denies access.</exception>
-    public void WriteAllText(string writtenPath, string fullPath, string content)
+    public void WriteAllText(JudgedPath path, string content)
     {
         // Validate input
-        ArgumentNullException.ThrowIfNull(writtenPath);
-        ArgumentNullException.ThrowIfNull(fullPath);
         ArgumentNullException.ThrowIfNull(content);
 
-        // Judge the path and its deepest existing parent folder before anything is created
-        CheckBeforeOpen(writtenPath, fullPath);
+        // Judge every form of the path before anything is touched
+        CheckPath(path);
+        var shown = path.Shown;
+        var fullPath = path.FullPath;
         if (IsUnixDevicePath(fullPath))
         {
-            throw new FileAccessDeniedException(writtenPath, null, DeviceReason);
+            throw new FileAccessDeniedException(shown, null, DeviceReason);
         }
 
-        var anchor = CaptureAnchor(writtenPath, fullPath);
+        // Find the deepest existing parent folder by handles, and judge it before anything is created
+        var anchor = CaptureAnchor(shown, fullPath);
         var parent = Path.GetDirectoryName(fullPath);
-        var missing = new List<string>();
-        var existing = parent;
-        while (existing != null && !Directory.Exists(existing) && !RealPath.IsLink(existing))
-        {
-            missing.Insert(0, existing);
-            existing = Path.GetDirectoryName(existing);
-        }
-
-        var canonicalParent = existing == null ? null : RealPath.TryGetCanonicalDirectory(existing);
-        CheckFolder(writtenPath, fullPath, existing ?? parent ?? fullPath, canonicalParent, anchor);
+        var (existing, canonicalParent, missing) = FindExistingFolder(parent);
+        CheckFolder(shown, fullPath, existing ?? parent ?? fullPath, canonicalParent, anchor, forWrite: true);
 
         // Judge an existing output entry, which may be a link, before it is opened
-        var exists = CheckExistingOutput(writtenPath, fullPath, anchor);
+        var exists = missing.Count == 0 && CheckExistingOutput(shown, fullPath, anchor);
 
-        // Create the missing folders, verifying each in a restrictive mode
-        CreateFolders(writtenPath, parent, missing, canonicalParent);
+        // Create the missing folders one at a time, verifying each
+        CreateFolders(shown, missing, canonicalParent);
 
         // Open without truncating (or create exclusively), judge the handle, then truncate and write
         using var handle = exists
-            ? RealPath.TryOpenExistingForWrite(fullPath) ?? throw new FileAccessDeniedException(writtenPath, null, NotRegularReason)
+            ? RealPath.TryOpenExistingForWrite(fullPath) ?? throw new FileAccessDeniedException(shown, null, NotRegularReason)
             : RealPath.CreateNewForWrite(fullPath);
-        CheckHandle(writtenPath, fullPath, handle, anchor);
+        CheckHandle(shown, fullPath, handle, anchor);
         RandomAccess.SetLength(handle, 0);
         RandomAccess.Write(handle, Utf8NoBom.GetBytes(content), 0);
+    }
+
+    /// <summary>
+    ///     Judges every form of a path before anything touches it: the never-accessed list (the text rules on the
+    ///     expanded text and the device rules on the full path), a link on a local path whose target is a network
+    ///     location, and, under <see cref="FileAccessMode.Roots"/>, the full path as written inside an allowed folder.
+    /// </summary>
+    /// <remarks>
+    ///     Link-safe: only the targets of links on the path are read (see
+    ///     <see cref="RealPath.FindNetworkLinkTarget(string, Func{string, string?})"/>); nothing is opened, probed or
+    ///     listed. The denial names <see cref="JudgedPath.Shown"/>.
+    /// </remarks>
+    /// <param name="path">The judged path.</param>
+    /// <exception cref="ArgumentNullException">Thrown when a form of <paramref name="path"/> is null.</exception>
+    /// <exception cref="FileAccessDeniedException">Thrown when the path is denied.</exception>
+    internal void CheckPath(JudgedPath path)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(path.Shown);
+        ArgumentNullException.ThrowIfNull(path.Expanded);
+        ArgumentNullException.ThrowIfNull(path.FullPath);
+
+        // The never-accessed list, in every mode: text rules on the expanded text, device rules on the full path
+        var reason = DescribeNeverAccessed(path.Expanded) ?? DescribeNeverAccessedFullPath(path.FullPath);
+        if (reason != null)
+        {
+            throw new FileAccessDeniedException(path.Shown, null, reason);
+        }
+
+        // A link anywhere on a local path that leads to a network location, before anything contacts it
+        CheckNetworkLink(path.Shown, path.FullPath);
+
+        // The full path as written must be inside an allowed folder
+        if (Mode.HasFlag(FileAccessMode.Roots) && !IsWrittenInside(path.FullPath))
+        {
+            throw new FileAccessDeniedException(path.Shown, null, RootsWrittenReason);
+        }
     }
 
     /// <summary>Gets the reason for a path written outside the allowed folders.</summary>
@@ -614,35 +753,6 @@ internal sealed partial class FileAccessPolicy
     /// <summary>Gets the reason for a real path that cannot be determined.</summary>
     private string RealPathUnknownReason =>
         $"the real path of the opened file cannot be determined on this system, so --file-access {ModeName} cannot be applied";
-
-    /// <summary>
-    ///     Applies the never-accessed list to the path as written and to its full path, including a link on a local
-    ///     path whose target is a network location, and, under <see cref="FileAccessMode.Roots"/>, requires the full
-    ///     path as written to be inside an allowed folder.
-    /// </summary>
-    /// <param name="writtenPath">The path as written, or null for a file a glob matched (its pattern was judged).</param>
-    /// <param name="fullPath">The full path.</param>
-    /// <exception cref="FileAccessDeniedException">Thrown when the path is denied.</exception>
-    private void CheckBeforeOpen(string? writtenPath, string fullPath)
-    {
-        // The never-accessed list, in every mode: the text rules only when there is written text
-        var shown = writtenPath ?? fullPath;
-        var reason = (writtenPath == null ? null : DescribeNeverAccessed(writtenPath))
-            ?? DescribeNeverAccessedFullPath(fullPath);
-        if (reason != null)
-        {
-            throw new FileAccessDeniedException(shown, null, reason);
-        }
-
-        // A link anywhere on a local path that leads to a network location, before anything contacts it
-        CheckNetworkLink(shown, fullPath);
-
-        // The path as written must be inside an allowed folder
-        if (Mode.HasFlag(FileAccessMode.Roots) && !IsWrittenInside(fullPath))
-        {
-            throw new FileAccessDeniedException(shown, null, RootsWrittenReason);
-        }
-    }
 
     /// <summary>
     ///     Captures, before the open, the trusted anchor of a path and its real location for the
@@ -674,30 +784,37 @@ internal sealed partial class FileAccessPolicy
     }
 
     /// <summary>
-    ///     Judges the deepest existing parent folder of an output, including, on Linux and macOS, a folder whose real
-    ///     location is in <c>/dev</c>.
+    ///     Judges a folder by its real location: the deepest existing parent folder of an output, or a folder about to
+    ///     be listed.
     /// </summary>
-    /// <param name="writtenPath">The output path as written.</param>
-    /// <param name="fullPath">The full output path.</param>
-    /// <param name="folder">The deepest existing parent folder (or the output path when no folder exists).</param>
+    /// <param name="shown">The path or pattern shown in the message.</param>
+    /// <param name="fullPath">The full output path, or the folder itself when it is listed.</param>
+    /// <param name="folder">The folder (for an output, the output path when no folder exists).</param>
     /// <param name="canonicalFolder">The real location of the folder, or null when it is unknown.</param>
     /// <param name="anchor">The no-symlinks anchor, or null.</param>
+    /// <param name="forWrite">True for an output's folder, to which the Linux and macOS <c>/dev</c> rule applies.</param>
     /// <exception cref="FileAccessDeniedException">Thrown when the folder is denied.</exception>
-    private void CheckFolder(string writtenPath, string fullPath, string folder, string? canonicalFolder, AnchorSnapshot? anchor)
+    private void CheckFolder(string shown, string fullPath, string folder, string? canonicalFolder, AnchorSnapshot? anchor, bool forWrite)
     {
-        // The real path the output would have, for the message
-        var realOutput = canonicalFolder == null ? null : Path.Join(canonicalFolder, Path.GetRelativePath(folder, fullPath));
-
-        // On Linux and macOS a folder whose real location is in /dev holds devices, in every mode
-        if (canonicalFolder != null && IsUnixDevicePath(canonicalFolder))
+        // The real path the output (or the listed folder) would have, for the message
+        string? realTarget = null;
+        if (canonicalFolder != null)
         {
-            throw new FileAccessDeniedException(writtenPath, realOutput, DeviceReason);
+            realTarget = string.Equals(folder, fullPath, StringComparison.Ordinal)
+                ? canonicalFolder
+                : Path.Join(canonicalFolder, Path.GetRelativePath(folder, fullPath));
+        }
+
+        // On Linux and macOS a folder whose real location is in /dev holds devices, in every mode, for writes
+        if (forWrite && canonicalFolder != null && IsUnixDevicePath(canonicalFolder))
+        {
+            throw new FileAccessDeniedException(shown, realTarget, DeviceReason);
         }
 
         // A local folder that leads to a network location is never accessed, in every mode
         if (canonicalFolder != null && LeadsToNetwork(folder, canonicalFolder))
         {
-            throw new FileAccessDeniedException(writtenPath, realOutput, NetworkLinkReason);
+            throw new FileAccessDeniedException(shown, realTarget, NetworkLinkReason);
         }
 
         if (Mode == FileAccessMode.None)
@@ -708,112 +825,189 @@ internal sealed partial class FileAccessPolicy
         // A restrictive mode needs the real location of the folder
         if (canonicalFolder == null)
         {
-            throw new FileAccessDeniedException(writtenPath, null, FolderUnknownReason(folder));
+            throw new FileAccessDeniedException(shown, null, FolderUnknownReason(folder));
         }
 
         if (Mode.HasFlag(FileAccessMode.Roots)
             && (!IsWrittenInside(folder) || !Array.Exists(_folders, allowed => allowed.ContainsRealPath(canonicalFolder))))
         {
             throw new FileAccessDeniedException(
-                writtenPath,
-                realOutput,
+                shown,
+                realTarget,
                 $"its folder '{folder}' leads out of the allowed folders through a symbolic link or junction (--file-access {ModeName})");
         }
 
         if (anchor is { } snapshot && !MatchesWithoutLinks(snapshot, folder, canonicalFolder))
         {
             throw new FileAccessDeniedException(
-                writtenPath,
-                realOutput,
+                shown,
+                realTarget,
                 $"its folder '{folder}' passes through a symbolic link or junction (--file-access {ModeName})");
         }
     }
 
     /// <summary>
-    ///     Judges an existing output entry before it is opened.
+    ///     Judges an existing output entry by its handle before it is opened for writing.
     /// </summary>
     /// <remarks>
-    ///     A folder is never written. A link whose target does not exist is denied in a restrictive mode (its real
-    ///     path cannot be checked); in mode any the exclusive create then fails because the name is taken. In a
-    ///     restrictive mode an existing output is judged by its real location, which follows any link, so a link
-    ///     leading out is denied before the file is opened; the open handle is judged again afterwards.
+    ///     The entry is opened without access rights, which follows any link, so its facts are those of the file a
+    ///     write would reach. A folder is never written. On Linux and macOS a real path under <c>/dev</c> (a link to
+    ///     a device) is denied in every mode. The real path is judged (a local path that leads to a network location
+    ///     in every mode, the mode's rules in a restrictive mode), so a link leading out is denied before the file is
+    ///     opened; the open handle is judged again afterwards. A link whose target does not exist is denied in a
+    ///     restrictive mode (its real path cannot be checked); in mode any the exclusive create then fails because
+    ///     the name is taken.
     /// </remarks>
-    /// <param name="writtenPath">The output path as written.</param>
+    /// <param name="shown">The output path as written.</param>
     /// <param name="fullPath">The full output path.</param>
     /// <param name="anchor">The no-symlinks anchor, or null.</param>
-    /// <returns>True when a file (or a link to one) exists at the output path.</returns>
+    /// <returns>True when an entry may exist at the output path, so it is opened rather than created.</returns>
     /// <exception cref="FileAccessDeniedException">Thrown when the existing entry is denied.</exception>
-    private bool CheckExistingOutput(string writtenPath, string fullPath, AnchorSnapshot? anchor)
+    private bool CheckExistingOutput(string shown, string fullPath, AnchorSnapshot? anchor)
     {
-        if (Directory.Exists(fullPath))
+        var entry = RealPath.InspectPath(fullPath);
+        if (entry.State == PathState.Missing)
         {
-            throw new FileAccessDeniedException(writtenPath, null, NotRegularReason);
+            if (Mode != FileAccessMode.None && RealPath.IsLink(fullPath))
+            {
+                throw new FileAccessDeniedException(
+                    shown,
+                    null,
+                    $"it is a symbolic link whose target does not exist, so its real path cannot be checked (--file-access {ModeName})");
+            }
+
+            return false;
         }
 
-        var exists = File.Exists(fullPath);
-        if (Mode == FileAccessMode.None)
+        if (entry.IsDirectory == true)
         {
-            return exists;
+            throw new FileAccessDeniedException(shown, null, NotRegularReason);
         }
 
-        if (!exists && RealPath.IsLink(fullPath))
+        if (entry.FinalPath != null && IsUnixDevicePath(entry.FinalPath))
         {
-            throw new FileAccessDeniedException(
-                writtenPath,
-                null,
-                $"it is a symbolic link whose target does not exist, so its real path cannot be checked (--file-access {ModeName})");
+            throw new FileAccessDeniedException(shown, entry.FinalPath, DeviceReason);
         }
 
-        if (exists)
-        {
-            CheckRealPath(writtenPath, fullPath, RealPath.TryGetCanonicalDirectory(fullPath), anchor);
-        }
-
-        return exists;
+        CheckRealPath(shown, fullPath, entry.FinalPath, anchor);
+        return true;
     }
 
     /// <summary>
-    ///     Creates the missing parent folders of an output.
+    ///     Creates the missing parent folders of an output, one level at a time.
     /// </summary>
     /// <remarks>
-    ///     In mode any the folders are created in one call. In a restrictive mode they are created one level at a
-    ///     time, and each new folder's real location must be its parent's real location followed by its name, which
-    ///     catches a folder swapped for a link while it was created.
+    ///     Each folder is created in a parent that was already judged or verified. When the parent's real location
+    ///     is known, the new folder's real location (from a handle) must be the parent's real location followed by
+    ///     its name, which catches a folder swapped for a link while it was created. When it is unknown (mode any on
+    ///     a platform that cannot tell), the folders are created without verification.
     /// </remarks>
-    /// <param name="writtenPath">The output path as written.</param>
-    /// <param name="parent">The output's parent folder.</param>
+    /// <param name="shown">The output path as written.</param>
     /// <param name="missing">The missing folders, outermost first.</param>
-    /// <param name="canonicalParent">The real location of the deepest existing parent folder.</param>
+    /// <param name="canonicalParent">The real location of the deepest existing parent folder, or null.</param>
     /// <exception cref="FileAccessDeniedException">Thrown when a created folder is not where it should be.</exception>
     /// <exception cref="IOException">Thrown when a folder cannot be created.</exception>
-    private void CreateFolders(string writtenPath, string? parent, List<string> missing, string? canonicalParent)
+    private void CreateFolders(string shown, List<string> missing, string? canonicalParent)
     {
-        if (missing.Count == 0 || parent == null)
-        {
-            return;
-        }
-
-        if (Mode == FileAccessMode.None || canonicalParent == null)
-        {
-            Directory.CreateDirectory(parent);
-            return;
-        }
-
         var canonical = canonicalParent;
         foreach (var folder in missing)
         {
             Directory.CreateDirectory(folder);
-            var created = RealPath.TryGetCanonicalDirectory(folder);
+            if (canonical == null)
+            {
+                continue;
+            }
+
+            var created = RealPath.InspectPath(folder).FinalPath;
             if (created == null || !RealPath.PathsEqual(created, Path.Join(canonical, Path.GetFileName(folder))))
             {
                 throw new FileAccessDeniedException(
-                    writtenPath,
+                    shown,
                     created,
                     $"the folder '{folder}' changed while it was created, so --file-access {ModeName} cannot be applied");
             }
 
             canonical = created;
         }
+    }
+
+    /// <summary>
+    ///     Judges a folder before it is listed: by every form of its path, then by its handle.
+    /// </summary>
+    /// <remarks>
+    ///     Used for the literal folder of a glob and for every link folder a wildcard would descend into. The handle
+    ///     check is that of an output's folder, except the write-only <c>/dev</c> rule: a local folder whose real
+    ///     path is on a network location is denied in every mode, a restrictive mode needs its real path, under
+    ///     roots the real path must be inside an allowed folder, and under no-symlinks no link may lie below the
+    ///     trusted anchor of the folder.
+    /// </remarks>
+    /// <param name="path">The judged path of the folder, shown as the pattern as written.</param>
+    /// <returns>True when the folder may be listed; false when it does not exist or is not a folder.</returns>
+    /// <exception cref="FileAccessDeniedException">Thrown when the folder is denied.</exception>
+    private bool CheckListedFolder(JudgedPath path)
+    {
+        CheckPath(path);
+        var anchor = CaptureAnchor(path.Shown, path.FullPath);
+        var facts = RealPath.InspectPath(path.FullPath);
+        if (facts.State == PathState.Missing || facts.IsDirectory == false)
+        {
+            return false;
+        }
+
+        CheckFolder(path.Shown, path.FullPath, path.FullPath, facts.FinalPath, anchor, forWrite: false);
+        return true;
+    }
+
+    /// <summary>
+    ///     Finds the deepest existing folder of a path by handles, never by a by-name probe.
+    /// </summary>
+    /// <remarks>
+    ///     Each level is opened without access rights from the deepest up. A level that exists but is not a folder
+    ///     counts as missing (creating it then fails). A link whose target is missing counts as existing with an
+    ///     unknown real path, as does a level whose facts cannot be told, so a restrictive mode denies it.
+    /// </remarks>
+    /// <param name="parent">The parent folder of the output, or null.</param>
+    /// <returns>The deepest existing folder and its real path (each possibly null), and the missing folders.</returns>
+    private static (string? Existing, string? Canonical, List<string> Missing) FindExistingFolder(string? parent)
+    {
+        var missing = new List<string>();
+        var folder = parent;
+        while (folder != null)
+        {
+            var facts = RealPath.InspectPath(folder);
+            if (facts.State == PathState.Exists && facts.IsDirectory != false)
+            {
+                return (folder, facts.FinalPath, missing);
+            }
+
+            if (facts.State == PathState.Unknown || (facts.State == PathState.Missing && RealPath.IsLink(folder)))
+            {
+                return (folder, null, missing);
+            }
+
+            missing.Insert(0, folder);
+            folder = Path.GetDirectoryName(folder);
+        }
+
+        return (null, null, missing);
+    }
+
+    /// <summary>
+    ///     Joins the literal folder text of an expanded glob and a path below it into the text the written-text
+    ///     rules apply to.
+    /// </summary>
+    /// <param name="prefix">The literal folder text (possibly empty).</param>
+    /// <param name="relative">The path below the folder.</param>
+    /// <returns>The joined text, with '/' separators below the folder.</returns>
+    private static string JoinExpanded(string prefix, string relative)
+    {
+        var below = relative.Replace('\\', '/');
+        if (prefix.Length == 0)
+        {
+            return below;
+        }
+
+        return prefix.EndsWith('/') || prefix.EndsWith('\\') ? prefix + below : prefix + "/" + below;
     }
 
     /// <summary>
@@ -939,8 +1133,8 @@ internal sealed partial class FileAccessPolicy
         relative == "." ? canonicalAnchor : Path.Join(canonicalAnchor, relative);
 
     /// <summary>
-    ///     Determines whether a full output path, or the real location of its deepest existing folder, is the
-    ///     <c>/dev</c> tree on Linux and macOS.
+    ///     Determines whether a full output path, or a real path (of an existing output or of its deepest existing
+    ///     folder), is the <c>/dev</c> tree on Linux and macOS.
     /// </summary>
     /// <remarks>
     ///     A write-only rule with no counterpart in CanvasNet, which never writes: a read of a device node is refused
@@ -1025,3 +1219,22 @@ internal sealed partial class FileAccessPolicy
         public bool ContainsRealPath(string path) => Canonical is { } canonical && RealPath.IsUnder(path, canonical);
     }
 }
+
+/// <summary>
+///     The three forms of a path judged by the file-access policy.
+/// </summary>
+/// <remarks>
+///     One value carries every form, so each rule is applied to the form it is defined on and the message names the
+///     path as the user wrote it.
+/// </remarks>
+/// <param name="Shown">
+///     The text shown in a denial: the path as written (with <c>${VAR}</c>); for a file a glob matched, its full path.
+/// </param>
+/// <param name="Expanded">
+///     The text the written-text rules apply to: the path after <c>${VAR}</c> expansion; for a file a glob matched, the
+///     pattern's literal part followed by the matched path.
+/// </param>
+/// <param name="FullPath">
+///     The full, normalized path the full-path, network-link, roots and real-path rules apply to, and that is opened.
+/// </param>
+internal readonly record struct JudgedPath(string Shown, string Expanded, string FullPath);

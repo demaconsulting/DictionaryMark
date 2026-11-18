@@ -659,8 +659,9 @@ sections:
         title: >-
           Under the roots mode, the tool shall use a judged path only when both the path as written (after
           ${VAR} expansion, base-directory resolution and parent-directory normalization) and the real path of
-          the opened file are inside an allowed folder, shall deny a path whose real path cannot be determined,
-          and shall never widen access because of the root option or the root key.
+          the opened file are inside an allowed folder, shall list a glob's folders only when they are inside an
+          allowed folder in the same way, shall deny a path whose real path cannot be determined, and shall never
+          widen access because of the root option or the root key.
         justification: |
           Checking only the written path would let a symbolic link or junction lead out of the allowed folders;
           checking only the real path would let a path outside the folders link back in. The root settings only
@@ -678,11 +679,13 @@ sections:
           - ubuntu@DictionaryMark_FileAccess_InputLinkLeadingOut_Denied
           - macos@DictionaryMark_FileAccess_InputLinkLeadingOut_Denied
           - DictionaryMark_FileAccess_InsideFolders_Generated
+          - DictionaryMark_FileAccess_RootsGlobFolderOutside_Denied
 
       - id: DictionaryMark-System-FileAccess-NoSymlinks
         title: >-
-          Under the no-symlinks mode, the tool shall deny a judged path that passes through a symbolic link or
-          junction below the configuration file's folder, trusting that folder and the folders above it.
+          Under the no-symlinks mode, the tool shall deny a judged path, including a folder a glob lists, that
+          passes through a symbolic link or junction below the configuration file's folder, trusting that folder
+          and the folders above it.
         justification: |
           A link planted inside a repository can redirect a configuration file to any file on the machine;
           links above the configuration file's folder (for example a linked home or temporary folder) are part of
@@ -697,6 +700,9 @@ sections:
           - windows@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
           - ubuntu@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
           - macos@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
+          - windows@DictionaryMark_FileAccess_NoSymlinksGlobThroughLink_Denied
+          - ubuntu@DictionaryMark_FileAccess_NoSymlinksGlobThroughLink_Denied
+          - macos@DictionaryMark_FileAccess_NoSymlinksGlobThroughLink_Denied
 
       - id: DictionaryMark-System-FileAccess-Writes
         title: >-
@@ -724,13 +730,15 @@ sections:
           In every file-access mode, the tool shall never read or write a configuration-file path that is a URL,
           a path written as a UNC path, on Windows a local path that leads to a network location through a link,
           a device path, a path with a colon other than the drive of an absolute path on Windows, or anything that
-          is not a regular file, while a path on a share reached from a configuration file, root or --root on that
-          share, and a path on a mapped network drive, are accessed.
+          is not a regular file, judged after ${VAR} expansion and including the name of every file a glob matches,
+          while a path on a share reached from a configuration file, root or --root on that share, and a path on a
+          mapped network drive, are accessed.
         justification: |
           These locations can leak credentials to a network host, block the run, or reach hidden data, and no
           dictionary or Markdown output is ever stored in them. The network rule matches the DEMA Consulting
           CanvasNet tool so configuration files kept on shares and mapped network drives keep working, and the
-          colon rule matches it on every platform, so a configuration file is judged the same everywhere.
+          colon rule matches it on every platform, so a configuration file is judged the same everywhere. Judging
+          the expanded text and every matched name means a variable or a file name cannot slip past the rules.
         tags: [system, security]
         children:
           - DictionaryMark-Utilities-FileAccessConfinement
@@ -742,6 +750,9 @@ sections:
           - DictionaryMark_FileAccess_DeviceOutput_Denied
           - DictionaryMark_FileAccess_ColonOutput_Denied
           - DictionaryMark_FileAccess_DirectoryAsOutput_Denied
+          - DictionaryMark_FileAccess_VariableExpandingToNeverAccessed_Denied
+          - ubuntu@DictionaryMark_FileAccess_ColonGlobMatch_Denied
+          - macos@DictionaryMark_FileAccess_ColonGlobMatch_Denied
 
       - id: DictionaryMark-System-FileAccess-Errors
         title: >-

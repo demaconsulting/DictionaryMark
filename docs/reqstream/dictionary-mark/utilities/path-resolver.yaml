@@ -53,7 +53,8 @@ sections:
               - id: DictionaryMark-PathResolver-ExistingDirectory
                 title: >-
                   The PathResolver unit shall resolve a directory path against a base directory and return its
-                  full path, rejecting wildcard characters and directories that do not exist.
+                  full path, rejecting wildcard characters and directories that do not exist, where the existence
+                  check may be supplied by the caller.
                 justification: |
                   A root directory becomes the literal prefix of every rooted pattern, so it must exist and must
                   not contain wildcards.
@@ -64,3 +65,4 @@ sections:
                   - PathResolver_ResolveExistingDirectory_MissingDirectory_ThrowsNamingDirectory
                   - PathResolver_ResolveExistingDirectory_PathIsFile_Throws
                   - PathResolver_ResolveExistingDirectory_Wildcard_Throws
+                  - PathResolver_ResolveExistingDirectory_ExistencePredicate_DecidesWithoutProbe

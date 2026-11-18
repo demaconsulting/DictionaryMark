@@ -18,14 +18,17 @@ directly against the real file system:
 
 #### Test Environment
 
-N/A - standard test environment. Tests use `TemporaryDirectory` to create real file-system
-fixtures for glob pattern matching.
+Tests use `TemporaryDirectory` to create real file-system fixtures for glob pattern matching. The
+`MatchUnder` tests create a folder link with the `LinkSupport` test helper: a symbolic link, or on
+Windows a junction when symbolic links need a privilege the account does not hold, so they run on every
+platform; they are skipped with a reason only where neither can be created.
 
 #### Acceptance Criteria
 
 - All unit tests in `GlobMatcherTests.cs` pass with zero failures.
 - All requirements linked to the `GlobMatcher` unit have at least one passing test scenario.
-- No tests may be skipped or marked as expected failures.
+- No tests may be skipped or marked as expected failures, except a `MatchUnder` test on a machine where
+  no folder link can be created.
 
 #### Test Scenarios
 
@@ -109,3 +112,15 @@ globbing library alone rejects) must both match. This scenario is tested by
 **GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile**: The literal `../shared/terms.yaml` must
 resolve against the base directory. This scenario is tested by
 `GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile`.
+
+**GlobMatcher_SplitGlob_FolderAndPattern**: A glob splits into its literal folder and remainder: `/*.yaml`
+gives `/`, `C:/*.yaml` gives `C:/`, `*.yaml` gives an empty folder, `../a/**/*.yaml` keeps `../a`, backslashes
+become slashes, and a `?` in a middle component starts the remainder there.
+
+**GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing**: Matching `**/*.yaml` below a folder that holds a
+real sub-folder and a folder link calls the check once, with the link's full path, and lists the link when the
+check allows it (its file is matched with its full path through the link). `*.yaml`, which never descends,
+never calls the check, and a missing folder matches nothing.
+
+**GlobMatcher_MatchUnder_RejectedLink_NotListed**: A check that returns false lists nothing in the link, and a
+check that throws stops the matching with its exception.

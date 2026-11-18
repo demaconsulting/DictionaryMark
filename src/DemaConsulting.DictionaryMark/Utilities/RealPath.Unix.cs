@@ -52,6 +52,9 @@ internal static partial class RealPath
     /// <summary>The <c>errno</c> value <c>ENOTDIR</c> (Linux and macOS).</summary>
     private const int ErrorNotDirectory = 20;
 
+    /// <summary>The <c>errno</c> value <c>EISDIR</c> (Linux and macOS): a folder opened for writing.</summary>
+    private const int ErrorIsDirectory = 21;
+
     /// <summary>The Linux <c>open</c> flags <c>O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC</c> (x64 and Arm64).</summary>
     private const int LinuxOpenRead = 0x800 | 0x100 | 0x80000;
 
@@ -66,6 +69,13 @@ internal static partial class RealPath
 
     /// <summary>The macOS <c>open</c> flags <c>O_WRONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC</c> (no create, no truncate).</summary>
     private const int MacOpenWrite = 0x1 | 0x4 | 0x20000 | 0x01000000;
+
+    /// <summary>
+    ///     The macOS <c>open</c> flags <c>O_RDONLY | O_DIRECTORY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC</c>; the xnu
+    ///     <c>sys/fcntl.h</c> value of <c>O_DIRECTORY</c> is <c>0x00100000</c>, and the open fails with
+    ///     <c>ENOTDIR</c> unless the path is a folder.
+    /// </summary>
+    private const int MacOpenDirectory = MacOpenRead | 0x00100000;
 
     /// <summary>The size of the buffer handed to <c>fstat</c>; larger than <c>struct stat</c> on every supported architecture.</summary>
     private const int StatBufferSize = 256;
@@ -108,6 +118,9 @@ internal static partial class RealPath
 
         /// <summary>Open only a reference to a path (Linux <c>O_PATH</c>), used for folders.</summary>
         PathOnly,
+
+        /// <summary>Open an existing folder: macOS <c>O_DIRECTORY</c>; Linux uses <c>O_PATH</c>.</summary>
+        Directory,
     }
 
     /// <summary>
@@ -118,13 +131,15 @@ internal static partial class RealPath
     ///     The variadic mode argument of <c>open</c> is only read with <c>O_CREAT</c>, which is never passed, so the
     ///     two fixed arguments are all the call needs on every ABI (Arm64 macOS included). macOS has no
     ///     <c>O_PATH</c>; macOS folders are resolved with <c>realpath</c> instead, so a path-only open there is a
-    ///     read open.
+    ///     read open. A folder open is a read open with <c>O_DIRECTORY</c> on macOS (so anything but a folder fails
+    ///     with <c>ENOTDIR</c>) and an <c>O_PATH</c> open on Linux, whose descriptor tells the type.
     /// </remarks>
     /// <param name="path">The full path.</param>
     /// <param name="kind">The purpose of the open.</param>
     /// <returns>
     ///     The handle, which owns the descriptor; or null when the system reports <c>ENXIO</c> (a named pipe with no
-    ///     reader, or a device that is not there), which only a special file can cause.
+    ///     reader, or a device that is not there), which only a special file can cause, or <c>EISDIR</c> (a folder
+    ///     opened for writing).
     /// </returns>
     /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
     /// <exception cref="DirectoryNotFoundException">Thrown when a folder of the path is not a folder.</exception>
@@ -138,14 +153,19 @@ internal static partial class RealPath
         int flags;
         if (OperatingSystem.IsMacOS())
         {
-            flags = kind == UnixOpenKind.Write ? MacOpenWrite : MacOpenRead;
+            flags = kind switch
+            {
+                UnixOpenKind.Write => MacOpenWrite,
+                UnixOpenKind.Directory => MacOpenDirectory,
+                _ => MacOpenRead,
+            };
         }
         else
         {
             flags = kind switch
             {
                 UnixOpenKind.Write => LinuxOpenWrite,
-                UnixOpenKind.PathOnly => LinuxOpenPathOnly,
+                UnixOpenKind.PathOnly or UnixOpenKind.Directory => LinuxOpenPathOnly,
                 _ => LinuxOpenRead,
             };
         }
@@ -170,7 +190,7 @@ internal static partial class RealPath
         var message = $"The file '{path}' cannot be opened (errno {error}).";
         return error switch
         {
-            ErrorNoDevice => null,
+            ErrorNoDevice or ErrorIsDirectory => null,
             ErrorNoEntry => throw new FileNotFoundException(message, path),
             ErrorNotDirectory => throw new DirectoryNotFoundException(message),
             ErrorAccess or ErrorNotPermitted => throw new UnauthorizedAccessException(message),
@@ -301,23 +321,110 @@ internal static partial class RealPath
     }
 
     /// <summary>
-    ///     Gets the real location of a path on macOS through <c>realpath(3)</c>, which resolves links by name and
-    ///     needs only search permission on the components of the path.
+    ///     Opens a path by name with <c>O_PATH</c> on Linux and reports its facts from the descriptor.
     /// </summary>
+    /// <remarks>
+    ///     <c>O_PATH</c> needs no read permission and opens a folder too; <c>fstat</c> on such a descriptor (Linux
+    ///     3.6 and later) gives the type, and the <c>/proc/self/fd</c> link the real path. <c>ENOENT</c> and
+    ///     <c>ENOTDIR</c> mean the entry is missing, including a link whose target is missing.
+    /// </remarks>
     /// <param name="path">The full path.</param>
-    /// <returns>The resolved path, or null when it does not exist or cannot be resolved.</returns>
+    /// <returns>The facts.</returns>
+    [SupportedOSPlatform("linux")]
+    private static PathFacts InspectPathLinux(string path)
+    {
+        SafeFileHandle? handle;
+        try
+        {
+            handle = OpenNonBlocking(path, UnixOpenKind.PathOnly);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return new PathFacts(PathState.Missing, null, null);
+        }
+
+        if (handle == null)
+        {
+            return new PathFacts(PathState.Unknown, null, null);
+        }
+
+        using (handle)
+        {
+            var stat = TryGetLinuxStat(handle);
+            var isDirectory = stat is { } value ? (value.Mode & UnixTypeMask) == UnixDirectory : (bool?)null;
+            return new PathFacts(PathState.Exists, isDirectory, InspectLinux(handle).FinalPath);
+        }
+    }
+
+    /// <summary>
+    ///     Reports the facts of a path on macOS through <c>realpath(3)</c>, which resolves links by name and needs
+    ///     only search permission on the components of the path.
+    /// </summary>
+    /// <remarks>
+    ///     <c>ENOENT</c> and <c>ENOTDIR</c> mean the entry is missing; whether it is a folder is not told (the
+    ///     write open reports a folder with <c>EISDIR</c>, and the read handle reports its type).
+    /// </remarks>
+    /// <param name="path">The full path.</param>
+    /// <returns>The facts.</returns>
     [SupportedOSPlatform("macos")]
-    private static string? TryRealPath(string path)
+    private static PathFacts InspectPathMac(string path)
     {
         // The buffer is owned here (PATH_MAX bytes), so nothing is allocated by the C library or freed here
         var resolved = new byte[MacPathMax];
         if (RealPathNative(Encoding.UTF8.GetBytes(path + "\0"), resolved) == IntPtr.Zero)
         {
-            return null;
+            var error = Marshal.GetLastPInvokeError();
+            return new PathFacts(
+                error is ErrorNoEntry or ErrorNotDirectory ? PathState.Missing : PathState.Unknown,
+                null,
+                null);
         }
 
         var length = Array.IndexOf(resolved, (byte)0);
-        return length > 0 ? Encoding.UTF8.GetString(resolved, 0, length) : null;
+        return new PathFacts(PathState.Exists, null, length > 0 ? Encoding.UTF8.GetString(resolved, 0, length) : null);
+    }
+
+    /// <summary>
+    ///     Reports whether a path is an existing folder on macOS, and its real path, from one non-blocking open with
+    ///     <c>O_DIRECTORY</c>.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         <c>realpath(3)</c> cannot tell a folder on macOS, even with a trailing slash, so the folder is opened
+    ///         with <c>O_RDONLY | O_DIRECTORY | O_NONBLOCK</c>: a file, a named pipe or a device fails with
+    ///         <c>ENOTDIR</c> before anything is opened, and <c>O_NONBLOCK</c> keeps the open from blocking. The real
+    ///         path comes from the descriptor (<c>proc_pidfdinfo</c>).
+    ///     </para>
+    ///     <para>
+    ///         <c>ENOENT</c> and <c>ENOTDIR</c> mean the folder is missing, which includes a file, a link whose target
+    ///         is missing and a missing parent folder. <c>O_RDONLY</c> needs read permission on the folder, so a
+    ///         folder that may be searched but not read is <see cref="PathState.Unknown"/>.
+    ///     </para>
+    /// </remarks>
+    /// <param name="path">The full path.</param>
+    /// <returns>The facts.</returns>
+    [SupportedOSPlatform("macos")]
+    private static PathFacts InspectFolderMac(string path)
+    {
+        SafeFileHandle? handle;
+        try
+        {
+            handle = OpenNonBlocking(path, UnixOpenKind.Directory);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return new PathFacts(PathState.Missing, null, null);
+        }
+
+        if (handle == null)
+        {
+            return new PathFacts(PathState.Unknown, null, null);
+        }
+
+        using (handle)
+        {
+            return new PathFacts(PathState.Exists, true, InspectMac(handle).FinalPath);
+        }
     }
 
     /// <summary>

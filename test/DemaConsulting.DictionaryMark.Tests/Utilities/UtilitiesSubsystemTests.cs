@@ -212,12 +212,12 @@ public class UtilitiesSubsystemTests
         var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [allowed], allowed);
 
         // Act: read and write inside and outside, resolving the paths with the path resolver
-        var insideRead = policy.ReadAllText("a.yaml", PathResolver.ResolvePath("a.yaml", allowed, "glossary path"));
+        var insideRead = policy.ReadAllText(Judged("a.yaml", PathResolver.ResolvePath("a.yaml", allowed, "glossary path")));
         var outsideRead = Record.Exception(
-            () => policy.ReadAllText("../outside/b.yaml", PathResolver.ResolvePath("../outside/b.yaml", allowed, "glossary path")));
-        policy.WriteAllText("out/a.md", PathResolver.ResolvePath("out/a.md", allowed, "output path"), "# A\n");
+            () => policy.ReadAllText(Judged("../outside/b.yaml", PathResolver.ResolvePath("../outside/b.yaml", allowed, "glossary path"))));
+        policy.WriteAllText(Judged("out/a.md", PathResolver.ResolvePath("out/a.md", allowed, "output path")), "# A\n");
         var outsideWrite = Record.Exception(
-            () => policy.WriteAllText("../outside/b.md", PathResolver.ResolvePath("../outside/b.md", allowed, "output path"), "# B\n"));
+            () => policy.WriteAllText(Judged("../outside/b.md", PathResolver.ResolvePath("../outside/b.md", allowed, "output path")), "# B\n"));
 
         // Assert
         Assert.Equal("Alpha: First\n", insideRead);
@@ -238,13 +238,19 @@ public class UtilitiesSubsystemTests
         var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "out.md")).FullName;
 
         // Act
-        var network = Record.Exception(() => FileAccessPolicy.Any.ReadAllText("//server/share/a.yaml", "//server/share/a.yaml"));
-        var url = Record.Exception(() => FileAccessPolicy.Any.ReadAllText("http://example.com/a.yaml", "http://example.com/a.yaml"));
-        var directory = Record.Exception(() => FileAccessPolicy.Any.WriteAllText("out.md", folder, "x"));
+        var network = Record.Exception(() => FileAccessPolicy.Any.ReadAllText(Judged("//server/share/a.yaml", "//server/share/a.yaml")));
+        var url = Record.Exception(() => FileAccessPolicy.Any.ReadAllText(Judged("http://example.com/a.yaml", "http://example.com/a.yaml")));
+        var directory = Record.Exception(() => FileAccessPolicy.Any.WriteAllText(Judged("out.md", folder), "x"));
 
         // Assert
         Assert.StartsWith("it is a UNC or network path", Assert.IsType<FileAccessDeniedException>(network).Reason);
         Assert.StartsWith("it is a URL or URI", Assert.IsType<FileAccessDeniedException>(url).Reason);
         Assert.StartsWith("it is not a regular file", Assert.IsType<FileAccessDeniedException>(directory).Reason);
     }
+
+    /// <summary>Creates the judged path of a path written without <c>${VAR}</c> references.</summary>
+    /// <param name="written">The path as written, which is also its expanded text.</param>
+    /// <param name="full">The full path.</param>
+    /// <returns>The judged path.</returns>
+    private static JudgedPath Judged(string written, string full) => new(written, written, full);
 }

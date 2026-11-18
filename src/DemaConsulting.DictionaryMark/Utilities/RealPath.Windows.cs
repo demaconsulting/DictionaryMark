@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
@@ -42,6 +43,30 @@ internal static partial class RealPath
 
     /// <summary>The <c>CreateFileW</c> flag <c>FILE_FLAG_BACKUP_SEMANTICS</c>, needed to open a folder.</summary>
     private const uint WindowsBackupSemantics = 0x02000000;
+
+    /// <summary>The <c>CreateFileW</c> access right <c>GENERIC_READ</c>.</summary>
+    private const uint WindowsGenericRead = 0x80000000;
+
+    /// <summary>The Windows error <c>ERROR_FILE_NOT_FOUND</c>.</summary>
+    private const int WindowsErrorFileNotFound = 2;
+
+    /// <summary>The Windows error <c>ERROR_PATH_NOT_FOUND</c>.</summary>
+    private const int WindowsErrorPathNotFound = 3;
+
+    /// <summary>The Windows error <c>ERROR_ACCESS_DENIED</c>.</summary>
+    private const int WindowsErrorAccessDenied = 5;
+
+    /// <summary>The Windows error 206: the file name or extension is too long.</summary>
+    private const int WindowsErrorFileNameTooLong = 206;
+
+    /// <summary>The bits that turn a Win32 error into the error code an exception carries (0x8007xxxx).</summary>
+    private const int WindowsHResultBase = unchecked((int)0x80070000);
+
+    /// <summary>
+    ///     The length from which a path gets the extended-length prefix: the classic folder limit (248 characters),
+    ///     which is below the file limit (260), as .NET uses for folders.
+    /// </summary>
+    private const int WindowsLongPathThreshold = 248;
 
     /// <summary>The first size of a path buffer, in characters; it grows when Windows asks for more.</summary>
     private const int WindowsInitialPathBuffer = 512;
@@ -274,16 +299,90 @@ internal static partial class RealPath
     }
 
     /// <summary>
-    ///     Gets the final path of a folder (or file) by name, by opening it without access rights and asking its
-    ///     handle.
+    ///     Opens a path by name without access rights and reports its facts from the handle.
+    /// </summary>
+    /// <remarks>
+    ///     Backup semantics let a folder open; no access rights are needed to read the attributes and the final path.
+    ///     Error 2 (<c>ERROR_FILE_NOT_FOUND</c>) and 3 (<c>ERROR_PATH_NOT_FOUND</c>) mean the entry is missing,
+    ///     including a link whose target is missing; any other failure leaves the facts unknown.
+    /// </remarks>
+    /// <param name="path">The full path.</param>
+    /// <returns>The facts.</returns>
+    [SupportedOSPlatform("windows")]
+    private static PathFacts InspectPathWindows(string path)
+    {
+        using var handle = CreateFileNative(ToNativePath(path), 0, WindowsShareAll, 0, WindowsOpenExisting, WindowsBackupSemantics, 0);
+        if (handle.IsInvalid)
+        {
+            var error = Marshal.GetLastPInvokeError();
+            return new PathFacts(
+                error is WindowsErrorFileNotFound or WindowsErrorPathNotFound ? PathState.Missing : PathState.Unknown,
+                null,
+                null);
+        }
+
+        var isDirectory = File.GetAttributes(handle).HasFlag(FileAttributes.Directory);
+        return new PathFacts(PathState.Exists, isDirectory, TryGetFinalPathName(handle));
+    }
+
+    /// <summary>
+    ///     Opens an existing file (or folder) for reading with full sharing, translating a failure into the exception
+    ///     .NET itself raises for it.
+    /// </summary>
+    /// <remarks>
+    ///     <c>File.OpenHandle</c> refuses a folder before any handle exists, so the open is native, with backup
+    ///     semantics: a folder opens and its handle is then judged (and refused) like any other.
+    /// </remarks>
+    /// <param name="path">The full path.</param>
+    /// <returns>The open handle; the caller disposes it.</returns>
+    /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
+    /// <exception cref="DirectoryNotFoundException">Thrown when a folder of the path does not exist.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access is denied.</exception>
+    /// <exception cref="PathTooLongException">Thrown when the path is too long.</exception>
+    /// <exception cref="IOException">Thrown for any other failure.</exception>
+    [SupportedOSPlatform("windows")]
+    private static SafeFileHandle OpenForReadWindows(string path)
+    {
+        var handle = CreateFileNative(
+            ToNativePath(path), WindowsGenericRead, WindowsShareAll, 0, WindowsOpenExisting, WindowsBackupSemantics, 0);
+        if (!handle.IsInvalid)
+        {
+            return handle;
+        }
+
+        var error = Marshal.GetLastPInvokeError();
+        handle.Dispose();
+        var message = $"Could not open '{path}': {Marshal.GetPInvokeErrorMessage(error)}";
+        throw error switch
+        {
+            WindowsErrorFileNotFound => new FileNotFoundException(message, path),
+            WindowsErrorPathNotFound => new DirectoryNotFoundException(message),
+            WindowsErrorAccessDenied => new UnauthorizedAccessException(message),
+            WindowsErrorFileNameTooLong => new PathTooLongException(message),
+            _ => new IOException(message, WindowsHResultBase | error),
+        };
+    }
+
+    /// <summary>
+    ///     Gives a full path the extended-length prefix when it is too long for the classic Win32 limit, as .NET does
+    ///     internally before its own calls.
     /// </summary>
     /// <param name="path">The full path.</param>
-    /// <returns>The final path, or null when it does not exist or cannot be opened.</returns>
-    [SupportedOSPlatform("windows")]
-    private static string? TryGetFinalPathOfPath(string path)
+    /// <returns>The path, with <c>\\?\</c> (or <c>\\?\UNC\</c> for a share) in front when it is long.</returns>
+    private static string ToNativePath(string path)
     {
-        using var handle = CreateFileNative(path, 0, WindowsShareAll, 0, WindowsOpenExisting, WindowsBackupSemantics, 0);
-        return handle.IsInvalid ? null : TryGetFinalPathName(handle);
+        if (path.Length < WindowsLongPathThreshold
+            || path.StartsWith(WindowsExtendedPrefix, StringComparison.Ordinal)
+            || path.StartsWith(@"\\.\", StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        // The prefix turns off path normalization, so the separators must already be backslashes
+        var normalized = path.Replace('/', '\\');
+        return normalized.StartsWith(@"\\", StringComparison.Ordinal)
+            ? WindowsExtendedUncPrefix + normalized[2..]
+            : WindowsExtendedPrefix + normalized;
     }
 
     /// <summary>

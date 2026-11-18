@@ -244,6 +244,51 @@ public class PathResolverTests
             () => PathResolver.ResolveExistingDirectory("file.txt", tmpDir.DirectoryPath, "root key"));
     }
 
+    /// <summary>
+    ///     Test that a caller-supplied existence check alone decides whether the directory exists: it receives the
+    ///     normalized full path, is not consulted for a wildcard, and no probe of its own is made.
+    /// </summary>
+    [Fact]
+    public void PathResolver_ResolveExistingDirectory_ExistencePredicate_DecidesWithoutProbe()
+    {
+        // Arrange: a base directory with one existing sub-directory, and a recording predicate
+        using var tmpDir = new TemporaryDirectory();
+        var existing = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "real")).FullName;
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+        var seen = new List<string>();
+
+        // Act: a missing folder reported as existing, an existing folder reported as missing, and a wildcard
+        var resolved = PathResolver.ResolveExistingDirectory(
+            "sub/../missing",
+            tmpDir.DirectoryPath,
+            "x",
+            path =>
+            {
+                seen.Add(path);
+                return true;
+            });
+        var denied = Assert.Throws<InvalidOperationException>(
+            () => PathResolver.ResolveExistingDirectory("real", tmpDir.DirectoryPath, "root key", _ => false));
+        var seenBeforeWildcard = seen.Count;
+        var wildcard = Assert.Throws<InvalidOperationException>(
+            () => PathResolver.ResolveExistingDirectory(
+                "sub*",
+                tmpDir.DirectoryPath,
+                "root key",
+                path =>
+                {
+                    seen.Add(path);
+                    return true;
+                }));
+
+        // Assert: the predicate decided both results, received the normalized full path, and saw no wildcard
+        Assert.Equal(missing, resolved);
+        Assert.Equal(new[] { missing }, seen);
+        Assert.Equal($"Directory '{existing}' specified by root key 'real' does not exist.", denied.Message);
+        Assert.Equal("Root key 'sub*' must not contain wildcard characters.", wildcard.Message);
+        Assert.Equal(seenBeforeWildcard, seen.Count);
+    }
+
     /// <summary>Test that wildcard characters are rejected in a directory.</summary>
     [Fact]
     public void PathResolver_ResolveExistingDirectory_Wildcard_Throws()

@@ -50,13 +50,33 @@ reports a real path under `/private`.
 (Linux and macOS), and **RealPath_Inspect_NulDevice_IsNotRegular** (Windows): Devices and named pipes
 are reported as not regular files, and opening a pipe without a writer does not block.
 
+**RealPath_OpenForRead_Directory_HandleIsNotRegular** and **RealPath_OpenForRead_MissingFile_ThrowsFileNotFound**:
+A folder opens for reading (on Windows with backup semantics) and its handle is reported as not a regular
+file; a missing file is reported as `FileNotFoundException`.
+
 **RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget** and
 **RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull**: A linked folder resolves to its
 target, and a missing folder has no real location.
 
+**RealPath_InspectPath_FileFolderMissing_Classified**: From a handle opened without access rights, a missing
+file, a path through a missing folder and a folder link whose target was removed are missing; a folder and a
+file exist, with their type (unknown on macOS), and the file's real path is its folder's real path followed by
+its name.
+
+**RealPath_InspectFolder_FolderFileMissing_Classified**: A folder check reports an existing folder as existing and
+a folder on every platform, including macOS (where the open uses `O_DIRECTORY`), with its real path. A file is not
+an existing folder: on macOS it is missing, because the open that requires a folder fails with `ENOTDIR`, and
+elsewhere it exists as not a folder. A missing path and a folder link whose target was removed are missing.
+
+**RealPath_InspectPath_LongPath_ReportsRealPath** (Windows): A file whose full path is longer than 280
+characters is inspected (with the extended-length prefix added internally) and opened for reading.
+
 **RealPath_TryOpenExistingForWrite_ExistingFile_KeepsContent** and
 **RealPath_CreateNewForWrite_ExistingEntry_Throws**: Opening an existing file for writing leaves its
 content unchanged, and exclusive creation fails when the name is taken.
+
+**RealPath_TryOpenExistingForWrite_Directory_ReturnsNull** (Linux and macOS): Opening a folder for writing
+fails with `EISDIR`, which is reported as null (not openable).
 
 **RealPath_IsUnder_BoundaryIsSeparator**, **RealPath_PathsEqual_PlatformCaseRule**,
 **RealPath_CommonAncestor_ReturnsDeepestSharedFolder** and

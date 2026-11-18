@@ -123,11 +123,12 @@ The system has two security boundaries, both enforced entirely within the Utilit
 2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
    `context.HeadingDepth` controls the Markdown heading level of the validation report header.
 3. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
-4. For a configuration job, `FileAccessPolicy.CheckPattern` first judges each input pattern. Then
-   `GlobMatcher.Resolve` resolves the job's input patterns against its base directory.
+4. For a configuration job, `FileAccessPolicy.ResolvePattern` judges each input pattern and resolves it,
+   judging every folder before it is listed. For the command-line job, `GlobMatcher.Resolve` resolves the
+   input patterns against its base directory.
 5. `YamlDictionaryLoader` parses each resolved YAML file into a `DictionaryEntry` list. A configuration
-   job reads each file through `FileAccessPolicy.ReadAllText`, which judges the file by its real path; a
-   denied file fails the job.
+   job reads each file through `FileAccessPolicy.ReadAllText`, which judges every form of its path and then
+   its handle; a denied file fails the job.
 6. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
    `context.WriteError` and halts output generation for that job.
 7. `MarkdownFormatter.Format` renders the validated entries as a Markdown string, sizing table

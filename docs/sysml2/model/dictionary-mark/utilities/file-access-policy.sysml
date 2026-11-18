@@ -18,4 +18,7 @@ package DictionaryMark {
 
     // FileAccessPolicy opens files and asks for the real path and type of every handle it judges
     dependency FileAccessPolicy to RealPath;
+
+    // FileAccessPolicy splits and matches configuration-file globs, judging every folder before it is listed
+    dependency FileAccessPolicy to GlobMatcher;
 }

@@ -17,6 +17,7 @@ sections:
               - DictionaryMark-GlobMatcher-InvalidPatternRejection
               - DictionaryMark-GlobMatcher-StrictResolve
               - DictionaryMark-GlobMatcher-EnvironmentVariables
+              - DictionaryMark-GlobMatcher-GuardedMatch
             tests:
               - UtilitiesSubsystem_GlobMatcher_ResolvesFiles
 
@@ -90,6 +91,8 @@ sections:
               - DictionaryMark-FileAccessPolicy-NoSymlinks
               - DictionaryMark-FileAccessPolicy-RealPathUnavailable
               - DictionaryMark-FileAccessPolicy-Writes
+              - DictionaryMark-FileAccessPolicy-GlobListing
+              - DictionaryMark-FileAccessPolicy-HandleClassification
               - DictionaryMark-FileAccessPolicy-DenialMessage
               - DictionaryMark-RealPath-FinalPath
               - DictionaryMark-RealPath-RegularFile

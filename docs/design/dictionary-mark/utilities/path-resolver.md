@@ -47,14 +47,19 @@ so do the callers' exception filters around their own `File` and `Directory` cal
 
 **ResolveExistingDirectory**: Resolves a root directory.
 
-- *Parameters*: `string path`; `string baseDirectory`; `string description`.
+- *Parameters*: `string path`; `string baseDirectory`; `string description`; and, in an overload,
+  `Func<string, bool> directoryExists`.
 - *Returns*: `string` — the normalized full path of the existing directory.
-- *Postconditions*: The directory exists.
+- *Postconditions*: The directory exists, as told by the existence check.
 
 Algorithm: compute `Combine`; reject the result if it contains `*` or `?`, because a root becomes
 the literal prefix of every rooted glob and a wildcard would corrupt the split between the literal
-base directory and the wildcard remainder; normalize with `Path.GetFullPath`; require
-`Directory.Exists`, which is `false` for files and missing paths.
+base directory and the wildcard remainder; normalize with `Path.GetFullPath`; require the existence
+check to accept the normalized full path. The three-argument form uses `Directory.Exists`, which is
+`false` for files and missing paths. The overload takes the check from the caller and calls it once,
+after the wildcard and malformed-path checks, so a caller that has already judged the folder through
+one open passes that open's verdict and no second by-name probe is made. The messages and their
+order are the same for both forms.
 
 #### Error Handling
 
@@ -85,7 +90,7 @@ N/A - uses only .NET base class library path and environment APIs.
   configuration job before the file-access check (description `glossary path`).
 - **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`
   and each `--allow-root` (description `--allow-root option`).
-- **ConfigFile.Load** — `ExpandEnvironmentVariables` and `ResolveExistingDirectory` for the `root`
-  key.
+- **ConfigFile.Load** — `ExpandEnvironmentVariables` and the `ResolveExistingDirectory` overload with
+  an existence check for the `root` key, passing the verdict of `FileAccessPolicy`'s folder open.
 - **IsInvalidPathException** — used by `DictionaryGenerator` (input resolution, reading and
   writing) and `ConfigFile` (config path normalization and reading) in their exception filters.

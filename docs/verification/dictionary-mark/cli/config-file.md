@@ -89,6 +89,17 @@ file. These scenarios are tested by the tests of the same names.
 directory are rejected with the file prefix and the resolver's message. These scenarios are tested
 by the tests of the same names.
 
+**ConfigFile_Load_RootLinkToMissingFolder_ThrowsNamingFile** (all platforms; skipped with a reason only where
+neither a folder link nor a junction can be created): A `root` key that names a folder link (on Windows a junction
+when symbolic links are not permitted) whose target was removed is rejected as
+`Config file '...': Directory '...' specified by root key 'lnk' does not exist.`. Existence comes from the
+folder's open that judged it, not from a by-name probe, which would accept a dangling junction on Windows. This
+scenario is tested by the test of the same name.
+
+**ConfigFile_Load_RootNamingFile_ThrowsNamingFile**: A `root` key that names an existing file is rejected with the
+same missing-directory message on every platform; on macOS this covers the open with `O_DIRECTORY`, which fails
+with `ENOTDIR` for a file. This scenario is tested by the test of the same name.
+
 **ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile** and
 **ConfigFile_Load_PathInvalidCharacter_ThrowsNamingFile**: A `root` value and a configuration file
 path containing a null character (invalid on every platform) are rejected as
@@ -110,3 +121,9 @@ This scenario is tested by `ConfigFile_Load_NoRoot_RootDirectoryIsNull`.
 `//server/share`, `\\server\share`, an `http:` URL, `\\.\pipe\x` or `docs:stream` (a colon) is rejected with
 `Config file '{path}': file-access-denied: root '{value}': {reason}` before the directory is probed.
 This scenario is tested by `ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied`.
+
+**ConfigFile_Load_RootThroughSymlinkToShare_ThrowsFileAccessDenied** (Windows, supplementary, not requirement
+evidence): A `root` key that passes through a real symbolic link to an unreachable share is rejected with the
+network-link reason before its existence is checked, without contacting the share. It needs the symbolic-link
+privilege and is skipped with a reason without it. The walk itself is requirement evidence through
+`FileAccessPolicy_DescribeNeverAccessedFolder_LinkToShare_ReturnsReason`.

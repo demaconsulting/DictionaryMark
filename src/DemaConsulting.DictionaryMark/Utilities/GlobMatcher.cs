@@ -206,43 +206,7 @@ internal static partial class GlobMatcher
     /// <param name="files">Set to add matching file paths to.</param>
     private static void MatchAbsoluteGlob(string pattern, HashSet<string> files)
     {
-        // Normalize to forward slashes so all subsequent index arithmetic is consistent
-        var normalizedPattern = pattern.Replace('\\', '/');
-
-        // Find the last separator before the first wildcard to identify the base directory
-        var firstWildcard = normalizedPattern.IndexOfAny(['*', '?']);
-        var lastSepBeforeWildcard = normalizedPattern.LastIndexOf('/', firstWildcard);
-
-        string baseDir;
-        string relPattern;
-        if (lastSepBeforeWildcard > 0)
-        {
-            // Split at the separator: everything before it is the base directory
-            baseDir = normalizedPattern[..lastSepBeforeWildcard];
-            relPattern = normalizedPattern[(lastSepBeforeWildcard + 1)..];
-
-            // On Windows, a bare drive letter "C:" resolves to the current directory of
-            // that drive, not its root. Append a slash to get the drive root "C:/".
-            if (baseDir.Length == 2 && baseDir[1] == ':')
-            {
-                baseDir += '/';
-            }
-        }
-        else if (lastSepBeforeWildcard == 0)
-        {
-            // Wildcard immediately after the leading slash (e.g. "/*.yaml" on Unix):
-            // base is the filesystem root.
-            baseDir = "/";
-            relPattern = normalizedPattern[1..];
-        }
-        else
-        {
-            // No separator before the wildcard - derive the root from the normalized path
-            var root = Path.GetPathRoot(normalizedPattern) ?? string.Empty;
-            baseDir = root.TrimEnd('/');
-            relPattern = normalizedPattern[root.Length..];
-        }
-
+        var (baseDir, relPattern) = SplitGlob(pattern);
         if (Directory.Exists(baseDir))
         {
             // Normalize the literal base so ".." segments before the first wildcard are collapsed
@@ -256,6 +220,98 @@ internal static partial class GlobMatcher
                 files.Add(fullPath);
             }
         }
+    }
+
+    /// <summary>
+    ///     Splits a glob pattern into its literal folder (the folders before the first wildcard) and the wildcard
+    ///     remainder that is matched below that folder.
+    /// </summary>
+    /// <remarks>
+    ///     A pure text operation. Backslashes become forward slashes. A bare drive (<c>C:</c>) becomes its root
+    ///     (<c>C:/</c>), and a wildcard right after a leading slash gives the root <c>/</c>. A relative pattern whose
+    ///     first component holds a wildcard has an empty folder. The folder is not normalized, so <c>..</c>
+    ///     segments before the first wildcard are kept.
+    /// </remarks>
+    /// <param name="pattern">The glob pattern, containing at least one wildcard. Must not be null.</param>
+    /// <returns>The literal folder (possibly empty) and the remainder.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="pattern"/> is null.</exception>
+    internal static (string Folder, string Pattern) SplitGlob(string pattern)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(pattern);
+
+        // Normalize to forward slashes so all subsequent index arithmetic is consistent
+        var normalizedPattern = pattern.Replace('\\', '/');
+
+        // Find the last separator before the first wildcard to identify the base directory
+        var firstWildcard = normalizedPattern.IndexOfAny(['*', '?']);
+        var lastSepBeforeWildcard = firstWildcard < 0 ? -1 : normalizedPattern.LastIndexOf('/', firstWildcard);
+        if (lastSepBeforeWildcard > 0)
+        {
+            // Split at the separator: everything before it is the base directory
+            var baseDir = normalizedPattern[..lastSepBeforeWildcard];
+
+            // On Windows, a bare drive letter "C:" resolves to the current directory of
+            // that drive, not its root. Append a slash to get the drive root "C:/".
+            if (baseDir.Length == 2 && baseDir[1] == ':')
+            {
+                baseDir += '/';
+            }
+
+            return (baseDir, normalizedPattern[(lastSepBeforeWildcard + 1)..]);
+        }
+
+        if (lastSepBeforeWildcard == 0)
+        {
+            // Wildcard immediately after the leading slash (e.g. "/*.yaml" on Unix): base is the filesystem root
+            return ("/", normalizedPattern[1..]);
+        }
+
+        // No separator before the wildcard - derive the root from the normalized path
+        var root = Path.GetPathRoot(normalizedPattern) ?? string.Empty;
+        return (root.TrimEnd('/'), normalizedPattern[root.Length..]);
+    }
+
+    /// <summary>
+    ///     Matches a glob remainder below a folder that the caller has already judged, without probing the folder by
+    ///     name, and asks the caller before it lists any folder that is a symbolic link or junction.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Used for configuration-file patterns, whose folders must be judged by the file-access policy before
+    ///         they are listed. The folder is listed directly (a folder that does not exist gives no matches), with
+    ///         no existence probe. Every child folder the matcher may descend into is checked for being a link when
+    ///         it is listed (on Windows by its reparse-point attribute and then its link data, on Linux and macOS by
+    ///         its link data); before such a link folder is itself listed, <paramref name="checkLinkFolder"/> is
+    ///         called with its full path. It returns true to list the link folder, false to list nothing in it (for
+    ///         example a link whose target is missing), or throws to stop the matching; the exception propagates to
+    ///         the caller. A link folder the matcher never descends into is never checked or listed.
+    ///     </para>
+    ///     <para>
+    ///         A <c>..</c> segment cannot climb above a listed folder: a request for a parent folder throws
+    ///         <see cref="ArgumentException"/>. File-system I/O is performed; the method is thread-safe.
+    ///     </para>
+    /// </remarks>
+    /// <param name="folder">The full, normalized path of the folder to match below. Must not be null.</param>
+    /// <param name="pattern">The wildcard remainder (see <see cref="SplitGlob(string)"/>). Must not be null.</param>
+    /// <param name="checkLinkFolder">The check called before a link folder is listed. Must not be null.</param>
+    /// <returns>The matched files, with their full paths and their paths relative to the folder (with '/').</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the globbing library rejects the pattern.</exception>
+    /// <exception cref="IOException">Thrown when a folder cannot be listed.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the system denies listing a folder.</exception>
+    internal static IReadOnlyList<GlobMatch> MatchUnder(string folder, string pattern, Func<string, bool> checkLinkFolder)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(folder);
+        ArgumentNullException.ThrowIfNull(pattern);
+        ArgumentNullException.ThrowIfNull(checkLinkFolder);
+
+        // Match through the guarded wrapper, which never probes by name and asks before listing a link folder
+        var matcher = new Matcher();
+        matcher.AddInclude(pattern);
+        var result = matcher.Execute(new GuardedDirectory(new DirectoryInfo(folder), isLink: false, checkLinkFolder, parent: null));
+        return [.. result.Files.Select(match => new GlobMatch(Path.GetFullPath(Path.Combine(folder, match.Path)), match.Path))];
     }
 
     /// <summary>
@@ -274,4 +330,123 @@ internal static partial class GlobMatcher
             files.Add(fullPath);
         }
     }
+
+    /// <summary>
+    ///     Determines whether a listed child folder is a symbolic link or junction.
+    /// </summary>
+    /// <remarks>
+    ///     On Windows the attributes the listing already holds tell a reparse point without another call, and only
+    ///     those are asked for their link data; on Linux and macOS every child folder's link data is read, which never
+    ///     follows the link.
+    /// </remarks>
+    /// <param name="directory">The listed child folder.</param>
+    /// <returns>True when it is a link.</returns>
+    private static bool IsLinkFolder(DirectoryInfo directory) =>
+        (!OperatingSystem.IsWindows() || directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        && RealPath.IsLink(directory.FullName);
+
+    /// <summary>
+    ///     A folder offered to the globbing library that lists itself without an existence probe and asks before a
+    ///     link folder is listed.
+    /// </summary>
+    private sealed class GuardedDirectory : DirectoryInfoBase
+    {
+        /// <summary>The folder.</summary>
+        private readonly DirectoryInfo _directory;
+
+        /// <summary>Whether the folder is a symbolic link or junction.</summary>
+        private readonly bool _isLink;
+
+        /// <summary>The check called before a link folder is listed.</summary>
+        private readonly Func<string, bool> _checkLinkFolder;
+
+        /// <summary>The folder this one was listed in, or null for the folder matched below.</summary>
+        private readonly GuardedDirectory? _parent;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="GuardedDirectory"/> class.
+        /// </summary>
+        /// <param name="directory">The folder.</param>
+        /// <param name="isLink">Whether the folder is a symbolic link or junction.</param>
+        /// <param name="checkLinkFolder">The check called before a link folder is listed.</param>
+        /// <param name="parent">The folder this one was listed in, or null.</param>
+        public GuardedDirectory(DirectoryInfo directory, bool isLink, Func<string, bool> checkLinkFolder, GuardedDirectory? parent)
+        {
+            _directory = directory;
+            _isLink = isLink;
+            _checkLinkFolder = checkLinkFolder;
+            _parent = parent;
+        }
+
+        /// <inheritdoc/>
+        public override string Name => _directory.Name;
+
+        /// <inheritdoc/>
+        public override string FullName => _directory.FullName;
+
+        /// <inheritdoc/>
+        public override DirectoryInfoBase? ParentDirectory => _parent;
+
+        /// <inheritdoc/>
+        public override IEnumerable<FileSystemInfoBase> EnumerateFileSystemInfos()
+        {
+            // A link folder is judged before it is listed; a rejected one throws, one with nothing to list is empty
+            if (_isLink && !_checkLinkFolder(_directory.FullName))
+            {
+                return [];
+            }
+
+            // The listing itself reports a missing folder, so no existence probe is needed
+            IEnumerable<FileSystemInfo> entries;
+            try
+            {
+                entries = _directory.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return [];
+            }
+
+            return Wrap(entries);
+        }
+
+        /// <inheritdoc/>
+        public override DirectoryInfoBase? GetDirectory(string path)
+        {
+            // A parent folder would leave the folder that was judged before it was listed
+            if (string.Equals(path, "..", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("A '..' segment after a wildcard is not supported.", nameof(path));
+            }
+
+            var matches = _directory.GetDirectories(path);
+            return matches.Length == 1 ? new GuardedDirectory(matches[0], IsLinkFolder(matches[0]), _checkLinkFolder, this) : null;
+        }
+
+        /// <inheritdoc/>
+        public override FileInfoBase? GetFile(string path) =>
+            new FileInfoWrapper(new FileInfo(Path.Combine(_directory.FullName, path)));
+
+        /// <summary>
+        ///     Wraps the listed entries, marking each child folder that is a link.
+        /// </summary>
+        /// <param name="entries">The listed entries.</param>
+        /// <returns>The wrapped entries.</returns>
+        private IEnumerable<FileSystemInfoBase> Wrap(IEnumerable<FileSystemInfo> entries)
+        {
+            foreach (var entry in entries)
+            {
+                yield return entry is DirectoryInfo directory
+                    ? new GuardedDirectory(directory, IsLinkFolder(directory), _checkLinkFolder, this)
+                    : new FileInfoWrapper((FileInfo)entry);
+            }
+        }
+    }
 }
+
+/// <summary>
+///     A file matched by <see cref="GlobMatcher.MatchUnder(string, string, Func{string, bool})"/>.
+/// </summary>
+/// <param name="FullPath">The full path of the file.</param>
+/// <param name="RelativePath">The path of the file relative to the folder matched below, with '/' separators.</param>
+internal readonly record struct GlobMatch(string FullPath, string RelativePath);

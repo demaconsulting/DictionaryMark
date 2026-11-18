@@ -8,11 +8,16 @@
 absolute file paths. It handles three path categories: absolute paths without wildcards (checked
 via `File.Exists`), absolute paths with wildcards (base directory extracted before the first
 wildcard character), and relative patterns (matched against `Environment.CurrentDirectory`).
-`GlobMatcher` is a static class.
+`GlobMatcher` is a static class. For configuration-file patterns it also provides `SplitGlob` and
+`MatchUnder`, which the file-access policy uses so that every folder is judged before it is listed.
 
 #### Data Model
 
-N/A - static class with no instance state.
+- **GlobMatch** (`readonly record struct`): `FullPath` (`string`) and `RelativePath` (`string`, relative to the
+  folder matched below, with `/` separators) of a file matched by `MatchUnder`.
+- **GuardedDirectory** (private nested class, derives from the library's `DirectoryInfoBase`): a folder offered
+  to the globbing library. It holds the `DirectoryInfo`, whether the folder is a symbolic link or junction, the
+  link-folder check and its parent. It has no existence probe.
 
 #### Key Methods
 
@@ -54,6 +59,28 @@ then sorted.
   undefined variable throws `InvalidOperationException` with a message naming the pattern or
   path. Windows UNC paths are supported as literals and as glob bases.
 
+**SplitGlob(pattern)**: A pure text operation, also used by `GetFiles` for an absolute glob. Backslashes become
+forward slashes. The literal folder is the text before the last separator before the first `*` or `?`, and the
+remainder is the rest. A bare drive (`C:`) becomes its root (`C:/`), a wildcard right after a leading slash
+gives `/`, and a relative pattern whose first component holds a wildcard gives an empty folder. The folder is
+not normalized, so `..` segments are kept.
+
+**MatchUnder(folder, pattern, checkLinkFolder)**: Matches a remainder below a folder that the caller has
+already judged, for configuration-file patterns.
+
+- *Parameters*: `string folder` — the full, normalized folder; `string pattern` — the wildcard remainder;
+  `Func<string, bool> checkLinkFolder` — the check called with the full path of a link folder before it is
+  listed.
+- *Returns*: `IReadOnlyList<GlobMatch>`.
+- *Behavior*: a `Matcher` runs against a `GuardedDirectory`. Listing a folder calls
+  `DirectoryInfo.EnumerateFileSystemInfos` directly (a missing folder gives no entries), without the
+  `Exists` probe of the library's `DirectoryInfoWrapper`. Each listed child folder is marked as a link (on
+  Windows when the listing's own attributes hold `ReparsePoint` and `RealPath.IsLink` confirms it; on Linux and
+  macOS by `RealPath.IsLink` for every child folder). When the matcher asks to list a link folder, the check is
+  called first: true lists it, false lists nothing in it, and an exception stops the matching and propagates.
+  A link folder the matcher never descends into is never checked or listed. A request for a parent folder
+  (`..`) throws `ArgumentException`, so the matching cannot climb above the judged folder.
+
 #### Error Handling
 
 - `InvalidOperationException` — thrown by `Resolve` as described above; `DictionaryGenerator`
@@ -75,9 +102,12 @@ then sorted.
   APIs used to evaluate glob patterns against the file system.
 - **PathResolver** — Utilities unit; expands `${VAR}` references and roots patterns at the base
   directory.
+- **RealPath** — Utilities unit; `IsLink` reads a listed folder's own link data without following it.
 
 #### Callers
 
 - **DictionaryGenerator.GenerateJob** — calls `GlobMatcher.Resolve(job.InputPatterns,
-  job.BaseDirectory)` as the first step of each job to resolve user-supplied glob patterns to a
-  sorted, deduplicated list of concrete file paths.
+  job.BaseDirectory)` as the first step of a command-line job to resolve user-supplied glob patterns
+  to a sorted, deduplicated list of concrete file paths.
+- **FileAccessPolicy.ResolvePattern** — calls `SplitGlob` and `MatchUnder` for configuration-file
+  patterns, judging each link folder in the callback.

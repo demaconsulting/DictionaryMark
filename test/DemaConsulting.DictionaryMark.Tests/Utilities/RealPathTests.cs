@@ -214,6 +214,174 @@ public class RealPathTests
         Assert.Equal("original", File.ReadAllText(file));
     }
 
+    /// <summary>
+    ///     Test that the facts of a path come from a handle: a missing file, a missing folder and a link whose target
+    ///     is missing are missing; a folder and a file exist, with their type (unknown on macOS) and real path.
+    /// </summary>
+    [Fact]
+    public void RealPath_InspectPath_FileFolderMissing_Classified()
+    {
+        // Arrange: a folder, a file in it, and a folder link whose target was removed
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "folder")).FullName;
+        var file = Path.Combine(folder, "a.yaml");
+        File.WriteAllText(file, "x");
+        var target = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "target")).FullName;
+        var link = Path.Combine(tmpDir.DirectoryPath, "link");
+        LinkSupport.CreateDirectoryLinkOrSkip(link, target);
+        Directory.Delete(target);
+        var canonicalFolder = RealPath.TryGetCanonicalDirectory(folder)!;
+
+        // Act
+        var missingFile = RealPath.InspectPath(Path.Combine(folder, "missing.yaml"));
+        var missingFolder = RealPath.InspectPath(Path.Combine(tmpDir.DirectoryPath, "missing", "a.yaml"));
+        var dangling = RealPath.InspectPath(link);
+        var folderFacts = RealPath.InspectPath(folder);
+        var fileFacts = RealPath.InspectPath(file);
+
+        // Assert
+        Assert.Equal(new PathFacts(PathState.Missing, null, null), missingFile);
+        Assert.Equal(new PathFacts(PathState.Missing, null, null), missingFolder);
+        Assert.Equal(new PathFacts(PathState.Missing, null, null), dangling);
+        Assert.Equal(PathState.Exists, folderFacts.State);
+        Assert.Equal(OperatingSystem.IsMacOS() ? null : true, folderFacts.IsDirectory);
+        Assert.Equal(PathState.Exists, fileFacts.State);
+        Assert.Equal(OperatingSystem.IsMacOS() ? null : false, fileFacts.IsDirectory);
+        Assert.NotNull(fileFacts.FinalPath);
+        Assert.True(RealPath.PathsEqual(Path.Join(canonicalFolder, "a.yaml"), fileFacts.FinalPath));
+    }
+
+    /// <summary>
+    ///     Test that a folder check tells an existing folder on every platform (on macOS from an open with
+    ///     <c>O_DIRECTORY</c>), with its real path, and that a file, a missing path and a folder link whose target is
+    ///     missing are not existing folders.
+    /// </summary>
+    [Fact]
+    public void RealPath_InspectFolder_FolderFileMissing_Classified()
+    {
+        // Arrange: a folder, a file in it, and a folder link whose target was removed
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "folder")).FullName;
+        var file = Path.Combine(folder, "a.yaml");
+        File.WriteAllText(file, "x");
+        var target = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "target")).FullName;
+        var link = Path.Combine(tmpDir.DirectoryPath, "link");
+        LinkSupport.CreateDirectoryLinkOrSkip(link, target);
+        Directory.Delete(target);
+        var canonicalFolder = RealPath.TryGetCanonicalDirectory(folder)!;
+
+        // Act
+        var folderFacts = RealPath.InspectFolder(folder);
+        var fileFacts = RealPath.InspectFolder(file);
+        var missing = RealPath.InspectFolder(Path.Combine(tmpDir.DirectoryPath, "missing"));
+        var dangling = RealPath.InspectFolder(link);
+
+        // Assert: the folder exists as a folder, with its real path, on every platform
+        Assert.Equal(PathState.Exists, folderFacts.State);
+        Assert.True(folderFacts.IsDirectory);
+        Assert.NotNull(folderFacts.FinalPath);
+        Assert.True(RealPath.PathsEqual(canonicalFolder, folderFacts.FinalPath));
+
+        // Assert: a file is not an existing folder (missing on macOS, where the open requires a folder)
+        Assert.False(fileFacts.State == PathState.Exists && fileFacts.IsDirectory != false);
+        if (OperatingSystem.IsMacOS())
+        {
+            Assert.Equal(new PathFacts(PathState.Missing, null, null), fileFacts);
+        }
+        else
+        {
+            Assert.Equal(PathState.Exists, fileFacts.State);
+            Assert.False(fileFacts.IsDirectory);
+        }
+
+        // Assert: a missing path and a dangling folder link are missing
+        Assert.Equal(new PathFacts(PathState.Missing, null, null), missing);
+        Assert.Equal(new PathFacts(PathState.Missing, null, null), dangling);
+    }
+
+    /// <summary>Test that a folder opens for reading and its handle is reported as not a regular file.</summary>
+    [Fact]
+    public void RealPath_OpenForRead_Directory_HandleIsNotRegular()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "folder")).FullName;
+
+        // Act
+        HandleFacts facts;
+        using (var handle = RealPath.OpenForRead(folder))
+        {
+            facts = RealPath.Inspect(handle);
+        }
+
+        // Assert
+        Assert.False(facts.IsRegularFile);
+    }
+
+    /// <summary>Test that opening a missing file for reading reports it as not found.</summary>
+    [Fact]
+    public void RealPath_OpenForRead_MissingFile_ThrowsFileNotFound()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+
+        // Act / Assert
+        Assert.Throws<FileNotFoundException>(() => RealPath.OpenForRead(Path.Combine(tmpDir.DirectoryPath, "missing.yaml")).Dispose());
+    }
+
+    /// <summary>Test that on Linux and macOS opening a folder for writing is reported as not openable (null).</summary>
+    [Fact]
+    public void RealPath_TryOpenExistingForWrite_Directory_ReturnsNull()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "EISDIR is tested on Linux and macOS only.");
+
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "folder")).FullName;
+
+        // Act
+        using var handle = RealPath.TryOpenExistingForWrite(folder);
+
+        // Assert
+        Assert.Null(handle);
+    }
+
+    /// <summary>Test that on Windows a path longer than the classic limit is inspected and opened.</summary>
+    [Fact]
+    public void RealPath_InspectPath_LongPath_ReportsRealPath()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The extended-length prefix is tested on Windows only.");
+
+        // Arrange: a file whose full path is longer than 260 characters
+        using var tmpDir = new TemporaryDirectory();
+        var folder = tmpDir.DirectoryPath;
+        while (folder.Length < 280)
+        {
+            folder = Path.Combine(folder, new string('d', 40));
+        }
+
+        Directory.CreateDirectory(folder);
+        var file = Path.Combine(folder, "a.yaml");
+        File.WriteAllText(file, "x");
+
+        // Act
+        var facts = RealPath.InspectPath(file);
+        string content;
+        using (var handle = RealPath.OpenForRead(file))
+        using (var stream = new FileStream(handle, FileAccess.Read, bufferSize: 1))
+        using (var reader = new StreamReader(stream))
+        {
+            content = reader.ReadToEnd();
+        }
+
+        // Assert
+        Assert.Equal(PathState.Exists, facts.State);
+        Assert.False(facts.IsDirectory);
+        Assert.NotNull(facts.FinalPath);
+        Assert.EndsWith(Path.Combine(new string('d', 40), "a.yaml"), facts.FinalPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("x", content);
+    }
+
     /// <summary>Test that the folder boundary is a directory separator, not a name prefix.</summary>
     [Fact]
     public void RealPath_IsUnder_BoundaryIsSeparator()

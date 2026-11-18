@@ -23,6 +23,9 @@ DictionaryMark uses the following APIs from the `Microsoft.Extensions.FileSystem
 - **`FilePatternMatch.Path`** — the relative path of a matched file, combined with the base
   directory to form an absolute path
 - **`DirectoryInfoWrapper`** — wraps a `System.IO.DirectoryInfo` instance as the base for matching
+- **`DirectoryInfoBase`** and **`FileInfoWrapper`** — `GlobMatcher.MatchUnder` derives a private folder
+  wrapper from `DirectoryInfoBase` (listing with no existence probe and asking before a link folder is
+  listed) and wraps listed files with `FileInfoWrapper`
 
 Features not used: exclude patterns, `Matcher.Match` static helpers, custom `IFileSystem`
 implementations, and file attribute filtering.
@@ -49,6 +52,11 @@ For absolute patterns containing wildcards, `GlobMatcher` first extracts the non
 pattern (normalizing any `..` segments with `Path.GetFullPath`), then creates a `Matcher` rooted at that directory with
 the remaining pattern segment as the include rule. In both cases, matched relative paths are combined with the base
 directory and resolved to absolute paths via `Path.GetFullPath` before being added to the results set.
+
+For configuration-file patterns, `GlobMatcher.MatchUnder` runs the same `Matcher` against its own
+`DirectoryInfoBase` implementation instead of `DirectoryInfoWrapper`, so the file-access policy can judge
+every folder before it is listed. The matcher lists a folder only through `EnumerateFileSystemInfos` and
+asks for a parent folder only for a `..` segment, which the wrapper refuses.
 
 ### Error Handling
 

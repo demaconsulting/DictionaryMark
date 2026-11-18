@@ -79,3 +79,21 @@ sections:
                   - GlobMatcher_Resolve_LeadingParentSegmentGlob_ReturnsFiles
                   - GlobMatcher_Resolve_NestedParentSegmentGlob_ReturnsFiles
                   - GlobMatcher_Resolve_ParentSegmentLiteral_ReturnsFile
+
+              - id: DictionaryMark-GlobMatcher-GuardedMatch
+                title: >-
+                  The GlobMatcher shall split a glob into its literal folder and its wildcard remainder, and shall
+                  match a remainder below a folder without probing the folder by name, calling a supplied check
+                  before it lists any folder that is a symbolic link or junction and never listing one the check
+                  rejects.
+                justification: |
+                  The file-access policy judges every folder before it is listed; the matcher must list exactly the
+                  folder that was judged and give the policy the chance to judge each link a wildcard reaches.
+                tests:
+                  - GlobMatcher_SplitGlob_FolderAndPattern
+                  - windows@GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing
+                  - ubuntu@GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing
+                  - macos@GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing
+                  - windows@GlobMatcher_MatchUnder_RejectedLink_NotListed
+                  - ubuntu@GlobMatcher_MatchUnder_RejectedLink_NotListed
+                  - macos@GlobMatcher_MatchUnder_RejectedLink_NotListed

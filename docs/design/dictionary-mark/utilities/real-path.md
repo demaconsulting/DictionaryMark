@@ -17,6 +17,10 @@ and the native contracts follow the DEMA Consulting CanvasNet tool, which proves
 
 - **HandleFacts** (`readonly record struct`): `IsRegularFile` (`bool?`) and `FinalPath` (`string?`). Each is
   null when the platform cannot tell.
+- **PathState** (enumeration): `Missing` (the open found no entry, or a folder of its path is missing),
+  `Exists` (the entry was opened) and `Unknown` (the open failed for another reason).
+- **PathFacts** (`readonly record struct`): `State` (`PathState`), `IsDirectory` (`bool?`, null when the entry
+  is missing or the platform cannot tell; always null on macOS) and `FinalPath` (`string?`).
 - `PathComparison` (`StringComparison`): `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` elsewhere.
 - A cached flag records whether the Linux C library lacks `fstat` (glibc before 2.33), so that `__fxstat` is
   used instead. This is the only state, and a race on it only repeats the probe.
@@ -43,26 +47,58 @@ Only `IOException`, `UnauthorizedAccessException`, `ExternalException`, `DllNotF
 
 **OpenForRead(fullPath)**: On Linux and macOS it calls native `open` with
 `O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC`. A named pipe without a writer therefore returns at once
-instead of hanging, and the descriptor is not inherited by child processes. On Windows it calls
-`File.OpenHandle` read-only with read, write and delete sharing. `errno` is translated into
-`FileNotFoundException`, `DirectoryNotFoundException`, `UnauthorizedAccessException` or `IOException`.
+instead of hanging, and the descriptor is not inherited by child processes. On Windows it calls `CreateFileW`
+with `GENERIC_READ`, read, write and delete sharing, `OPEN_EXISTING` and `FILE_FLAG_BACKUP_SEMANTICS`, so a
+folder opens too and the caller learns it is a folder from the handle (`File.OpenHandle` refuses a folder
+before any handle exists). A long path gets the extended-length prefix. `errno` and the Windows error are
+translated into `FileNotFoundException` (`ENOENT`, error 2), `DirectoryNotFoundException` (`ENOTDIR`, error
+3), `UnauthorizedAccessException` (`EACCES`, `EPERM`, error 5), `PathTooLongException` (error 206) or
+`IOException`.
 
 **TryOpenExistingForWrite(fullPath)**: Opens an existing file for writing without truncating or creating it.
 On Linux and macOS it uses `O_WRONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC`. A named pipe without a reader
-(`ENXIO`) returns null, which the caller treats as not a regular file. On Windows it uses `File.OpenHandle`
-with `FileMode.Open` and read sharing.
+(`ENXIO`) and a folder (`EISDIR`, 21 on both systems) return null, which the caller treats as not a regular
+file. On Windows it uses `File.OpenHandle` with `FileMode.Open` and read sharing.
 
 **CreateNewForWrite(fullPath)**: Calls `File.OpenHandle` with `FileMode.CreateNew` (`CREATE_NEW` on Windows,
 `O_CREAT | O_EXCL` on Unix). This never follows a link in the last component, so it fails when any entry,
 including a dangling link, has the name.
 
-**TryGetCanonicalDirectory(fullPath)**: Gets the real location of an existing folder or file by name.
+**InspectPath(fullPath)**: Reports whether a path exists, whether it is a folder and its real path, from a
+handle (Windows, Linux) or `realpath(3)` (macOS), never from a by-name probe. The open follows every link on the
+path, as any later open would, so a link swapped in before the open is seen by its real path.
 
-- *Windows*: `CreateFileW` with no access rights and `FILE_FLAG_BACKUP_SEMANTICS`, then the final path of
-  the handle.
-- *Linux*: `open` with `O_PATH | O_CLOEXEC`, which needs no read permission, then `Inspect`.
-- *macOS*: `realpath(3)` with a 1024-byte buffer owned by the caller.
+- *Windows*: `CreateFileW` with no access rights, all sharing, `OPEN_EXISTING` and
+  `FILE_FLAG_BACKUP_SEMANTICS` (a folder opens too); a path of 248 characters or more gets the `\\?\`
+  (`\\?\UNC\`) prefix, as .NET does internally. The folder attribute comes from `File.GetAttributes(handle)`
+  and the real path from the final path of the handle. Error 2 (`ERROR_FILE_NOT_FOUND`) and 3
+  (`ERROR_PATH_NOT_FOUND`) give `Missing`.
+- *Linux*: `open` with `O_PATH | O_CLOEXEC` (`0x200000 | 0x80000` on x64 and Arm64), which needs no read
+  permission and opens a folder too; `fstat` on the descriptor (Linux 3.6 and later) gives the type
+  (`S_IFDIR`, `0x4000`) and `/proc/self/fd` the real path. `ENOENT` and `ENOTDIR` give `Missing`.
+- *macOS*: `realpath(3)` with a 1024-byte buffer owned by the caller; `errno` `ENOENT` or `ENOTDIR` gives
+  `Missing`. Whether the entry is a folder is not told (the read handle reports its type, and the write open
+  reports a folder with `EISDIR`).
 
+A missing entry includes a link whose target is missing. Any other failure gives `Unknown`. Never throws.
+
+**InspectFolder(fullPath)**: Reports whether a path is an existing folder and its real path from one open of
+the folder, never from a by-name probe. The caller decides existence from these facts alone: the state is
+`Exists` and `IsDirectory` is not false.
+
+- *Windows and Linux*: `InspectPath`, whose handle already tells a folder.
+- *macOS*: `open` with `O_RDONLY | O_DIRECTORY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC` (`O_DIRECTORY` is
+  `0x00100000` in the xnu `sys/fcntl.h`). Success gives `Exists`, a folder, and the real path of the descriptor
+  from `proc_pidfdinfo`. `ENOENT` or `ENOTDIR` gives `Missing`, which includes a file, a named pipe or a device
+  (refused with `ENOTDIR` before anything is opened, so nothing blocks), a link whose target is missing and a
+  missing parent folder. Any other failure gives `Unknown`; `O_RDONLY` needs read permission on the folder, so a
+  folder that may be searched but not read is `Unknown`.
+
+Rationale: on macOS, `realpath(3)` does not report `ENOTDIR` for a file even with a trailing slash (Apple Libc
+has no folder check at the end of its walk), so it cannot tell a folder. `O_SEARCH` would avoid the read
+permission, but the oldest macOS release that honors it is unverified. Never throws.
+
+**TryGetCanonicalDirectory(fullPath)**: The final path of `InspectPath`, used for the allowed folders.
 Returns null when the entry does not exist or cannot be resolved. Never throws.
 
 **ExpandShortNames(fullPath)**: On Windows, for a path that contains `~`, `GetLongPathNameW` expands short
@@ -92,7 +128,7 @@ names mapped, so the policy trusts it like a drive path. Every other extended-le
 root (`\\?\UNC\`, `\\?\pipe\`, another `\\?\` object path, `\\.\`, `\??\`) is not ordinary.
 
 **IsLink(fullPath)**: True when the entry is a symbolic link or junction, even a dangling one
-(`ReadLinkTarget` is not null).
+(`ReadLinkTarget` is not null). A link-safe check: only the entry's own link data is read.
 
 **ReadLinkTarget(fullPath)**: The immediate target of a symbolic link or junction, read from the entry itself
 with `FileInfo.LinkTarget` (which opens the reparse point without following it), or null when the entry is
@@ -130,9 +166,9 @@ check. No unsafe code is used: buffers are managed arrays. The raw descriptor of
 
 #### Error Handling
 
-`Inspect`, `TryGetCanonicalDirectory`, `ExpandShortNames`, `IsLink`, `ReadLinkTarget`, `FindNetworkLinkTarget`
-and `IsNetworkLocation` never throw. They report unknown facts as null or false, and the policy fails closed.
-The open and create methods propagate the exceptions .NET raises for the corresponding failures.
+`Inspect`, `InspectPath`, `InspectFolder`, `TryGetCanonicalDirectory`, `ExpandShortNames`, `IsLink`, `ReadLinkTarget`,
+`FindNetworkLinkTarget` and `IsNetworkLocation` never throw. They report unknown facts as null or false, and the policy
+fails closed. The open and create methods propagate the exceptions .NET raises for the corresponding failures.
 
 #### Dependencies
 
@@ -141,3 +177,4 @@ N/A - uses only the .NET base class library and the operating-system calls liste
 #### Callers
 
 - **FileAccessPolicy** — every member.
+- **GlobMatcher** — `IsLink`, to tell a listed folder that is a symbolic link or junction.

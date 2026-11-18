@@ -25,11 +25,15 @@ sections:
 
               - id: DictionaryMark-RealPath-RegularFile
                 title: >-
-                  The RealPath unit shall report whether an open handle is a regular file, and shall open a named
-                  pipe for reading without blocking.
+                  The RealPath unit shall report whether an open handle is a regular file, shall open a named pipe
+                  for reading without blocking, and shall open a folder for reading (on Windows with backup
+                  semantics) so its handle reports it as not a regular file.
                 justification: |
-                  Devices and pipes must be recognized from the handle, and opening one must never hang the run.
+                  Devices, pipes and folders must be recognized from the handle, never by a by-name probe, and opening
+                  one must never hang the run.
                 tests:
+                  - RealPath_OpenForRead_Directory_HandleIsNotRegular
+                  - RealPath_OpenForRead_MissingFile_ThrowsFileNotFound
                   - ubuntu@RealPath_Inspect_DevNull_IsNotRegular
                   - macos@RealPath_Inspect_DevNull_IsNotRegular
                   - ubuntu@RealPath_OpenForRead_Fifo_DoesNotBlockAndIsNotRegular
@@ -38,11 +42,19 @@ sections:
 
               - id: DictionaryMark-RealPath-CanonicalDirectory
                 title: >-
-                  The RealPath unit shall report the real location of an existing folder by name, and report none
-                  for a folder that does not exist.
+                  The RealPath unit shall report, from a handle opened without access rights (Windows; Linux O_PATH)
+                  or realpath(3) (macOS), whose result is judged, whether a path exists (a missing entry, a missing
+                  folder of its path and a link whose target is missing being missing), whether it is a folder
+                  (except on macOS) and its real location, also for a Windows path longer than the classic limit;
+                  and, for a folder check, whether the path is an existing folder on every platform (on macOS from a
+                  handle opened with O_DIRECTORY, so a file is missing).
                 justification: |
-                  Allowed folders, trusted anchors and output folders are compared by their real locations.
+                  Allowed folders, trusted anchors, listed folders, output folders and existing outputs are judged by
+                  facts taken from a handle, whose real path follows any link swapped in before the open.
                 tests:
+                  - RealPath_InspectPath_FileFolderMissing_Classified
+                  - RealPath_InspectFolder_FolderFileMissing_Classified
+                  - windows@RealPath_InspectPath_LongPath_ReportsRealPath
                   - windows@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
                   - ubuntu@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
                   - macos@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
@@ -50,14 +62,17 @@ sections:
 
               - id: DictionaryMark-RealPath-NoTruncateOpen
                 title: >-
-                  The RealPath unit shall open an existing file for writing without changing its content, and
-                  create a new file only when no entry, including a link, has its name.
+                  The RealPath unit shall open an existing file for writing without changing its content (on Linux
+                  and macOS reporting a folder as not openable), and create a new file only when no entry, including
+                  a link, has its name.
                 justification: |
                   The real path of an output must be checked before its content changes, and a link planted at the
                   output name must not make the tool create a file elsewhere.
                 tests:
                   - RealPath_TryOpenExistingForWrite_ExistingFile_KeepsContent
                   - RealPath_CreateNewForWrite_ExistingEntry_Throws
+                  - ubuntu@RealPath_TryOpenExistingForWrite_Directory_ReturnsNull
+                  - macos@RealPath_TryOpenExistingForWrite_Directory_ReturnsNull
 
               - id: DictionaryMark-RealPath-Comparison
                 title: >-

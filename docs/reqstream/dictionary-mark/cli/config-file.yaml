@@ -89,7 +89,8 @@ sections:
                   The ConfigFile unit shall accept an optional top-level non-empty root string, resolve it
                   relative to the configuration file's directory with ${VAR} expansion and parent-directory
                   normalization, and reject a missing directory or a root key inside a table job, with an error
-                  naming the file and the job.
+                  naming the file and the job, deciding whether the directory exists from the open that judged it
+                  (a symbolic link or junction whose target is missing, or a file, is a missing directory).
                 justification: |
                   The root key lets a configuration file kept in a tools folder use repository-relative paths.
                 tests:
@@ -98,6 +99,10 @@ sections:
                   - ConfigFile_Load_RootEnvironmentVariable_Expanded
                   - ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile
                   - ConfigFile_Load_RootMissingDirectory_ThrowsNamingFile
+                  - ConfigFile_Load_RootNamingFile_ThrowsNamingFile
+                  - windows@ConfigFile_Load_RootLinkToMissingFolder_ThrowsNamingFile
+                  - ubuntu@ConfigFile_Load_RootLinkToMissingFolder_ThrowsNamingFile
+                  - macos@ConfigFile_Load_RootLinkToMissingFolder_ThrowsNamingFile
                   - ConfigFile_Load_RootInvalidValue_Throws
                   - ConfigFile_Load_RootInTableJob_ThrowsNamingJob
                   - ConfigFile_Load_NoRoot_RootDirectoryIsNull
@@ -106,10 +111,14 @@ sections:
                 title: >-
                   The ConfigFile unit shall reject a root key that, after ${VAR} expansion, names a URL, a path
                   written as a UNC path or a device path, or contains a colon other than the drive of an absolute
-                  path on Windows, with an error containing file-access-denied, before the file system is touched.
+                  path on Windows, or that the file-access policy's folder check otherwise describes as never
+                  accessed (on Windows, a root that leads to a network location through a symbolic link or
+                  junction), with an error containing file-access-denied, before its existence is checked, and
+                  decide whether it exists from the facts of that check, never from a separate by-name probe.
                 justification: |
                   The root key only sets a base directory and never grants access, but checking that it exists
-                  would still contact a network host or a device named by an untrusted configuration file. Only the
-                  text is judged, so a relative root on a share still resolves.
+                  would still contact a network host or a device named by an untrusted configuration file. The
+                  written text is judged as written and the full path only for links, so a relative root on a share
+                  still resolves.
                 tests:
                   - ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied

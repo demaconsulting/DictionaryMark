@@ -327,6 +327,8 @@ The base directory for a relative path is chosen as follows:
 - Absolute input and output paths ignore the root.
 - The root must be an existing directory and must not contain wildcards. `--root` may be given only
   once and must not be empty. The `root` key is checked even when `--root` overrides it.
+- A `root` key that names a symbolic link or junction whose target is missing is not an existing
+  directory, and on macOS the folder a `root` key names must be readable.
 - A root only sets the base directory: it never grants file access (see *File Access*).
 
 ## File Access
@@ -371,9 +373,15 @@ Without `--allow-root`, `roots` allows the working directory and the configurati
 
 ### Which Paths Are Judged
 
-- **Judged**: every input pattern, every file a pattern matches, and every output path of a
-  configuration file. Each matched file is judged on its own, and a denied match fails the job; it is
-  never silently skipped.
+- **Judged**: every input pattern, every folder a pattern lists, every file a pattern matches, and every
+  output path of a configuration file. Each is judged before the tool touches it, including before it
+  lists a folder or checks whether a file exists. Each matched file is judged on its own, and a denied
+  match fails the job; it is never silently skipped.
+- **Glob folders**: the folder before the first wildcard (`docs` in `docs/**/*.yaml`) is judged before it is
+  listed. Under `roots` it must be inside an allowed folder, so `../shared/*.yaml` is denied as a whole when
+  `shared` is not allowed (name the files one by one, or allow the folder). Under `no-symlinks` it may not
+  pass through a link. Every symbolic link or junction a wildcard reaches is judged the same way before it is
+  listed, and a denied link fails the job.
 - **Trusted**: the paths given on the command line are never judged: `--config`, `--input` and the
   files it matches, `--output`, `--log` and `--results`. You chose them when you ran the tool.
 - **Root**: `--root` and the configuration `root` key only set the base directory of relative paths.
@@ -391,12 +399,17 @@ In every mode, including `any`, a configuration-file path is never read or writt
   drive-relative path); on Linux and macOS any `:`, so `terms:v1.yaml` and `C:/x` are refused there too;
 - anything that is not a regular file (a folder, a named pipe, a device).
 
+These rules apply to the path after `${VAR}` expansion, so `output: ${OUT}/terms.md` is denied when `OUT`
+is `//server/share` or `a:b`; the error still shows the path as written. They also apply to the name of every
+file a glob matches, so on Linux and macOS a file `terms:v1.yaml` matched by `*.yaml` fails the job.
+
 This matches CanvasNet, so a configuration file is judged the same on every platform. A file whose name
 contains a colon can still be named on the command line, which is trusted. A device such as `/dev/null` is
-refused when it is read, as not a regular file. An output under `/dev`, or in a folder whose real path is
-under `/dev` (for example through a link), is never written.
+refused when it is read, as not a regular file. An output under `/dev`, one that is a link to a device, or
+one in a folder whose real path is under `/dev` (for example through a link), is never written.
 
-A `root` key that names such a path is an error when the configuration file is loaded.
+A `root` key that names such a path, or on Windows one that leads to a network share through a link, is an
+error when the configuration file is loaded.
 
 On Windows, an `--allow-root` folder in a device namespace (`\\.\`, `\??\`, or a `\\?\` path other than a
 drive or volume) is an error. A `\\?\` drive or volume path such as `\\?\C:\docs` is an error too, because
@@ -411,8 +424,10 @@ The network rule is the same as in the DEMA Consulting CanvasNet tool:
   mapped network drive therefore works: its relative inputs and outputs, and a `--root` or `root` key on
   that share, resolve to the share.
 - On Windows, a local path that leads to a network share through a symbolic link or junction is denied,
-  at any folder of the path and through a chain of links. The links are read without being followed, so
-  the share is never contacted.
+  at any folder of the path and through a chain of links, including a link a glob wildcard reaches. The
+  links are read without being followed, so the share is never contacted through a link that is present when
+  the path is judged. A link swapped in afterwards is reached only by an open whose real path is then checked
+  and denied.
 
 ### Real Paths
 
@@ -424,7 +439,8 @@ The modes other than `any` judge the real path of every opened file. Where the s
 Under `roots` the following must all be inside an allowed folder:
 
 - the output;
-- the deepest existing folder above it, and every folder the tool creates for it;
+- the deepest existing folder above it, and every folder the tool creates for it (one at a time, each
+  checked by its real path);
 - the real path of the opened output.
 
 An existing output is opened without truncation, and its real path is checked before its content is
@@ -448,9 +464,10 @@ Error: 1 of 2 table jobs failed.
 - A hard link cannot be detected: it is a second name of the same file.
 - A folder that another process swaps for a link while the tool creates it can leave an empty file at
   the swapped location, but no content is written there.
-- On Windows, a glob wildcard (`*`, `**`) that reaches a link to a network share while matching may
-  list the share. The folders before the first wildcard are checked first, and a matched file on the
-  share is never read.
+- Another process can swap a folder for a link in the short window between the check of a path and its
+  open. The real path of what was opened is then checked and the job is denied, but the open itself has
+  already followed the link. Listing a folder and creating a folder have no handle of their own; each is
+  checked just before and again just after.
 
 ## Silent Mode
 

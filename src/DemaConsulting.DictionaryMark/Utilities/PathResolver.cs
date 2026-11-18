@@ -150,7 +150,8 @@ internal static partial class PathResolver
     ///     Used for root (base) directories. A root becomes the literal prefix of every rooted glob
     ///     pattern, so a wildcard in it would corrupt the split between the literal base directory
     ///     and the wildcard remainder; wildcards are therefore rejected. The check for existence
-    ///     performs file-system access; an existing file is not accepted as a directory.
+    ///     performs file-system access (<see cref="Directory.Exists(string)"/>); an existing file is
+    ///     not accepted as a directory.
     /// </remarks>
     /// <param name="path">The directory path to resolve. Must not be null.</param>
     /// <param name="baseDirectory">The directory that a relative path is rooted at. Must not be null.</param>
@@ -165,12 +166,47 @@ internal static partial class PathResolver
     ///     <c>?</c>, the path is malformed or too long, or the directory does not exist; the message
     ///     names the description and path.
     /// </exception>
-    public static string ResolveExistingDirectory(string path, string baseDirectory, string description)
+    public static string ResolveExistingDirectory(string path, string baseDirectory, string description) =>
+        ResolveExistingDirectory(path, baseDirectory, description, Directory.Exists);
+
+    /// <summary>
+    ///     Resolves a directory path against a base directory and requires the directory to exist, as decided by a
+    ///     caller-supplied existence check.
+    /// </summary>
+    /// <remarks>
+    ///     The same algorithm as <see cref="ResolveExistingDirectory(string, string, string)"/> (expand, root,
+    ///     reject wildcards, normalize), with the same messages in the same order, but whether the directory exists
+    ///     comes from <paramref name="directoryExists"/>, called once with the normalized full path after the
+    ///     wildcard and malformed-path checks pass. A caller that has already judged the folder through one open
+    ///     passes that open's verdict, so no second by-name probe is made.
+    /// </remarks>
+    /// <param name="path">The directory path to resolve. Must not be null.</param>
+    /// <param name="baseDirectory">The directory that a relative path is rooted at. Must not be null.</param>
+    /// <param name="description">
+    ///     Description of where the path came from (for example <c>root key</c>), used in error messages. Must not
+    ///     be null.
+    /// </param>
+    /// <param name="directoryExists">
+    ///     The check that tells whether the normalized full path is an existing directory. Must not be null.
+    /// </param>
+    /// <returns>The normalized full path of the existing directory.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when a referenced variable is undefined, the expanded path contains <c>*</c> or
+    ///     <c>?</c>, the path is malformed or too long, or the directory does not exist; the message
+    ///     names the description and path.
+    /// </exception>
+    public static string ResolveExistingDirectory(
+        string path,
+        string baseDirectory,
+        string description,
+        Func<string, bool> directoryExists)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(baseDirectory);
         ArgumentNullException.ThrowIfNull(description);
+        ArgumentNullException.ThrowIfNull(directoryExists);
 
         // Expand and root the path, rejecting wildcards before any normalization
         var combined = Combine(path, baseDirectory, description);
@@ -182,7 +218,7 @@ internal static partial class PathResolver
 
         // Normalize the path and require the directory to exist
         var full = GetFullPath(combined, path, description);
-        if (!Directory.Exists(full))
+        if (!directoryExists(full))
         {
             throw new InvalidOperationException(
                 $"Directory '{full}' specified by {description} '{path}' does not exist.");

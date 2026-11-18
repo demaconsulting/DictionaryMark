@@ -50,6 +50,10 @@ sections:
                 tests:
                   - DictionaryGenerator_Generate_MissingInputs_ReportErrors
                   - DictionaryGenerator_Generate_OneMissingPattern_Fails
+                  - DictionaryGenerator_GenerateJob_ConfigMissingLiteralInput_ReportsInputFileNotFound
+                  - windows@DictionaryGenerator_GenerateJob_ConfigMissingInputFolder_ReportsInputDirectoryNotFound
+                  - ubuntu@DictionaryGenerator_GenerateJob_ConfigMissingInputFolderUnix_ReportsInputFileNotFound
+                  - macos@DictionaryGenerator_GenerateJob_ConfigMissingInputFolderUnix_ReportsInputFileNotFound
 
               - id: DictionaryMark-DictionaryGenerator-RichEntries
                 title: >-
@@ -118,24 +122,30 @@ sections:
 
               - id: DictionaryMark-DictionaryGenerator-JudgedReads
                 title: >-
-                  The DictionaryGenerator unit shall judge every input pattern of a configuration-file job before
-                  matching and read every matched file through the file-access policy, failing the job (never
-                  skipping the file) when one is denied, while reading the command-line job's files directly.
+                  The DictionaryGenerator unit shall resolve every input pattern of a configuration-file job
+                  through the file-access policy (which judges the pattern and every folder it lists before
+                  matching) and read every resolved file through it, failing the job (never skipping the file) when
+                  one is denied, while reading the command-line job's files directly.
                 justification: |
-                  Silently skipping a denied file would produce an incomplete glossary without warning.
+                  Silently skipping a denied file would produce an incomplete glossary without warning, and matching
+                  outside the policy would touch folders the policy never judged.
                 tests:
                   - DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied
-                  - DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped
+                  - DictionaryGenerator_GenerateJob_GlobFolderOutside_DeniedBeforeMatching
+                  - ubuntu@DictionaryGenerator_GenerateJob_ColonGlobMatch_FailsJobNotSkipped
+                  - macos@DictionaryGenerator_GenerateJob_ColonGlobMatch_FailsJobNotSkipped
                   - DictionaryGenerator_GenerateJob_CommandLineInputOutsideFolders_Read
 
               - id: DictionaryMark-DictionaryGenerator-JudgedWrites
                 title: >-
                   The DictionaryGenerator unit shall write the output of a configuration-file job through the
-                  file-access policy, writing nothing when it is denied, while writing the command-line job's output
-                  directly.
+                  file-access policy, passing the output as written, after ${VAR} expansion, and in full, writing
+                  nothing when it is denied, while writing the command-line job's output directly.
                 justification: |
-                  Configuration-file outputs must be confined; command-line outputs are chosen by the user.
+                  Configuration-file outputs must be confined and judged on the text a variable expands to;
+                  command-line outputs are chosen by the user.
                 tests:
+                  - DictionaryGenerator_GenerateJob_OutputVariableExpandingToNeverAccessed_Denied
                   - DictionaryGenerator_GenerateJob_ConfigOutputOutsideFolders_WritesNothing
                   - DictionaryGenerator_GenerateJob_CommandLineOutputOutsideFolders_Written
 

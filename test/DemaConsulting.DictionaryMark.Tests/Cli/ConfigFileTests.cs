@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Cli;
@@ -461,6 +462,46 @@ public class ConfigFileTests
         Assert.Equal($"Config file '{path}': Directory '{full}' specified by root key 'missing' does not exist.", ex.Message);
     }
 
+    /// <summary>
+    ///     Test that a root reached through a folder link (or junction) whose target is missing is an error naming the
+    ///     file, because existence comes from the open that judged the folder (a by-name probe accepted a dangling
+    ///     junction on Windows).
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_RootLinkToMissingFolder_ThrowsNamingFile()
+    {
+        // Arrange: lnk next to the config file, linked to a folder that is then removed
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: lnk\n" + MinimalTables);
+        var configDirectory = Path.GetDirectoryName(path)!;
+        var target = Directory.CreateDirectory(Path.Combine(configDirectory, "target")).FullName;
+        var link = Path.Combine(configDirectory, "lnk");
+        LinkSupport.CreateDirectoryLinkOrSkip(link, target);
+        Directory.Delete(target);
+
+        // Act / Assert: the dangling link is reported as a missing directory
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.Equal($"Config file '{path}': Directory '{link}' specified by root key 'lnk' does not exist.", ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that a root naming an existing file is an error naming the file, on every platform (on macOS the open
+    ///     that requires a folder fails).
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_RootNamingFile_ThrowsNamingFile()
+    {
+        // Arrange: a file next to the config file, named as the root
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: a.txt\n" + MinimalTables);
+        var file = Path.Combine(Path.GetDirectoryName(path)!, "a.txt");
+        File.WriteAllText(file, "x");
+
+        // Act / Assert: the file is reported as a missing directory
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.Equal($"Config file '{path}': Directory '{file}' specified by root key 'a.txt' does not exist.", ex.Message);
+    }
+
     /// <summary>Test that a root with a character invalid on every platform is an error naming the file.</summary>
     [Fact]
     public void ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile()
@@ -521,6 +562,37 @@ public class ConfigFileTests
         // Act / Assert: the error names the file, the code, the root and the reason
         var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
         Assert.StartsWith($"Config file '{path}': file-access-denied: root '{value}': {reason}", ex.Message);
+    }
+
+    /// <summary>
+    ///     Test, end to end, that a root reached through a real symbolic link to an unreachable share is denied before
+    ///     its existence is checked (skipped where symbolic links cannot be created; supplementary, not requirement
+    ///     evidence).
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_RootThroughSymlinkToShare_ThrowsFileAccessDenied()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Network link targets are checked on Windows only.");
+
+        // Arrange: lnk -> an unreachable share (a junction cannot target a share, so there is no fallback)
+        using var tmpDir = new TemporaryDirectory();
+        try
+        {
+            Directory.CreateSymbolicLink(Path.Combine(tmpDir.DirectoryPath, "lnk"), @"\\nonexistent.invalid\share");
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            Assert.Skip($"A symbolic link cannot be created on this machine: {ex.Message}");
+        }
+
+        var path = Path.Combine(tmpDir.DirectoryPath, "dictionarymark.yaml");
+        File.WriteAllText(path, "root: lnk/docs\n" + MinimalTables);
+
+        // Act / Assert: the walk reads the link's target and never contacts the share
+        var denied = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.StartsWith(
+            $"Config file '{path}': file-access-denied: root 'lnk/docs': it leads to a network location through a symbolic link or junction",
+            denied.Message);
     }
 
     /// <summary>Test that the root key inside a job is rejected.</summary>

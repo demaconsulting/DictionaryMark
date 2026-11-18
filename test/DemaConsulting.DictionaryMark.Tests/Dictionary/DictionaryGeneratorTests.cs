@@ -593,25 +593,169 @@ public class DictionaryGeneratorTests
         Assert.False(File.Exists(Path.Combine(configFolder, "a.md")));
     }
 
-    /// <summary>Test that a glob match outside the allowed folders fails the job instead of being skipped.</summary>
+    /// <summary>
+    ///     Test that a missing literal input of a config job fails the job, reported when its read finds the file
+    ///     missing, and writes nothing.
+    /// </summary>
     [Fact]
-    public void DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped()
+    public void DictionaryGenerator_GenerateJob_ConfigMissingLiteralInput_ReportsInputFileNotFound()
     {
-        // Arrange: one match inside the allowed folder and one outside it
+        // Arrange: a config job whose literal input does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: missing.yaml\n    output: out.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the error names the job and the full path of the file; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            $"Error: table job 1 ('out.md'): Input file '{Path.Combine(configFolder, "missing.yaml")}' was not found.",
+            err);
+        Assert.False(File.Exists(Path.Combine(configFolder, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Windows a literal input of a config job in a missing folder fails the job naming the folder
+    ///     and the pattern (the read reports the missing folder, Windows error 3).
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_ConfigMissingInputFolder_ReportsInputDirectoryNotFound()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows reports a missing folder of the path as a missing folder.");
+
+        // Arrange: a config job whose literal input is in a folder that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: absent/a.yaml\n    output: out.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the error names the job, the missing folder and the pattern as written; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            $"Error: table job 1 ('out.md'): Input directory '{Path.Combine(configFolder, "absent")}' was not found " +
+            "(pattern 'absent/a.yaml').",
+            err);
+        Assert.False(File.Exists(Path.Combine(configFolder, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a literal input of a config job in a missing folder fails the job naming the
+    ///     file (the read reports <c>ENOENT</c> for a missing folder of the path, as for a missing file).
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_ConfigMissingInputFolderUnix_ReportsInputFileNotFound()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "Linux and macOS report a missing folder of the path as a missing file.");
+
+        // Arrange: a config job whose literal input is in a folder that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: absent/a.yaml\n    output: out.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the error names the job and the full path of the file; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            $"Error: table job 1 ('out.md'): Input file '{Path.Combine(configFolder, "absent", "a.yaml")}' was not found.",
+            err);
+        Assert.False(File.Exists(Path.Combine(configFolder, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that under roots a glob whose literal folder is written outside the allowed folders fails the job
+    ///     before the folder is listed, naming the pattern as written.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_GlobFolderOutside_DeniedBeforeMatching()
+    {
+        // Arrange: one input inside the allowed folder and a glob over a folder outside it
         using var tmpDir = new TemporaryDirectory();
         File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
-        var outside = tmpDir.GetFilePath(Path.Combine("shared", "b.yaml"));
-        File.WriteAllText(outside, "Beta: Second\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "b.yaml")), "Beta: Second\n");
         var config = WriteConfig(tmpDir, "tables:\n  - input: [a.yaml, ../shared/*.yaml]\n    output: out.md\n");
         var configFolder = Path.GetDirectoryName(config)!;
 
         // Act
         var (_, err, exitCode) = Run("--config", config, "--file-access", "roots", "--allow-root", configFolder);
 
-        // Assert: the outside match is reported by its full path and the job writes nothing
+        // Assert: the pattern is denied as written and the job writes nothing
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Error: table job 1 ('out.md'): file-access-denied: '{outside}':", err);
+        Assert.Contains(
+            "Error: table job 1 ('out.md'): file-access-denied: '../shared/*.yaml': the path as written is outside the allowed folders (--file-access roots)",
+            err);
         Assert.False(File.Exists(Path.Combine(configFolder, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a glob match whose name contains a colon fails the job instead of being read
+    ///     or skipped, in mode any.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_ColonGlobMatch_FailsJobNotSkipped()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is a stream separator on Windows, so a file name with a colon is tested on Linux and macOS only.");
+
+        // Arrange: a glob that matches an ordinary file and a file whose name contains a colon
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms", "a.yaml")), "Alpha: First\n");
+        var colon = tmpDir.GetFilePath(Path.Combine("config", "terms", "terms:v1.yaml"));
+        File.WriteAllText(colon, "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms/*.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the matched file is denied by its full path and the job writes nothing
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('out.md'): file-access-denied: '{colon}': it contains a colon", err);
+        Assert.False(File.Exists(tmpDir.GetFilePath(Path.Combine("config", "out.md"))));
+    }
+
+    /// <summary>
+    ///     Test that an output whose <c>${VAR}</c> expands to a never-accessed path is denied by its expanded text and
+    ///     reported as written, and nothing is written.
+    /// </summary>
+    /// <param name="value">The value of the variable.</param>
+    /// <param name="reason">The expected reason.</param>
+    [Theory]
+    [InlineData("//nonexistent.invalid/share", "it is a UNC or network path, which is never accessed")]
+    [InlineData("a:b", "it contains a colon other than the drive of an absolute path on Windows, which is never accessed")]
+    public void DictionaryGenerator_GenerateJob_OutputVariableExpandingToNeverAccessed_Denied(string value, string reason)
+    {
+        // Arrange: an output named through a variable
+        const string Name = "DICTIONARYMARK_GENERATOR_TEST";
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: a.yaml\n    output: ${" + Name + "}/out.md\n");
+        Environment.SetEnvironmentVariable(Name, value);
+        try
+        {
+            // Act
+            var (_, err, exitCode) = Run("--config", config);
+
+            // Assert: the expanded text is judged, the message shows the path as written, and nothing is written
+            Assert.Equal(1, exitCode);
+            Assert.Contains(
+                "Error: table job 1 ('${" + Name + "}/out.md'): file-access-denied: '${" + Name + "}/out.md': " + reason,
+                err);
+            Assert.Equal(
+                ["a.yaml", "dictionarymark.yaml"],
+                Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(config)!).Select(Path.GetFileName).Order());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Name, null);
+        }
     }
 
     /// <summary>Test that a command-line input outside the allowed folders is read (command-line paths are trusted).</summary>

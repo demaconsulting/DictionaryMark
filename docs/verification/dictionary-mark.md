@@ -268,8 +268,8 @@ is denied. These scenarios are tested by
 `DictionaryMark_FileAccess_RootsDefaultFolders_OtherFolderDenied`.
 
 **FileAccessJudgedPaths**: Command-line `--input`, `--output`, `--log` and `--results` outside the
-allowed folder are used, while a configuration input outside is denied by its matched path. These
-scenarios are tested by `DictionaryMark_FileAccess_CommandLinePathsOutsideFolders_NotJudged` and
+allowed folder are used, while a configuration input outside is denied as written. These scenarios are
+tested by `DictionaryMark_FileAccess_CommandLinePathsOutsideFolders_NotJudged` and
 `DictionaryMark_FileAccess_ConfigInputOutsideFolders_Denied`.
 
 **FileAccessRoots**: Under roots these escapes are denied:
@@ -280,15 +280,18 @@ scenarios are tested by `DictionaryMark_FileAccess_CommandLinePathsOutsideFolder
 - a folder link inside the configuration folder that leads out (judged by its real path, which the
   message names).
 
-Inputs and outputs inside the allowed folders still generate. These scenarios are tested by
-`DictionaryMark_FileAccess_ParentSegmentEscape_Denied`, `DictionaryMark_FileAccess_EnvironmentVariableEscape_Denied`,
-`DictionaryMark_FileAccess_RootKeyDoesNotWiden_Denied`, `DictionaryMark_FileAccess_InputLinkLeadingOut_Denied` and
-`DictionaryMark_FileAccess_InsideFolders_Generated`.
+A glob whose literal folder is outside the allowed folders (`../shared/*.yaml`) is denied as written before
+that folder is listed. Inputs and outputs inside the allowed folders still generate. These scenarios are tested
+by `DictionaryMark_FileAccess_ParentSegmentEscape_Denied`, `DictionaryMark_FileAccess_EnvironmentVariableEscape_Denied`,
+`DictionaryMark_FileAccess_RootKeyDoesNotWiden_Denied`, `DictionaryMark_FileAccess_InputLinkLeadingOut_Denied`,
+`DictionaryMark_FileAccess_RootsGlobFolderOutside_Denied` and `DictionaryMark_FileAccess_InsideFolders_Generated`.
 
 **FileAccessNoSymlinks**: Under no-symlinks an input through a folder link below the configuration
-folder is denied, even when the link stays inside, while a configuration file reached through a link
+folder is denied, even when the link stays inside, and so is a glob whose literal folder is such a link
+(before the folder is listed, naming the folder), while a configuration file reached through a link
 above its folder generates. These scenarios are tested by
-`DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied` and
+`DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied`,
+`DictionaryMark_FileAccess_NoSymlinksGlobThroughLink_Denied` and
 `DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed`.
 
 **FileAccessWrites**: An output outside the allowed folders is denied, and its missing folder is not
@@ -303,11 +306,17 @@ These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_De
 - a URL input and an input written as a UNC path are denied;
 - a device output (`NUL` on Windows, `/dev/null` elsewhere) is denied;
 - an output whose name contains a colon (`out.md:hidden`) is denied on every platform, and nothing is created;
-- a folder at the output path is denied.
+- a folder at the output path is denied;
+- an input or output whose `${VAR}` expands to `//nonexistent.invalid/share` or `a:b` is denied by its expanded
+  text, the message showing it as written, and nothing is created;
+- on Linux and macOS, a file `terms:v1.yaml` matched by a glob is denied with the colon reason (skipped on
+  Windows, where a colon in a file name is a stream separator).
 
 These scenarios are tested by `DictionaryMark_FileAccess_UrlInput_Denied`,
 `DictionaryMark_FileAccess_UncInput_Denied`, `DictionaryMark_FileAccess_DeviceOutput_Denied`,
-`DictionaryMark_FileAccess_ColonOutput_Denied` and `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`.
+`DictionaryMark_FileAccess_ColonOutput_Denied`, `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`,
+`DictionaryMark_FileAccess_VariableExpandingToNeverAccessed_Denied` and
+`DictionaryMark_FileAccess_ColonGlobMatch_Denied`.
 
 **FileAccessConfigOnShare** (supplementary, not requirement evidence): On Windows, a configuration file with
 relative paths, reached through the administrative share `\\localhost\{drive}$`, runs in the default mode

@@ -498,11 +498,15 @@ internal sealed class ConfigFile
     /// </summary>
     /// <remarks>
     ///     The <c>root</c> value only sets the base directory of relative paths; it never grants file access. It is
-    ///     still configuration content, so after <c>${VAR}</c> expansion it is checked against the file-access
-    ///     never-accessed list (URLs, UNC paths written as such, device paths, and colons other than the drive of an
-    ///     absolute path on Windows) before its existence is checked, so that a configuration file cannot make the
-    ///     tool probe a network share or a device. Only the text is checked, so a relative root on a share is
-    ///     resolved.
+    ///     still configuration content, so before its existence is decided it is judged by
+    ///     <see cref="FileAccessPolicy.DescribeNeverAccessedFolder(string, string, out bool)"/>: the never-accessed
+    ///     list on the expanded text (URLs, UNC paths written as such, device paths, and colons other than the drive
+    ///     of an absolute path on Windows) and on the full path (device names), and on Windows a symbolic link or
+    ///     junction on the path, or a real path, that leads to a network location, so that a configuration file
+    ///     cannot make the tool probe a network share or a device. A relative root on a share is resolved. Whether
+    ///     the directory exists is decided from the folder's own open that was judged (on macOS, an open that
+    ///     requires a folder), never from a second by-name probe, so a link or junction whose target is missing, or
+    ///     a file, is reported as a missing directory.
     /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>
@@ -514,20 +518,25 @@ internal sealed class ConfigFile
     /// </exception>
     private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
     {
-        // PathResolver reports every root problem (undefined variable, wildcard, malformed or
-        // overlong path, missing directory) as InvalidOperationException; add the file's context
+        // Resolve the root's full path (PathResolver reports every problem - undefined variable,
+        // wildcard, malformed or overlong path, missing directory - as InvalidOperationException) and
+        // add the file's context
         try
         {
-            // The never-accessed list is checked on the expanded text, before the file system is touched
+            // The never-accessed list is checked on the expanded text and the full path, and the path is
+            // walked for a link to a network location, before the file system is probed for the folder
             var expanded = PathResolver.ExpandEnvironmentVariables(rawRoot, RootKeyDescription);
-            var reason = FileAccessPolicy.DescribeNeverAccessed(expanded);
+            var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
+            var rootPath = PathResolver.ResolvePath(rawRoot, configDirectory, RootKeyDescription);
+            var reason = FileAccessPolicy.DescribeNeverAccessedFolder(expanded, rootPath, out var exists);
             if (reason != null)
             {
                 throw new InvalidOperationException($"{FileAccessDeniedException.ErrorCode}: root '{rawRoot}': {reason}");
             }
 
-            var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
-            return PathResolver.ResolveExistingDirectory(rawRoot, configDirectory, RootKeyDescription);
+            // Existence comes from the open that judged the folder, so no second by-name probe is made (a probe
+            // could reach a different entry than the one judged, or accept a link whose target is missing)
+            return PathResolver.ResolveExistingDirectory(rawRoot, configDirectory, RootKeyDescription, _ => exists);
         }
         catch (InvalidOperationException ex)
         {

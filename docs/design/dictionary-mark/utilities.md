@@ -29,12 +29,23 @@ None of these units depends on any other DictionaryMark subsystem.
 **GlobMatcher.Resolve**: Strictly resolves input patterns against a base directory.
 
 - *Type*: In-process .NET public API
-- *Role*: Provider — `DictionaryGenerator` consumes this to resolve each job's input patterns
+- *Role*: Provider — `DictionaryGenerator` consumes this to resolve the command-line job's input patterns
 - *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` (and
   `Resolve(patterns)`, which uses the working directory) returns the sorted, deduplicated absolute
   paths; every pattern must match. Throws `InvalidOperationException` naming the pattern or path
   when a pattern matches nothing or a variable is undefined.
 - *Constraints*: `..` segments are supported anywhere before the first wildcard.
+
+**GlobMatcher.SplitGlob and MatchUnder**: Split a glob and match it below a judged folder.
+
+- *Type*: In-process .NET API (internal to the Utilities subsystem)
+- *Role*: Provider — `FileAccessPolicy.ResolvePattern` consumes these for configuration-file patterns
+- *Contract*: `SplitGlob(pattern)` returns the literal folder text and the wildcard remainder (pure text).
+  `MatchUnder(folder, pattern, checkLinkFolder)` returns the matched files as `GlobMatch(FullPath,
+  RelativePath)`; it lists the folder with no existence probe and calls `checkLinkFolder` with the full path
+  of every symbolic link or junction folder before listing it (true lists it, false lists nothing, an
+  exception propagates).
+- *Constraints*: A `..` segment cannot climb above the listed folder.
 
 **PathResolver**: Resolves user-supplied paths against a base directory.
 
@@ -43,7 +54,8 @@ None of these units depends on any other DictionaryMark subsystem.
 - *Contract*: `ExpandEnvironmentVariables(path, description)`, `Combine(path, baseDirectory,
   description)` (rooted, not normalized; for globs), `ResolvePath(path, baseDirectory,
   description)` (rooted and normalized; for literal paths) and `ResolveExistingDirectory(path,
-  baseDirectory, description)` (for root directories; rejects wildcards and missing directories).
+  baseDirectory, description[, directoryExists])` (for root directories; rejects wildcards and missing
+  directories, with existence told by `Directory.Exists` or by a check the caller supplies).
   Throws `InvalidOperationException` with a message naming the description and path.
 - *Constraints*: Only the path argument is expanded, never the base directory. Absolute paths
   ignore the base directory.
@@ -72,23 +84,30 @@ None of these units depends on any other DictionaryMark subsystem.
 **FileAccessPolicy**: Judges and performs configuration-file reads and writes.
 
 - *Type*: In-process .NET public API
-- *Role*: Provider — `Context` builds it, `ConfigFile` uses its never-accessed text check for the
-  `root` key, and `DictionaryGenerator` reads and writes every configuration-file path through it
+- *Role*: Provider — `Context` builds it, `ConfigFile` uses its folder check for the `root` key, and
+  `DictionaryGenerator` resolves, reads and writes every configuration-file path through it
 - *Contract*: `ParseMode(text)` (throws `ArgumentException` listing the modes), `Create(mode,
   allowedFolders, trustedBase)`, `DescribeNeverAccessed(path)` (a reason or null),
-  `CheckPattern(written, expanded, rooted)`, `ReadAllText(written, fullPath)` and
-  `WriteAllText(written, fullPath, content)`. A denial throws `FileAccessDeniedException`, whose message
-  starts with `file-access-denied`; input and output failures propagate as `IOException` or
-  `UnauthorizedAccessException`.
-- *Constraints*: Immutable and thread-safe. Restrictive modes deny a file whose real path is unknown. A
-  write never truncates before the opened handle is verified.
+  `DescribeNeverAccessedFolder(expanded, fullPath, out exists)` (a reason or null, and whether the folder
+  exists from its one judged open), `ResolvePattern(written, expanded,
+  rooted)` (a list of `JudgedPath`), `ReadAllText(JudgedPath)` and `WriteAllText(JudgedPath, content)`. A
+  `JudgedPath` carries the path as written (shown in messages), after `${VAR}` expansion (judged by the text
+  rules) and in full (judged by the full-path and real-path rules). A denial throws
+  `FileAccessDeniedException`, whose message starts with `file-access-denied`; input and output failures
+  propagate as `IOException` or `UnauthorizedAccessException`.
+- *Constraints*: Immutable and thread-safe. Every path is judged before any operation touches it, and the
+  file system is then touched only through handles whose facts are judged first. Restrictive modes deny a
+  file whose real path is unknown. A write never truncates before the opened handle is verified.
 
 **RealPath**: Platform facts about paths and open handles.
 
 - *Type*: In-process .NET API (internal to the Utilities subsystem)
-- *Role*: Provider — only `FileAccessPolicy` consumes it
+- *Role*: Provider — `FileAccessPolicy` consumes it, and `GlobMatcher` uses `IsLink`
 - *Contract*: `OpenForRead`, `TryOpenExistingForWrite`, `CreateNewForWrite`, `Inspect` (returns
-  `HandleFacts(IsRegularFile, FinalPath)`, never throws), `TryGetCanonicalDirectory`, `ExpandShortNames`,
+  `HandleFacts(IsRegularFile, FinalPath)`, never throws), `InspectPath` (returns `PathFacts(State,
+  IsDirectory, FinalPath)` from a handle (Windows, Linux) or `realpath(3)` (macOS), never throws),
+  `InspectFolder` (the same facts from one open of a folder; on macOS with `O_DIRECTORY`, never throws),
+  `TryGetCanonicalDirectory`, `ExpandShortNames`,
   and the comparison and classification helpers `PathsEqual`, `IsUnder`, `CommonAncestor`,
   `IsWindowsDeviceName`, `IsWindowsDeviceNamespace`, `IsNetworkLocation` and `IsLink`, and the link
   helpers `ReadLinkTarget` and `FindNetworkLinkTarget` (a Windows walk that finds a link to a network
@@ -129,5 +148,8 @@ asks `RealPath.Inspect` for the real path and type of the open handle, compares 
 allowed folders and the trusted anchor using `RealPath`'s comparison rules, and only then reads or writes
 through the same handle. Keeping the native code in `RealPath` lets the policy rules be tested on every
 platform with an injected handle inspector, and the platform calls be tested on their own platform.
-`FileAccessPolicy` receives paths already resolved by `PathResolver` (through its callers), so it never
-expands variables itself.
+`FileAccessPolicy` receives paths already resolved by `PathResolver` (through its callers), as a
+`JudgedPath` that carries the path as written, after `${VAR}` expansion and in full, so it never expands
+variables itself. For a configuration-file glob it uses `GlobMatcher.SplitGlob` to find the literal folder,
+judges that folder by its text and its handle (`RealPath.InspectPath`) before `GlobMatcher.MatchUnder` lists
+it, and judges every link folder in the `MatchUnder` callback before it is listed.

@@ -80,10 +80,11 @@ internal static class DictionaryGenerator
     ///     so that a failing job never stops the jobs that follow it. Relative inputs and the
     ///     relative output resolve against <see cref="TableJob.BaseDirectory"/>. Missing parent
     ///     directories of the output file are created. When <see cref="TableJob.ArePathsJudged"/> is
-    ///     true (a configuration-file job), every input pattern is judged before matching, every
-    ///     matched file is read through <see cref="Context.FileAccess"/>, and the output is written
-    ///     through it; a denial fails the job before anything is written. The command-line job keeps
-    ///     the direct file-system path, because its paths are trusted.
+    ///     true (a configuration-file job), every input pattern is resolved by <see cref="Context.FileAccess"/>,
+    ///     which judges it and every folder it lists before matching, every resolved file is read through it,
+    ///     and the output is written through it, passing the path as written, after <c>${VAR}</c> expansion
+    ///     and in full; a denial fails the job before anything is written. The command-line job keeps the
+    ///     direct file-system path, because its paths are trusted.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     internal static bool GenerateJob(Context context, TableJob job)
@@ -92,13 +93,14 @@ internal static class DictionaryGenerator
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(job);
 
-        // Resolve input files (strict: every pattern must match), judging configuration-file patterns first
-        IReadOnlyList<string> files;
-        Dictionary<string, string> writtenPaths;
+        // Resolve input files (strict: every pattern must match); configuration-file patterns are resolved by the
+        // file-access policy, which judges every folder before it is listed
+        IReadOnlyList<JudgedPath> inputs;
         try
         {
-            writtenPaths = job.ArePathsJudged ? CheckPatterns(context, job) : [];
-            files = GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory);
+            inputs = job.ArePathsJudged
+                ? ResolveJudgedPatterns(context, job)
+                : [.. GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory).Select(file => new JudgedPath(file, file, file))];
         }
         catch (FileAccessDeniedException ex)
         {
@@ -124,19 +126,20 @@ internal static class DictionaryGenerator
             return false;
         }
 
-        if (files.Count == 0)
+        if (inputs.Count == 0)
         {
             Report(context, job, "No input files found matching the specified patterns.");
             return false;
         }
 
+        var files = inputs.Select(input => input.FullPath).ToList();
         var options = job.Options;
         var deprecatedKind = options.Kind == InputKind.Deprecated;
         var approved = new List<DictionaryEntry>();
         var deprecated = new List<DeprecatedEntry>();
 
         // Load the input files as the selected kind
-        if (!LoadFiles(context, job, files, writtenPaths, deprecatedKind, approved, deprecated))
+        if (!LoadFiles(context, job, inputs, deprecatedKind, approved, deprecated))
         {
             return false;
         }
@@ -181,9 +184,11 @@ internal static class DictionaryGenerator
 
         // Resolve the output path (expanding ${VAR}) against the job's base directory; malformed or
         // overlong paths are reported by the resolver as InvalidOperationException
+        string expanded;
         string fullPath;
         try
         {
+            expanded = PathResolver.ExpandEnvironmentVariables(outputFile, "output path");
             fullPath = PathResolver.ResolvePath(outputFile, job.BaseDirectory, "output path");
         }
         catch (InvalidOperationException ex)
@@ -193,12 +198,13 @@ internal static class DictionaryGenerator
         }
 
         // Create missing parent directories and write the file; configuration-file outputs are
-        // judged and written by the file-access policy, which writes nothing when it denies the path
+        // judged (as written, expanded and in full) and written by the file-access policy, which
+        // writes nothing when it denies the path
         try
         {
             if (job.ArePathsJudged)
             {
-                context.FileAccess.WriteAllText(outputFile, fullPath, output);
+                context.FileAccess.WriteAllText(new JudgedPath(outputFile, expanded, fullPath), output);
                 return true;
             }
 
@@ -235,50 +241,72 @@ internal static class DictionaryGenerator
         context.WriteError(job.Label == null ? $"Error: {text}" : $"Error: {job.Label}: {text}");
 
     /// <summary>
-    ///     Judges every input pattern of a configuration-file job before it is matched.
+    ///     Resolves every input pattern of a configuration-file job through the file-access policy.
     /// </summary>
     /// <remarks>
-    ///     Matching touches the file system, so the never-accessed list (and, under roots, the written-path rule
-    ///     for literal patterns) is applied first. The returned map lets a denial of a literal pattern's file name
-    ///     the pattern as written.
+    ///     The policy judges each pattern, and every folder it lists, before matching, so the file system is never
+    ///     touched through a denied path; a glob that matches nothing fails the job, naming the pattern. Files named
+    ///     by several patterns are kept once, with the judged path of the first literal pattern that names them
+    ///     (so a denial shows that pattern as written), and sorted by full path like
+    ///     <see cref="GlobMatcher.Resolve(IEnumerable{string}, string)"/>.
     /// </remarks>
     /// <param name="context">The context that holds the file-access policy.</param>
     /// <param name="job">The configuration-file job.</param>
-    /// <returns>The pattern as written for each literal pattern's full path.</returns>
-    /// <exception cref="FileAccessDeniedException">Thrown when a pattern is denied.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when a referenced environment variable is undefined.</exception>
-    /// <exception cref="ArgumentException">Thrown when a literal pattern is not a valid path.</exception>
-    private static Dictionary<string, string> CheckPatterns(Context context, TableJob job)
+    /// <returns>The judged paths of the input files, sorted (ordinal, case-insensitive) and deduplicated.</returns>
+    /// <exception cref="FileAccessDeniedException">Thrown when a pattern, or a folder it lists, is denied.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when a referenced environment variable is undefined or a glob matches no files.
+    /// </exception>
+    /// <exception cref="ArgumentException">Thrown when a pattern is empty or not a valid path or glob.</exception>
+    /// <exception cref="IOException">Thrown when a folder cannot be listed.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the system denies listing a folder.</exception>
+    private static List<JudgedPath> ResolveJudgedPatterns(Context context, TableJob job)
     {
-        var writtenPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var resolved = new Dictionary<string, JudgedPath>(StringComparer.OrdinalIgnoreCase);
+        var literals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var pattern in job.InputPatterns)
         {
+            if (string.IsNullOrEmpty(pattern))
+            {
+                throw new ArgumentException("Pattern cannot be null or empty.");
+            }
+
+            // Expand and root the pattern, then let the policy judge and match it
             var expanded = PathResolver.ExpandEnvironmentVariables(pattern, "glossary path");
             var rooted = PathResolver.Combine(pattern, job.BaseDirectory, "glossary path");
-            context.FileAccess.CheckPattern(pattern, expanded, rooted);
-            if (!rooted.Contains('*') && !rooted.Contains('?'))
+            var matches = context.FileAccess.ResolvePattern(pattern, expanded, rooted);
+            if (matches.Count == 0)
             {
-                writtenPaths.TryAdd(Path.GetFullPath(rooted), pattern);
+                throw new InvalidOperationException($"Input pattern '{pattern}' matched no files.");
+            }
+
+            // A literal pattern's judged path replaces a glob's, so a denial names the pattern as written
+            var isLiteral = !rooted.Contains('*') && !rooted.Contains('?');
+            foreach (var match in matches)
+            {
+                if (isLiteral ? literals.Add(match.FullPath) : !resolved.ContainsKey(match.FullPath))
+                {
+                    resolved[match.FullPath] = match;
+                }
             }
         }
 
-        return writtenPaths;
+        return [.. resolved.Values.OrderBy(path => path.FullPath, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>
     ///     Loads files of one kind into the matching list, reporting the first error.
     /// </summary>
     /// <remarks>
-    ///     Files of a configuration-file job are read through the file-access policy, which judges each file by
-    ///     its real path; a denied file fails the job and is never silently skipped. A literal pattern's file is
-    ///     passed with the pattern as written; a file a glob matched is passed with no written path, so the policy
-    ///     applies only its full-path rules (the pattern text was judged before matching) and names it by its full
-    ///     path.
+    ///     Files of a configuration-file job are read through the file-access policy, which judges every form of
+    ///     each file's path and then its handle; a denied file fails the job and is never silently skipped. A
+    ///     literal pattern's file is shown as the pattern as written; a file a glob matched by its full path, and
+    ///     its matched name is judged by the written-text rules too. A missing file or folder of a configuration-file
+    ///     job is reported when its read finds it missing.
     /// </remarks>
     /// <param name="context">The context for the policy and error reporting.</param>
     /// <param name="job">The job whose files are loaded.</param>
-    /// <param name="files">The matched files.</param>
-    /// <param name="writtenPaths">The pattern as written for each literal pattern's full path.</param>
+    /// <param name="inputs">The judged paths of the input files.</param>
     /// <param name="asDeprecated">True to load deprecated-term files.</param>
     /// <param name="approved">The list that receives approved-term entries.</param>
     /// <param name="deprecated">The list that receives deprecated-term entries.</param>
@@ -286,21 +314,20 @@ internal static class DictionaryGenerator
     private static bool LoadFiles(
         Context context,
         TableJob job,
-        IReadOnlyList<string> files,
-        Dictionary<string, string> writtenPaths,
+        IReadOnlyList<JudgedPath> inputs,
         bool asDeprecated,
         List<DictionaryEntry> approved,
         List<DeprecatedEntry> deprecated)
     {
-        foreach (var file in files)
+        foreach (var input in inputs)
         {
+            var file = input.FullPath;
             try
             {
                 if (job.ArePathsJudged)
                 {
-                    // Judge the file and parse the text read from the verified handle; a file a glob matched has no
-                    // text as written (its pattern was judged), so it is judged and named by its full path
-                    var text = context.FileAccess.ReadAllText(writtenPaths.GetValueOrDefault(file), file);
+                    // Judge the file and parse the text read from the verified handle
+                    var text = context.FileAccess.ReadAllText(input);
                     if (asDeprecated)
                     {
                         deprecated.AddRange(YamlDictionaryLoader.LoadDeprecatedText(text, file));
@@ -322,6 +349,16 @@ internal static class DictionaryGenerator
             catch (FileAccessDeniedException ex)
             {
                 Report(context, job, ex.Message);
+                return false;
+            }
+            catch (FileNotFoundException) when (job.ArePathsJudged)
+            {
+                Report(context, job, $"Input file '{file}' was not found.");
+                return false;
+            }
+            catch (DirectoryNotFoundException) when (job.ArePathsJudged)
+            {
+                Report(context, job, $"Input directory '{Path.GetDirectoryName(file)}' was not found (pattern '{input.Shown}').");
                 return false;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
