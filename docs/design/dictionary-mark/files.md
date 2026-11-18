@@ -15,8 +15,9 @@ It contains three units:
 - **FileReferenceResolver** - the engine (`FileReferenceResolver`) with its options (`FileReferenceOptions`), result
   (`FileReference`) and failure reporting (`FileReferenceException`, `FileReferenceFailureKind`): validates the path
   text, builds the candidate, opens the file, has the open handle inspected and the policy asked, and reads from the
-  same handle; it also checks an output path before anything is written (`CheckOutputPath`, the one part added by
-  DictionaryMark); see *FileReferenceResolver Design*
+  same handle; it also checks an output path before anything is written (`CheckOutputPath`) and the text of an input
+  pattern before it is listed (`CheckPatternText`), the two parts added by DictionaryMark; see
+  *FileReferenceResolver Design*
 - **FileAccessPolicy** - the policy (`FileAccessPolicy`) with its request (`FileAccessRequest`) and decision
   (`FileAccessDecision`) and the built-in policies `AllowAll` (`any`), `UnderRoots` (`roots`), `NoSymlinks`
   (`no-symlinks`) and `Combine`; see *FileAccessPolicy Design*
@@ -52,8 +53,9 @@ case counts as inside that root.
 - *Role*: Provider - `DictionaryGenerator` creates one resolver per configuration-file table job
 - *Contract*: `new FileReferenceResolver(new FileReferenceOptions { BaseDirectory, FileAccess })`;
   `Resolve(path)` returns the approved bytes as a `FileReference`, or `null` when no file exists;
-  `CheckOutputPath(path)` returns when the output may be written. Both throw `FileReferenceException` with a
-  `FileReferenceFailureKind` for every refusal.
+  `CheckOutputPath(path)` returns when the output may be written; the static `CheckPatternText(pattern)` returns when
+  an input pattern may be listed. All throw `FileReferenceException` with a `FileReferenceFailureKind` for every
+  refusal.
 - *Constraints*: not thread-safe; one instance per job. Nothing is created or written by the subsystem.
 
 **FileAccessPolicy**: the rule of a run.
@@ -90,6 +92,10 @@ For an output, `CheckOutputPath` applies the same steps in the same order withou
 path is opened and inspected on its handle, and for an output that does not exist yet the real path is the real
 location of its deepest existing folder followed by the rest of the path. It is not free of races: the write that
 follows goes by name.
+
+For an input pattern, `CheckPatternText` applies only the text rules, before the pattern is listed, so a network,
+device or URL-like pattern is refused without contacting any host. Names under local folders may still be listed
+before each match is judged; no content is read until `Resolve` allows it.
 
 The subsystem depends only on the .NET base class library (`System.IO`, `System.Runtime.InteropServices`,
 `System.Collections.Generic`) and on the operating-system calls of the `RealPath` unit; it has no runtime NuGet

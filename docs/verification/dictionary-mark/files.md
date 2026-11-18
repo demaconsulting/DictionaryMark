@@ -69,3 +69,8 @@ rules under the default policy and the policy under a restrictive one, before an
 roots (in a folder that does not exist yet) is allowed, and an output outside them, a network output and a directory are
 refused, with nothing created. This scenario is tested by
 `FilesSubsystem_OutputPaths_NeverListAndPolicyApplyBeforeAnyWrite`.
+
+**FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing**: Validates that an input pattern gets the
+never-list text rules without touching the file system: a local glob passes, a `//host/share` pattern is refused as a
+network path and a URL-like pattern is refused by the colon rule. This scenario is tested by
+`FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing`.

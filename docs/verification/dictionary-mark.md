@@ -240,17 +240,18 @@ This scenario is tested by `DictionaryMark_Root_MissingDirectory_ReturnsError`,
 and `DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob`.
 
 **FileAccess**: The file-access options must confine the inputs and outputs of configuration-file tables: with
-`--allow-root` a table inside the folder is generated while a table whose input or output lies outside it is denied
-with `file-access-denied` and writes nothing; `--file-access no-symlinks` must deny an input reached through a
-directory link; `--file-access roots` alone must allow the working directory and the configuration file's folder; every
-glob match must be judged (a match outside the folder fails its table); the default mode must still refuse never-list
-paths; a denied table must fail alone with exit code 1; command-line paths must never be judged; the configuration
-`root` key must never widen the allowed folders; and every mistake in the options must be a usage error reported
-before any input is read.
-This scenario is tested by `DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs`,
+`--allow-root` a table inside the folder is generated while a table whose input or output lies outside it is denied with
+`file-access-denied` and writes nothing; `--file-access no-symlinks` must deny an input reached through a directory
+link; `--file-access roots` alone must allow the working directory and the configuration file's folder; every glob match
+must be judged (a match outside the folder fails its table); the default mode must still refuse never-list paths, and
+refuse a network input pattern before anything is listed; a denied table must fail alone with exit code 1; command-line
+paths must never be judged; the configuration `root` key must never widen the allowed folders; and every mistake in the
+options must be a usage error reported before any input is read. This scenario is tested by
+`DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs`,
 `DictionaryMark_FileAccess_MistakesAsProcess_AreUsageErrors`,
 `DictionaryMark_FileAccess_NoSymlinksAsProcess_DeniesLinkedConfigInput`,
 `DictionaryMark_FileAccess_DefaultMode_NeverListRefusesConfigPaths`,
+`DictionaryMark_FileAccess_NetworkInputPattern_RefusedBeforeListing`,
 `DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged`,
 `DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitCodeIsOne`,
 `DictionaryMark_FileAccess_RootsWithoutAllowRoot_AllowsWorkingAndConfigFolders`,

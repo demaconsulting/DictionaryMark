@@ -101,18 +101,19 @@ The system has two security boundaries:
 - **Path-traversal prevention for the tool's own files**: caller-supplied file paths are validated by
   `PathHelpers.SafePathCombine` before any file-system operation combines a base directory with an untrusted
   relative path (Utilities subsystem).
-- **File-access confinement for configuration files**: a configuration file may come from an untrusted source, so
-  every input and output its tables name is judged by the file-access policy chosen with `--file-access` and
-  `--allow-root` (Files subsystem). The policy is built before any input is read; every glob match is read through
+- **File-access confinement for configuration files**: a configuration file may come from an untrusted source, so every
+  input and output its tables name is judged by the file-access policy chosen with `--file-access` and `--allow-root`
+  (Files subsystem). The policy is built before any input is read; every glob match is read through
   `FileReferenceResolver`, which decides about the opened file and parses the bytes it judged; every output is checked
   with `CheckOutputPath` before any folder is created. Network, device and alternate-data-stream paths, control
-  characters and non-regular files are refused under every mode, including the default `any`. Paths named on the
-  command line are trusted and never judged. A denial by the file-access mode fails only its table job with
+  characters and non-regular files are refused under every mode, including the default `any`. Paths named on the command
+  line are trusted and never judged. A denial by the file-access mode fails only its table job with
   `file-access-denied`; any other refusal (a never-list path, a non-regular file, an input over 16 MiB) fails only its
-  table job with the ordinary read or write error. Known limits: the write that follows the output check goes by
-  name, so it is not free of races; glob matching enumerates folder and file names (and a literal input checks for
-  existence) before each match is judged, so names outside the allowed folders can be learned and a literal network
-  path may be contacted for that existence check, but no content is read; a hard link cannot be told apart from its
+  table job with the ordinary read or write error. Known limits: the write that follows the output check goes by name,
+  so it is not free of races; each table input pattern is checked against the never list before anything is listed, so a
+  network, device or URL-like pattern is refused without contacting a host, but glob matching under local folders
+  enumerates folder and file names (and a literal input checks for existence) before each match is judged, so names
+  outside the allowed folders can be learned, although no content is read; a hard link cannot be told apart from its
   file; a judged input is limited to 16 MiB; and a root that does not exist when the run starts allows nothing.
 
 ## Data Flow

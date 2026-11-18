@@ -147,3 +147,20 @@ sections:
                   - DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated
                   - DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess
                   - DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne
+
+              - id: DictionaryMark-DictionaryGenerator-FileAccessPatterns
+                title: >-
+                  The DictionaryGenerator shall check every input pattern of a configuration-file table job, rooted
+                  and with variables expanded exactly as it would be listed (and again with its relative segments
+                  collapsed), against the file-access resolver's path-text refusals before any folder is listed, shall
+                  fail only that job with an error naming the pattern and the broken rule when a pattern is refused, and shall
+                  not
+                  check the input patterns of the command-line job.
+                justification: |
+                  A pattern such as //host/share/*.yaml would contact the host while it is listed, before any match
+                  reaches the resolver; refusing it first means no connection is made and no credentials can leak.
+                tests:
+                  - DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing
+                  - "windows@DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing"
+                  - DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing
+                  - DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged

@@ -11,6 +11,7 @@ it names. It is adapted from CanvasNet's `FileReferenceResolver` and comprises s
 - `FileReferenceResolver.Paths.cs` - the text rules that hold under every policy, the candidate, and the configured
   base directory
 - `FileReferenceResolver.Output.cs` - the output-path check (`CheckOutputPath`), added by DictionaryMark
+- `FileReferenceResolver.Patterns.cs` - the input-pattern check (`CheckPatternText`), added by DictionaryMark
 - `FileReferenceOptions.cs` - `FileReferenceOptions` (internal sealed record): base directory, file-access policy and
   byte limit
 - `FileReference.cs` - `FileReference` (internal sealed class): the result
@@ -105,6 +106,10 @@ file; `CheckOutputPath` creates, writes and reads nothing and caches nothing.
   (`RealPathOfMissing`), followed by the network-target rule; (7) `RealPathUnavailable` when the policy needs a real
   path that is unknown; (8) `CheckPolicy`. A failure is turned into its exception exactly as for a read (`Deliver`).
   Without a base directory it throws `InvalidOperationException`.
+- `CheckPatternText(pattern)` (internal static, DictionaryMark addition) - runs the text rules of a read
+  (`ValidateText`) on an input pattern exactly as it would be listed, without touching the file system; wildcards are
+  ordinary characters to these rules. A broken rule throws the `FileReferenceException` a read of that path gets (for
+  example `NetworkPath` for `//host/share/*.yaml`, `InvalidPath` for a colon). It adds no rule.
 
 **Preconditions and postconditions**: the path is untrusted text; on return from `Resolve` the file is a regular file
 that the policy allowed (or the policy needs no real path) and its bytes are within the limit, or `null` was returned
@@ -127,6 +132,10 @@ cancellation raised by the policy passes through unwrapped. Invalid options are 
 - **A link to a share is refused under every policy.** A configuration file reaching the network through a local path
   is never expected; the open itself follows the link and may already contact the share before the check refuses the
   file. A key that is itself a network location (a UNC base directory or a mapped network drive) is exempt.
+- **An input pattern gets the text rules before it is listed.** Listing a pattern such as `//host/share/*.yaml`
+  contacts the host before any match reaches `Resolve`, which on Windows can expose the user's credentials; running
+  the read's own text rules on the pattern first refuses it with no connection. No other check applies to a pattern:
+  each match is still judged by `Resolve`.
 - **An output that does not exist yet is judged by its deepest existing folder.** There is no open file to inspect,
   and the folders below the deepest existing one are created by the write, so the real location of that folder
   decides where the write lands.
@@ -154,6 +163,7 @@ under `no-symlinks` (fail closed).
 
 `DictionaryGenerator` (Dictionary subsystem) creates one resolver per configuration-file table job, with the
 configuration file's folder as the base directory and the run's policy from `Context`, reads every input file the
-job's patterns match with `Resolve`, and checks the job's output with `CheckOutputPath`. The tests in
+job's patterns match with `Resolve`, and checks the job's output with `CheckOutputPath`; before listing a job's
+patterns it checks each with `CheckPatternText`. The tests in
 `test/DemaConsulting.DictionaryMark.Tests/Files/` call it directly and reach the internal hooks constructor through
 the assembly's `InternalsVisibleTo` grant to the test project.

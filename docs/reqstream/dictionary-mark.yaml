@@ -677,7 +677,8 @@ sections:
           The tool shall refuse, in every file-access mode including the default, a configuration-file table input
           or output that names a network location, a device (also a reserved device name on Windows), an alternate
           data stream or a colon outside a Windows drive, a control character, or something other than a regular
-          file.
+          file, and shall refuse a configuration-file table input pattern that breaks one of these text rules before
+          any of its folders is listed.
         justification: |
           Network paths can leak credentials and devices can hang or flood the tool; no configuration file needs
           them, so they are refused even when every local file is allowed.
@@ -685,8 +686,10 @@ sections:
         children:
           - DictionaryMark-Files-AlwaysRefused
           - DictionaryMark-Files-OutputPaths
+          - DictionaryMark-Files-PatternText
         tests:
           - DictionaryMark_FileAccess_DefaultMode_NeverListRefusesConfigPaths
+          - DictionaryMark_FileAccess_NetworkInputPattern_RefusedBeforeListing
 
       - id: DictionaryMark-System-FileAccess-Denial
         title: >-

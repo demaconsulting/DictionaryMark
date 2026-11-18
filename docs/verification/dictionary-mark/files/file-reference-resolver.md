@@ -309,3 +309,21 @@ open fails is refused as `CannotRead`, with the cause kept. This scenario is tes
 **FileReferenceResolver_CheckOutputPath_NoBaseDirectory_ThrowsInvalidOperationException**: Validates that a resolver
 without a base directory cannot check an output path. This scenario is tested by
 `FileReferenceResolver_CheckOutputPath_NoBaseDirectory_ThrowsInvalidOperationException`.
+
+**FileReferenceResolver_CheckPatternText_NullPattern_Throws**: Validates that a null pattern is an argument error.
+This scenario is tested by `FileReferenceResolver_CheckPatternText_NullPattern_Throws`.
+
+**FileReferenceResolver_CheckPatternText_LocalGlob_Passes**: Validates that an ordinary local glob passes the text
+rules. This scenario is tested by `FileReferenceResolver_CheckPatternText_LocalGlob_Passes`.
+
+**FileReferenceResolver_CheckPatternText_ForwardSlashShare_IsNetworkPath**: Validates that a pattern that starts with
+two forward slashes is refused as a network path on every platform. This scenario is tested by
+`FileReferenceResolver_CheckPatternText_ForwardSlashShare_IsNetworkPath`.
+
+**FileReferenceResolver_CheckPatternText_BackslashShareOnWindows_IsNetworkPath**: Validates on Windows that a pattern
+that starts with two backslashes is refused as a network path. This scenario is tested by
+`FileReferenceResolver_CheckPatternText_BackslashShareOnWindows_IsNetworkPath`.
+
+**FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath**: Validates that a URL-like pattern rooted at a
+local folder is refused by the colon rule. This scenario is tested by
+`FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath`.

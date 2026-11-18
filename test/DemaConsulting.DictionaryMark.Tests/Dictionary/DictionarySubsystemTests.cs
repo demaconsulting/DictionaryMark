@@ -209,4 +209,30 @@ public class DictionarySubsystemTests
         Assert.False(File.Exists(Path.Combine(root, "secret.md")));
         Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
     }
+
+    /// <summary>
+    ///     Test that a configuration table whose input pattern names a network share is refused before anything is
+    ///     listed, and the other table still runs.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun()
+    {
+        // Arrange: one table names a share; the other reads a local dictionary
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: \"//dictionarymark-test.invalid/share/*.yaml\"\n    output: share.md\n" +
+            "  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        using var context = Context.Create(["--silent", "--config", config]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert: the refused table wrote nothing; the other table ran; the exit code reports the failure
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(File.Exists(Path.Combine(root, "share.md")));
+        Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+    }
 }

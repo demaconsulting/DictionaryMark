@@ -80,8 +80,9 @@ job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob`.
 
 **DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob**: Verifies that when
-the first job's input pattern contains a null character, the job is reported as an invalid input
-pattern with its label, the exit code is 1, and the second job still writes its output. This
+the first job's input pattern contains a null character, the job is refused by the never-list control-character rule
+before anything is listed (the character shown as `?`), with its label, the exit code is 1, and the second job still
+writes its output. This
 scenario is tested by `DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob`.
 
 **DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob**: Verifies that when the
@@ -161,3 +162,17 @@ other jobs run and the exit code is 1. This scenario is tested by
 
 **DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged**: Test that the command-line job is never judged by the
 file-access policy. This scenario is tested by `DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged`.
+
+**DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing**: Test that a config pattern
+naming a network share with forward slashes is refused by the network-path rule before any folder is listed (not with
+"matched no files"), writes nothing, and the other job still runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing**: Test on Windows that a
+config pattern naming a network share with backslashes is refused before any folder is listed, and the other job still
+runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing**: Test that a URL-like config pattern is refused
+by the colon rule before any folder is listed, with the ordinary error rather than `file-access-denied`, and the other
+job still runs. This scenario is tested by `DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing`.

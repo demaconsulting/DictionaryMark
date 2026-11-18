@@ -138,3 +138,16 @@ sections:
               - DictionaryMark-FileReferenceResolver-OutputPath
             tests:
               - FilesSubsystem_OutputPaths_NeverListAndPolicyApplyBeforeAnyWrite
+
+          - id: DictionaryMark-Files-PatternText
+            title: >-
+              The Files subsystem shall refuse an input pattern by the path-text refusals it applies to a referenced
+              path (a network location, a device path, a colon outside a Windows drive, a control character), before
+              any folder of the pattern is listed and without touching the file system.
+            justification: |
+              A configuration file may name a pattern on a network share; listing it would contact the host and could
+              expose credentials before any match is judged.
+            children:
+              - DictionaryMark-FileReferenceResolver-PatternText
+            tests:
+              - FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing

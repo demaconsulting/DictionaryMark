@@ -38,7 +38,9 @@ N/A - static class with no instance state.
 Processing steps: (0) For a configuration-table job (`job.Index` is set), create one
 `FileReferenceResolver` with `BaseDirectory` = the configuration file's folder (never `--root` or the
 configuration `root` key, so a configuration file cannot move its own trusted origin) and `FileAccess` =
-`context.FileAccess`; the command-line job gets none and is never judged. (1) Resolve input file paths — call `GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
+`context.FileAccess`; the command-line job gets none and is never judged. (0a) For a configuration-table job, check
+each input pattern before anything is listed (`CheckPatterns`). (1) Resolve input file paths — call
+`GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
 return early on `ArgumentException`, `InvalidOperationException`, `IOException`, `UnauthorizedAccessException` or empty
 result. (2) Load entries — with a resolver, read every
 matched file with `resolver.Resolve(file)` (every glob match is judged; nothing is skipped) and call
@@ -57,6 +59,13 @@ directories with
 `Directory.CreateDirectory`, and write via `File.WriteAllText`; otherwise write via `context.WriteLine`. The base
 directory may be a root directory, the configuration file's directory, or the working directory; the generator does
 not distinguish them.
+
+**CheckPatterns** *(private)*: For a configuration-table job, roots each input pattern with
+`PathResolver.Combine(pattern, job.BaseDirectory, "glossary path")` (the path that would be listed) and passes it, and
+its `Path.GetFullPath` form with `.` and `..` collapsed, to `FileReferenceResolver.CheckPatternText`. A
+`FileReferenceException` fails the job with `DescribeRefusal(ex, "Failed to resolve input pattern '{pattern}'")`
+before any folder is listed, so a network, device or URL-like pattern never contacts a host. An undefined `${VAR}` or a
+malformed path is left to `GlobMatcher.Resolve`, which reports it as before. Command-line patterns are not checked.
 
 **DescribeRefusal** *(private)*: Turns a `FileReferenceException` into the error text. A policy denial or a policy
 that cannot be applied (`AccessDenied` or `RealPathUnavailable`) reads
@@ -83,7 +92,11 @@ Error cases:
   `PathTooLongException`) from `GlobMatcher.Resolve`. An `InvalidOperationException` reports
   `"Error: {message}"` (pattern matched no files, file or directory not found, undefined `${VAR}`).
   A path-validation exception reports `"Error: Invalid input pattern: {message}"` (for example a
-  null character or a glob rejected by the globbing library).
+  glob rejected by the globbing library, or a null character in a command-line pattern).
+- **Refused input pattern** — `FileReferenceException` from `CheckPatterns` (a configuration-table pattern that breaks
+  a never-list rule, including a control character); reports
+  `"Error: Failed to resolve input pattern '{pattern}': {message}"` (control characters shown as `?`) before any
+  folder is listed.
 - **I/O or access error resolving input** — `IOException` or `UnauthorizedAccessException` from
   `GlobMatcher.Resolve` (directory enumeration); reports
   `"Error: Failed to resolve input patterns: {message}"`.

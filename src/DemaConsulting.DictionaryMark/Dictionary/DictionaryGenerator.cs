@@ -86,7 +86,9 @@ internal static class DictionaryGenerator
     ///     <see cref="TableJob.Index"/>) is judged by the file-access policy of the context: every
     ///     input file is read through one <see cref="FileReferenceResolver"/> per job, whose base
     ///     directory is the config file's folder, and the output path is checked by the same
-    ///     resolver before anything is created. A denial fails the job with <c>file-access-denied</c>.
+    ///     resolver before anything is created. Before any folder is listed, each of its input patterns is checked
+    ///     against the resolver's never list, so a network or device pattern is refused without contacting a host.
+    ///     A denial fails the job with <c>file-access-denied</c>.
     ///     The command-line job is never judged.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
@@ -95,6 +97,12 @@ internal static class DictionaryGenerator
         // Validate input
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(job);
+
+        // A config-file table job's patterns are checked against the never list before any folder is listed
+        if (job.Index != null && !CheckPatterns(context, job))
+        {
+            return false;
+        }
 
         // Resolve input files (strict: every pattern must match)
         IReadOnlyList<string> files;
@@ -244,6 +252,46 @@ internal static class DictionaryGenerator
     /// <param name="text">The error text without the <c>Error:</c> prefix.</param>
     private static void Report(Context context, TableJob job, string text) =>
         context.WriteError(job.Label == null ? $"Error: {text}" : $"Error: {job.Label}: {text}");
+
+    /// <summary>
+    ///     Checks the input patterns of a config-file table job against the resolver's never list before any folder is
+    ///     listed.
+    /// </summary>
+    /// <remarks>
+    ///     Each pattern is checked as it would be listed: with <c>${VAR}</c> references expanded and rooted at the
+    ///     job's base directory, and again with <c>.</c> and <c>..</c> segments collapsed. A pattern that names a
+    ///     network share, a device path or a path with a colon therefore fails the job without contacting any host.
+    ///     Problems other than a never-list rule (an undefined variable, a malformed path) are left to the pattern
+    ///     resolution that follows, which reports them as before.
+    /// </remarks>
+    /// <param name="context">The context used for error reporting.</param>
+    /// <param name="job">The config-file table job.</param>
+    /// <returns><see langword="true"/> when every pattern passes; <see langword="false"/> when one is refused.</returns>
+    private static bool CheckPatterns(Context context, TableJob job)
+    {
+        foreach (var pattern in job.InputPatterns)
+        {
+            try
+            {
+                // The rooted pattern as written, then with its relative segments collapsed
+                var expanded = PathResolver.Combine(pattern, job.BaseDirectory, "glossary path");
+                FileReferenceResolver.CheckPatternText(expanded);
+                FileReferenceResolver.CheckPatternText(Path.GetFullPath(expanded));
+            }
+            catch (FileReferenceException ex)
+            {
+                var shown = FileReferenceException.Printable(pattern);
+                Report(context, job, DescribeRefusal(ex, $"Failed to resolve input pattern '{shown}'"));
+                return false;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || PathResolver.IsInvalidPathException(ex))
+            {
+                // Not a never-list problem: the pattern resolution that follows reports it
+            }
+        }
+
+        return true;
+    }
 
     /// <summary>
     ///     Describes a refusal of the file-access resolver: a policy denial (or a policy that cannot be

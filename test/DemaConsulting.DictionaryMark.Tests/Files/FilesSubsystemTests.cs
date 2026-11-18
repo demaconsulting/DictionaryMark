@@ -260,4 +260,28 @@ public class FilesSubsystemTests
         Assert.Equal(FileReferenceFailureKind.NetworkPath, network.Kind);
         Assert.Equal(FileReferenceFailureKind.NotARegularFile, folder.Kind);
     }
+
+    /// <summary>
+    ///     Validates that the subsystem refuses an input pattern by the never list without touching the file system: a
+    ///     network pattern and a URL-like pattern are refused with the kinds a read gets, and a local glob passes.
+    /// </summary>
+    [Fact]
+    public void FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing()
+    {
+        // Arrange
+        using var directory = new SandboxTempDirectory();
+        var local = Path.Combine(directory.Combine("root"), "*.yaml");
+        var url = Path.Combine(directory.Combine("root"), "https://dictionarymark-test.invalid/*.yaml");
+
+        // Act
+        var localError = Record.Exception(() => FileReferenceResolver.CheckPatternText(local));
+        var network = Assert.Throws<FileReferenceException>(
+            () => FileReferenceResolver.CheckPatternText("//dictionarymark-test.invalid/share/*.yaml"));
+        var colon = Assert.Throws<FileReferenceException>(() => FileReferenceResolver.CheckPatternText(url));
+
+        // Assert
+        Assert.Null(localError);
+        Assert.Equal(FileReferenceFailureKind.NetworkPath, network.Kind);
+        Assert.Equal(FileReferenceFailureKind.InvalidPath, colon.Kind);
+    }
 }

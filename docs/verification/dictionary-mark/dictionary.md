@@ -70,3 +70,8 @@ This scenario is tested by `DictionarySubsystem_Generation_MultipleJobs_Generate
 judges config-file table inputs and outputs by the file-access policy: a table whose input lies outside the allowed
 folder fails with file-access-denied, while the other tables still generate their output. This scenario is tested by
 `DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun`.
+
+**DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun**: Test that a configuration table whose input
+pattern names a network share is refused before anything is listed and writes nothing, while the other table still
+generates its output and the exit code is 1. This scenario is tested by
+`DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun`.

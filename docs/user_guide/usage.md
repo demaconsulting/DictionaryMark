@@ -399,9 +399,10 @@ Known limits:
 - A hard link cannot be told apart from the file it links to, so `no-symlinks` does not refuse it.
 - The output check is not race-proof: the write that follows goes by name, so a link swapped in between the check and
   the write is not caught.
-- Glob matching lists folders and checks that literal inputs exist before each match is judged, so file names outside
-  the allowed folders can be learned (and a literal network path may be contacted for that check); no content of such
-  a file is read.
+- A configuration input pattern is checked against the rules that apply under every mode before anything is listed,
+  so a network or URL-like pattern (such as `//host/share/*.yaml`) is refused without contacting the host. Under local
+  folders, glob matching lists folders and checks that literal inputs exist before each match is judged, so file names
+  outside the allowed folders can still be learned; no content of such a file is read.
 - The real location of each allowed folder is captured when the run starts; a folder that does not exist then allows
   nothing, even if a table creates it.
 - Paths are compared case-insensitively on Windows and macOS; on a case-sensitive volume, a sibling folder whose name

@@ -236,3 +236,19 @@ sections:
                   - "windows@FileReferenceResolver_CheckOutputPath_ParentOnNetworkShare_IsNetworkPath"
                   - FileReferenceResolver_CheckOutputPath_ExistingFileOpenFailure_IsCannotRead
                   - FileReferenceResolver_CheckOutputPath_NoBaseDirectory_ThrowsInvalidOperationException
+
+              - id: DictionaryMark-FileReferenceResolver-PatternText
+                title: >-
+                  The FileReferenceResolver class shall check the text of an input pattern against its path-text
+                  refusals (the never list) without touching the file system, refusing a pattern that is empty,
+                  contains a control character, names a network location or a device path, or carries a colon outside
+                  a Windows drive, with the same failure kind and reason a read of that path gets.
+                justification: |
+                  Listing the folders of a network pattern contacts the host before any match can be judged, which on
+                  Windows can expose the user's credentials; the read's own text rules refuse it first.
+                tests:
+                  - FileReferenceResolver_CheckPatternText_NullPattern_Throws
+                  - FileReferenceResolver_CheckPatternText_LocalGlob_Passes
+                  - FileReferenceResolver_CheckPatternText_ForwardSlashShare_IsNetworkPath
+                  - "windows@FileReferenceResolver_CheckPatternText_BackslashShareOnWindows_IsNetworkPath"
+                  - FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath

@@ -380,9 +380,10 @@ A table whose input or output the file-access mode denies fails with `file-acces
 the rules above (or names a file over 16 MiB) fails with the ordinary `Failed to read file` or
 `Failed to write output file` error, which names the rule. Either way the table writes nothing, the other tables still
 run, and the exit code is non-zero. Known limits: a hard link cannot be told apart from its file; the output check is
-not race-proof (the write follows by name); glob matching can reveal file names (and check a literal network path)
-outside the allowed folders before the match is refused, although no content is read; and an `--allow-root` folder
-must exist when the run starts.
+not race-proof (the write follows by name); a configuration input pattern that breaks one of the rules above (such as
+a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but glob matching under
+local folders can reveal file names outside the allowed folders before the match is refused, although no content is
+read; and an `--allow-root` folder must exist when the run starts.
 See the User Guide for details.
 
 ### Conflicts

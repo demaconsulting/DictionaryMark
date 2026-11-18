@@ -367,9 +367,10 @@ public class DictionaryGeneratorTests
         // Act
         var (_, err, exitCode) = Run("--config", config);
 
-        // Assert: the first job is reported as an invalid input pattern; the second job still wrote its output
+        // Assert: the never list refuses the control character before anything is listed; the second job still ran
         Assert.Equal(1, exitCode);
-        Assert.Contains("Error: table job 1 ('a.md'): Invalid input pattern:", err);
+        Assert.Contains("Error: table job 1 ('a.md'): Failed to resolve input pattern 'bad?name.yaml': The path '", err);
+        Assert.Contains("is not allowed: the path contains a control character.", err);
         Assert.Contains("Error: 1 of 2 table jobs failed.", err);
         Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
     }
@@ -747,5 +748,102 @@ public class DictionaryGeneratorTests
         Assert.Equal(0, exitCode);
         Assert.Equal(string.Empty, err);
         Assert.Contains("- **Alpha**: First", File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that a config pattern naming a network share with forward slashes is refused before any folder is listed:
+    ///     the job fails with the network-path rule (not "matched no files"), and the other job still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing()
+    {
+        // Arrange: on every platform the resolver's text rules treat a leading "//" as a network path
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: \"//dictionarymark-test.invalid/share/*.yaml\"\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: refused by the never list, so the share was never listed; the other job wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern '//dictionarymark-test.invalid/share/*.yaml': " +
+            "The path '//dictionarymark-test.invalid/share/*.yaml' is not allowed: network paths are not permitted.",
+            err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Windows a config pattern naming a network share with backslashes is refused before any folder is
+    ///     listed, and the other job still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing()
+    {
+        // A backslash is an ordinary file-name character on Linux and macOS, so only Windows reads this as a share
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: '\\\\dictionarymark-test.invalid\\share\\*.yaml'\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern '\\\\dictionarymark-test.invalid\\share\\*.yaml': ",
+            err);
+        Assert.Contains("is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that a URL-like config pattern is refused by the colon rule before any folder is listed, and the other job
+    ///     still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: \"https://dictionarymark-test.invalid/terms/*.yaml\"\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern 'https://dictionarymark-test.invalid/terms/*.yaml': ",
+            err);
+        Assert.Contains("is not allowed: the path contains a colon.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.DoesNotContain("file-access-denied", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
     }
 }

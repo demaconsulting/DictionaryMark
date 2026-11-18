@@ -1325,6 +1325,34 @@ public class IntegrationTests
         }
     }
 
+    /// <summary>
+    ///     Test that a configuration input pattern naming a network share is refused before anything is listed under the
+    ///     default mode, and the other table still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_NetworkInputPattern_RefusedBeforeListing()
+    {
+        // Arrange: one table names a share; the other reads a local dictionary
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(
+            tmpDir,
+            "config/dictionarymark.yaml",
+            "tables:\n  - input: \"//dictionarymark-test.invalid/share/*.yaml\"\n    output: share.md\n" +
+            "  - input: terms.yaml\n    output: terms.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert: refused by the network-path rule, not by an empty listing; the other table ran
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to resolve input pattern '//dictionarymark-test.invalid/share/*.yaml'", output);
+        Assert.Contains("is not allowed: network paths are not permitted.", output);
+        Assert.DoesNotContain("matched no files", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/share.md")));
+        Assert.True(File.Exists(PathIn(tmpDir, "config/terms.md")));
+    }
+
     /// <summary>Test that inputs and outputs named on the command line are never judged by the file-access policy.</summary>
     [Fact]
     public void DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged()
