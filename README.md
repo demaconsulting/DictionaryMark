@@ -17,13 +17,17 @@
 DictionaryMark is a .NET command-line tool that reads YAML dictionary files and generates
 formatted Markdown output as either bullet lists or tables. It supports glob patterns for
 processing multiple files, detects conflicting definitions, and is designed for easy
-integration into documentation pipelines.
+integration into documentation pipelines. A YAML configuration file can hold the formatting defaults,
+including relative table column widths, and several table jobs, so one run produces every table.
 
 The workflow below shows how to use it: author YAML dictionary files, run `dictionarymark` from a
-shell or CI pipeline, and use the generated Markdown in your documents and documentation pipeline.
+shell or CI pipeline with `--input` and `--format` options or a `--config` file of table jobs, and
+use the one or more generated Markdown bullet lists or tables in your documents and documentation
+pipeline.
 
-![DictionaryMark workflow: author YAML dictionary files, run dictionarymark with --input, --format and header
-options, get a Markdown bullet list or table, then embed it in documents, a docs pipeline or a CI
+![DictionaryMark workflow: author YAML dictionary files with simple or rich entries or deprecated terms, run
+dictionarymark with --input and --format options or a --config file of table jobs, get one or more Markdown
+bullet lists or tables, then embed them in documents, a docs pipeline or a CI
 gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/workflow.png)
 
 ## Features

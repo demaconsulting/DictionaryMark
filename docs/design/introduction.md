@@ -43,7 +43,8 @@ checks for conflicts, and formats the Markdown output. An optional YAML configur
 the Cli subsystem, can supply formatting defaults, a root directory and several table jobs.
 
 ![DictionaryMark architecture: the dictionarymark command drives Program, which uses the Cli, SelfTest,
-Utilities and Dictionary subsystems to turn YAML files into a Markdown bullet list or table](architecture.svg)
+Utilities and Dictionary subsystems to turn YAML dictionary files, and an optional YAML configuration file of
+table jobs, into one or more Markdown bullet lists or tables](architecture.svg)
 
 ## Folder Layout
 

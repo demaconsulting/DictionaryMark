@@ -21,7 +21,7 @@
     <RepositoryUrl>https://github.com/demaconsulting/DictionaryMark</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>Icon.png</PackageIcon>
-    <PackageTags>dictionary;markdown;dotnet-tool</PackageTags>
+    <PackageTags>dictionary;markdown;dotnet-tool;yaml;glossary;documentation</PackageTags>
     <Copyright>Copyright DEMA Consulting</Copyright>
     <Title>DictionaryMark</Title>
     <Product>DemaConsulting.DictionaryMark</Product>
