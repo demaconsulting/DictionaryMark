@@ -225,9 +225,9 @@ internal abstract partial class FileAccessPolicy
         ///     Determines whether a path as written lies inside a root, in the root's written or real spelling.
         /// </summary>
         /// <remarks>
-        ///     The written path is compared under <see cref="RealPath.PathComparison"/> (case-insensitive on Windows and
-        ///     macOS). That is only a pre-filter that keeps a file clearly outside every root from being opened: the
-        ///     real path, compared exactly in stored case, is what decides.
+        ///     The written path is compared with <see cref="RealPath.IsUnder(string, string)"/> (case-insensitive on
+        ///     Windows and macOS). That is only a pre-filter that keeps a file clearly outside every root from being
+        ///     opened: the real path, compared exactly in stored case, is what decides.
         /// </remarks>
         /// <param name="path">The full path as written.</param>
         /// <param name="longPath">

@@ -90,6 +90,16 @@ below its separator but not a sibling that shares its name as a prefix, trailing
 deepest shared folder is found by whole components. This scenario is tested by
 `RealPath_IsUnder_BoundaryIsTheSeparator`.
 
+**RealPath_KeyComparer_PathsDifferingOnlyInCase_AreSeparateKeys**: Validates on path strings, without touching the
+disk, that `.../Allowed/a.txt` and `.../allowed/a.txt` are not equal under the cache key comparer and are two entries
+of a dictionary keyed with it, each with its own value, on every platform. This scenario is tested by
+`RealPath_KeyComparer_PathsDifferingOnlyInCase_AreSeparateKeys`.
+
+**RealPath_CommonAncestor_ComponentsDifferingOnlyInCase_AreNotShared**: Validates on path strings, without touching the
+disk, that the deepest folder shared by `.../allowed/a.txt` and the base `.../Allowed` is their parent, while
+`.../Allowed/a.txt` shares the base itself. This scenario is tested by
+`RealPath_CommonAncestor_ComponentsDifferingOnlyInCase_AreNotShared`.
+
 **RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly**: Validates on stored-case path strings, without touching
 the disk, that real paths are compared exactly on every platform: `C:\work\ALLOWED\x` is outside `C:\work\allowed` and
 `C:\work\allowed\x` is inside it (Windows), with the same for `/work/ALLOWED/x` and `/work/allowed` elsewhere; the

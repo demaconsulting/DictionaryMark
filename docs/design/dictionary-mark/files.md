@@ -45,7 +45,9 @@ Letter case: a path as written is compared case-insensitively on Windows and mac
 open. The real path decides: it and each root (or the expected path of `no-symlinks`) are brought to the letter case
 stored on disk and compared exactly on every platform, so a sibling folder whose name differs from a root only in
 letter case is outside that root on a case-sensitive folder, and a root named in another letter case on a
-case-insensitive folder still contains its files. No case sensitivity is detected.
+case-insensitive folder still contains its files. Every cache keyed by a path (the resolver's outcomes and captured
+folder locations) compares exactly on every platform, so two paths that differ only in letter case never share an
+entry. No case sensitivity is detected.
 
 ### Interfaces
 

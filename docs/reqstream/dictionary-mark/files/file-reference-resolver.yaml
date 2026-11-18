@@ -178,12 +178,19 @@ sections:
                 title: >-
                   The FileReferenceResolver class shall open each distinct path at most once per instance,
                   remembering a miss and a failure as well as a file, shall return the same file instance for every
-                  spelling of one path, and shall not read a file again after it changed.
+                  spelling of one path that has the same full path, shall keep paths and trusted folders that differ
+                  only in letter case as separate cache entries on every platform, and shall not read a file again
+                  after it changed.
                 justification: |
                   Repeated reads would multiply the cost of a hostile input and let a file change between two reads
-                  of one operation.
+                  of one operation. Whether a folder is case-sensitive cannot be told, so two paths that differ only
+                  in letter case may be two files; sharing an entry would let one reuse the other's bytes or captured
+                  folder location.
                 tests:
                   - FileReferenceResolver_Resolve_SameFileTwice_IsOpenedOnceAndReturnsTheSameInstance
+                  - FileReferenceResolver_Resolve_SpellingsDifferingOnlyInCase_AreSeparateCacheEntries
+                  - "ubuntu@FileReferenceResolver_Resolve_FilesDifferingOnlyInCase_AreReadSeparatelyWhereTheFolderIsCaseSensitive"
+                  - FileReferenceResolver_Resolve_AnchorsDifferingOnlyInCase_AreCapturedSeparately
 
               - id: DictionaryMark-FileReferenceResolver-Failures
                 title: >-

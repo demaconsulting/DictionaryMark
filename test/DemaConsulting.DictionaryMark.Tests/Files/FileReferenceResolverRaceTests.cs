@@ -65,7 +65,7 @@ public class FileReferenceResolverRaceTests
         // Assert: allowed with the bytes of the opened file, whose real path followed it; by name it is now outside
         Assert.NotNull(file);
         Assert.Equal("inside", Encoding.UTF8.GetString(file.Content.Span));
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Combine("root/kept")), "a.txt"), file.RealPath!));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Combine("root/kept")), "a.txt"), file.RealPath!));
         Assert.Equal("outside", File.ReadAllText(directory.Combine("root/sub/a.txt")));
     }
 
@@ -104,7 +104,7 @@ public class FileReferenceResolverRaceTests
         // Assert: the open reached the outside file, and the check refused it
         Assert.Equal(FileReferenceFailureKind.AccessDenied, ex.Kind);
         Assert.Equal(noSymlinks ? "no-symlinks" : "roots", ex.PolicyName);
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "a.txt"), ex.RealPath!));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "a.txt"), ex.RealPath!));
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public class FileReferenceResolverRaceTests
         // Assert: denied on the real path of the handle, which is the outside file
         Assert.Equal(FileReferenceFailureKind.AccessDenied, ex.Kind);
         Assert.Equal("its real path is outside the allowed roots", ex.Reason);
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "a.txt"), ex.RealPath!));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "a.txt"), ex.RealPath!));
         Assert.Equal("benign", File.ReadAllText(directory.Combine("root/sub/a.txt")));
     }
 

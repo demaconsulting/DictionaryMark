@@ -101,17 +101,21 @@ sections:
               - id: DictionaryMark-RealPath-Comparison
                 title: >-
                   The RealPath unit shall compare real paths exactly (ordinal) on every platform and paths as written
-                  under the platform's rule (case-insensitive on Windows and macOS, exact elsewhere), treating a folder
-                  as containing itself and what lies below its separator but not a sibling that shares its name as a
-                  prefix nor a folder whose name differs only in letter case, ignoring trailing separators, and finding
-                  the deepest folder two paths share by whole components.
+                  for the pre-filter under the platform's rule (case-insensitive on Windows and macOS, exact
+                  elsewhere), treating a folder as containing itself and what lies below its separator but not a
+                  sibling that shares its name as a prefix nor a folder whose name differs only in letter case,
+                  ignoring trailing separators, finding the deepest folder two paths share by whole components
+                  compared exactly, and keying every path cache exactly (ordinal) on every platform.
                 justification: |
                   Every containment decision of the policies rests on these rules; a prefix match on text would let a
                   sibling folder pass. Whether a folder is case-sensitive cannot be told reliably on any platform, so
-                  the real path that decides must be compared exactly; the written path is only a pre-filter.
+                  the real path that decides, the trusted folder of no-symlinks and every cache key must be compared
+                  exactly; the written path is only a pre-filter.
                 tests:
                   - RealPath_IsUnder_BoundaryIsTheSeparator
                   - RealPath_IsUnderExactly_StoredCasePaths_AreComparedExactly
+                  - RealPath_KeyComparer_PathsDifferingOnlyInCase_AreSeparateKeys
+                  - RealPath_CommonAncestor_ComponentsDifferingOnlyInCase_AreNotShared
 
               - id: DictionaryMark-RealPath-ExactCase
                 title: >-

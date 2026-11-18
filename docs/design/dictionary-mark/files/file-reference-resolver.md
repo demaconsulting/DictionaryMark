@@ -57,9 +57,13 @@ because the code analysis requires exceptions to be public; every other type of 
 
 **`FileReferenceResolver`** is created for one operation (one table job) with the options and (internally) the
 `FileOpenHooks` test seams. It holds the outcome of every key that was looked up (a file, a remembered failure, or a
-miss) and the real location of every trusted folder a policy compares against, captured on first use. **It is not
-thread-safe**: one instance per operation. A candidate (private record `Candidate`) carries its `Key` and its `Origin`
-(the base directory).
+miss) and the real location of every trusted folder a policy compares against, captured on first use. Both caches,
+and the anchor locations of each pre-open snapshot, are keyed by the path as written compared exactly
+(`RealPath.KeyComparer`, ordinal on every platform), because whether a folder is case-sensitive cannot be told: on a
+case-sensitive folder `.../Allowed/a.txt` and `.../allowed/a.txt` are two files and never share an entry, and on a
+case-insensitive folder another spelling of the same file is only an extra entry, opened and judged on its own.
+**It is not thread-safe**: one instance per operation. A candidate (private record `Candidate`) carries its `Key` and
+its `Origin` (the base directory).
 
 **Invariants**: no byte of a file is read before the policy (when it needs the real path) allowed the open handle; the
 bytes come from the handle the policy was asked about; a key is opened at most once per instance except after a

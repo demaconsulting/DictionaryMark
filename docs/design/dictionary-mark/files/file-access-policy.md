@@ -81,8 +81,10 @@ other code, with no open in progress) is evaluated by resolving now.
   case-sensitive folder `C:\work\ALLOWED\x` is outside the root `C:\work\allowed`, while a root given in another
   letter case on a case-insensitive folder still contains its files.
 - `NoSymlinks.Check` - the anchor is `RealPath.CommonAncestor(RequestedPath, BaseDirectory)` (the drive root when they
-  share none); the anchor and everything above it are trusted. The expected real path is the anchor's real location
-  from the snapshot joined with the written path below the anchor; the expected and the real path are both brought to
+  share none), whose components are compared exactly, so a folder that differs from the base directory only in letter
+  case is never trusted; the anchor and everything above it are trusted. The expected real path is the anchor's real
+  location from the snapshot (looked up by the anchor compared exactly) joined with the written path below the anchor;
+  the expected and the real path are both brought to
   stored case with `RealPath.GetExactPathName`, and the file is allowed when they are equal exactly
   (`RealPath.PathsEqualExactly`), so a path written in another letter case on a case-insensitive folder is not
   mistaken for a link. When they differ and the snapshot's long spelling differs from the written path, the
@@ -104,9 +106,10 @@ request of the built-ins, except when the file system fails while the letter cas
 decision of a policy is handled by the caller (`FileReferenceResolver` denies the file). A root whose stored-case
 spelling cannot be looked up when the policy is created has no captured location and allows no file (fail closed).
 
-**Letter case**: a path as written is compared case-insensitively on Windows and macOS only as a pre-filter; the
-real path decides and is compared exactly in the letter case stored on disk, so no case sensitivity has to be
-detected. The server and share names of a UNC path are compared as spelled. **Known limit (roots fixed at
+**Letter case**: a path as written is compared case-insensitively on Windows and macOS only as a pre-filter
+(`RealPath.IsUnder`); the real path decides and is compared exactly in the letter case stored on disk, so no case
+sensitivity has to be detected. The anchor of `NoSymlinks` and the lookup of its captured location compare exactly.
+The server and share names of a UNC path are compared as spelled. **Known limit (roots fixed at
 creation)**: a root that does not exist when the policy is created (at startup, before any job runs) allows nothing
 for the whole run, even if a job creates it. **Known limit (hard links)**: a hard link cannot be told apart from the
 file itself and is not denied by `NoSymlinks`.

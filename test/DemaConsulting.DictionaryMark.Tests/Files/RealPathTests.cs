@@ -49,7 +49,7 @@ public class RealPathTests
         Assert.True(facts.IsRegularFile);
         Assert.NotNull(facts.FinalPath);
         Assert.True(Path.IsPathFullyQualified(facts.FinalPath));
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Path), "a.txt"), facts.FinalPath));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Path), "a.txt"), facts.FinalPath));
     }
 
     /// <summary>
@@ -68,7 +68,7 @@ public class RealPathTests
         var facts = RealPath.Inspect(handle);
 
         // Assert
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Combine("target")), "a.txt"), facts.FinalPath!));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Combine("target")), "a.txt"), facts.FinalPath!));
     }
 
     /// <summary>
@@ -127,7 +127,7 @@ public class RealPathTests
 
         // Assert
         Assert.True(facts.IsRegularFile);
-        Assert.True(RealPath.PathsEqual(expected, facts.FinalPath!), $"expected '{expected}', got '{facts.FinalPath}'");
+        Assert.True(FileTestSupport.SamePath(expected, facts.FinalPath!), $"expected '{expected}', got '{facts.FinalPath}'");
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public class RealPathTests
         Assert.True(facts.IsRegularFile);
         Assert.NotNull(facts.FinalPath);
         Assert.True(
-            RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Path), "x (deleted)"), facts.FinalPath),
+            FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Path), "x (deleted)"), facts.FinalPath),
             $"got '{facts.FinalPath}'");
     }
 
@@ -273,7 +273,7 @@ public class RealPathTests
 
         // Assert
         Assert.NotNull(viaLink);
-        Assert.True(RealPath.PathsEqual(direct!, viaLink));
+        Assert.True(FileTestSupport.SamePath(direct!, viaLink));
         Assert.EndsWith("target", viaLink, StringComparison.OrdinalIgnoreCase);
         Assert.Null(missing);
     }
@@ -307,7 +307,7 @@ public class RealPathTests
 
             // Assert
             Assert.NotNull(canonical);
-            Assert.True(RealPath.PathsEqual(readable, canonical), $"expected '{readable}', got '{canonical}'");
+            Assert.True(FileTestSupport.SamePath(readable, canonical), $"expected '{readable}', got '{canonical}'");
         }
         finally
         {
@@ -359,9 +359,55 @@ public class RealPathTests
         Assert.True(RealPath.IsUnder(root + separator + "a.txt", root + separator));
         Assert.False(RealPath.IsUnder(root + "-sibling" + separator + "a.txt", root));
         Assert.True(RealPath.IsUnder(root, systemRoot));
-        Assert.True(RealPath.PathsEqual(root + separator, root));
+        Assert.True(RealPath.PathsEqualExactly(root + separator, root));
         Assert.Equal(root, RealPath.CommonAncestor(root + separator + "a" + separator + "x.txt", root + separator + "b"));
         Assert.Equal(Path.GetDirectoryName(root), RealPath.CommonAncestor(root + separator + "a.txt", root + "-sibling" + separator + "b"));
+    }
+
+    /// <summary>
+    ///     Validates that two paths that differ only in letter case are separate keys of every cache keyed by a path, on
+    ///     every platform, so on a case-sensitive folder one file can never reuse the bytes or the captured folder
+    ///     location of the other (pure text, no disk).
+    /// </summary>
+    [Fact]
+    public void RealPath_KeyComparer_PathsDifferingOnlyInCase_AreSeparateKeys()
+    {
+        // Arrange
+        var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "real-path-keys"));
+        var upper = Path.Combine(parent, "Allowed", "a.txt");
+        var lower = Path.Combine(parent, "allowed", "a.txt");
+        var cache = new Dictionary<string, string>(RealPath.KeyComparer);
+
+        // Act
+        cache[upper] = "upper";
+        cache[lower] = "lower";
+
+        // Assert
+        Assert.False(RealPath.KeyComparer.Equals(upper, lower));
+        Assert.Equal(2, cache.Count);
+        Assert.Equal("upper", cache[upper]);
+        Assert.Equal("lower", cache[lower]);
+    }
+
+    /// <summary>
+    ///     Validates that the deepest shared folder is found by components compared exactly on every platform: a folder
+    ///     that differs from the other path's folder only in letter case is not shared, so <c>no-symlinks</c> never
+    ///     trusts a folder the base directory does not name (pure text, no disk).
+    /// </summary>
+    [Fact]
+    public void RealPath_CommonAncestor_ComponentsDifferingOnlyInCase_AreNotShared()
+    {
+        // Arrange
+        var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "real-path-ancestor"));
+        var baseDirectory = Path.Combine(parent, "Allowed");
+
+        // Act
+        var otherCase = RealPath.CommonAncestor(Path.Combine(parent, "allowed", "a.txt"), baseDirectory);
+        var sameCase = RealPath.CommonAncestor(Path.Combine(parent, "Allowed", "a.txt"), baseDirectory);
+
+        // Assert
+        Assert.Equal(parent, otherCase);
+        Assert.Equal(baseDirectory, sameCase);
     }
 
     /// <summary>

@@ -31,12 +31,14 @@ The unit's behavior is specified by the `DictionaryMark-RealPath-*` requirements
 #### Data Model
 
 **`HandleFacts`** (readonly record struct): `IsRegularFile` (`bool?`) and `FinalPath` (`string?`); `null` means the
-platform cannot tell. **`PathComparison`** / **`PathComparer`**: the comparison of paths **as written** -
-`OrdinalIgnoreCase` on Windows and macOS, `Ordinal` elsewhere; used only for the pre-filter of a path as written, the
-caches keyed by written paths, and the folder a reference starts from. Real paths are always compared `Ordinal`, after
-both sides are brought to the letter case stored on disk (`GetExactPathName`), because whether a folder is
-case-sensitive cannot be told reliably (a Windows folder, a macOS volume and a Linux folder can each be either). The
-unit is stateless except for one cached flag in `NativeMethods` that remembers whether the C library exports `fstat`.
+platform cannot tell. **`KeyComparer`**: the comparer of every cache or set keyed by a path in the subsystem (the
+resolver's outcome and folder-location caches and the anchor locations of a pre-open snapshot) - `Ordinal` on every
+platform, so paths that differ only in letter case are never one entry. **`PathComparison`** (private): the comparison
+of the as-written pre-filter `IsUnder` only - `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` elsewhere; it never
+decides and never keys a cache. Real paths are always compared `Ordinal`, after both sides are brought to the letter
+case stored on disk (`GetExactPathName`), because whether a folder is case-sensitive cannot be told reliably (a Windows
+folder, a macOS volume and a Linux folder can each be either). The unit is stateless except for one cached flag in
+`NativeMethods` that remembers whether the C library exports `fstat`.
 
 #### Key Methods
 
@@ -92,11 +94,13 @@ Per system:
 - **Other systems**: `File.OpenHandle` (blocking) and unknown facts; a restrictive policy then fails closed.
 - `NativeMethods.WithDescriptor` is the one place that reads the raw descriptor of a handle (for the C calls and the
   `/proc` link), inside `DangerousAddRef`/`DangerousRelease`, so the descriptor cannot be closed and reused meanwhile.
-- `IsUnder(path, root)`, `PathsEqual`, and `CommonAncestor` implement the comparison rules for paths as written: the
-  separator is the boundary, trailing separators do not matter, and components are compared whole under
-  `PathComparison`. `IsUnderExactly(path, root)` and `PathsEqualExactly` apply the same rules to real paths with an
-  `Ordinal` comparison on every platform (in Unicode composed form on macOS); both arguments must already be in stored
-  case.
+- `IsUnder(path, root)` implements the as-written pre-filter: the separator is the boundary, trailing separators do
+  not matter, and components are compared whole under `PathComparison`. `CommonAncestor` finds the deepest folder two
+  paths share by whole components compared `Ordinal` on every platform, because `no-symlinks` trusts that folder: a
+  component that differs only in letter case is not shared (on a case-insensitive folder this only makes the shared
+  folder shallower, so more of the path is checked). `IsUnderExactly(path, root)` and `PathsEqualExactly` apply the
+  same rules to real paths with an `Ordinal` comparison on every platform (in Unicode composed form on macOS); both
+  arguments must already be in stored case.
 - `GetExactPathName(path)` - a .NET-only helper (no native call) that spells a path in the letter case stored on disk.
   The path is made full (`Path.GetFullPath`); a root keeps its spelling except a drive letter, which is upper-cased
   (`c:\` to `C:\`), so `/` and UNC roots (server and share names) are kept as written. Each other component is

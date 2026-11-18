@@ -188,13 +188,17 @@ internal sealed partial class FileReferenceResolver
     ///     was resolved against, so the system mapped no device name in it. A <c>\\.\</c> path, or any other
     ///     extended-length root such as <c>\\?\GLOBALROOT\</c>, is never under such a root.
     /// </summary>
+    /// <remarks>
+    ///     The roots are compared ignoring case because they are only a drive letter or a volume GUID, which Windows
+    ///     resolves ignoring case on every volume; no folder name is compared. Windows only.
+    /// </remarks>
     /// <param name="full">The full path of the candidate.</param>
     /// <param name="directory">The full path of the directory it was resolved against.</param>
     /// <returns><see langword="true"/> when it is.</returns>
     private static bool IsUnderOrdinaryExtendedRoot(string full, string directory) =>
         RealPath.IsOrdinaryExtendedPath(full)
         && RealPath.IsOrdinaryExtendedPath(directory)
-        && string.Equals(Path.GetPathRoot(full), Path.GetPathRoot(directory), RealPath.PathComparison);
+        && string.Equals(Path.GetPathRoot(full), Path.GetPathRoot(directory), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Computes the configured directory on first use, so a resolver that is never asked for a file never touches

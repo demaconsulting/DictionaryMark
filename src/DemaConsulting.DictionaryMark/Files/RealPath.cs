@@ -70,32 +70,28 @@ internal static partial class RealPath
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
     /// <summary>
-    ///     Gets the comparison of paths <b>as written</b> on this platform: case-insensitive on Windows and macOS (their
-    ///     default file systems), ordinal elsewhere.
+    ///     Gets the comparer of every cache or set keyed by a path: ordinal on every platform.
     /// </summary>
     /// <remarks>
-    ///     Used only where a written path is compared: the pre-filter of a path as written before it is opened, the
-    ///     caches keyed by written paths, and the folder a reference starts from. It is never what decides: the real
-    ///     path is compared exactly (see <see cref="IsUnderExactly"/>), because whether a folder is case-sensitive
-    ///     cannot be told reliably on any platform.
+    ///     Whether a folder is case-sensitive cannot be told reliably on any platform, so two paths that differ only in
+    ///     letter case may name two different files (<c>.../Allowed/a.txt</c> and <c>.../allowed/a.txt</c> on a
+    ///     case-sensitive folder) and must never share a cache entry: one would reuse the other's bytes or the other's
+    ///     captured folder location. On a case-insensitive folder the only cost is an extra entry for another spelling
+    ///     of the same file, which is judged on its own.
     /// </remarks>
-    internal static StringComparison PathComparison { get; } =
+    internal static StringComparer KeyComparer { get; } = StringComparer.Ordinal;
+
+    /// <summary>
+    ///     Gets the comparison of the as-written pre-filter (<see cref="IsUnder(string, string)"/>) on this platform:
+    ///     case-insensitive on Windows and macOS (their default file systems), ordinal elsewhere.
+    /// </summary>
+    /// <remarks>
+    ///     Private so it cannot spread: it serves only the pre-filter that keeps a file clearly outside every root from
+    ///     being opened. It never decides (the real path is compared exactly, see <see cref="IsUnderExactly"/>) and it
+    ///     never keys a cache (see <see cref="KeyComparer"/>).
+    /// </remarks>
+    private static StringComparison PathComparison { get; } =
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-
-    /// <summary>
-    ///     Gets the comparer that matches <see cref="PathComparison"/>.
-    /// </summary>
-    internal static StringComparer PathComparer { get; } =
-        PathComparison == StringComparison.OrdinalIgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-
-    /// <summary>
-    ///     Determines whether two full paths name the same location under the written-path comparison
-    ///     (<see cref="PathComparison"/>).
-    /// </summary>
-    /// <param name="left">A full path.</param>
-    /// <param name="right">Another full path.</param>
-    /// <returns><see langword="true"/> when they are the same.</returns>
-    internal static bool PathsEqual(string left, string right) => AreEqual(left, right, PathComparison);
 
     /// <summary>
     ///     Determines whether two real paths are the same, comparing them exactly (ordinal) on every platform.
@@ -110,12 +106,13 @@ internal static partial class RealPath
     internal static bool PathsEqualExactly(string left, string right) => AreEqual(left, right, StringComparison.Ordinal);
 
     /// <summary>
-    ///     Determines whether a full path as written is a root folder or lies below it under the written-path
-    ///     comparison (<see cref="PathComparison"/>); the boundary is a directory separator, so a sibling whose name
-    ///     merely starts with the root's name is not below it.
+    ///     Determines whether a full path as written is a root folder or lies below it under the as-written pre-filter
+    ///     comparison (case-insensitive on Windows and macOS, ordinal elsewhere); the boundary is a directory separator,
+    ///     so a sibling whose name merely starts with the root's name is not below it.
     /// </summary>
     /// <remarks>
-    ///     A pre-filter only: a path it accepts is still judged by its real path with <see cref="IsUnderExactly"/>.
+    ///     A pre-filter only, and the one place the platform's default case rule is used: a path it accepts is still
+    ///     judged by its real path with <see cref="IsUnderExactly"/>, so being loose here cannot widen a policy.
     /// </remarks>
     /// <param name="path">The full path.</param>
     /// <param name="root">The full path of the folder.</param>
@@ -327,15 +324,22 @@ internal static partial class RealPath
     }
 
     /// <summary>
-    ///     Gets the deepest folder that two full paths share, comparing whole components.
+    ///     Gets the deepest folder that two full paths share, comparing whole components exactly (ordinal) on every
+    ///     platform.
     /// </summary>
+    /// <remarks>
+    ///     The result is trusted by <c>no-symlinks</c> (a link in it is not looked for), so it must never be a folder
+    ///     the second path does not name: on a case-sensitive folder <c>/work/allowed</c> is not <c>/work/Allowed</c>.
+    ///     On a case-insensitive folder a component spelled in another case only makes the shared folder shallower, so
+    ///     more of the path is checked, never less.
+    /// </remarks>
     /// <param name="first">A full path.</param>
     /// <param name="second">Another full path.</param>
     /// <returns>The shared folder, or <see langword="null"/> when the paths are on different roots (Windows drives).</returns>
     internal static string? CommonAncestor(string first, string second)
     {
         var root = Path.GetPathRoot(first);
-        if (string.IsNullOrEmpty(root) || !string.Equals(root, Path.GetPathRoot(second), PathComparison))
+        if (string.IsNullOrEmpty(root) || !string.Equals(root, Path.GetPathRoot(second), StringComparison.Ordinal))
         {
             return null;
         }
@@ -344,7 +348,7 @@ internal static partial class RealPath
         var secondParts = second[root.Length..].Split(Separators, StringSplitOptions.RemoveEmptyEntries);
         var count = 0;
         while (count < firstParts.Length && count < secondParts.Length
-            && string.Equals(firstParts[count], secondParts[count], PathComparison))
+            && string.Equals(firstParts[count], secondParts[count], StringComparison.Ordinal))
         {
             count++;
         }
