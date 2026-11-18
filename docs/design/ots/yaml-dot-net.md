@@ -16,7 +16,7 @@ DictionaryMark uses the following APIs from the `YamlDotNet.RepresentationModel`
 
 - **`YamlStream`** — loads and parses a YAML document from a `TextReader`
 - **`YamlStream.Load(TextReader)`** — parses the YAML text into a document collection
-- **`YamlStream.Documents`** — accesses the list of parsed YAML documents (at most one expected)
+- **`YamlStream.Documents`** — accesses the list of parsed YAML documents (only the first is read)
 - **`YamlDocument.RootNode`** — retrieves the root node of the parsed document
 - **`YamlMappingNode`** — pattern-matched to verify the root is a mapping of terms and to read
   object-form entries
@@ -26,7 +26,7 @@ DictionaryMark uses the following APIs from the `YamlDotNet.RepresentationModel`
 - **`YamlScalarNode.Value`** — reads the string value of a scalar key or definition
 - **`YamlSequenceNode`** — pattern-matched by `YamlDictionaryLoader` for `pos` and `variants` lists,
   and by `ConfigFile` for `tables`, sequence `input` values and `column-widths`
-- **`YamlException`** — caught by `ConfigFile` to report invalid configuration YAML
+- **`YamlException`** — caught by `DictionaryGenerator` and `ConfigFile` to report invalid YAML
 
 Features not used: serialization, YAML writing, anchors/aliases traversal, merge keys, custom
 type converters, schema validation, and streaming deserialization.
@@ -53,9 +53,9 @@ switch (value) { case YamlScalarNode: ...; case YamlMappingNode: ...; default: t
 
 ### Error Handling
 
-YAML parse exceptions thrown by `YamlStream.Load` propagate unchanged through `YamlDictionaryLoader` and
-`DictionaryGenerator`; they are not caught in those units and reach `Program.Main` as unexpected exceptions.
-`ConfigFile` instead catches `YamlException` and wraps it in an `InvalidOperationException` whose message names the
+YAML parse exceptions thrown by `YamlStream.Load` propagate unchanged through `YamlDictionaryLoader`;
+`DictionaryGenerator` catches `YamlException` and reports it as an invalid YAML error naming the dictionary file.
+`ConfigFile` catches `YamlException` and wraps it in an `InvalidOperationException` whose message names the
 configuration file, so an invalid configuration file is reported as an expected error with exit code 1. Structural
 violations — non-mapping root, non-scalar keys, or entry values that are neither a string nor an object — are
 detected by `YamlDictionaryLoader` and thrown as `InvalidOperationException` with a descriptive message identifying
