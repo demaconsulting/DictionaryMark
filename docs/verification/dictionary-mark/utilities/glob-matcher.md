@@ -19,9 +19,10 @@ directly against the real file system:
 #### Test Environment
 
 Tests use `TemporaryDirectory` to create real file-system fixtures for glob pattern matching. The
-`MatchUnder` tests create a folder link with the `LinkSupport` test helper: a symbolic link, or on
+`MatchUnder` link tests create a folder link with the `LinkSupport` test helper: a symbolic link, or on
 Windows a junction when symbolic links need a privilege the account does not hold, so they run on every
 platform; they are skipped with a reason only where neither can be created.
+`GlobMatcher_MatchUnder_EveryFolder_CheckedBeforeListing` needs no link and runs on every platform.
 
 #### Acceptance Criteria
 
@@ -118,17 +119,25 @@ gives `/`, `C:/*.yaml` gives `C:/`, `*.yaml` gives an empty folder, `../a/**/*.y
 become slashes, and a `?` in a middle component starts the remainder there.
 
 **GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing**: Matching `**/*.yaml` below a folder that holds a
-real sub-folder and a folder link calls the check once, with the link's full path, and lists the link when the
-check allows it (its file is matched with its full path through the link). `*.yaml`, which never descends,
-never calls the check, and a missing folder matches nothing.
+real sub-folder and a folder link calls the check once for each, with its full path (the plain folder and the
+link alike), and lists the link when the check allows it (its file is matched with its full path through the
+link). `*.yaml`, which never descends, never calls the check, and a missing folder matches nothing.
 
-**GlobMatcher_MatchUnder_RejectedLink_NotListed**: A check that returns false lists nothing in the link, and a
-check that throws stops the matching with its exception.
+**GlobMatcher_MatchUnder_RejectedLink_NotListed**: A check that returns false for the link (and true for the
+real sub-folder) lists nothing in the link, and a check that throws for the link stops the matching with its
+exception.
+
+**GlobMatcher_MatchUnder_EveryFolder_CheckedBeforeListing**: Below a folder holding `a.yaml`, `sub/b.yaml`,
+`sub/deeper/c.yaml` and `other/d.txt`, with no link, matching `**/*.yaml` calls the check with the full path
+of `sub`, `sub/deeper` and `other`, never with the folder matched below, and matches all three YAML files. A
+check that rejects `sub` matches only `a.yaml` and is never called for `sub/deeper`, so the rejected folder was
+not listed. `*.yaml` never calls the check, and a check that throws for `sub` stops the matching with its
+exception.
 
 **GlobMatcher_MatchUnder_MissingFolder_ReturnsEmpty**: Matching `**/*.yaml` below a folder that does not exist
 matches nothing, without an error, and never calls the check.
 
 **GlobMatcher_MatchUnder_FolderRemovedAfterCheck_MatchesNothingInIt**: Below a folder that holds a real
-sub-folder and a folder link, a check that deletes the link's target and then allows it (so the folder is
-removed after it was judged and before it is listed) is called once, with the link's full path. The link lists
-nothing, without an error, and only the file in the real sub-folder is matched.
+sub-folder and a folder link, a check that deletes the link's target when it is called for the link and then
+allows it (so the folder is removed after it was judged and before it is listed) is called once for each, with
+its full path. The link lists nothing, without an error, and only the file in the real sub-folder is matched.

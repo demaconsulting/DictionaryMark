@@ -13,7 +13,8 @@ loaded defaults, root directory and table jobs, or on the exception message.
 - **PathResolver** — the real resolver is used for the `root` key, so the root tests confirm
   `${VAR}` expansion, `..` normalization and the existence check through `ConfigFile`.
 - **File system** — configuration files and root directories are created in a
-  `TemporaryDirectory`. Nothing is mocked.
+  `TemporaryDirectory`. Nothing is mocked, except that one test passes a recording folder judgment to
+  the internal `Load(path, judgeRootFolder)` overload to show when the file-access folder check runs.
 
 #### Test Environment
 
@@ -25,7 +26,9 @@ named environment variable and remove it in a `finally` block; the test class ru
 
 - All unit tests in `ConfigFileTests.cs` pass with zero failures.
 - All requirements linked to the `ConfigFile` unit have at least one passing test scenario.
-- No tests may be skipped or marked as expected failures.
+- No tests may be skipped or marked as expected failures, except the platform-specific tests named below
+  (the `/dev` root on Linux and macOS, the symbolic link to a share on Windows), which are skipped with a
+  reason on other platforms.
 
 #### Test Scenarios
 
@@ -121,6 +124,16 @@ This scenario is tested by `ConfigFile_Load_NoRoot_RootDirectoryIsNull`.
 `//server/share`, `\\server\share`, an `http:` URL, `\\.\pipe\x` or `docs:stream` (a colon) is rejected with
 `Config file '{path}': file-access-denied: root '{value}': {reason}` before the directory is probed.
 This scenario is tested by `ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied`.
+
+**ConfigFile_Load_RootWithWildcard_RejectedBeforeFolderCheck**: A `root` key `sub*`, `sub?` or
+`//server/share*` is rejected with exactly `Config file '{path}': Root key '{value}' must not contain wildcard
+characters.`, and a recording folder judgment passed to the internal `Load` overload is never called, so the
+wildcard check comes before any file-access folder check, even for a value also on the never-accessed list.
+This scenario is tested by `ConfigFile_Load_RootWithWildcard_RejectedBeforeFolderCheck`.
+
+**ConfigFile_Load_RootUnderDev_ThrowsFileAccessDenied** (Linux and macOS): A `root` key `/dev` is rejected with
+`Config file '{path}': file-access-denied: root '/dev': it is a device path, which is never accessed`. This
+scenario is tested by `ConfigFile_Load_RootUnderDev_ThrowsFileAccessDenied`.
 
 **ConfigFile_Load_RootThroughSymlinkToShare_ThrowsFileAccessDenied** (Windows, supplementary, not requirement
 evidence): A `root` key that passes through a real symbolic link to an unreachable share is rejected with the

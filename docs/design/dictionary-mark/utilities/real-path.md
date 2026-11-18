@@ -108,11 +108,17 @@ permission, but the oldest macOS release that honors it is unverified. Never thr
 no-symlinks anchor. It must come from the same source as the real path of a file, because the two are compared
 exactly.
 
-- *Windows and Linux*: the final path of `InspectPath` (a handle).
+- *Windows and Linux*: the final path of `InspectPath` (a handle), or null when that handle reports an entry
+  that is not a folder.
 - *macOS*: the final path of `InspectFolder` (the `O_DIRECTORY` handle and `proc_pidfdinfo`, the same source as
   every file's real path). Only when that reports `Unknown` (the folder exists but cannot be opened for
   reading, for example a folder that may be searched but not read, or one protected by the system) does it fall
-  back to `InspectPath` (`realpath(3)`). A file or a missing folder (`Missing`) gives null.
+  back to `InspectPath` (`realpath(3)`), again null for an entry known not to be a folder. A file or a missing
+  folder (`Missing`) gives null.
+
+On every platform, an entry that is not a folder has no real location, so an allowed folder or anchor replaced
+by a file after it was checked allows nothing (fail closed). An entry whose type cannot be told keeps its real
+path; every handle under it is judged anyway.
 
 Returns null when the entry does not exist or cannot be resolved. Never throws.
 
@@ -232,4 +238,3 @@ N/A - uses only the .NET base class library and the operating-system calls liste
 #### Callers
 
 - **FileAccessPolicy** — every member.
-- **GlobMatcher** — `IsLink`, to tell a listed folder that is a symbolic link or junction.

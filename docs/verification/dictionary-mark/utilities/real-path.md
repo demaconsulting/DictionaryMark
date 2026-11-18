@@ -65,9 +65,10 @@ file; a missing file is reported as `FileNotFoundException`.
 **RealPath_Inspect_ClosedHandle_ReportsUnknownFacts**: A handle to a regular file, closed before it is
 inspected, cannot be asked; both facts are reported as unknown (null), never as not a regular file.
 
-**RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget** and
-**RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull**: A linked folder resolves to its
-target, and a missing folder has no real location.
+**RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget**,
+**RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull** and
+**RealPath_TryGetCanonicalDirectory_File_ReturnsNull**: A linked folder resolves to its target, and neither a
+missing folder nor a regular file has a real location as a folder, on every platform.
 
 **RealPath_Inspect_DifferentlyCasedPath_ReportsStoredCase** and
 **RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase** (Windows and macOS): A file

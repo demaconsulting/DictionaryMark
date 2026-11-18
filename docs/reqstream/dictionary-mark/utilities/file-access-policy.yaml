@@ -35,17 +35,20 @@ sections:
                   with a host, a path written as a UNC path, a device path (a written \\?\ or \\.\ path, on Windows
                   a written \??\ path, a full path in a device namespace other than an ordinary extended-length
                   drive or volume path, or a reserved device name), a colon other than the drive of an absolute path
-                  on Windows (on Linux and macOS, any colon), on Linux and macOS an output under /dev, whose real
-                  path is under /dev, or whose deepest existing folder's real path is under /dev, and anything that
-                  is not a regular file, without blocking on a named pipe, judging the text after ${VAR} expansion
-                  (for a file a glob matched, the pattern's literal part followed by the matched path), before the
-                  path is opened, created, listed or probed.
+                  on Windows (on Linux and macOS, any colon), on Linux and macOS a path to be read, written or listed
+                  whose full path is under /dev or whose real path, or the real path of its deepest existing folder,
+                  is under /dev, and anything that is not a regular file, without blocking on a named pipe, judging
+                  the text after ${VAR} expansion (for a file a glob matched, the pattern's literal part followed by
+                  the matched path), before the path is opened, created, listed or probed.
                 justification: |
                   These locations can leak credentials, hang the run, act on a device or reach hidden data. The rules
                   follow the DEMA Consulting CanvasNet tool, including its colon rule on every platform and its rule
                   that the text is judged after expansion, so a configuration file is judged the same everywhere and a
-                  variable or a matched file name cannot slip past the rules; outputs under /dev are denied before the
-                  open (CanvasNet never writes), including through a link to a folder or a file there.
+                  variable or a matched file name cannot slip past the rules. Paths under /dev are denied for reads,
+                  writes and listing alike, before the open and including through a link to a folder or a file
+                  there, because opening a device node can act on the device, and a regular file under /dev (for
+                  example in /dev/shm) is not configuration content; CanvasNet refuses a device only by its handle
+                  type.
                 tests:
                   - FileAccessPolicy_DescribeNeverAccessed_HostileText_ReturnsReason
                   - FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull
@@ -63,8 +66,16 @@ sections:
                   - windows@FileAccessPolicy_ReadAllText_ExtendedLengthBase_ReturnsContent
                   - ubuntu@FileAccessPolicy_DescribeNeverAccessed_DrivePathOnLinuxAndMac_ReturnsColonReason
                   - macos@FileAccessPolicy_DescribeNeverAccessed_DrivePathOnLinuxAndMac_ReturnsColonReason
-                  - ubuntu@FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular
-                  - macos@FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular
+                  - ubuntu@FileAccessPolicy_ReadAllText_DevPath_DeniedBeforeOpen
+                  - macos@FileAccessPolicy_ReadAllText_DevPath_DeniedBeforeOpen
+                  - ubuntu@FileAccessPolicy_ResolvePattern_DevFolder_DeniedBeforeListing
+                  - macos@FileAccessPolicy_ResolvePattern_DevFolder_DeniedBeforeListing
+                  - ubuntu@FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing
+                  - macos@FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing
+                  - ubuntu@FileAccessPolicy_DescribeNeverAccessedFullPath_DevOnLinuxAndMac_ReturnsDeviceReason
+                  - macos@FileAccessPolicy_DescribeNeverAccessedFullPath_DevOnLinuxAndMac_ReturnsDeviceReason
+                  - ubuntu@FileAccessPolicy_DescribeNeverAccessedFolder_RealPathUnderDev_ReturnsDeviceReason
+                  - macos@FileAccessPolicy_DescribeNeverAccessedFolder_RealPathUnderDev_ReturnsDeviceReason
                   - ubuntu@FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen
                   - macos@FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen
                   - ubuntu@FileAccessPolicy_WriteAllText_FolderLinkToDev_DeniedBeforeOpen
@@ -78,12 +89,38 @@ sections:
                   - ubuntu@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
                   - macos@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
 
+              - id: DictionaryMark-FileAccessPolicy-OpenedHandleNeverAccessed
+                title: >-
+                  In every mode, including the any mode, the FileAccessPolicy unit shall apply the never-accessed
+                  rules that can be judged from a real path (on Linux and macOS a real path under /dev, on Windows a
+                  real path in a device namespace or a local path whose real path is on a network location), together
+                  with the regular-file rule, to the real path of every opened read and write handle, before anything
+                  is read, truncated or written through it and before the mode's rules, so a folder swapped for a link
+                  between the checks and the open is still refused and no content is written there.
+                justification: |
+                  The checks made before the open judge a path by name, and another process can swap a folder of that
+                  path for a link (for example to the world-writable /dev/shm, or to a share) before the open. Only
+                  the real path of the opened handle tells where the open went, so the never-accessed rules must hold
+                  on it in every mode, not only in a restrictive one. A new output created by the exclusive create and
+                  then denied is left empty, never written and never deleted, because a delete by name could remove
+                  another file and would itself access the refused location.
+                tests:
+                  - FileAccessPolicy_ReadAllText_HandleOnNeverAccessedList_DeniedUnderAny
+                  - FileAccessPolicy_WriteAllText_HandleOnNeverAccessedList_DeniedNothingWritten
+                  - ubuntu@FileAccessPolicy_WriteAllText_HandleUnderDev_DeniedBeforeModeRules
+                  - macos@FileAccessPolicy_WriteAllText_HandleUnderDev_DeniedBeforeModeRules
+                  - ubuntu@FileAccessPolicy_WriteAllText_ParentSwappedToDevBeforeOpen_DeniedNothingWritten
+                  - ubuntu@FileAccessPolicy_ReadAllText_ParentSwappedToDevBeforeOpen_Denied
+                  - windows@FileAccessPolicy_WriteAllText_ParentSwappedOutBeforeOpen_DeniedByHandle
+                  - ubuntu@FileAccessPolicy_WriteAllText_ParentSwappedOutBeforeOpen_DeniedByHandle
+                  - macos@FileAccessPolicy_WriteAllText_ParentSwappedOutBeforeOpen_DeniedByHandle
+
               - id: DictionaryMark-FileAccessPolicy-NetworkLocations
                 title: >-
                   On Windows, the FileAccessPolicy unit shall access a path that is itself a network location (on a
                   mapped network drive, or resolved against a folder on a share), and shall deny a path that is not a
                   network location but leads to one through a symbolic link or junction, before it is opened,
-                  created, listed or probed where the links can be read (including a folder link a glob wildcard
+                  created, listed or probed where the links can be read (including every folder a glob wildcard
                   would descend into), and otherwise by the real path of the opened file or folder.
                 justification: |
                   This is the network rule of the DEMA Consulting CanvasNet tool. A configuration file kept on a share
@@ -124,14 +161,17 @@ sections:
                   real location of every allowed folder, comparing letter case exactly, so a folder whose name
                   differs from an allowed folder's only in letter case is outside on a file system that
                   distinguishes case, while a path written in another letter case that names a file inside an
-                  allowed folder on a file system that ignores case is allowed; and shall deny a file whose path as
-                  written is outside even when it links back in, while allowing a link that stays inside.
+                  allowed folder on a file system that ignores case is allowed; shall deny a file whose path as
+                  written is outside even when it links back in, while allowing a link that stays inside; and shall
+                  let an allowed folder that is not a folder (for example one replaced by a file) allow nothing.
                 justification: |
                   Both the written and the real path must be inside, or a link could lead out or a path outside
                   could link in. A folder or volume may distinguish letter case on every platform (a Windows folder
                   with per-folder case sensitivity, a case-sensitive APFS volume), and there a case-variant sibling
-                  of an allowed folder is a different folder, so ignoring case would let it be read and written.
+                  of an allowed folder is a different folder, so ignoring case would let it be read and written. An
+                  allowed folder replaced by a file after it was checked must fail closed rather than allow that file.
                 tests:
+                  - FileAccessPolicy_Create_AllowedFolderIsFile_AllowsNothing
                   - FileAccessPolicy_ReadAllText_RealPathInCaseVariantSibling_Denied
                   - FileAccessPolicy_WriteAllText_RealPathInCaseVariantSibling_ContentUnchanged
                   - ubuntu@FileAccessPolicy_ReadAllText_CaseVariantSiblingOfAllowedFolder_Denied
@@ -220,13 +260,14 @@ sections:
                   The FileAccessPolicy unit shall judge the literal folder of a glob pattern by the never-accessed
                   list and the mode (under roots, its path as written and its real path inside an allowed folder;
                   under no-symlinks, no link below the trusted anchor) before the folder is listed, shall judge every
-                  folder link a wildcard would descend into the same way before it is listed, and shall fail the
-                  pattern when either is denied; a literal folder that does not exist or is not a folder shall give
-                  no matches.
+                  folder a wildcard would descend into, plain or a link, the same way before it is listed, and shall
+                  fail the pattern when either is denied; a literal folder that does not exist or is not a folder
+                  shall give no matches.
                 justification: |
-                  Listing a folder touches it and reveals the names in it, and a link reached by a wildcard can lead
-                  anywhere, including a share. Judging each listed folder first keeps matching inside what the mode
-                  allows, and failing the pattern, rather than skipping the link, never silently drops input.
+                  Listing a folder touches it and reveals the names in it, and a folder reached by a wildcard can be
+                  /dev or a link that leads anywhere, including a share. Judging each listed folder first keeps
+                  matching inside what the mode allows, and failing the pattern, rather than skipping the folder,
+                  never silently drops input.
                 tests:
                   - FileAccessPolicy_ResolvePattern_RootsFolderOutside_DeniedBeforeMatching
                   - FileAccessPolicy_ResolvePattern_MissingFolder_ReturnsEmpty
@@ -250,6 +291,10 @@ sections:
                   - ubuntu@FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing
                   - macos@FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing
                   - ubuntu@FileAccessPolicy_ResolvePattern_CaseVariantSiblingFolder_DeniedBeforeListing
+                  - ubuntu@FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing
+                  - macos@FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing
+                  - ubuntu@FileAccessPolicy_ResolvePattern_PlainFolderWithColonUnderWildcard_DeniedBeforeListing
+                  - macos@FileAccessPolicy_ResolvePattern_PlainFolderWithColonUnderWildcard_DeniedBeforeListing
 
               - id: DictionaryMark-FileAccessPolicy-HandleClassification
                 title: >-

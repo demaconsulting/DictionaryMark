@@ -729,16 +729,19 @@ sections:
         title: >-
           In every file-access mode, the tool shall never read or write a configuration-file path that is a URL,
           a path written as a UNC path, on Windows a local path that leads to a network location through a link,
-          a device path, a path with a colon other than the drive of an absolute path on Windows, or anything that
-          is not a regular file, judged after ${VAR} expansion and including the name of every file a glob matches,
-          while a path on a share reached from a configuration file, root or --root on that share, and a path on a
-          mapped network drive, are accessed.
+          a device path, on Linux and macOS a path or real path under /dev, a path with a colon other than the
+          drive of an absolute path on Windows, or anything that is not a regular file, judged after ${VAR}
+          expansion and including the name of every file a glob matches, and judged again on the real path of every
+          opened file, while a path on a share reached from a configuration file, root or --root on that share, and
+          a path on a mapped network drive, are accessed.
         justification: |
-          These locations can leak credentials to a network host, block the run, or reach hidden data, and no
-          dictionary or Markdown output is ever stored in them. The network rule matches the DEMA Consulting
-          CanvasNet tool so configuration files kept on shares and mapped network drives keep working, and the
-          colon rule matches it on every platform, so a configuration file is judged the same everywhere. Judging
-          the expanded text and every matched name means a variable or a file name cannot slip past the rules.
+          These locations can leak credentials to a network host, block the run, act on a device, or reach hidden
+          data, and no dictionary or Markdown output is ever stored in them. The network rule matches the DEMA
+          Consulting CanvasNet tool so configuration files kept on shares and mapped network drives keep working,
+          and the colon rule matches it on every platform, so a configuration file is judged the same everywhere.
+          Judging the expanded text and every matched name means a variable or a file name cannot slip past the
+          rules, and judging the real path of every opened file means a folder swapped for a link while the tool
+          runs cannot either.
         tags: [system, security]
         children:
           - DictionaryMark-Utilities-FileAccessConfinement
@@ -748,6 +751,8 @@ sections:
           - DictionaryMark_FileAccess_UrlInput_Denied
           - DictionaryMark_FileAccess_UncInput_Denied
           - DictionaryMark_FileAccess_DeviceOutput_Denied
+          - ubuntu@DictionaryMark_FileAccess_InputUnderDev_Denied
+          - macos@DictionaryMark_FileAccess_InputUnderDev_Denied
           - DictionaryMark_FileAccess_ColonOutput_Denied
           - DictionaryMark_FileAccess_DirectoryAsOutput_Denied
           - DictionaryMark_FileAccess_VariableExpandingToNeverAccessed_Denied

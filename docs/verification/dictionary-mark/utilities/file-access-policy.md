@@ -16,7 +16,10 @@ denied before any handle is opened. The same overload takes an optional link rea
 network location is simulated without a link privilege or a share; with the recording inspector it proves
 that such a path is denied before any handle is opened. A link reader that reports no links at all, used
 with a real folder link, simulates a link swapped in after the walk, so the denial must come from the handle.
-A recording inspector also proves that a folder is told by its handle, not by a by-name probe.
+A recording inspector also proves that a folder is told by its handle, not by a by-name probe. The same
+overload takes an optional pre-open action, called after every check and immediately before a read or write
+handle is opened; a test action swaps a folder of the path for a prepared link there, so a real race between
+the checks and the open is reproduced deterministically and the denial must come from the opened handle.
 
 #### Test Environment
 
@@ -30,11 +33,20 @@ A recording inspector also proves that a folder is told by its handle, not by a 
   and macOS only, and Windows device-name tests on Windows only; elsewhere they are skipped with a reason. A
   named-pipe test fails when the read does not finish within 10 seconds, so a blocking open cannot hang the
   run.
+- The swap-to-`/dev/shm` race tests run on Linux only, where `/dev/shm` is a world-writable folder; they are
+  skipped with a reason elsewhere, or when no file can be created in `/dev/shm`. They use a unique file name and
+  remove the file they create there in a `finally` block. The swap-out race test, which swaps an allowed
+  folder for a folder link leading out, runs on every platform (junction fallback on Windows).
+- The injected-handle never-accessed tests run their platform-independent rows (not a regular file, type
+  unknown) everywhere; the `/dev` row runs on Linux and macOS only, and the network and device-namespace rows
+  on Windows only, each skipped with a reason elsewhere.
 - The link-to-share tests run on Windows only, because network locations exist only there; elsewhere they
   are skipped with a reason. The injected link reader needs no privilege and no share.
-- The glob-match colon test and the file-link-to-device test run on Linux and macOS only (a colon in a file
-  name is a stream separator on Windows, and `/dev` exists only there); elsewhere they are skipped with a
-  reason. The glob-listing tests with folder links run on every platform (junction fallback on Windows).
+- The glob-match colon test, the plain-folder colon test, the wildcard-into-`/dev` test and the
+  file-link-to-device test run on Linux and macOS only (a colon in a file or folder name is a stream separator
+  on Windows, and `/dev` exists only there); elsewhere they are skipped with a reason. The wildcard-into-`/dev`
+  test lists the file-system root, with a pattern (`de*`) that matches no other folder there. The glob-listing
+  tests with folder links run on every platform (junction fallback on Windows).
 - The colon tests run on every platform, except the drive-path test, which runs on Linux and macOS only (on
   Windows a drive path is an ordinary absolute path, verified by
   `FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull`), and the NT-namespace test, which runs
@@ -98,16 +110,38 @@ read of `terms:v1.yaml` and a write of `sub/out:1.md` are denied with the colon 
 opened, and nothing is created in the allowed folder.
 
 **FileAccessPolicy_DescribeNeverAccessed_DeviceTextOnLinuxAndMac_ReturnsNull** (Linux and macOS):
-`/??/a.yaml` and `/dev/null` are not on the text list. `\??\` is a Windows namespace, and a device is refused
-by its handle type.
+`/??/a.yaml` and `/dev/null` are not on the written-text list. `\??\` is a Windows namespace, and `/dev` is a
+rule on the full path and on every real path, not on the text.
+
+**FileAccessPolicy_DescribeNeverAccessedFullPath_DevOnLinuxAndMac_ReturnsDeviceReason** (Linux and macOS):
+`/dev`, `/dev/null` and `/dev/shm/x` give the device reason; `/devices/x` and `/tmp/dev/x` do not.
+
+**FileAccessPolicy_ReadAllText_DevPath_DeniedBeforeOpen** (Linux and macOS): The inputs `/dev/null` and
+`/tmp/../dev/null` are denied with the device reason and no real path, and the recording inspector shows that
+no handle was judged.
+
+**FileAccessPolicy_ResolvePattern_DevFolder_DeniedBeforeListing** (Linux and macOS): The literal pattern
+`/dev/x.yaml` and the glob `/dev/*.yaml` are denied with the device reason by their full path, and the glob
+`devices/*.yaml`, whose literal folder is a folder link to `/dev`, is denied with the device reason and real
+path `/dev` by the folder's handle, before anything is listed.
+
+**FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing** (Linux and macOS; modes `any` and
+`roots` with `/` as the allowed folder): The glob `/de*/null.yaml`, whose wildcard reaches the plain folder
+`/dev`, is denied with the device reason by the folder's full path, naming the pattern as written, before
+`/dev` is listed. The glob `root/de*/null.yaml`, where `root` is a folder link to `/`, is denied with the device
+reason and real path `/dev` by the handle of `root/dev`, which is not under `/dev` as written, before it is
+listed.
+
+**FileAccessPolicy_DescribeNeverAccessedFolder_RealPathUnderDev_ReturnsDeviceReason** (Linux and macOS): A
+base folder whose one open reports the real path `/dev/shm` gives the device reason and is not existing; the
+folder `/dev` written as such gives the device reason without being opened (the counting inspector is called
+once in total).
 
 **FileAccessPolicy_ReadAllText_WindowsDeviceName_Denied** (Windows): A reserved device name in any component
 is denied before the open.
 
-**FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular** and
-**FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking** (Linux and macOS): No text rule applies.
-`/dev/null` and a named pipe are denied as not a regular file after a non-blocking open, the pipe without
-blocking.
+**FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking** (Linux and macOS): No text rule applies. A named
+pipe is denied as not a regular file after a non-blocking open, without blocking.
 
 **FileAccessPolicy_WriteAllText_DevPath_DeniedBeforeOpen** (Linux and macOS): The outputs `/dev/null` and
 `/tmp/../dev/x.md` are denied with the device reason, and the recording inspector shows that nothing was
@@ -188,6 +222,11 @@ recording inspector shows nothing was opened, and nothing is created.
 **FileAccessPolicy_ReadAllText_GlobMatchWithColon_Denied** (Linux and macOS): A file `terms:v1.yaml` matched by
 `*.yaml` is denied with the colon reason when it is read, shown by its full path.
 
+**FileAccessPolicy_ResolvePattern_PlainFolderWithColonUnderWildcard_DeniedBeforeListing** (Linux and macOS):
+Below a folder holding `a.yaml` and an empty plain folder `x:y`, the glob `**/*.yaml` is denied with the colon
+reason, naming the pattern as written, because the folder is judged before the wildcard descends into it, even
+though it holds no match.
+
 **FileAccessPolicy_ReadAllText_Directory_ClassifiedFromHandle**: A folder named as an input is opened, the
 recording inspector shows its handle was judged, and it is denied as not a regular file.
 
@@ -199,6 +238,35 @@ the file's or the folder's handle, and nothing is created outside.
 **FileAccessPolicy_WriteAllText_FileLinkToDevice_DeniedBeforeOpen** (Linux and macOS): In mode any, an existing
 output `out.md` that links to `/dev/null` is denied with the device reason and real path `/dev/null`, and the
 recording inspector shows nothing was opened for writing.
+
+**FileAccessPolicy_ReadAllText_HandleOnNeverAccessedList_DeniedUnderAny** and
+**FileAccessPolicy_WriteAllText_HandleOnNeverAccessedList_DeniedNothingWritten**: In mode any, an injected
+inspector reports facts of the opened handle that break one never-accessed rule: not a regular file, type
+unknown, a real path under `/dev` (Linux and macOS), a real path on a share for a local path, or a real path in
+a device namespace (both Windows). The read and the write are denied with that rule's exact reason and the
+reported real path. An existing output keeps its content, and a new output is left as an empty file (the
+documented residual of the exclusive create; it is never deleted).
+
+**FileAccessPolicy_WriteAllText_HandleUnderDev_DeniedBeforeModeRules** (Linux and macOS): In any, roots,
+no-symlinks and roots,no-symlinks, a write handle whose injected real path `/dev/shm/out.md` is also outside the
+allowed folder and below the trusted anchor through a link is denied with the device reason, not a mode reason,
+and nothing is written.
+
+**FileAccessPolicy_WriteAllText_ParentSwappedToDevBeforeOpen_DeniedNothingWritten** and
+**FileAccessPolicy_ReadAllText_ParentSwappedToDevBeforeOpen_Denied** (Linux): After every check passes, the
+pre-open action renames the folder `out` (or `in`) away and renames a prepared link to `/dev/shm` into its
+place, so the open reaches `/dev/shm`. In mode any, the write of a new output and of an existing output, and
+the read of an input, are denied with the device reason and the real path in `/dev/shm`. The new file there is
+left empty, and an existing file there keeps its content.
+
+**FileAccessPolicy_WriteAllText_ParentSwappedOutBeforeOpen_DeniedByHandle**: On every platform where a folder
+link can be made, the pre-open action swaps the allowed folder `allowed/out` for a link to `outside` after every
+check passes. Under roots the write is denied by the real path of the opened handle, and the file the exclusive
+create made outside is empty.
+
+**FileAccessPolicy_Create_AllowedFolderIsFile_AllowsNothing**: Under roots, an allowed "folder" that is a regular
+file (as when a folder is replaced by a file after it was checked) has no real location, so reading that file is
+denied with the real-path reason.
 
 **FileAccessPolicy_ResolvePattern_Literal_ReturnedWithoutProbe**: A literal pattern naming a missing file is
 returned as one judged path; the read, not the resolution, decides whether it exists.
@@ -224,8 +292,9 @@ and `lnk/*.yaml` through a folder link leading out is denied by the folder's rea
 
 **FileAccessPolicy_ResolvePattern_LinkUnderWildcard_DeniedBeforeListing**,
 **FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardInside_Matched** and
-**FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing**: A folder link a
-wildcard descends into is judged before it is listed. Under no-symlinks, `**/*.yaml` is denied for a link below
+**FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing**: Every folder a
+wildcard descends into, here a folder link, is judged before it is listed (a plain folder next to it is judged
+too and passes). Under no-symlinks, `**/*.yaml` is denied for a link below
 the trusted base, while `real/*.yaml`, which never descends into it, matches. Under roots, a link that stays
 inside is listed (its file is matched through the link and directly), and a link that leads out is denied.
 

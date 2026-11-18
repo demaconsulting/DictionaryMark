@@ -204,6 +204,25 @@ public class RealPathTests
     }
 
     /// <summary>
+    ///     Test that a regular file has no real location as a folder, on every platform, so it can never be the real
+    ///     location of an allowed folder or anchor.
+    /// </summary>
+    [Fact]
+    public void RealPath_TryGetCanonicalDirectory_File_ReturnsNull()
+    {
+        // Arrange: a regular file
+        using var tmpDir = new TemporaryDirectory();
+        var file = Path.Combine(tmpDir.DirectoryPath, "a.yaml");
+        File.WriteAllText(file, "Alpha: First\n");
+
+        // Act
+        var canonical = RealPath.TryGetCanonicalDirectory(file);
+
+        // Assert
+        Assert.Null(canonical);
+    }
+
+    /// <summary>
     ///     Test that a file opened by a path in another letter case than stored reports its real path in the stored
     ///     letter case, on a file system that ignores case (Windows and macOS by default).
     /// </summary>

@@ -24,8 +24,8 @@ DictionaryMark uses the following APIs from the `Microsoft.Extensions.FileSystem
   directory to form an absolute path
 - **`DirectoryInfoWrapper`** — wraps a `System.IO.DirectoryInfo` instance as the base for matching
 - **`DirectoryInfoBase`** and **`FileInfoWrapper`** — `GlobMatcher.MatchUnder` derives a private folder
-  wrapper from `DirectoryInfoBase` (listing with no existence probe and asking before a link folder is
-  listed) and wraps listed files with `FileInfoWrapper`
+  wrapper from `DirectoryInfoBase` (listing with no existence probe and asking before every folder below the
+  judged folder is listed) and wraps listed files with `FileInfoWrapper`
 
 Features not used: exclude patterns, `Matcher.Match` static helpers, custom `IFileSystem`
 implementations, and file attribute filtering.

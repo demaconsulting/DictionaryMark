@@ -73,21 +73,29 @@ Algorithm:
 4. `ReadTables` requires a non-empty `YamlSequenceNode`; `ReadTable` requires each item to be a
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
-5. When `root` was given, expand its `${VAR}` references, resolve its full path with
-   `PathResolver.ResolvePath`, and check both with
-   `FileAccessPolicy.DescribeNeverAccessedFolder(expanded, fullPath, out exists)`. A URL, a path
-   written as a UNC path, a device path or a colon other than the drive of an absolute path on Windows is
-   rejected by the text, and on Windows a root that leads to a network location through a symbolic link or
-   junction by the walk and the folder's real path, before its existence is decided, because checking that the
-   directory exists would contact the network host or device. The `root` key only sets the base directory and
-   never grants file access. Whether the directory exists comes from the folder's own open that was judged
-   (`RealPath.InspectFolder`; on macOS an open with `O_DIRECTORY`), so a symbolic link or junction whose target
-   is missing, or a file, is reported as a missing directory. A root that is itself on a network location is
-   opened the same way, without the walk. Then resolve it with
-   `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key", _ => exists)`. This expands
-   `${VAR}`, roots the value at the file's directory, normalizes `..`, rejects wildcards, and
-   requires the directory to exist from the verdict of that open, with no second by-name probe. The root is
+5. When `root` was given, expand its `${VAR}` references (text only) and resolve it with
+   `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key", existenceCheck)`. The resolver
+   expands `${VAR}`, roots the value at the file's directory, rejects `*` and `?` with its own message
+   (`Root key '{root}' must not contain wildcard characters.`), and normalizes `..`, reporting a malformed path.
+   Only after these text checks pass does it call the existence check, once, with the normalized full path, so
+   a rejected value never reaches the file system. The existence check judges the folder with
+   `FileAccessPolicy.DescribeNeverAccessedFolder(expanded, fullPath, out exists)` and throws the
+   `file-access-denied` error when a reason is returned. A URL, a path written as a UNC path, a device path or
+   a colon other than the drive of an absolute path on Windows is rejected by the text; on Linux and macOS a
+   root under `/dev` by the full path; on Windows a root that leads to a network location through a symbolic
+   link or junction by the walk; and a root whose opened real path is under `/dev` (Linux and macOS) or leads
+   to a network location by the folder's real path. All of this happens before its existence is decided,
+   because checking that the directory exists would contact the network host or device. The `root` key only
+   sets the base directory and never grants file access. Whether the directory exists comes from the folder's
+   own open that was judged (`RealPath.InspectFolder`; on macOS an open with `O_DIRECTORY`), so a symbolic link
+   or junction whose target is missing, or a file, is reported as a missing directory, with no second by-name
+   probe. A root that is itself on a network location is opened the same way, without the walk. The root is
    validated even when `--root` will override it, so a file's validity does not depend on the command line.
+
+An internal overload, `Load(path, judgeRootFolder)`, takes the folder judgment as a function returning the
+reason and whether the folder exists. The public `Load(path)` passes an adapter over
+`FileAccessPolicy.DescribeNeverAccessedFolder`; tests pass a recording function to show that the judgment
+never runs for a root with a wildcard.
 
 Value parsing uses the same rules as the command line: choices are case-insensitive; `depth` and
 the `column-widths` items are parsed with `NumberStyles.None` and the invariant culture, which
@@ -113,7 +121,9 @@ the key. Examples:
   as the inner exception, for example
   `Config file '...': Directory '...' specified by root key 'docs' does not exist.` This includes a
   malformed or overlong root (for example a null character), which `PathResolver` reports as
-  `Config file '...': Invalid root key '{root}': {reason}`.
+  `Config file '...': Invalid root key '{root}': {reason}`, and a root with `*` or `?`, reported as
+  `Config file '...': Root key '{root}' must not contain wildcard characters.` Both are reported before the
+  root is judged by the file-access policy, so such a value never reaches the file system.
 - A `root` key on the file-access never-accessed list is reported as
   `Config file '...': file-access-denied: root '{root}': {reason}`, for example
   `... root '//server/share': it is a UNC or network path, which is never accessed`.

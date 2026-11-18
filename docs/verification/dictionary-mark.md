@@ -305,6 +305,8 @@ These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_De
 
 - a URL input and an input written as a UNC path are denied;
 - a device output (`NUL` on Windows, `/dev/null` elsewhere) is denied;
+- on Linux and macOS, an input under `/dev` (`/dev/null`) is denied with the device reason (skipped on
+  Windows);
 - an output whose name contains a colon (`out.md:hidden`) is denied on every platform, and nothing is created;
 - a folder at the output path is denied;
 - an input or output whose `${VAR}` expands to `//nonexistent.invalid/share` or `a:b` is denied by its expanded
@@ -314,6 +316,7 @@ These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_De
 
 These scenarios are tested by `DictionaryMark_FileAccess_UrlInput_Denied`,
 `DictionaryMark_FileAccess_UncInput_Denied`, `DictionaryMark_FileAccess_DeviceOutput_Denied`,
+`DictionaryMark_FileAccess_InputUnderDev_Denied`,
 `DictionaryMark_FileAccess_ColonOutput_Denied`, `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`,
 `DictionaryMark_FileAccess_VariableExpandingToNeverAccessed_Denied` and
 `DictionaryMark_FileAccess_ColonGlobMatch_Denied`.

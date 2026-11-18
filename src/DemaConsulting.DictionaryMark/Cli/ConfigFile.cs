@@ -74,7 +74,7 @@ internal sealed class ConfigFile
     public IReadOnlyList<ConfigTable> Tables { get; }
 
     /// <summary>
-    ///     Private constructor - use <see cref="Load"/> instead.
+    ///     Private constructor - use <see cref="Load(string)"/> instead.
     /// </summary>
     /// <param name="filePath">The full path of the file.</param>
     /// <param name="rootDirectory">The resolved root directory, or null.</param>
@@ -98,8 +98,10 @@ internal sealed class ConfigFile
     ///     <c>term-header</c>, <c>def-header</c> or <c>definition-header</c>, <c>kind</c>,
     ///     <c>use-header</c>, <c>where-header</c>, <c>column-widths</c>), <c>root</c> and
     ///     <c>tables</c>. The <c>root</c> value is resolved relative to the file's directory, with
-    ///     <c>${VAR}</c> expansion and <c>..</c> normalization, must not be on the file-access
-    ///     never-accessed list, and must name an existing directory.
+    ///     <c>${VAR}</c> expansion and <c>..</c> normalization; in that order it must contain no
+    ///     wildcard, must be a well-formed path, must not be on the file-access never-accessed list
+    ///     (judged only after the text checks pass, so a rejected value never reaches the file system),
+    ///     and must name an existing directory.
     ///     Performs file-system I/O; stateless and thread-safe.
     /// </remarks>
     /// <param name="path">Path of the configuration file; normally already a full path. Must not be null.</param>
@@ -110,10 +112,33 @@ internal sealed class ConfigFile
     ///     mapping root, or contains an unknown, disallowed, missing or invalid key (including a malformed or missing
     ///     root directory); the message names the file, the key, and the job when the problem is inside one.
     /// </exception>
-    public static ConfigFile Load(string path)
+    public static ConfigFile Load(string path) => Load(path, JudgeRootFolder);
+
+    /// <summary>
+    ///     Loads and validates a configuration file, judging the <c>root</c> folder with a given function, so tests
+    ///     can record whether and when the folder judgment runs.
+    /// </summary>
+    /// <remarks>
+    ///     Behaves as <see cref="Load(string)"/>, except that <paramref name="judgeRootFolder"/> replaces
+    ///     <see cref="FileAccessPolicy.DescribeNeverAccessedFolder(string, string, out bool)"/>. It is called at
+    ///     most once, with the expanded <c>root</c> text and its normalized full path, and only after the wildcard
+    ///     and malformed-path checks pass.
+    /// </remarks>
+    /// <param name="path">Path of the configuration file; normally already a full path. Must not be null.</param>
+    /// <param name="judgeRootFolder">
+    ///     The function that returns the never-accessed reason of the root folder (or null) and whether it exists.
+    ///     Must not be null.
+    /// </param>
+    /// <returns>The validated configuration.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown for the same conditions as <see cref="Load(string)"/>.
+    /// </exception>
+    internal static ConfigFile Load(string path, Func<string, string, (string? Reason, bool Exists)> judgeRootFolder)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(judgeRootFolder);
 
         // Read and parse the file into its root mapping (a malformed path is reported with the file's context)
         string fullPath;
@@ -164,7 +189,7 @@ internal sealed class ConfigFile
         }
 
         // Resolve and validate the root directory relative to the configuration file
-        var rootDirectory = rawRoot != null ? ResolveRoot(rawRoot, fullPath, prefix) : null;
+        var rootDirectory = rawRoot != null ? ResolveRoot(rawRoot, fullPath, prefix, judgeRootFolder) : null;
 
         return new ConfigFile(fullPath, rootDirectory, defaults, tables);
     }
@@ -497,51 +522,96 @@ internal sealed class ConfigFile
     ///     Resolves the <c>root</c> value relative to the configuration file's directory.
     /// </summary>
     /// <remarks>
-    ///     The <c>root</c> value only sets the base directory of relative paths; it never grants file access. It is
-    ///     still configuration content, so before its existence is decided it is judged by
-    ///     <see cref="FileAccessPolicy.DescribeNeverAccessedFolder(string, string, out bool)"/>: the never-accessed
-    ///     list on the expanded text (URLs, UNC paths written as such, device paths, and colons other than the drive
-    ///     of an absolute path on Windows) and on the full path (device names), and on Windows a symbolic link or
-    ///     junction on the path, or a real path, that leads to a network location, so that a configuration file
-    ///     cannot make the tool probe a network share or a device. A relative root on a share is resolved. Whether
-    ///     the directory exists is decided from the folder's own open that was judged (on macOS, an open that
-    ///     requires a folder), never from a second by-name probe, so a link or junction whose target is missing, or
-    ///     a file, is reported as a missing directory.
+    ///     <para>
+    ///         The <c>root</c> value only sets the base directory of relative paths; it never grants file access. The
+    ///         checks run in this order: <c>${VAR}</c> expansion, then the wildcard and malformed-path checks of
+    ///         <see cref="PathResolver.ResolveExistingDirectory(string, string, string, Func{string, bool})"/> (pure
+    ///         text), and only then, from inside that resolver's existence check, the never-accessed judgment, so a
+    ///         value with <c>*</c> or <c>?</c> or a malformed path never reaches the file system and gets the
+    ///         resolver's own message.
+    ///     </para>
+    ///     <para>
+    ///         The root is still configuration content, so before its existence is decided it is judged by
+    ///         <see cref="FileAccessPolicy.DescribeNeverAccessedFolder(string, string, out bool)"/>: the
+    ///         never-accessed list on the expanded text (URLs, UNC paths written as such, device paths, and colons
+    ///         other than the drive of an absolute path on Windows) and on the full path (device names, and on Linux
+    ///         and macOS <c>/dev</c>), on Windows a symbolic link or junction on the path that leads to a network
+    ///         location, and the real path of the folder's one open (on Linux and macOS not under <c>/dev</c>; not a
+    ///         local folder leading to a network location), so that a configuration file cannot make the tool probe
+    ///         a network share or a device. A relative root on a share is resolved. Whether the directory exists is
+    ///         decided from the folder's own open that was judged (on macOS, an open that requires a folder), never
+    ///         from a second by-name probe, so a link or junction whose target is missing, or a file, is reported as
+    ///         a missing directory.
+    ///     </para>
     /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>
     /// <param name="prefix">The error-message prefix naming the file.</param>
+    /// <param name="judgeRootFolder">
+    ///     The function that judges the folder from its expanded text and full path, returning the never-accessed
+    ///     reason (or null) and whether it exists.
+    /// </param>
     /// <returns>The full path of the existing root directory.</returns>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the root is on the never-accessed list (the message contains <c>file-access-denied</c>), or
-    ///     is malformed, cannot be resolved or does not exist; the message starts with <paramref name="prefix"/>.
+    ///     has a wildcard, is malformed, cannot be resolved or does not exist; the message starts with
+    ///     <paramref name="prefix"/>.
     /// </exception>
-    private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
+    private static string ResolveRoot(
+        string rawRoot,
+        string fullPath,
+        string prefix,
+        Func<string, string, (string? Reason, bool Exists)> judgeRootFolder)
     {
         // Resolve the root's full path (PathResolver reports every problem - undefined variable,
         // wildcard, malformed or overlong path, missing directory - as InvalidOperationException) and
         // add the file's context
         try
         {
-            // The never-accessed list is checked on the expanded text and the full path, and the path is
-            // walked for a link to a network location, before the file system is probed for the folder
+            // The expanded text is kept for the written-text rules; expanding alone touches nothing
             var expanded = PathResolver.ExpandEnvironmentVariables(rawRoot, RootKeyDescription);
             var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
-            var rootPath = PathResolver.ResolvePath(rawRoot, configDirectory, RootKeyDescription);
-            var reason = FileAccessPolicy.DescribeNeverAccessedFolder(expanded, rootPath, out var exists);
-            if (reason != null)
-            {
-                throw new InvalidOperationException($"{FileAccessDeniedException.ErrorCode}: root '{rawRoot}': {reason}");
-            }
 
-            // Existence comes from the open that judged the folder, so no second by-name probe is made (a probe
-            // could reach a different entry than the one judged, or accept a link whose target is missing)
-            return PathResolver.ResolveExistingDirectory(rawRoot, configDirectory, RootKeyDescription, _ => exists);
+            // The resolver rejects a wildcard and a malformed path first, and only then calls the existence check,
+            // which judges the folder (text, links, then one open) and takes existence from that open alone, so no
+            // folder-policy call runs for a rejected value and no second by-name probe is made
+            return PathResolver.ResolveExistingDirectory(
+                rawRoot,
+                configDirectory,
+                RootKeyDescription,
+                rootPath =>
+                {
+                    var (reason, exists) = judgeRootFolder(expanded, rootPath);
+                    if (reason != null)
+                    {
+                        throw new InvalidOperationException(
+                            $"{FileAccessDeniedException.ErrorCode}: root '{rawRoot}': {reason}");
+                    }
+
+                    return exists;
+                });
         }
         catch (InvalidOperationException ex)
         {
             throw new InvalidOperationException($"{prefix}{ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    ///     Judges a <c>root</c> folder by the file-access never-accessed rules and reports whether it exists.
+    /// </summary>
+    /// <remarks>
+    ///     The production judgment used by <see cref="Load(string)"/>; a thin adapter over
+    ///     <see cref="FileAccessPolicy.DescribeNeverAccessedFolder(string, string, out bool)"/>, which performs
+    ///     file-system I/O.
+    /// </remarks>
+    /// <param name="expanded">The root text after <c>${VAR}</c> expansion.</param>
+    /// <param name="rootPath">The normalized full path of the root.</param>
+    /// <returns>The never-accessed reason, or null, and whether the folder exists.</returns>
+    private static (string? Reason, bool Exists) JudgeRootFolder(string expanded, string rootPath)
+    {
+        var reason = FileAccessPolicy.DescribeNeverAccessedFolder(expanded, rootPath, out var exists);
+        return (reason, exists);
     }
 
     /// <summary>

@@ -274,19 +274,19 @@ internal static partial class GlobMatcher
 
     /// <summary>
     ///     Matches a glob remainder below a folder that the caller has already judged, without probing the folder by
-    ///     name, and asks the caller before it lists any folder that is a symbolic link or junction.
+    ///     name, and asks the caller before it lists any folder below that folder.
     /// </summary>
     /// <remarks>
     ///     <para>
     ///         Used for configuration-file patterns, whose folders must be judged by the file-access policy before
     ///         they are listed. The folder is listed directly, reading all its entries at once (a folder that does
     ///         not exist when it is listed, including one removed after it was checked, gives no matches), with
-    ///         no existence probe. Every child folder the matcher may descend into is checked for being a link when
-    ///         it is listed (on Windows by its reparse-point attribute and then its link data, on Linux and macOS by
-    ///         its link data); before such a link folder is itself listed, <paramref name="checkLinkFolder"/> is
-    ///         called with its full path. It returns true to list the link folder, false to list nothing in it (for
-    ///         example a link whose target is missing), or throws to stop the matching; the exception propagates to
-    ///         the caller. A link folder the matcher never descends into is never checked or listed.
+    ///         no existence probe. Before the matcher lists any folder below the judged folder, a plain folder or a
+    ///         symbolic link or junction alike, <paramref name="checkFolder"/> is called with its full path. It
+    ///         returns true to list the folder, false to list nothing in it (for example one that is missing or not
+    ///         a folder), or throws to stop the matching; the exception propagates to the caller. The judged folder
+    ///         itself is not passed to the check, and a folder the matcher never descends into is never checked or
+    ///         listed.
     ///     </para>
     ///     <para>
     ///         A <c>..</c> segment cannot climb above a listed folder: a request for a parent folder throws
@@ -295,23 +295,23 @@ internal static partial class GlobMatcher
     /// </remarks>
     /// <param name="folder">The full, normalized path of the folder to match below. Must not be null.</param>
     /// <param name="pattern">The wildcard remainder (see <see cref="SplitGlob(string)"/>). Must not be null.</param>
-    /// <param name="checkLinkFolder">The check called before a link folder is listed. Must not be null.</param>
+    /// <param name="checkFolder">The check called before a folder below the folder is listed. Must not be null.</param>
     /// <returns>The matched files, with their full paths and their paths relative to the folder (with '/').</returns>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     /// <exception cref="ArgumentException">Thrown when the globbing library rejects the pattern.</exception>
     /// <exception cref="IOException">Thrown when a folder cannot be listed.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when the system denies listing a folder.</exception>
-    internal static IReadOnlyList<GlobMatch> MatchUnder(string folder, string pattern, Func<string, bool> checkLinkFolder)
+    internal static IReadOnlyList<GlobMatch> MatchUnder(string folder, string pattern, Func<string, bool> checkFolder)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(folder);
         ArgumentNullException.ThrowIfNull(pattern);
-        ArgumentNullException.ThrowIfNull(checkLinkFolder);
+        ArgumentNullException.ThrowIfNull(checkFolder);
 
-        // Match through the guarded wrapper, which never probes by name and asks before listing a link folder
+        // Match through the guarded wrapper, which never probes by name and asks before listing any folder below
         var matcher = new Matcher();
         matcher.AddInclude(pattern);
-        var result = matcher.Execute(new GuardedDirectory(new DirectoryInfo(folder), isLink: false, checkLinkFolder, parent: null));
+        var result = matcher.Execute(new GuardedDirectory(new DirectoryInfo(folder), checkFolder, parent: null));
         return [.. result.Files.Select(match => new GlobMatch(Path.GetFullPath(Path.Combine(folder, match.Path)), match.Path))];
     }
 
@@ -333,33 +333,16 @@ internal static partial class GlobMatcher
     }
 
     /// <summary>
-    ///     Determines whether a listed child folder is a symbolic link or junction.
-    /// </summary>
-    /// <remarks>
-    ///     On Windows the attributes the listing already holds tell a reparse point without another call, and only
-    ///     those are asked for their link data; on Linux and macOS every child folder's link data is read, which never
-    ///     follows the link.
-    /// </remarks>
-    /// <param name="directory">The listed child folder.</param>
-    /// <returns>True when it is a link.</returns>
-    private static bool IsLinkFolder(DirectoryInfo directory) =>
-        (!OperatingSystem.IsWindows() || directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
-        && RealPath.IsLink(directory.FullName);
-
-    /// <summary>
-    ///     A folder offered to the globbing library that lists itself without an existence probe and asks before a
-    ///     link folder is listed.
+    ///     A folder offered to the globbing library that lists itself without an existence probe and, unless it is
+    ///     the folder matched below, asks before it is listed.
     /// </summary>
     private sealed class GuardedDirectory : DirectoryInfoBase
     {
         /// <summary>The folder.</summary>
         private readonly DirectoryInfo _directory;
 
-        /// <summary>Whether the folder is a symbolic link or junction.</summary>
-        private readonly bool _isLink;
-
-        /// <summary>The check called before a link folder is listed.</summary>
-        private readonly Func<string, bool> _checkLinkFolder;
+        /// <summary>The check called before a folder below the folder matched below is listed.</summary>
+        private readonly Func<string, bool> _checkFolder;
 
         /// <summary>The folder this one was listed in, or null for the folder matched below.</summary>
         private readonly GuardedDirectory? _parent;
@@ -368,14 +351,12 @@ internal static partial class GlobMatcher
         ///     Initializes a new instance of the <see cref="GuardedDirectory"/> class.
         /// </summary>
         /// <param name="directory">The folder.</param>
-        /// <param name="isLink">Whether the folder is a symbolic link or junction.</param>
-        /// <param name="checkLinkFolder">The check called before a link folder is listed.</param>
+        /// <param name="checkFolder">The check called before a folder below the folder matched below is listed.</param>
         /// <param name="parent">The folder this one was listed in, or null.</param>
-        public GuardedDirectory(DirectoryInfo directory, bool isLink, Func<string, bool> checkLinkFolder, GuardedDirectory? parent)
+        public GuardedDirectory(DirectoryInfo directory, Func<string, bool> checkFolder, GuardedDirectory? parent)
         {
             _directory = directory;
-            _isLink = isLink;
-            _checkLinkFolder = checkLinkFolder;
+            _checkFolder = checkFolder;
             _parent = parent;
         }
 
@@ -391,8 +372,9 @@ internal static partial class GlobMatcher
         /// <inheritdoc/>
         public override IEnumerable<FileSystemInfoBase> EnumerateFileSystemInfos()
         {
-            // A link folder is judged before it is listed; a rejected one throws, one with nothing to list is empty
-            if (_isLink && !_checkLinkFolder(_directory.FullName))
+            // Every folder below the folder matched below, plain or a link, is judged before it is listed; a rejected
+            // one throws, and one with nothing to list is empty
+            if (_parent != null && !_checkFolder(_directory.FullName))
             {
                 return [];
             }
@@ -423,7 +405,7 @@ internal static partial class GlobMatcher
             }
 
             var matches = _directory.GetDirectories(path);
-            return matches.Length == 1 ? new GuardedDirectory(matches[0], IsLinkFolder(matches[0]), _checkLinkFolder, this) : null;
+            return matches.Length == 1 ? new GuardedDirectory(matches[0], _checkFolder, this) : null;
         }
 
         /// <inheritdoc/>
@@ -431,7 +413,7 @@ internal static partial class GlobMatcher
             new FileInfoWrapper(new FileInfo(Path.Combine(_directory.FullName, path)));
 
         /// <summary>
-        ///     Wraps the listed entries, marking each child folder that is a link.
+        ///     Wraps the listed entries.
         /// </summary>
         /// <param name="entries">The listed entries.</param>
         /// <returns>The wrapped entries.</returns>
@@ -440,7 +422,7 @@ internal static partial class GlobMatcher
             foreach (var entry in entries)
             {
                 yield return entry is DirectoryInfo directory
-                    ? new GuardedDirectory(directory, IsLinkFolder(directory), _checkLinkFolder, this)
+                    ? new GuardedDirectory(directory, _checkFolder, this)
                     : new FileInfoWrapper((FileInfo)entry);
             }
         }

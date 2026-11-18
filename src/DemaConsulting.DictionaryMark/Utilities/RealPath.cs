@@ -500,33 +500,51 @@ internal static partial class RealPath
     ///     <para>
     ///         Used for the allowed folders and the no-symlinks anchor, whose real locations are compared exactly with
     ///         the real paths of handles, so they come from the same mechanism. Windows and Linux use the handle of
-    ///         <see cref="InspectPath(string)"/> (on Windows and Linux a file's path is reported too). macOS uses the
-    ///         <c>O_DIRECTORY</c> handle of <see cref="InspectFolder(string)"/> (<c>proc_pidfdinfo</c>, the same
-    ///         source as every file's real path), and falls back to <c>realpath(3)</c> only when the folder exists
-    ///         but cannot be opened for reading (<see cref="PathState.Unknown"/>, for example a folder that may be
-    ///         searched but not read, or one protected by the system); a file or a missing folder has no real
-    ///         location there.
+    ///         <see cref="InspectPath(string)"/>. macOS uses the <c>O_DIRECTORY</c> handle of
+    ///         <see cref="InspectFolder(string)"/> (<c>proc_pidfdinfo</c>, the same source as every file's real
+    ///         path), and falls back to <c>realpath(3)</c> only when the folder exists but cannot be opened for
+    ///         reading (<see cref="PathState.Unknown"/>, for example a folder that may be searched but not read, or
+    ///         one protected by the system).
     ///     </para>
-    ///     <para>Never throws.</para>
+    ///     <para>
+    ///         On every platform an entry reported as not a folder (a file, for example an allowed folder replaced by
+    ///         a file after it was checked) has no real location, so it allows nothing, as does a missing folder. An
+    ///         entry whose type cannot be told keeps its real path. Never throws.
+    ///     </para>
     /// </remarks>
     /// <param name="fullPath">The full path. Must not be null.</param>
-    /// <returns>The real path, or null when it does not exist, cannot be opened, or the platform cannot tell.</returns>
+    /// <returns>
+    ///     The real path, or null when it does not exist, is not a folder, cannot be opened, or the platform cannot
+    ///     tell.
+    /// </returns>
     internal static string? TryGetCanonicalDirectory(string fullPath)
     {
         if (!OperatingSystem.IsMacOS())
         {
-            return InspectPath(fullPath).FinalPath;
+            return FolderPath(InspectPath(fullPath));
         }
 
         // macOS: the folder's own handle, or realpath(3) when the folder exists but cannot be opened for reading
         var folder = InspectFolder(fullPath);
         return folder.State switch
         {
-            PathState.Exists => folder.FinalPath,
-            PathState.Unknown => InspectPath(fullPath).FinalPath,
+            PathState.Exists => FolderPath(folder),
+            PathState.Unknown => FolderPath(InspectPath(fullPath)),
             _ => null,
         };
     }
+
+    /// <summary>
+    ///     Gets the real path of an entry only when it may be a folder.
+    /// </summary>
+    /// <remarks>
+    ///     Fails closed for an entry known not to be a folder, so a file never becomes the real location of an
+    ///     allowed folder or anchor; an entry of unknown type keeps its real path, which every handle check judges.
+    /// </remarks>
+    /// <param name="facts">The facts of the entry.</param>
+    /// <returns>The real path, or null when the entry is known not to be a folder or its path is unknown.</returns>
+    private static string? FolderPath(PathFacts facts) =>
+        facts.IsDirectory == false ? null : facts.FinalPath;
 
     /// <summary>
     ///     Reports whether a path exists, whether it is a folder and what its real path is, from a handle opened

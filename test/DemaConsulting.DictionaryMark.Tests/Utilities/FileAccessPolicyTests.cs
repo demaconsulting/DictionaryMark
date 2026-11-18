@@ -31,6 +31,25 @@ public class FileAccessPolicyTests
     /// <summary>Content written to the dictionary files read by these tests.</summary>
     private const string Content = "Alpha: First\n";
 
+    /// <summary>The reason for a device path.</summary>
+    private const string DeviceReason = "it is a device path, which is never accessed";
+
+    /// <summary>The reason for a local path that leads to a network location through a link.</summary>
+    private const string NetworkLinkReason =
+        "it leads to a network location through a symbolic link or junction, which is never accessed";
+
+    /// <summary>The reason for anything that is not a regular file.</summary>
+    private const string NotRegularReason =
+        "it is not a regular file (a folder, device, pipe or other special file), which is never accessed";
+
+    /// <summary>The reason for an opened file whose type the platform cannot tell.</summary>
+    private const string TypeUnknownReason =
+        "the type of the opened file cannot be determined on this system, "
+        + "so it cannot be confirmed to be a regular file and is never accessed";
+
+    /// <summary>The folder of the Linux shared-memory file system, a world-writable folder under /dev.</summary>
+    private const string DevShm = "/dev/shm";
+
     /// <summary>Test that every valid --file-access value is parsed, in any letter case and order.</summary>
     /// <param name="text">The option value.</param>
     /// <param name="expected">The expected mode, as written on the command line.</param>
@@ -189,8 +208,9 @@ public class FileAccessPolicyTests
     }
 
     /// <summary>
-    ///     Test that on Linux and macOS the Windows <c>\??\</c> namespace and a path under /dev are ordinary text (a
-    ///     device is refused by its handle type).
+    ///     Test that on Linux and macOS the Windows <c>\??\</c> namespace and a path under /dev are ordinary text: the
+    ///     written-text rules do not judge them, because /dev is a rule on the full path and on every real path (see
+    ///     <c>FileAccessPolicy_DescribeNeverAccessedFullPath_DevOnLinuxAndMac_ReturnsDeviceReason</c>).
     /// </summary>
     /// <param name="path">The path text.</param>
     [Theory]
@@ -268,15 +288,40 @@ public class FileAccessPolicyTests
         Assert.Equal("it is a device path, which is never accessed", ex.Reason);
     }
 
-    /// <summary>Test that a device node is read only to be denied as not a regular file on Linux and macOS.</summary>
+    /// <summary>
+    ///     Test that on Linux and macOS an input under /dev, also written through <c>..</c>, is denied as a device path
+    ///     before anything is opened.
+    /// </summary>
     [Fact]
-    public void FileAccessPolicy_ReadAllText_DevNull_DeniedAsNotRegular()
+    public void FileAccessPolicy_ReadAllText_DevPath_DeniedBeforeOpen()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
 
-        // Act / Assert: the non-blocking open succeeds and the handle type refuses the device
-        var ex = Assert.Throws<FileAccessDeniedException>(() => FileAccessPolicy.Any.ReadAllText(Judged("/dev/null", "/dev/null")));
-        Assert.StartsWith("it is not a regular file", ex.Reason);
+        // Arrange: an inspector that records any open
+        var opened = false;
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.None,
+            [],
+            null,
+            handle =>
+            {
+                opened = true;
+                return RealPath.Inspect(handle);
+            });
+
+        // Act
+        var direct = Record.Exception(() => policy.ReadAllText(Judged("/dev/null", "/dev/null")));
+        var rooted = Record.Exception(
+            () => policy.ReadAllText(Judged("/tmp/../dev/null", Path.GetFullPath("/tmp/../dev/null"))));
+
+        // Assert: both are denied by the full-path rule, with no real path, and no handle is judged
+        var directEx = Assert.IsType<FileAccessDeniedException>(direct);
+        var rootedEx = Assert.IsType<FileAccessDeniedException>(rooted);
+        Assert.Equal(DeviceReason, directEx.Reason);
+        Assert.Equal(DeviceReason, rootedEx.Reason);
+        Assert.Null(directEx.RealPath);
+        Assert.Null(rootedEx.RealPath);
+        Assert.False(opened);
     }
 
     /// <summary>Test that an output under /dev is denied on Linux and macOS before anything is opened.</summary>
@@ -347,6 +392,357 @@ public class FileAccessPolicyTests
             Assert.IsType<FileAccessDeniedException>(nested).Reason);
         Assert.False(opened);
         Assert.False(Directory.Exists("/dev/new"));
+    }
+
+    /// <summary>
+    ///     Test that in mode any every never-accessed rule that can be judged from an opened read handle is applied
+    ///     to it: a handle whose facts break one rule is denied with that rule's reason and real path.
+    /// </summary>
+    /// <param name="rule">The rule the handle's facts break (see <see cref="NeverAccessedHandle(string)"/>).</param>
+    [Theory]
+    [InlineData("not-regular")]
+    [InlineData("type-unknown")]
+    [InlineData("dev")]
+    [InlineData("network")]
+    [InlineData("device-namespace")]
+    public void FileAccessPolicy_ReadAllText_HandleOnNeverAccessedList_DeniedUnderAny(string rule)
+    {
+        // Arrange: a regular file and an inspector reporting facts that break the rule (skipped off its platform)
+        var (facts, reason) = NeverAccessedHandle(rule);
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "a.yaml");
+        var policy = FileAccessPolicy.Create(FileAccessMode.None, [], null, _ => facts);
+
+        // Act
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText(Judged("a.yaml", file)));
+
+        // Assert: the rule's own reason and the real path the handle reported
+        Assert.Equal(reason, ex.Reason);
+        Assert.Equal(facts.FinalPath, ex.RealPath);
+    }
+
+    /// <summary>
+    ///     Test that in mode any every never-accessed rule that can be judged from an opened write handle is applied
+    ///     to it before anything is truncated or written: an existing output keeps its content, and a new output is
+    ///     left empty (the documented residual of the exclusive create; it is never deleted).
+    /// </summary>
+    /// <param name="rule">The rule the handle's facts break (see <see cref="NeverAccessedHandle(string)"/>).</param>
+    /// <param name="existing">True when the output exists before the write.</param>
+    [Theory]
+    [InlineData("not-regular", false)]
+    [InlineData("not-regular", true)]
+    [InlineData("type-unknown", false)]
+    [InlineData("type-unknown", true)]
+    [InlineData("dev", false)]
+    [InlineData("dev", true)]
+    [InlineData("network", false)]
+    [InlineData("network", true)]
+    [InlineData("device-namespace", false)]
+    [InlineData("device-namespace", true)]
+    public void FileAccessPolicy_WriteAllText_HandleOnNeverAccessedList_DeniedNothingWritten(string rule, bool existing)
+    {
+        // Arrange: an output (existing or not) and an inspector reporting facts that break the rule
+        var (facts, reason) = NeverAccessedHandle(rule);
+        using var tmpDir = new TemporaryDirectory();
+        var output = PathIn(tmpDir, "out.md");
+        if (existing)
+        {
+            File.WriteAllText(output, "original");
+        }
+
+        var policy = FileAccessPolicy.Create(FileAccessMode.None, [], null, _ => facts);
+
+        // Act
+        var ex = Assert.Throws<FileAccessDeniedException>(
+            () => policy.WriteAllText(Judged("out.md", output), "replaced"));
+
+        // Assert: denied on the handle, and no content was written (a new output is left empty)
+        Assert.Equal(reason, ex.Reason);
+        Assert.Equal(facts.FinalPath, ex.RealPath);
+        Assert.Equal(existing ? "original" : string.Empty, File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a write handle whose real path is under /dev is denied for the device reason in
+    ///     every mode, before the roots and no-symlinks rules would deny it.
+    /// </summary>
+    /// <param name="modeText">The mode as written.</param>
+    [Theory]
+    [InlineData("any")]
+    [InlineData("roots")]
+    [InlineData("no-symlinks")]
+    [InlineData("roots,no-symlinks")]
+    public void FileAccessPolicy_WriteAllText_HandleUnderDev_DeniedBeforeModeRules(string modeText)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: an allowed folder, and an inspector reporting a real path under /dev (outside it, through a link)
+        using var tmpDir = new TemporaryDirectory();
+        var allowed = Directory.CreateDirectory(PathIn(tmpDir, "allowed")).FullName;
+        var output = PathIn(tmpDir, "allowed/out.md");
+        var policy = FileAccessPolicy.Create(
+            FileAccessPolicy.ParseMode(modeText),
+            [allowed],
+            allowed,
+            _ => new HandleFacts(true, "/dev/shm/out.md"));
+
+        // Act
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.WriteAllText(Judged("out.md", output), "x"));
+
+        // Assert: the never-accessed reason wins over the mode's reasons, and nothing was written
+        Assert.Equal(DeviceReason, ex.Reason);
+        Assert.Equal("/dev/shm/out.md", ex.RealPath);
+        Assert.Equal(string.Empty, File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test, with a real race on Linux, that an output whose folder is swapped for a link to /dev/shm after every
+    ///     check and immediately before the open is denied by the real path of its handle in mode any, and that no
+    ///     content is written there (a new file is left empty; an existing one keeps its content).
+    /// </summary>
+    /// <param name="existing">True when the output exists, so it is opened rather than created.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FileAccessPolicy_WriteAllText_ParentSwappedToDevBeforeOpen_DeniedNothingWritten(bool existing)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "The swap to /dev/shm is tested on Linux only.");
+
+        // Arrange: tmp/out (a real folder), tmp/shm -> /dev/shm ready to be swapped in, and a unique file name
+        using var tmpDir = new TemporaryDirectory();
+        var name = $"dm-{Guid.NewGuid():N}.md";
+        var shmFile = Path.Combine(DevShm, name);
+        Directory.CreateDirectory(PathIn(tmpDir, "out"));
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "shm"), DevShm);
+        try
+        {
+            CreateDevShmFileOrSkip(shmFile, "original");
+            if (existing)
+            {
+                WriteFile(tmpDir, $"out/{name}", "local");
+            }
+            else
+            {
+                File.Delete(shmFile);
+            }
+
+            var policy = FileAccessPolicy.Create(
+                FileAccessMode.None, [], null, RealPath.Inspect, beforeOpen: SwapFolderHook(tmpDir, "out", "shm"));
+
+            // Act
+            var ex = Assert.Throws<FileAccessDeniedException>(
+                () => policy.WriteAllText(Judged($"out/{name}", PathIn(tmpDir, $"out/{name}")), "replaced"));
+
+            // Assert: the handle's real path under /dev is refused, and nothing was written there
+            Assert.Equal(DeviceReason, ex.Reason);
+            Assert.Equal(shmFile, ex.RealPath);
+            Assert.Equal(existing ? "original" : string.Empty, File.ReadAllText(shmFile));
+        }
+        finally
+        {
+            File.Delete(shmFile);
+        }
+    }
+
+    /// <summary>
+    ///     Test, with a real race on Linux, that an input whose folder is swapped for a link to /dev/shm after every
+    ///     check and immediately before the open is denied by the real path of its handle in mode any.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_ParentSwappedToDevBeforeOpen_Denied()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "The swap to /dev/shm is tested on Linux only.");
+
+        // Arrange: tmp/in/name (a local file), the same name in /dev/shm, and tmp/shm -> /dev/shm ready to be swapped
+        using var tmpDir = new TemporaryDirectory();
+        var name = $"dm-{Guid.NewGuid():N}.yaml";
+        var shmFile = Path.Combine(DevShm, name);
+        WriteFile(tmpDir, $"in/{name}");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "shm"), DevShm);
+        try
+        {
+            CreateDevShmFileOrSkip(shmFile, "Secret: In shared memory\n");
+            var policy = FileAccessPolicy.Create(
+                FileAccessMode.None, [], null, RealPath.Inspect, beforeOpen: SwapFolderHook(tmpDir, "in", "shm"));
+
+            // Act
+            var ex = Assert.Throws<FileAccessDeniedException>(
+                () => policy.ReadAllText(Judged($"in/{name}", PathIn(tmpDir, $"in/{name}"))));
+
+            // Assert: the handle's real path under /dev is refused
+            Assert.Equal(DeviceReason, ex.Reason);
+            Assert.Equal(shmFile, ex.RealPath);
+        }
+        finally
+        {
+            File.Delete(shmFile);
+        }
+    }
+
+    /// <summary>
+    ///     Test, on every platform where a folder link can be created, that an output whose allowed folder is swapped
+    ///     for a link leading out after every check and immediately before the open is denied under roots by the
+    ///     real path of its handle, and that the file created outside is left empty.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_ParentSwappedOutBeforeOpen_DeniedByHandle()
+    {
+        // Arrange: allowed/out (a real folder) and allowed/swap -> outside, ready to be swapped in
+        using var tmpDir = new TemporaryDirectory();
+        var allowed = Directory.CreateDirectory(PathIn(tmpDir, "allowed/out")).Parent!.FullName;
+        Directory.CreateDirectory(PathIn(tmpDir, "outside"));
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "allowed/swap"), PathIn(tmpDir, "outside"));
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.Roots,
+            [allowed],
+            null,
+            RealPath.Inspect,
+            beforeOpen: SwapFolderHook(tmpDir, "allowed/out", "allowed/swap"));
+
+        // Act
+        var ex = Assert.Throws<FileAccessDeniedException>(
+            () => policy.WriteAllText(Judged("out/x.md", PathIn(tmpDir, "allowed/out/x.md")), "replaced"));
+
+        // Assert: the handle's real path is outside, and the file the exclusive create made there is empty
+        Assert.StartsWith("its real path is outside the allowed folders", ex.Reason);
+        Assert.Equal(string.Empty, File.ReadAllText(PathIn(tmpDir, "outside/x.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a pattern naming /dev, literally, as a glob folder, or through a folder link to
+    ///     /dev, is denied before anything is listed.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ResolvePattern_DevFolder_DeniedBeforeListing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: devices -> /dev (no privilege needed on Linux and macOS)
+        using var tmpDir = new TemporaryDirectory();
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "devices"), "/dev");
+        var policy = FileAccessPolicy.Any;
+
+        // Act
+        var literal = Record.Exception(() => policy.ResolvePattern("/dev/x.yaml", "/dev/x.yaml", "/dev/x.yaml"));
+        var glob = Record.Exception(() => policy.ResolvePattern("/dev/*.yaml", "/dev/*.yaml", "/dev/*.yaml"));
+        var linked = Record.Exception(
+            () => policy.ResolvePattern("devices/*.yaml", "devices/*.yaml", PathIn(tmpDir, "devices/*.yaml")));
+
+        // Assert: the literal and the glob by their full path, the linked folder by the real path of its handle
+        Assert.Equal(DeviceReason, Assert.IsType<FileAccessDeniedException>(literal).Reason);
+        Assert.Equal(DeviceReason, Assert.IsType<FileAccessDeniedException>(glob).Reason);
+        var linkedEx = Assert.IsType<FileAccessDeniedException>(linked);
+        Assert.Equal(DeviceReason, linkedEx.Reason);
+        Assert.Equal("/dev", linkedEx.RealPath);
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a wildcard that reaches /dev through a plain folder is denied before /dev is
+    ///     listed: by its full path when the pattern starts at the file-system root, and by the real path of its
+    ///     handle when the folder holding it is reached through a link to the file-system root.
+    /// </summary>
+    /// <param name="modeText">The mode as written; under roots the file-system root is the allowed folder.</param>
+    [Theory]
+    [InlineData("any")]
+    [InlineData("roots")]
+    public void FileAccessPolicy_ResolvePattern_WildcardIntoDev_DeniedBeforeListing(string modeText)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: root -> / (no privilege needed on Linux and macOS); "de*" matches no other root folder
+        using var tmpDir = new TemporaryDirectory();
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "root"), "/");
+        var policy = FileAccessPolicy.Create(FileAccessPolicy.ParseMode(modeText), ["/"], null);
+
+        // Act
+        var direct = Record.Exception(
+            () => policy.ResolvePattern("/de*/null.yaml", "/de*/null.yaml", "/de*/null.yaml"));
+        var linked = Record.Exception(
+            () => policy.ResolvePattern(
+                "root/de*/null.yaml", "root/de*/null.yaml", PathIn(tmpDir, "root/de*/null.yaml")));
+
+        // Assert: the plain folder /dev by its full path, root/dev by the real path of its handle
+        var directEx = Assert.IsType<FileAccessDeniedException>(direct);
+        Assert.Equal(DeviceReason, directEx.Reason);
+        Assert.Equal("/de*/null.yaml", directEx.WrittenPath);
+        var linkedEx = Assert.IsType<FileAccessDeniedException>(linked);
+        Assert.Equal(DeviceReason, linkedEx.Reason);
+        Assert.Equal("/dev", linkedEx.RealPath);
+    }
+
+    /// <summary>Test that on Linux and macOS /dev and every path under it is a device path by its full path.</summary>
+    /// <param name="fullPath">The full path.</param>
+    /// <param name="denied">True when the path must be denied as a device path.</param>
+    [Theory]
+    [InlineData("/dev", true)]
+    [InlineData("/dev/null", true)]
+    [InlineData("/dev/shm/x", true)]
+    [InlineData("/devices/x", false)]
+    [InlineData("/tmp/dev/x", false)]
+    public void FileAccessPolicy_DescribeNeverAccessedFullPath_DevOnLinuxAndMac_ReturnsDeviceReason(
+        string fullPath, bool denied)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Act
+        var result = FileAccessPolicy.DescribeNeverAccessedFullPath(fullPath);
+
+        // Assert
+        Assert.Equal(denied ? DeviceReason : null, result);
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a base folder (the root key) whose opened real path is under /dev is described
+    ///     as never accessed and not existing, and that /dev written as the folder is denied without being opened.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_DescribeNeverAccessedFolder_RealPathUnderDev_ReturnsDeviceReason()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: a real folder whose open is reported as reaching /dev/shm, and an inspector counting opens
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(PathIn(tmpDir, "docs")).FullName;
+        var calls = 0;
+        PathFacts Inspector(string _)
+        {
+            calls++;
+            return new PathFacts(PathState.Exists, true, "/dev/shm");
+        }
+
+        // Act
+        var swapped = FileAccessPolicy.DescribeNeverAccessedFolder(
+            "docs", folder, _ => null, Inspector, out var swappedExists);
+        var callsAfterSwapped = calls;
+        var written = FileAccessPolicy.DescribeNeverAccessedFolder(
+            "/dev", "/dev", _ => null, Inspector, out var writtenExists);
+
+        // Assert: the real path is refused after the one open; /dev as written is refused before any open
+        Assert.Equal(DeviceReason, swapped);
+        Assert.False(swappedExists);
+        Assert.Equal(1, callsAfterSwapped);
+        Assert.Equal(DeviceReason, written);
+        Assert.False(writtenExists);
+        Assert.Equal(1, calls);
+    }
+
+    /// <summary>
+    ///     Test that an allowed folder that is a file (as when a folder is replaced by a file after it was checked)
+    ///     has no real location, so it allows nothing under roots, not even the file itself.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_Create_AllowedFolderIsFile_AllowsNothing()
+    {
+        // Arrange: a roots policy whose only allowed "folder" is a regular file
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "allowed.yaml");
+        var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [file], null);
+
+        // Act
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText(Judged(file, file)));
+
+        // Assert: the file passes the written pre-filter but its real path is inside no allowed real location
+        Assert.StartsWith("its real path is outside the allowed folders", ex.Reason);
     }
 
     /// <summary>Test that a named pipe is denied as not a regular file without blocking the read.</summary>
@@ -1035,6 +1431,32 @@ public class FileAccessPolicyTests
         var ex = Assert.Throws<FileAccessDeniedException>(() => FileAccessPolicy.Any.ReadAllText(match));
         Assert.StartsWith("it contains a colon", ex.Reason);
         Assert.Equal(file, ex.WrittenPath);
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS a plain folder whose name contains a colon is denied by the written-text rules
+    ///     before a wildcard descends into it, even when it holds no match, and the denial fails the pattern.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ResolvePattern_PlainFolderWithColonUnderWildcard_DeniedBeforeListing()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "A colon is a stream separator on Windows, so a folder with a colon is tested on Linux and macOS only.");
+
+        // Arrange: a.yaml and an empty plain folder whose name contains a colon
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "a.yaml");
+        Directory.CreateDirectory(PathIn(tmpDir, "x:y"));
+
+        // Act
+        var ex = Record.Exception(
+            () => FileAccessPolicy.Any.ResolvePattern("**/*.yaml", "**/*.yaml", PathIn(tmpDir, "**/*.yaml")));
+
+        // Assert
+        var denied = Assert.IsType<FileAccessDeniedException>(ex);
+        Assert.StartsWith("it contains a colon", denied.Reason);
+        Assert.Equal("**/*.yaml", denied.WrittenPath);
     }
 
     /// <summary>
@@ -1866,5 +2288,70 @@ public class FileAccessPolicyTests
     {
         var link = PathIn(tmpDir, "lnk");
         return path => string.Equals(path, link, StringComparison.OrdinalIgnoreCase) ? @"\\server\share" : null;
+    }
+
+    /// <summary>
+    ///     Gets the facts of an opened handle that break one never-accessed rule, and that rule's reason, skipping the
+    ///     test on a platform where the rule does not apply.
+    /// </summary>
+    /// <param name="rule">
+    ///     <c>not-regular</c> or <c>type-unknown</c> (every platform), <c>dev</c> (a real path under /dev; Linux and
+    ///     macOS), <c>network</c> (a real path on a share; Windows) or <c>device-namespace</c> (a real path in a
+    ///     device namespace; Windows).
+    /// </param>
+    /// <returns>The handle facts and the expected reason.</returns>
+    private static (HandleFacts Facts, string Reason) NeverAccessedHandle(string rule)
+    {
+        switch (rule)
+        {
+            case "not-regular":
+                return (new HandleFacts(false, null), NotRegularReason);
+
+            case "type-unknown":
+                return (default, TypeUnknownReason);
+
+            case "dev":
+                Assert.SkipUnless(
+                    OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+                return (new HandleFacts(true, "/dev/shm/dm-handle"), DeviceReason);
+
+            case "network":
+                Assert.SkipUnless(OperatingSystem.IsWindows(), "Network locations are classified on Windows only.");
+                return (new HandleFacts(true, @"\\server\share\dm-handle"), NetworkLinkReason);
+
+            default:
+                Assert.SkipUnless(OperatingSystem.IsWindows(), "Device namespaces exist on Windows only.");
+                return (new HandleFacts(true, @"\\.\pipe\dm-handle"), DeviceReason);
+        }
+    }
+
+    /// <summary>
+    ///     Creates a pre-open action that swaps a folder for a prepared link: the folder is renamed away and the link
+    ///     is renamed to the folder's name, so the open that follows reaches the link's target.
+    /// </summary>
+    /// <param name="tmpDir">The temporary folder.</param>
+    /// <param name="folder">The folder to swap out, below the temporary folder, with '/' separators.</param>
+    /// <param name="link">The prepared link to swap in, below the temporary folder, with '/' separators.</param>
+    /// <returns>The action; it runs once and ignores the path it is given.</returns>
+    private static Action<string> SwapFolderHook(TemporaryDirectory tmpDir, string folder, string link) =>
+        _ =>
+        {
+            Directory.Move(PathIn(tmpDir, folder), PathIn(tmpDir, folder + "-old"));
+            Directory.Move(PathIn(tmpDir, link), PathIn(tmpDir, folder));
+        };
+
+    /// <summary>Creates a file in /dev/shm, skipping the test when it cannot be created there.</summary>
+    /// <param name="path">The full path of the file.</param>
+    /// <param name="content">The content.</param>
+    private static void CreateDevShmFileOrSkip(string path, string content)
+    {
+        try
+        {
+            File.WriteAllText(path, content);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Assert.Skip($"A file cannot be created in {DevShm} on this machine: {ex.Message}");
+        }
     }
 }

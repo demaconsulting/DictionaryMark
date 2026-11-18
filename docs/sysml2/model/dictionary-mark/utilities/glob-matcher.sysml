@@ -15,7 +15,4 @@ package DictionaryMark {
 
     // GlobMatcher expands and roots each pattern against the base directory before matching
     dependency GlobMatcher to PathResolver;
-
-    // GlobMatcher reads the link data of listed folders, without following them, to ask before a link is listed
-    dependency GlobMatcher to RealPath;
 }

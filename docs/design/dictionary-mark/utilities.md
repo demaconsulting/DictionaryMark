@@ -41,10 +41,10 @@ None of these units depends on any other DictionaryMark subsystem.
 - *Type*: In-process .NET API (internal to the Utilities subsystem)
 - *Role*: Provider — `FileAccessPolicy.ResolvePattern` consumes these for configuration-file patterns
 - *Contract*: `SplitGlob(pattern)` returns the literal folder text and the wildcard remainder (pure text).
-  `MatchUnder(folder, pattern, checkLinkFolder)` returns the matched files as `GlobMatch(FullPath,
-  RelativePath)`; it lists the folder with no existence probe and calls `checkLinkFolder` with the full path
-  of every symbolic link or junction folder before listing it (true lists it, false lists nothing, an
-  exception propagates).
+  `MatchUnder(folder, pattern, checkFolder)` returns the matched files as `GlobMatch(FullPath,
+  RelativePath)`; it lists the folder with no existence probe and calls `checkFolder` with the full path
+  of every folder below it, plain or a symbolic link or junction, before listing it (true lists it, false lists
+  nothing, an exception propagates).
 - *Constraints*: A `..` segment cannot climb above the listed folder.
 
 **PathResolver**: Resolves user-supplied paths against a base directory.
@@ -102,7 +102,7 @@ None of these units depends on any other DictionaryMark subsystem.
 **RealPath**: Platform facts about paths and open handles.
 
 - *Type*: In-process .NET API (internal to the Utilities subsystem)
-- *Role*: Provider — `FileAccessPolicy` consumes it, and `GlobMatcher` uses `IsLink`
+- *Role*: Provider — `FileAccessPolicy` consumes it
 - *Contract*: `OpenForRead`, `TryOpenExistingForWrite`, `CreateNewForWrite`, `Inspect` (returns
   `HandleFacts(IsRegularFile, FinalPath)`, never throws), `InspectPath` (returns `PathFacts(State,
   IsDirectory, FinalPath)` from a handle (Windows, Linux) or `realpath(3)` (macOS), never throws),
@@ -153,5 +153,5 @@ platform with an injected handle inspector, and the platform calls be tested on 
 `FileAccessPolicy` receives paths already resolved by `PathResolver` (through its callers), as a
 `JudgedPath` that carries the path as written, after `${VAR}` expansion and in full, so it never expands
 variables itself. For a configuration-file glob it uses `GlobMatcher.SplitGlob` to find the literal folder,
-judges that folder by its text and its handle (`RealPath.InspectPath`) before `GlobMatcher.MatchUnder` lists
-it, and judges every link folder in the `MatchUnder` callback before it is listed.
+judges that folder by its text and its handle (`RealPath.InspectFolder`) before `GlobMatcher.MatchUnder` lists
+it, and judges every folder below it the same way in the `MatchUnder` callback before it is listed.

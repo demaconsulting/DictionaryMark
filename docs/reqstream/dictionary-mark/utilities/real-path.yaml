@@ -58,12 +58,14 @@ sections:
                   for a folder check, whether the path is an existing folder on every platform (on macOS from a
                   handle opened with O_DIRECTORY, so a file is missing); and the real location of a folder from a
                   handle on every platform (on macOS from the O_DIRECTORY handle, using realpath(3) only for a folder
-                  that cannot be opened for reading), in the letter case the file system stores.
+                  that cannot be opened for reading), in the letter case the file system stores, reporting no real
+                  location for an entry that is not a folder.
                 justification: |
                   Allowed folders, trusted anchors, listed folders, output folders and existing outputs are judged by
                   facts taken from a handle, whose real path follows any link swapped in before the open. The real
                   location of an allowed folder or anchor is compared exactly with the real path of a file, so both
-                  must come from the same source and carry the stored letter case.
+                  must come from the same source and carry the stored letter case. A folder replaced by a file after
+                  it was checked must not become a real location that admits that file.
                 tests:
                   - windows@RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase
                   - macos@RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase
@@ -76,6 +78,7 @@ sections:
                   - ubuntu@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
                   - macos@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
                   - RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull
+                  - RealPath_TryGetCanonicalDirectory_File_ReturnsNull
 
               - id: DictionaryMark-RealPath-NoTruncateOpen
                 title: >-

@@ -386,8 +386,9 @@ Without `--allow-root`, `roots` allows the working directory and the configurati
 - **Glob folders**: the folder before the first wildcard (`docs` in `docs/**/*.yaml`) is judged before it is
   listed. Under `roots` it must be inside an allowed folder, so `../shared/*.yaml` is denied as a whole when
   `shared` is not allowed (name the files one by one, or allow the folder). Under `no-symlinks` it may not
-  pass through a link. Every symbolic link or junction a wildcard reaches is judged the same way before it is
-  listed, and a denied link fails the job.
+  pass through a link. Every folder a wildcard reaches, a symbolic link or junction or not, is judged the same
+  way before it is listed, and a denied folder fails the job, even when it holds no match (for example
+  `/*/x.yaml` on Linux and macOS fails at `/dev`).
 - **Trusted**: the paths given on the command line are never judged: `--config`, `--input` and the
   files it matches, `--output`, `--log` and `--results`. You chose them when you ran the tool.
 - **Root**: `--root` and the configuration `root` key only set the base directory of relative paths.
@@ -407,15 +408,19 @@ In every mode, including `any`, a configuration-file path is never read or writt
 
 These rules apply to the path after `${VAR}` expansion, so `output: ${OUT}/terms.md` is denied when `OUT`
 is `//server/share` or `a:b`; the error still shows the path as written. They also apply to the name of every
-file a glob matches, so on Linux and macOS a file `terms:v1.yaml` matched by `*.yaml` fails the job.
+file a glob matches and every folder it lists, so on Linux and macOS a file `terms:v1.yaml` matched by `*.yaml`,
+or a folder `x:y` that `**/*.yaml` would list, fails the job.
 
 This matches CanvasNet, so a configuration file is judged the same on every platform. A file whose name
-contains a colon can still be named on the command line, which is trusted. A device such as `/dev/null` is
-refused when it is read, as not a regular file. An output under `/dev`, one that is a link to a device, or
-one in a folder whose real path is under `/dev` (for example through a link), is never written.
+contains a colon can still be named on the command line, which is trusted. On Linux and macOS, a path under
+`/dev` is never read, written or listed, nor is one whose real path is under `/dev`: a link to a device, a
+folder linked to `/dev`, or a folder that another process swaps for such a link while the tool runs (the real
+path of every opened file is checked, in every mode). This also covers regular files there, such as
+`/dev/shm/terms.yaml`, unlike CanvasNet, which refuses only devices.
 
 A `root` key that names such a path, or on Windows one that leads to a network share through a link, is an
-error when the configuration file is loaded.
+error when the configuration file is loaded. A `root` key containing `*` or `?` is rejected as a wildcard
+before the folder is checked at all.
 
 On Windows, an `--allow-root` folder in a device namespace (`\\.\`, `\??\`, or a `\\?\` path other than a
 drive or volume) is an error. A `\\?\` drive or volume path such as `\\?\C:\docs` is an error too, because
@@ -430,7 +435,7 @@ The network rule is the same as in the DEMA Consulting CanvasNet tool:
   mapped network drive therefore works: its relative inputs and outputs, and a `--root` or `root` key on
   that share, resolve to the share.
 - On Windows, a local path that leads to a network share through a symbolic link or junction is denied,
-  at any folder of the path and through a chain of links, including a link a glob wildcard reaches. The
+  at any folder of the path and through a chain of links, including in a folder a glob wildcard reaches. The
   links are read without being followed, so the share is never contacted through a link that is present when
   the path is judged. A link swapped in afterwards is reached only by an open whose real path is then checked
   and denied.
@@ -470,8 +475,10 @@ Error: 1 of 2 table jobs failed.
 - `roots` confines a configuration file to its folders, but the file can still overwrite any file
   inside them.
 - A hard link cannot be detected: it is a second name of the same file.
-- A folder that another process swaps for a link while the tool creates it can leave an empty file at
-  the swapped location, but no content is written there.
+- A folder that another process swaps for a link just before the tool creates an output can leave an empty
+  file at the swapped location (for example under `/dev/shm`, on a share or outside the allowed folders), but
+  no content is written there. The tool does not delete that empty file: a delete by name could remove
+  another file that took the name, and it would touch the refused location again.
 - Another process can swap a folder for a link in the short window between the check of a path and its
   open. The real path of what was opened is then checked and the job is denied, but the open itself has
   already followed the link. Listing a folder and creating a folder have no handle of their own; each is

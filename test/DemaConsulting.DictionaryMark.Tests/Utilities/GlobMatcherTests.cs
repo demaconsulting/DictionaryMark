@@ -422,9 +422,9 @@ public class GlobMatcherTests
     }
 
     /// <summary>
-    ///     Test that a link folder is checked, with its full path, before a wildcard descends into it, that it is
-    ///     listed when the check allows it, that a pattern that never descends into it does not check it, and that a
-    ///     missing folder matches nothing.
+    ///     Test that every folder below the judged folder, a plain folder and a link folder alike, is checked with its
+    ///     full path before a wildcard descends into it, that it is listed when the check allows it, that a pattern
+    ///     that never descends into it does not check it, and that a missing folder matches nothing.
     /// </summary>
     [Fact]
     public void GlobMatcher_MatchUnder_LinkFolder_CheckedBeforeListing()
@@ -452,7 +452,9 @@ public class GlobMatcherTests
         var missing = GlobMatcher.MatchUnder(Path.Combine(tmpDir.DirectoryPath, "missing"), "**/*.yaml", Check);
 
         // Assert
-        Assert.Equal([link], checkedByRecursive);
+        Assert.Equal(
+            new[] { Path.Combine(baseFolder, "real"), link }.Order(StringComparer.Ordinal),
+            checkedByRecursive.Order(StringComparer.Ordinal));
         Assert.Equal(
             ["lnk/b.yaml", "real/a.yaml"],
             recursive.Select(match => match.RelativePath).Order(StringComparer.Ordinal));
@@ -463,8 +465,8 @@ public class GlobMatcherTests
     }
 
     /// <summary>
-    ///     Test that a link folder the check rejects is never listed: a check returning false lists nothing in it,
-    ///     and a check that throws stops the matching with its exception.
+    ///     Test that a link folder the check rejects is never listed: a check returning false for it lists nothing in
+    ///     it, and a check that throws for it stops the matching with its exception.
     /// </summary>
     [Fact]
     public void GlobMatcher_MatchUnder_RejectedLink_NotListed()
@@ -475,19 +477,23 @@ public class GlobMatcherTests
         File.WriteAllText(Path.Combine(baseFolder, "real", "a.yaml"), "A: a\n");
         var target = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "target")).FullName;
         File.WriteAllText(Path.Combine(target, "b.yaml"), "B: b\n");
-        LinkSupport.CreateDirectoryLinkOrSkip(Path.Combine(baseFolder, "lnk"), target);
+        var link = Path.Combine(baseFolder, "lnk");
+        LinkSupport.CreateDirectoryLinkOrSkip(link, target);
 
         // Act
-        var skipped = GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", _ => false);
+        var skipped = GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", folder => folder != link);
         var thrown = Record.Exception(
-            () => GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", folder => throw new InvalidOperationException(folder)));
+            () => GlobMatcher.MatchUnder(
+                baseFolder,
+                "**/*.yaml",
+                folder => folder == link ? throw new InvalidOperationException(folder) : true));
 
         // Assert
         Assert.Equal(["real/a.yaml"], skipped.Select(match => match.RelativePath));
-        Assert.Equal(Path.Combine(baseFolder, "lnk"), Assert.IsType<InvalidOperationException>(thrown).Message);
+        Assert.Equal(link, Assert.IsType<InvalidOperationException>(thrown).Message);
     }
 
-    /// <summary>Test that a folder that does not exist matches nothing, and no link check is called.</summary>
+    /// <summary>Test that a folder that does not exist matches nothing, and no folder check is called.</summary>
     [Fact]
     public void GlobMatcher_MatchUnder_MissingFolder_ReturnsEmpty()
     {
@@ -521,7 +527,11 @@ public class GlobMatcherTests
         bool RemoveThenAllow(string folder)
         {
             checkedFolders.Add(folder);
-            Directory.Delete(target, recursive: true);
+            if (folder == link)
+            {
+                Directory.Delete(target, recursive: true);
+            }
+
             return true;
         }
 
@@ -530,6 +540,66 @@ public class GlobMatcherTests
 
         // Assert
         Assert.Equal(["real/a.yaml"], result.Select(match => match.RelativePath));
-        Assert.Equal([link], checkedFolders);
+        Assert.Equal(
+            new[] { Path.Combine(baseFolder, "real"), link }.Order(StringComparer.Ordinal),
+            checkedFolders.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    ///     Test that every plain folder below the judged folder is checked, with its full path, before a wildcard
+    ///     descends into it: the judged folder itself is never checked, a folder the check rejects is not listed (so
+    ///     nothing below it is checked or matched), a pattern that never descends into a folder checks none, and an
+    ///     exception from the check stops the matching.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_MatchUnder_EveryFolder_CheckedBeforeListing()
+    {
+        // Arrange: base/a.yaml, base/sub/b.yaml, base/sub/deeper/c.yaml and base/other/d.txt, with no link
+        using var tmpDir = new TemporaryDirectory();
+        var baseFolder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "base")).FullName;
+        var sub = Directory.CreateDirectory(Path.Combine(baseFolder, "sub")).FullName;
+        var deeper = Directory.CreateDirectory(Path.Combine(sub, "deeper")).FullName;
+        var other = Directory.CreateDirectory(Path.Combine(baseFolder, "other")).FullName;
+        File.WriteAllText(Path.Combine(baseFolder, "a.yaml"), "A: a\n");
+        File.WriteAllText(Path.Combine(sub, "b.yaml"), "B: b\n");
+        File.WriteAllText(Path.Combine(deeper, "c.yaml"), "C: c\n");
+        File.WriteAllText(Path.Combine(other, "d.txt"), "d\n");
+        var checkedFolders = new List<string>();
+        string? rejectedFolder = null;
+        bool CheckRecorded(string folder)
+        {
+            checkedFolders.Add(folder);
+            return folder != rejectedFolder;
+        }
+
+        // Act
+        var all = GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", CheckRecorded);
+        var checkedByAll = checkedFolders.ToList();
+        checkedFolders.Clear();
+        rejectedFolder = sub;
+        var rejected = GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", CheckRecorded);
+        var checkedByRejected = checkedFolders.ToList();
+        checkedFolders.Clear();
+        var shallow = GlobMatcher.MatchUnder(baseFolder, "*.yaml", CheckRecorded);
+        var thrown = Record.Exception(
+            () => GlobMatcher.MatchUnder(
+                baseFolder,
+                "**/*.yaml",
+                folder => folder == sub ? throw new InvalidOperationException(folder) : true));
+
+        // Assert
+        Assert.Equal(
+            new[] { sub, deeper, other }.Order(StringComparer.Ordinal),
+            checkedByAll.Order(StringComparer.Ordinal));
+        Assert.Equal(
+            ["a.yaml", "sub/b.yaml", "sub/deeper/c.yaml"],
+            all.Select(match => match.RelativePath).Order(StringComparer.Ordinal));
+        Assert.Equal(["a.yaml"], rejected.Select(match => match.RelativePath));
+        Assert.Equal(
+            new[] { sub, other }.Order(StringComparer.Ordinal),
+            checkedByRejected.Order(StringComparer.Ordinal));
+        Assert.Equal(["a.yaml"], shallow.Select(match => match.RelativePath));
+        Assert.Empty(checkedFolders);
+        Assert.Equal(sub, Assert.IsType<InvalidOperationException>(thrown).Message);
     }
 }

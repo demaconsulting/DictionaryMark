@@ -1782,6 +1782,24 @@ public class IntegrationTests
         Assert.Contains($"file-access-denied: '{device}': it is a device path, which is never accessed", output);
     }
 
+    /// <summary>Test that on Linux and macOS an input under /dev is never read, in the default mode.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_InputUnderDev_Denied()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: a job reading /dev/null
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: /dev/null\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: '/dev/null': it is a device path, which is never accessed", output);
+    }
+
     /// <summary>Test that an output whose name contains a colon is never written, on every platform.</summary>
     [Fact]
     public void DictionaryMark_FileAccess_ColonOutput_Denied()

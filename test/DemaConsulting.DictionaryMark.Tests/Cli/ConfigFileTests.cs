@@ -565,6 +565,52 @@ public class ConfigFileTests
     }
 
     /// <summary>
+    ///     Test that a root value with a wildcard is rejected, with the resolver's own message, before any file-access
+    ///     folder check runs, even when the value is also on the never-accessed list.
+    /// </summary>
+    /// <param name="value">The root value as written (a YAML single-quoted scalar).</param>
+    [Theory]
+    [InlineData("sub*")]
+    [InlineData("sub?")]
+    [InlineData("//server/share*")]
+    public void ConfigFile_Load_RootWithWildcard_RejectedBeforeFolderCheck(string value)
+    {
+        // Arrange: a root with a wildcard and a folder judgment that records every call
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, $"root: '{value}'\n" + MinimalTables);
+        var calls = 0;
+        (string? Reason, bool Exists) Judge(string _, string __)
+        {
+            calls++;
+            return (null, true);
+        }
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path, Judge));
+
+        // Assert: the wildcard message, and the folder was never judged
+        Assert.Equal($"Config file '{path}': Root key '{value}' must not contain wildcard characters.", ex.Message);
+        Assert.Equal(0, calls);
+    }
+
+    /// <summary>Test that on Linux and macOS a root under /dev is denied as a device path.</summary>
+    [Fact]
+    public void ConfigFile_Load_RootUnderDev_ThrowsFileAccessDenied()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "/dev is tested on Linux and macOS only.");
+
+        // Arrange: a root naming /dev
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: '/dev'\n" + MinimalTables);
+
+        // Act / Assert: the error names the file, the code, the root and the device reason
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.Equal(
+            $"Config file '{path}': file-access-denied: root '/dev': it is a device path, which is never accessed",
+            ex.Message);
+    }
+
+    /// <summary>
     ///     Test, end to end, that a root reached through a real symbolic link to an unreachable share is denied before
     ///     its existence is checked (skipped where symbolic links cannot be created; supplementary, not requirement
     ///     evidence).

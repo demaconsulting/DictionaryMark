@@ -384,9 +384,9 @@ configuration file's folder.
 
 - **Judged paths**: every input pattern, every folder a pattern lists, every file a pattern matches, and
   every output of a configuration file, each before the tool touches it. The folder before a glob's first
-  wildcard, and every link a wildcard reaches, is judged before it is listed: under `roots` it must be inside
-  an allowed folder (so `../shared/*.yaml` is denied when `shared` is not allowed), and under `no-symlinks` a
-  link there fails the job.
+  wildcard, and every folder a wildcard reaches (a link or not), is judged before it is listed, and a denied
+  folder fails the job: under `roots` it must be inside an allowed folder (so `../shared/*.yaml` is denied when
+  `shared` is not allowed), and under `no-symlinks` a link there fails the job.
 - **Trusted paths**: the paths on the command line (`--config`, `--input` and its matches, `--output`,
   `--log` and `--results`) are never judged.
 - **Never accessed**, in every mode: a URL (`http://`, `https://` and other `scheme://` forms, and a `file:`
@@ -394,11 +394,13 @@ configuration file's folder.
   `\\?\`, `NUL`), a path with a `:` other than the drive of an absolute Windows path (on Linux and macOS, any
   `:`), and anything that is not a regular file (a folder, pipe or device). The rules apply after `${VAR}`
   expansion and to the name of every file a glob matches (on Linux and macOS, `terms:v1.yaml` matched by
-  `*.yaml` fails the job). Outputs under `/dev`, or linked there, are never written. A `root:` key naming
-  such a path is an error.
+  `*.yaml` fails the job). On Linux and macOS a path under `/dev`, or one whose real path is under `/dev`
+  (through a link, also one swapped in while the tool runs), is never read, written or listed (also when a
+  wildcard reaches it, as in `/d*/x.yaml`). A `root:` key naming such a path, or one containing `*` or `?`, is
+  an error; a wildcard is rejected before the folder is checked.
 - **Network shares**: as in CanvasNet, a configuration file on a share or mapped network drive works with
   relative paths. On Windows, a local path that leads to a network share through a symbolic link or junction
-  is denied, including a link a glob wildcard reaches.
+  is denied, including in a folder a glob wildcard reaches.
 - **Real path unavailable**: a mode other than `any` needs the real path of every opened file; where the
   system cannot tell it, the file is denied, never used unchecked.
 - **Writes**: under `roots` an output, every folder it creates, and the real path of the opened output
@@ -418,7 +420,9 @@ dictionarymark --config docs/glossary/dictionarymark.yaml --file-access roots --
 Limits: `roots` confines a configuration file to its folders, but it can still overwrite any file inside
 them. A hard link cannot be detected, because it is a second name of the same file. A link swapped in by
 another process between the check of a path and its open is followed by that open, but the real path of what
-was opened is then checked and the job is denied.
+was opened is then checked and the job is denied, in every mode. When that open created a new output, an empty
+file is left there; no content is written, and the file is not deleted, because a delete by name could reach
+another file and would touch the refused location again.
 
 ### Conflicts
 
