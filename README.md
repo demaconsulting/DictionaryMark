@@ -376,10 +376,13 @@ dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-
 
 Under every mode, network paths, device paths (and on Windows reserved names such as `NUL`), a colon outside a Windows
 drive, control characters, and anything that is not a regular file are refused, and each input is read up to 16 MiB.
-A refused table fails with `file-access-denied`, writes nothing, and the other tables still run (the exit code is
-non-zero). Known limits: a hard link cannot be told apart from its file; the output check is not race-proof (the write
-follows by name); glob matching can reveal file names (and check a literal network path) outside the allowed folders
-before the match is refused, although no content is read; and an `--allow-root` folder must exist when the run starts.
+A table whose input or output the file-access mode denies fails with `file-access-denied`; a table that breaks one of
+the rules above (or names a file over 16 MiB) fails with the ordinary `Failed to read file` or
+`Failed to write output file` error, which names the rule. Either way the table writes nothing, the other tables still
+run, and the exit code is non-zero. Known limits: a hard link cannot be told apart from its file; the output check is
+not race-proof (the write follows by name); glob matching can reveal file names (and check a literal network path)
+outside the allowed folders before the match is refused, although no content is read; and an `--allow-root` folder
+must exist when the run starts.
 See the User Guide for details.
 
 ### Conflicts

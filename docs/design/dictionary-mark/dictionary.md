@@ -119,7 +119,8 @@ Every job error is written through `context.WriteError`, prefixed with the job l
 (`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration
 tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported. A file-access refusal
 of a policy reads `file-access-denied: {message} Allow the file in the file-access policy, or reference a file it
-allows.`.
+allows.`; any other refusal of a judged path (a never-list path, a non-regular file, an input over 16 MiB) reads
+`Failed to read file '{file}': {message}` or `Failed to write output file '{file}': {message}`.
 
 #### Column widths
 

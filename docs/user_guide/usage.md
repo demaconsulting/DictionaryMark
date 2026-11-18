@@ -374,13 +374,22 @@ with `:` too), control characters, anything that is not a regular file (a folder
 Windows a local path that leads to a network share through a link. Each input is read up to 16 MiB; a larger file is an
 error.
 
-A refused table fails with `file-access-denied`, writes nothing, and the other tables still run; the exit code is
-non-zero:
+A table whose input or output the file-access mode denies fails with `file-access-denied`:
 
 ```text
 Error: table job 2 ('../out/table.md'): file-access-denied: The file 'C:\repo\out\table.md' was denied by the
 file-access policy 'roots'. Allow the file in the file-access policy, or reference a file it allows.
 ```
+
+A table that breaks one of the rules above, or names an input larger than 16 MiB, fails with the ordinary
+`Failed to read file` or `Failed to write output file` error, which names the rule:
+
+```text
+Error: table job 3 ('//host/share/t.md'): Failed to write output file '//host/share/t.md': The path
+'\\host\share\t.md' is not allowed: network paths are not permitted.
+```
+
+Either way the table writes nothing, the other tables still run, and the exit code is non-zero.
 
 A mistake in the options (an unknown mode, `--allow-root` with `any` or `no-symlinks`, or an `--allow-root` folder
 that does not exist) is reported before any input is read.
