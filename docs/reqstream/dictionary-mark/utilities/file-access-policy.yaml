@@ -155,19 +155,26 @@ sections:
               - id: DictionaryMark-FileAccessPolicy-RealPathUnavailable
                 title: >-
                   Under the roots and no-symlinks modes, the FileAccessPolicy unit shall deny a file whose real path
-                  the platform cannot determine, and under the any mode shall still read it.
+                  the platform cannot determine, and under the any mode shall still read it; in every mode it shall
+                  deny a file whose type the platform cannot determine, with a reason stating that its type cannot be
+                  determined rather than that it is not a regular file.
                 justification: |
                   A restrictive mode that cannot be applied must fail closed rather than read the file unchecked.
+                  Only regular files are ever accessed, so a file whose type is unknown is refused in every mode, but
+                  an unknown type must not be reported as a special file, so the user is told the real cause.
                 tests:
                   - FileAccessPolicy_ReadAllText_RealPathUnknown_DeniedUnderRestrictiveModes
                   - FileAccessPolicy_ReadAllText_RealPathUnknown_AllowedUnderAny
+                  - FileAccessPolicy_ReadAllText_TypeUnknown_DeniedWithTypeReason
+                  - FileAccessPolicy_WriteAllText_TypeUnknown_ContentUnchanged
 
               - id: DictionaryMark-FileAccessPolicy-Writes
                 title: >-
                   The FileAccessPolicy unit shall write an output only after its path, its deepest existing parent
                   folder, every folder it creates (one level at a time, each verified in every mode where its
                   parent's real location is known) and the real path of the opened output pass the mode; shall open
-                  an existing output without truncating it and replace its content only after verification; and
+                  an existing output without truncating it and replace its content only after verification; shall
+                  never take an existing entry that is not a folder for an output's existing parent folder; and
                   shall write nothing, not even a folder, when the output is denied.
                 justification: |
                   A write that leads out of the allowed folders could overwrite any file the user can write, so
@@ -178,6 +185,7 @@ sections:
                   - FileAccessPolicy_WriteAllText_MissingFoldersInside_Created
                   - FileAccessPolicy_WriteAllText_ExistingOutput_ReplacedContent
                   - FileAccessPolicy_WriteAllText_NotRegularHandle_ContentUnchanged
+                  - FileAccessPolicy_WriteAllText_ParentIsFile_FailsNothingWritten
                   - windows@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
                   - ubuntu@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
                   - macos@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
@@ -193,7 +201,8 @@ sections:
                   list and the mode (under roots, its path as written and its real path inside an allowed folder;
                   under no-symlinks, no link below the trusted anchor) before the folder is listed, shall judge every
                   folder link a wildcard would descend into the same way before it is listed, and shall fail the
-                  pattern when either is denied.
+                  pattern when either is denied; a literal folder that does not exist or is not a folder shall give
+                  no matches.
                 justification: |
                   Listing a folder touches it and reveals the names in it, and a link reached by a wildcard can lead
                   anywhere, including a share. Judging each listed folder first keeps matching inside what the mode
@@ -201,6 +210,10 @@ sections:
                 tests:
                   - FileAccessPolicy_ResolvePattern_RootsFolderOutside_DeniedBeforeMatching
                   - FileAccessPolicy_ResolvePattern_MissingFolder_ReturnsEmpty
+                  - FileAccessPolicy_ResolvePattern_FolderIsFile_ReturnsEmpty
+                  - windows@FileAccessPolicy_ResolvePattern_RootsFolderIsFileLinkLeadingOut_ReturnsEmpty
+                  - ubuntu@FileAccessPolicy_ResolvePattern_RootsFolderIsFileLinkLeadingOut_ReturnsEmpty
+                  - macos@FileAccessPolicy_ResolvePattern_RootsFolderIsFileLinkLeadingOut_ReturnsEmpty
                   - windows@FileAccessPolicy_ResolvePattern_NoSymlinksPrefixThroughLink_DeniedBeforeMatching
                   - ubuntu@FileAccessPolicy_ResolvePattern_NoSymlinksPrefixThroughLink_DeniedBeforeMatching
                   - macos@FileAccessPolicy_ResolvePattern_NoSymlinksPrefixThroughLink_DeniedBeforeMatching

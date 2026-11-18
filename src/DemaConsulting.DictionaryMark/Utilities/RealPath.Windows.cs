@@ -32,6 +32,12 @@ internal static partial class RealPath
     /// <summary>The <c>GetFileType</c> result of a file on a disk (as opposed to a character device or a pipe).</summary>
     private const uint WindowsFileTypeDisk = 1;
 
+    /// <summary>
+    ///     The <c>GetFileType</c> result <c>FILE_TYPE_UNKNOWN</c>, returned when the type cannot be told or the call
+    ///     fails; the type is then unknown, never a special file.
+    /// </summary>
+    private const uint WindowsFileTypeUnknown = 0;
+
     /// <summary>The <c>GetFinalPathNameByHandleW</c> flags <c>FILE_NAME_NORMALIZED | VOLUME_NAME_DOS</c> (both zero).</summary>
     private const uint WindowsFinalPathNormalizedDos = 0;
 
@@ -251,15 +257,29 @@ internal static partial class RealPath
     /// <remarks>
     ///     A regular file is a disk file that is not a folder. A character device (<c>NUL</c>, a console) or a pipe
     ///     is not a disk file, and a folder handle is a disk file with the folder attribute; neither is read, so its
-    ///     real path is not needed.
+    ///     real path is not needed. An invalid or closed handle, or a <c>GetFileType</c> call that cannot tell the
+    ///     type (<c>FILE_TYPE_UNKNOWN</c>, also its failure result), leaves both facts unknown, so a failed call is
+    ///     never reported as a special file.
     /// </remarks>
     /// <param name="handle">The open handle.</param>
     /// <returns>The facts.</returns>
     [SupportedOSPlatform("windows")]
     private static HandleFacts InspectWindows(SafeFileHandle handle)
     {
-        if (handle.IsInvalid || handle.IsClosed || GetFileTypeNative(handle) != WindowsFileTypeDisk
-            || File.GetAttributes(handle).HasFlag(FileAttributes.Directory))
+        // A handle that cannot be asked, or a type the system cannot tell, is unknown rather than special
+        if (handle.IsInvalid || handle.IsClosed)
+        {
+            return default;
+        }
+
+        var fileType = GetFileTypeNative(handle);
+        if (fileType == WindowsFileTypeUnknown)
+        {
+            return default;
+        }
+
+        // A character device, a pipe or a folder is a known special file
+        if (fileType != WindowsFileTypeDisk || File.GetAttributes(handle).HasFlag(FileAttributes.Directory))
         {
             return new HandleFacts(false, null);
         }

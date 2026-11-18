@@ -73,8 +73,10 @@ already judged, for configuration-file patterns.
   listed.
 - *Returns*: `IReadOnlyList<GlobMatch>`.
 - *Behavior*: a `Matcher` runs against a `GuardedDirectory`. Listing a folder calls
-  `DirectoryInfo.EnumerateFileSystemInfos` directly (a missing folder gives no entries), without the
-  `Exists` probe of the library's `DirectoryInfoWrapper`. Each listed child folder is marked as a link (on
+  `DirectoryInfo.GetFileSystemInfos` directly, reading all its entries at once inside the handler for a missing
+  folder, so a folder that is missing when it is listed (including one removed after it was checked) gives no
+  entries whatever the framework's enumeration timing. There is no `Exists` probe like that of the library's
+  `DirectoryInfoWrapper`. Each listed child folder is marked as a link (on
   Windows when the listing's own attributes hold `ReparsePoint` and `RealPath.IsLink` confirms it; on Linux and
   macOS by `RealPath.IsLink` for every child folder). When the matcher asks to list a link folder, the check is
   called first: true lists it, false lists nothing in it, and an exception stops the matching and propagates.

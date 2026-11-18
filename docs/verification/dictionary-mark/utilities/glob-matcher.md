@@ -124,3 +124,11 @@ never calls the check, and a missing folder matches nothing.
 
 **GlobMatcher_MatchUnder_RejectedLink_NotListed**: A check that returns false lists nothing in the link, and a
 check that throws stops the matching with its exception.
+
+**GlobMatcher_MatchUnder_MissingFolder_ReturnsEmpty**: Matching `**/*.yaml` below a folder that does not exist
+matches nothing, without an error, and never calls the check.
+
+**GlobMatcher_MatchUnder_FolderRemovedAfterCheck_MatchesNothingInIt**: Below a folder that holds a real
+sub-folder and a folder link, a check that deletes the link's target and then allows it (so the folder is
+removed after it was judged and before it is listed) is called once, with the link's full path. The link lists
+nothing, without an error, and only the file in the real sub-folder is matched.

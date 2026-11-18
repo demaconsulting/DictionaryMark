@@ -25,15 +25,18 @@ sections:
 
               - id: DictionaryMark-RealPath-RegularFile
                 title: >-
-                  The RealPath unit shall report whether an open handle is a regular file, shall open a named pipe
-                  for reading without blocking, and shall open a folder for reading (on Windows with backup
-                  semantics) so its handle reports it as not a regular file.
+                  The RealPath unit shall report whether an open handle is a regular file, shall report the type as
+                  unknown (never as not a regular file) when it cannot tell, shall open a named pipe for reading
+                  without blocking, and shall open a folder for reading (on Windows with backup semantics) so its
+                  handle reports it as not a regular file.
                 justification: |
                   Devices, pipes and folders must be recognized from the handle, never by a by-name probe, and opening
-                  one must never hang the run.
+                  one must never hang the run. A handle the platform cannot ask, or a native call that is missing or
+                  fails, must not be mistaken for a special file, so the caller can report the real cause.
                 tests:
                   - RealPath_OpenForRead_Directory_HandleIsNotRegular
                   - RealPath_OpenForRead_MissingFile_ThrowsFileNotFound
+                  - RealPath_Inspect_ClosedHandle_ReportsUnknownFacts
                   - ubuntu@RealPath_Inspect_DevNull_IsNotRegular
                   - macos@RealPath_Inspect_DevNull_IsNotRegular
                   - ubuntu@RealPath_OpenForRead_Fifo_DoesNotBlockAndIsNotRegular

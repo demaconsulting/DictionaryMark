@@ -486,4 +486,50 @@ public class GlobMatcherTests
         Assert.Equal(["real/a.yaml"], skipped.Select(match => match.RelativePath));
         Assert.Equal(Path.Combine(baseFolder, "lnk"), Assert.IsType<InvalidOperationException>(thrown).Message);
     }
+
+    /// <summary>Test that a folder that does not exist matches nothing, and no link check is called.</summary>
+    [Fact]
+    public void GlobMatcher_MatchUnder_MissingFolder_ReturnsEmpty()
+    {
+        // Arrange: a folder that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act
+        var result = GlobMatcher.MatchUnder(missing, "**/*.yaml", _ => throw new InvalidOperationException("checked"));
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    /// <summary>
+    ///     Test that a link folder whose target is removed after the check allowed it, and before it is listed,
+    ///     matches nothing in it, without an error, while the rest of the folder is still matched.
+    /// </summary>
+    [Fact]
+    public void GlobMatcher_MatchUnder_FolderRemovedAfterCheck_MatchesNothingInIt()
+    {
+        // Arrange: base/real/a.yaml and base/lnk -> target, which holds b.yaml; the check removes target
+        using var tmpDir = new TemporaryDirectory();
+        var baseFolder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "base", "real")).Parent!.FullName;
+        File.WriteAllText(Path.Combine(baseFolder, "real", "a.yaml"), "A: a\n");
+        var target = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "target")).FullName;
+        File.WriteAllText(Path.Combine(target, "b.yaml"), "B: b\n");
+        var link = Path.Combine(baseFolder, "lnk");
+        LinkSupport.CreateDirectoryLinkOrSkip(link, target);
+        var checkedFolders = new List<string>();
+        bool RemoveThenAllow(string folder)
+        {
+            checkedFolders.Add(folder);
+            Directory.Delete(target, recursive: true);
+            return true;
+        }
+
+        // Act
+        var result = GlobMatcher.MatchUnder(baseFolder, "**/*.yaml", RemoveThenAllow);
+
+        // Assert
+        Assert.Equal(["real/a.yaml"], result.Select(match => match.RelativePath));
+        Assert.Equal([link], checkedFolders);
+    }
 }

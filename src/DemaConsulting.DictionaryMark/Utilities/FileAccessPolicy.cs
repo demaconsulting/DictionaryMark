@@ -38,7 +38,8 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///             In every mode, a URL (<c>scheme://</c>), a <c>file:</c> URI with a host, a path written as a UNC path,
 ///             a device path, a colon other than the drive of an absolute path on Windows (on Linux and macOS, any
 ///             colon, also in the name of a file a glob matched), on Linux and macOS an output under <c>/dev</c>
-///             (also through a link), and anything that is not a regular file are never accessed.
+///             (also through a link), and anything that is not a regular file are never accessed; a file whose type
+///             the platform cannot tell is refused too, with its own reason.
 ///         </item>
 ///         <item>
 ///             Network locations follow CanvasNet: a path written as a UNC path is never accessed, a path that is
@@ -151,6 +152,14 @@ internal sealed partial class FileAccessPolicy
     /// <summary>The reason for anything that is not a regular file.</summary>
     private const string NotRegularReason =
         "it is not a regular file (a folder, device, pipe or other special file), which is never accessed";
+
+    /// <summary>
+    ///     The reason for an opened file whose type the platform cannot tell (for example a native call that is
+    ///     missing or failed), which is refused but never reported as a special file.
+    /// </summary>
+    private const string TypeUnknownReason =
+        "the type of the opened file cannot be determined on this system, "
+        + "so it cannot be confirmed to be a regular file and is never accessed";
 
     /// <summary>The directory separators accepted when a path is split into components.</summary>
     private static readonly char[] ComponentSeparators = ['/', '\\'];
@@ -615,7 +624,8 @@ internal sealed partial class FileAccessPolicy
     ///     device rules on the full path, on Windows a symbolic link or junction at any folder of a local path whose
     ///     target is a network location, and under <see cref="FileAccessMode.Roots"/> the full path as written), all
     ///     before anything is opened; then the open (non-blocking on Linux and macOS; a folder opens too, so it is
-    ///     told by its handle, never by a by-name probe); then the facts of the open handle: a regular file, not a
+    ///     told by its handle, never by a by-name probe); then the facts of the open handle: a regular file (a known
+    ///     special file and a file whose type the platform cannot tell are denied, each with its own reason), not a
     ///     local path whose real path is on a network location, and in a restrictive mode a known real path that
     ///     satisfies the mode. The content is read from the same handle that was judged, decoded as UTF-8 with
     ///     byte-order-mark detection like <see cref="File.ReadAllText(string)"/>.
@@ -935,20 +945,23 @@ internal sealed partial class FileAccessPolicy
     ///     Judges a folder before it is listed: by every form of its path, then by its handle.
     /// </summary>
     /// <remarks>
-    ///     Used for the literal folder of a glob and for every link folder a wildcard would descend into. The handle
-    ///     check is that of an output's folder, except the write-only <c>/dev</c> rule: a local folder whose real
-    ///     path is on a network location is denied in every mode, a restrictive mode needs its real path, under
-    ///     roots the real path must be inside an allowed folder, and under no-symlinks no link may lie below the
-    ///     trusted anchor of the folder.
+    ///     Used for the literal folder of a glob and for every link folder a wildcard would descend into. The folder
+    ///     is opened once (<see cref="RealPath.InspectFolder(string)"/>; on macOS with <c>O_DIRECTORY</c>, so a file,
+    ///     a named pipe or a device, also through a link, is not a folder on any platform). The handle check is that
+    ///     of an output's folder, except the write-only <c>/dev</c> rule: a local folder whose real path is on a
+    ///     network location is denied in every mode, a restrictive mode needs its real path, under roots the real
+    ///     path must be inside an allowed folder, and under no-symlinks no link may lie below the trusted anchor of
+    ///     the folder.
     /// </remarks>
     /// <param name="path">The judged path of the folder, shown as the pattern as written.</param>
     /// <returns>True when the folder may be listed; false when it does not exist or is not a folder.</returns>
     /// <exception cref="FileAccessDeniedException">Thrown when the folder is denied.</exception>
     private bool CheckListedFolder(JudgedPath path)
     {
+        // Judge the path, then open it as a folder: a missing entry or one that is not a folder lists nothing
         CheckPath(path);
         var anchor = CaptureAnchor(path.Shown, path.FullPath);
-        var facts = RealPath.InspectPath(path.FullPath);
+        var facts = RealPath.InspectFolder(path.FullPath);
         if (facts.State == PathState.Missing || facts.IsDirectory == false)
         {
             return false;
@@ -962,9 +975,12 @@ internal sealed partial class FileAccessPolicy
     ///     Finds the deepest existing folder of a path by handles, never by a by-name probe.
     /// </summary>
     /// <remarks>
-    ///     Each level is opened without access rights from the deepest up. A level that exists but is not a folder
-    ///     counts as missing (creating it then fails). A link whose target is missing counts as existing with an
-    ///     unknown real path, as does a level whose facts cannot be told, so a restrictive mode denies it.
+    ///     Each level is opened as a folder (<see cref="RealPath.InspectFolder(string)"/>; on macOS with
+    ///     <c>O_DIRECTORY</c>) from the deepest up, so a level that exists but is not a folder (a regular file, a
+    ///     named pipe or a device) counts as missing on every platform, and creating it then fails. A link whose
+    ///     target is missing counts as existing with an unknown real path, as does a level whose facts cannot be
+    ///     told, so a restrictive mode denies it; on macOS a link to a file is told the same way, because the folder
+    ///     open cannot tell it from a link whose target is missing.
     /// </remarks>
     /// <param name="parent">The parent folder of the output, or null.</param>
     /// <returns>The deepest existing folder and its real path (each possibly null), and the missing folders.</returns>
@@ -974,7 +990,8 @@ internal sealed partial class FileAccessPolicy
         var folder = parent;
         while (folder != null)
         {
-            var facts = RealPath.InspectPath(folder);
+            // An existing folder ends the search; a file, pipe or device is not a folder and counts as missing
+            var facts = RealPath.InspectFolder(folder);
             if (facts.State == PathState.Exists && facts.IsDirectory != false)
             {
                 return (folder, facts.FinalPath, missing);
@@ -1013,6 +1030,12 @@ internal sealed partial class FileAccessPolicy
     /// <summary>
     ///     Judges the facts of an open handle.
     /// </summary>
+    /// <remarks>
+    ///     Only a regular file is ever accessed, in every mode. A handle the platform reports as not a regular file
+    ///     gets the not-a-regular-file reason. A handle whose type the platform cannot tell (a native library or
+    ///     entry point that is missing, or a native call that failed, leaves the type unknown) is refused too, in
+    ///     every mode, with its own reason, so an interop failure is never reported as a special file.
+    /// </remarks>
     /// <param name="writtenPath">The path as written.</param>
     /// <param name="fullPath">The full path that was opened.</param>
     /// <param name="handle">The open handle.</param>
@@ -1020,12 +1043,19 @@ internal sealed partial class FileAccessPolicy
     /// <exception cref="FileAccessDeniedException">Thrown when the handle is denied.</exception>
     private void CheckHandle(string writtenPath, string fullPath, SafeFileHandle handle, AnchorSnapshot? anchor)
     {
+        // Only a known regular file passes; a special file and an unknown type are denied with distinct reasons
         var facts = _inspector(handle);
-        if (facts.IsRegularFile != true)
+        if (facts.IsRegularFile == false)
         {
             throw new FileAccessDeniedException(writtenPath, facts.FinalPath, NotRegularReason);
         }
 
+        if (facts.IsRegularFile == null)
+        {
+            throw new FileAccessDeniedException(writtenPath, facts.FinalPath, TypeUnknownReason);
+        }
+
+        // The real path of a regular file is judged by the mode
         CheckRealPath(writtenPath, fullPath, facts.FinalPath, anchor);
     }
 

@@ -54,6 +54,9 @@ are reported as not regular files, and opening a pipe without a writer does not 
 A folder opens for reading (on Windows with backup semantics) and its handle is reported as not a regular
 file; a missing file is reported as `FileNotFoundException`.
 
+**RealPath_Inspect_ClosedHandle_ReportsUnknownFacts**: A handle to a regular file, closed before it is
+inspected, cannot be asked; both facts are reported as unknown (null), never as not a regular file.
+
 **RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget** and
 **RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull**: A linked folder resolves to its
 target, and a missing folder has no real location.

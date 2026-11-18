@@ -387,7 +387,9 @@ internal static partial class RealPath
     /// </summary>
     /// <remarks>
     ///     Never throws: a platform call that is missing or fails leaves the facts unknown (null), so the caller
-    ///     can fail closed. Only the specific failures a native call can raise are caught.
+    ///     can fail closed. Only the specific failures a native call can raise are caught. A missing native library
+    ///     or entry point (<see cref="DllNotFoundException"/>, <see cref="EntryPointNotFoundException"/>) leaves
+    ///     both facts unknown; it never reports a handle as not a regular file.
     /// </remarks>
     /// <param name="handle">The open handle. Must not be null.</param>
     /// <returns>The facts; each is null where the platform cannot tell.</returns>

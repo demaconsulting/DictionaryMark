@@ -780,6 +780,54 @@ public class FileAccessPolicyTests
     }
 
     /// <summary>
+    ///     Test that a glob whose literal folder is a regular file matches nothing in every mode, on every platform,
+    ///     without an error or a denial.
+    /// </summary>
+    /// <param name="modeText">The mode as written.</param>
+    [Theory]
+    [InlineData("any")]
+    [InlineData("roots")]
+    [InlineData("no-symlinks")]
+    [InlineData("roots,no-symlinks")]
+    public void FileAccessPolicy_ResolvePattern_FolderIsFile_ReturnsEmpty(string modeText)
+    {
+        // Arrange: a.yaml is a regular file, used as the literal folder of the glob
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "a.yaml");
+        var policy = FileAccessPolicy.Create(
+            FileAccessPolicy.ParseMode(modeText),
+            [tmpDir.DirectoryPath],
+            tmpDir.DirectoryPath);
+
+        // Act
+        var result = policy.ResolvePattern("a.yaml/*.yaml", "a.yaml/*.yaml", PathIn(tmpDir, "a.yaml/*.yaml"));
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    /// <summary>
+    ///     Test that under roots a glob whose literal folder is a file link leading out of the allowed folders matches
+    ///     nothing, as a file is not a folder, rather than being denied as a folder that leads out.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ResolvePattern_RootsFolderIsFileLinkLeadingOut_ReturnsEmpty()
+    {
+        // Arrange: allowed/lnk.yaml -> outside/real.yaml (skipped where file links cannot be created)
+        using var tmpDir = new TemporaryDirectory();
+        var real = WriteFile(tmpDir, "outside/real.yaml");
+        var policy = Roots(tmpDir, "allowed");
+        LinkSupport.CreateFileLinkOrSkip(PathIn(tmpDir, "allowed/lnk.yaml"), real);
+
+        // Act
+        var result = policy.ResolvePattern(
+            "lnk.yaml/*.yaml", "lnk.yaml/*.yaml", PathIn(tmpDir, "allowed/lnk.yaml/*.yaml"));
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    /// <summary>
     ///     Test that on Linux and macOS a file a glob matched whose name contains a colon is denied by the
     ///     written-text rules when it is read, shown by its full path.
     /// </summary>
@@ -988,6 +1036,83 @@ public class FileAccessPolicyTests
 
         // Assert
         Assert.Equal(Content, text);
+    }
+
+    /// <summary>
+    ///     Test that a file whose type the platform cannot tell (the facts a missing native library or entry point
+    ///     leaves) is denied in every mode with a reason saying its type is unknown, never that it is a special file.
+    /// </summary>
+    /// <param name="modeText">The mode as written.</param>
+    [Theory]
+    [InlineData("any")]
+    [InlineData("roots")]
+    [InlineData("no-symlinks")]
+    [InlineData("roots,no-symlinks")]
+    public void FileAccessPolicy_ReadAllText_TypeUnknown_DeniedWithTypeReason(string modeText)
+    {
+        // Arrange: an inspector that reports unknown facts, as RealPath.Inspect does when a native call is missing
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "allowed/a.yaml");
+        var policy = FileAccessPolicy.Create(
+            FileAccessPolicy.ParseMode(modeText),
+            [PathIn(tmpDir, "allowed")],
+            PathIn(tmpDir, "allowed"),
+            _ => default);
+
+        // Act / Assert
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText(Judged("a.yaml", file)));
+        Assert.Equal(
+            "the type of the opened file cannot be determined on this system, "
+            + "so it cannot be confirmed to be a regular file and is never accessed",
+            ex.Reason);
+        Assert.DoesNotContain("not a regular file", ex.Reason);
+        Assert.Null(ex.RealPath);
+    }
+
+    /// <summary>Test that an existing output whose type the platform cannot tell is denied and not truncated.</summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_TypeUnknown_ContentUnchanged()
+    {
+        // Arrange: an existing output and an inspector that reports unknown facts
+        using var tmpDir = new TemporaryDirectory();
+        var output = WriteFile(tmpDir, "out.md", "original");
+        var policy = FileAccessPolicy.Create(FileAccessMode.None, [], null, _ => default);
+
+        // Act / Assert: denied with the unknown-type reason, before the file is truncated
+        var ex = Assert.Throws<FileAccessDeniedException>(
+            () => policy.WriteAllText(Judged("out.md", output), "replaced"));
+        Assert.StartsWith("the type of the opened file cannot be determined on this system", ex.Reason);
+        Assert.Equal("original", File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that an output whose parent folder is an existing regular file fails with an I/O error in every mode,
+    ///     on every platform, and that nothing is written: the file is not taken for an existing folder.
+    /// </summary>
+    /// <param name="modeText">The mode as written.</param>
+    [Theory]
+    [InlineData("any")]
+    [InlineData("roots")]
+    [InlineData("no-symlinks")]
+    [InlineData("roots,no-symlinks")]
+    public void FileAccessPolicy_WriteAllText_ParentIsFile_FailsNothingWritten(string modeText)
+    {
+        // Arrange: allowed/a.yaml is a regular file, used as the folder of the output
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "allowed/a.yaml", "original");
+        var policy = FileAccessPolicy.Create(
+            FileAccessPolicy.ParseMode(modeText),
+            [PathIn(tmpDir, "allowed")],
+            PathIn(tmpDir, "allowed"));
+
+        // Act: the file counts as a missing folder, so creating that folder fails
+        var ex = Record.Exception(
+            () => policy.WriteAllText(Judged("a.yaml/out.md", PathIn(tmpDir, "allowed/a.yaml/out.md")), "x"));
+
+        // Assert: a plain I/O error (not a denial or a missing folder), and the file and its folder are unchanged
+        Assert.IsType<IOException>(ex);
+        Assert.Equal("original", File.ReadAllText(file));
+        Assert.Equal([file], Directory.GetFileSystemEntries(PathIn(tmpDir, "allowed")));
     }
 
     /// <summary>Test that an output outside the allowed folders is denied and nothing, not even a folder, is written.</summary>

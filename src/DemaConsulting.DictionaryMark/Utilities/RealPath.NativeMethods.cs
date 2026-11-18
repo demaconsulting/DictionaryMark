@@ -31,8 +31,12 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///     Every import is private and called only from the platform-specific members of this unit, which add the logic
 ///     the raw call needs (buffer growth, prefix stripping, error translation, structure offsets) after an
 ///     <see cref="OperatingSystem"/> check. No unsafe code is used: buffers are managed arrays. Windows imports load
-///     <c>kernel32.dll</c> from System32 only. Linux and macOS imports use <c>libc</c> (which re-exports
-///     <c>libSystem</c> on macOS) with NUL-terminated UTF-8 paths.
+///     <c>kernel32.dll</c> from System32 only. Linux and macOS imports use <c>libc</c> with NUL-terminated UTF-8
+///     paths. On macOS <c>libc</c> is <c>libSystem</c>, which re-exports the kernel system-call library of xnu,
+///     where <c>proc_pidfdinfo</c> is implemented. This is the CanvasNet binding, and the macOS
+///     tests that read a real path from a handle (such as <c>RealPath_Inspect_TempFile_ReportsPrivateLocation</c>)
+///     prove that it resolves. A missing library or entry point is caught by the callers and leaves the facts
+///     unknown, never classified.
 /// </remarks>
 internal static partial class RealPath
 {
@@ -116,7 +120,10 @@ internal static partial class RealPath
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     private static extern int FXStatNative(int version, int descriptor, [Out] byte[] statBuffer);
 
-    /// <summary>The macOS <c>proc_pidfdinfo</c> function.</summary>
+    /// <summary>
+    ///     The macOS <c>proc_pidfdinfo</c> function (implemented in the kernel system-call library of xnu,
+    ///     re-exported through <c>libc</c>, which is <c>libSystem</c> on macOS).
+    /// </summary>
     /// <param name="pid">The process.</param>
     /// <param name="descriptor">The descriptor.</param>
     /// <param name="flavor">The kind of information.</param>

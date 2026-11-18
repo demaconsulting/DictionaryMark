@@ -279,7 +279,8 @@ internal static partial class GlobMatcher
     /// <remarks>
     ///     <para>
     ///         Used for configuration-file patterns, whose folders must be judged by the file-access policy before
-    ///         they are listed. The folder is listed directly (a folder that does not exist gives no matches), with
+    ///         they are listed. The folder is listed directly, reading all its entries at once (a folder that does
+    ///         not exist when it is listed, including one removed after it was checked, gives no matches), with
     ///         no existence probe. Every child folder the matcher may descend into is checked for being a link when
     ///         it is listed (on Windows by its reparse-point attribute and then its link data, on Linux and macOS by
     ///         its link data); before such a link folder is itself listed, <paramref name="checkLinkFolder"/> is
@@ -396,11 +397,13 @@ internal static partial class GlobMatcher
                 return [];
             }
 
-            // The listing itself reports a missing folder, so no existence probe is needed
-            IEnumerable<FileSystemInfo> entries;
+            // The listing itself reports a missing folder, so no existence probe is needed; the entries are read
+            // here, inside the try, so a folder that is missing (or was removed after it was judged) lists nothing
+            // whatever the framework's enumeration timing
+            FileSystemInfo[] entries;
             try
             {
-                entries = _directory.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly);
+                entries = _directory.GetFileSystemInfos("*", SearchOption.TopDirectoryOnly);
             }
             catch (DirectoryNotFoundException)
             {

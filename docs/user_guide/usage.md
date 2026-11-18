@@ -432,7 +432,9 @@ The network rule is the same as in the DEMA Consulting CanvasNet tool:
 ### Real Paths
 
 The modes other than `any` judge the real path of every opened file. Where the system cannot tell it
-(for example Linux without `/proc`), the file is denied, never used unchecked.
+(for example Linux without `/proc`), the file is denied, never used unchecked. In every mode, including `any`,
+a file whose type the system cannot tell is refused too, with a reason that says its type cannot be
+determined (not that it is a folder, pipe or device).
 
 ### Writes
 

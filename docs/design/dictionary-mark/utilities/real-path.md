@@ -27,10 +27,14 @@ and the native contracts follow the DEMA Consulting CanvasNet tool, which proves
 
 #### Key Methods
 
-**Inspect(SafeFileHandle)**: Never throws. Unknown facts are null, and the caller fails closed.
+**Inspect(SafeFileHandle)**: Never throws. Unknown facts are null, and the caller fails closed. A native library
+or entry point that is missing, or a native call that fails, leaves both facts unknown; it never reports a handle
+as not a regular file. FileAccessPolicy then denies the file with its type-unknown reason.
 
 - *Windows*: a regular file is a disk file (`GetFileType` is `FILE_TYPE_DISK`) without the folder
-  attribute. Its real path comes from `GetFinalPathNameByHandleW` with `FILE_NAME_NORMALIZED |
+  attribute; a character device, a pipe or a folder is not a regular file. An invalid or closed handle, or a
+  `GetFileType` result of `FILE_TYPE_UNKNOWN` (also its failure result), leaves both facts unknown. Its real
+  path comes from `GetFinalPathNameByHandleW` with `FILE_NAME_NORMALIZED |
   VOLUME_NAME_DOS`. The buffer starts at 512 characters and grows to at most 32768. The `\\?\` prefix is
   removed, and `\\?\UNC\` becomes `\\`. Any other spelling, such as a volume GUID, is reported as unknown.
 - *Linux*: the real path is the target of `/proc/self/fd/{descriptor}`. The type and link count come from
@@ -159,6 +163,10 @@ The native imports are private `DllImport` declarations:
   `GetFileType`, `CreateFileW` and `GetLongPathNameW`.
 - `libc` with NUL-terminated UTF-8 byte paths: `open` with its two fixed arguments only (the variadic mode is
   read only with `O_CREAT`, which is never passed), `fstat`, `__fxstat`, `proc_pidfdinfo` and `realpath`.
+  On macOS `libc` is `libSystem`, which re-exports the kernel system-call library of xnu where
+  `proc_pidfdinfo` is implemented. This is the CanvasNet binding. The macOS tests that read a real path from a handle,
+  such as `RealPath_Inspect_TempFile_ReportsPrivateLocation`, prove that it resolves: only a successful
+  `proc_pidfdinfo` call gives a real path on macOS.
 
 Each import is called only from a member marked with `[SupportedOSPlatform]` after an `OperatingSystem`
 check. No unsafe code is used: buffers are managed arrays. The raw descriptor of a handle is read only inside

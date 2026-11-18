@@ -161,8 +161,10 @@ configuration-file job and resolves it to `JudgedPath` values, judging every fol
    (`Path.GetFullPath` of its literal part) and the remainder; the expanded pattern gives the literal text
    used for `Expanded`.
 4. The literal folder is judged before it is listed (`CheckListedFolder`): `CheckPath` (so under roots it must
-   be written inside an allowed folder), then `RealPath.InspectPath` (a handle without access rights). A
-   missing entry, or one that is not a folder, gives no matches. Otherwise the folder check of an output's
+   be written inside an allowed folder), then `RealPath.InspectFolder` (one open of the folder; on Windows and
+   Linux a handle without access rights, on macOS an `O_DIRECTORY` open, so a file, a named pipe or a device,
+   also through a link, is not a folder on any platform). A missing entry, or one that is not a folder, gives
+   no matches. Otherwise the folder check of an output's
    folder applies, without the write-only `/dev` rule: on Windows a local folder whose real path is on a
    network location is denied in every mode; a restrictive mode needs the real path; under roots it must be
    inside an allowed folder's real location; under no-symlinks no link may lie below the folder's trusted
@@ -188,7 +190,10 @@ the folders.
 3. Open with `RealPath.OpenForRead`, which does not block on Linux and macOS. A folder opens too (on Windows
    with backup semantics), so it is told by its handle, never by a by-name probe.
 4. Inspect the handle. Deny it when it is not a regular file (a folder, or a device node on Linux and macOS),
-   or when `LeadsToNetwork(fullPath, realPath)`. In a restrictive mode, deny it when the real path is unknown,
+   with the not-a-regular-file reason. Deny it, in every mode, when its type is unknown (a native library or
+   entry point that is missing, or a native call that failed, leaves the facts unknown), with the type-unknown
+   reason, so an interop failure is never reported as a special file. Deny it
+   when `LeadsToNetwork(fullPath, realPath)`. In a restrictive mode, deny it when the real path is unknown,
    when (roots) the real path is not inside a folder's canonical location, or when (no-symlinks) the real path
    is not the anchor's real location followed by the written path below the anchor.
 5. Read from the same handle as UTF-8 with byte-order-mark detection, like `File.ReadAllText`.
@@ -199,10 +204,12 @@ pre-checks pass.
 1. `CheckPath`. On Linux and macOS, deny a full output path equal to `/dev` or under `/dev/`, because opening a
    device node for writing can act on the device before its handle can be judged. Then capture the anchor as
    in step 2 of the read.
-2. Find the deepest existing parent folder by handles: `RealPath.InspectPath` on each level from the parent
-   up. A missing level that is a link (a dangling link) counts as existing with an unknown real path, as does a
-   level whose facts cannot be told. An entry that exists but is not a folder counts as missing (creating it
-   then fails).
+2. Find the deepest existing parent folder by handles: `RealPath.InspectFolder` on each level from the parent
+   up (on macOS an `O_DIRECTORY` open, so a regular file, a named pipe or a device is never taken for an
+   existing folder on any platform). A missing level that is a link (a dangling link, or on macOS also a link to
+   a file, which the folder open cannot tell apart) counts as existing with an unknown real path, as does a
+   level whose facts cannot be told, so a restrictive mode denies it. An entry that exists but is not a folder
+   counts as missing (creating it then fails with an I/O error, and nothing is written).
 3. Judge that folder by its real location (`CheckFolder`). On Linux and macOS, deny it when its real location is
    `/dev` or under `/dev/`, in every mode, so a link cannot lead an output into `/dev`. Deny a local folder whose
    real location is a network location (`LeadsToNetwork`). In a restrictive mode, deny it when its real location
@@ -287,6 +294,8 @@ Reasons (they name the mode when the mode caused the denial):
 - Colon: `it contains a colon other than the drive of an absolute path on Windows, which is never accessed`.
 - Not a regular file: `it is not a regular file (a folder, device, pipe or other special file), which is
   never accessed`.
+- Type unknown: `the type of the opened file cannot be determined on this system, so it cannot be confirmed
+  to be a regular file and is never accessed`.
 
 #### Error Handling
 
@@ -314,6 +323,9 @@ Limits that are documented rather than handled:
   a handle, which .NET does not offer.
 - On Linux and macOS the .NET listing reads the target of a symbolic link entry to tell whether it is a folder
   (metadata only); the link is judged before anything is listed through it.
+- On macOS a folder is told by an `O_DIRECTORY` read open, so a folder that may be searched but not read, used
+  as a glob's literal folder or as an output's deepest existing folder, has an unknown real path: a restrictive
+  mode denies it, and mode any proceeds (the listing or the write then reports any error).
 
 #### Dependencies
 

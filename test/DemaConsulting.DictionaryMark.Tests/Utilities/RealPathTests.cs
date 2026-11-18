@@ -146,6 +146,28 @@ public class RealPathTests
         Assert.Null(facts.FinalPath);
     }
 
+    /// <summary>
+    ///     Test that a handle the platform cannot ask (here a closed one) leaves both facts unknown rather than
+    ///     reporting it as not a regular file.
+    /// </summary>
+    [Fact]
+    public void RealPath_Inspect_ClosedHandle_ReportsUnknownFacts()
+    {
+        // Arrange: a handle to a regular file, closed before it is inspected
+        using var tmpDir = new TemporaryDirectory();
+        var file = tmpDir.GetFilePath("a.yaml");
+        File.WriteAllText(file, "A: a\n");
+        var handle = File.OpenHandle(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        handle.Dispose();
+
+        // Act
+        var facts = RealPath.Inspect(handle);
+
+        // Assert: unknown, never classified
+        Assert.Null(facts.IsRegularFile);
+        Assert.Null(facts.FinalPath);
+    }
+
     /// <summary>Test that the real location of a linked folder is its target.</summary>
     [Fact]
     public void RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget()

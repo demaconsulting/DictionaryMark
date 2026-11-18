@@ -197,6 +197,15 @@ returned as one judged path; the read, not the resolution, decides whether it ex
 **FileAccessPolicy_ResolvePattern_MissingFolder_ReturnsEmpty**: A glob whose literal folder does not exist
 matches nothing.
 
+**FileAccessPolicy_ResolvePattern_FolderIsFile_ReturnsEmpty**: In any, roots, no-symlinks and roots,no-symlinks,
+the glob `a.yaml/*.yaml`, whose literal folder `a.yaml` is a regular file, matches nothing, without an error or a
+denial, on every platform.
+
+**FileAccessPolicy_ResolvePattern_RootsFolderIsFileLinkLeadingOut_ReturnsEmpty** (where file links can be
+created): Under roots, the glob `lnk.yaml/*.yaml`, whose literal folder `allowed/lnk.yaml` is a file link to
+`outside/real.yaml`, matches nothing rather than being denied as a folder that leads out. On macOS this proves
+that the literal folder is told by a folder open, not by `realpath(3)`.
+
 **FileAccessPolicy_ResolvePattern_RootsFolderOutside_DeniedBeforeMatching**,
 **FileAccessPolicy_ResolvePattern_RootsFolderLinkLeadingOut_DeniedBeforeMatching** and
 **FileAccessPolicy_ResolvePattern_NoSymlinksPrefixThroughLink_DeniedBeforeMatching**: The literal folder of a
@@ -235,12 +244,20 @@ denied.
 the real path, roots, no-symlinks and roots,no-symlinks deny the file with a reason naming the mode,
 while any reads it.
 
+**FileAccessPolicy_ReadAllText_TypeUnknown_DeniedWithTypeReason** and
+**FileAccessPolicy_WriteAllText_TypeUnknown_ContentUnchanged**: With an inspector that reports unknown facts
+(exactly what the handle inspection returns when a native library or entry point is missing), a read is denied in
+any, roots, no-symlinks and roots,no-symlinks with the exact type-unknown reason, which does not say "not a
+regular file", and with no real path. A write in mode any is denied with the same reason, and the existing output
+keeps its content.
+
 **FileAccessPolicy_WriteAllText_OutputOutside_DeniedNothingWritten**,
 **FileAccessPolicy_WriteAllText_MissingFoldersInside_Created**,
 **FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated**,
 **FileAccessPolicy_WriteAllText_ExistingOutputSymlinkLeadingOut_DeniedTargetUnchanged**,
 **FileAccessPolicy_WriteAllText_ExistingOutput_ReplacedContent**,
-**FileAccessPolicy_WriteAllText_NotRegularHandle_ContentUnchanged** and
+**FileAccessPolicy_WriteAllText_NotRegularHandle_ContentUnchanged**,
+**FileAccessPolicy_WriteAllText_ParentIsFile_FailsNothingWritten** and
 **FileAccessPolicy_WriteAllText_NoSymlinksLinkedFolder_Denied**: These cover the write rules.
 
 - An output outside the allowed folders is denied, and its missing folder is not created.
@@ -249,6 +266,9 @@ while any reads it.
 - An existing output that links out is denied, and its target keeps its content.
 - A shorter content fully replaces a longer one, which proves the truncation after verification.
 - A denied handle leaves the existing content unchanged.
+- An output `a.yaml/out.md` whose parent `a.yaml` is a regular file fails in every mode with a plain I/O error
+  (not a denial, and not a missing folder): the file is never taken for an existing folder, on macOS too. The
+  file keeps its content, and nothing else is created in its folder.
 - No-symlinks denies an output whose folder is a link.
 
 **FileAccessDeniedException_Message_ContainsCodePathsAndReason** and
