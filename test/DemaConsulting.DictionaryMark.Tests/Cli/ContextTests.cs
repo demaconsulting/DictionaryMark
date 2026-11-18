@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Files;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Cli;
@@ -1214,5 +1215,328 @@ public class ContextTests
         {
             Directory.Delete(configDirectory, recursive: true);
         }
+    }
+
+    /// <summary>
+    ///     Reads the file-access policy of a run whose only input is one file.
+    /// </summary>
+    /// <param name="workingDirectory">The working directory a relative input or folder is taken from.</param>
+    /// <param name="input">The input as written.</param>
+    /// <param name="mode">The value of <c>--file-access</c>, or <see langword="null"/>.</param>
+    /// <param name="allowRoots">The values of <c>--allow-root</c>.</param>
+    /// <returns>The policy.</returns>
+    private static FileAccessPolicy ReadFileAccess(string workingDirectory, string input, string? mode, params string[] allowRoots) =>
+        Context.ReadFileAccess(mode, allowRoots, [input], workingDirectory);
+
+    /// <summary>
+    ///     Determines whether a policy allows a file, read by its own path (no link of its own).
+    /// </summary>
+    /// <param name="policy">The policy.</param>
+    /// <param name="baseDirectory">The folder the lookup started from.</param>
+    /// <param name="path">The full path of the file.</param>
+    /// <returns><see langword="true"/> when the policy allows it.</returns>
+    private static bool Allows(FileAccessPolicy policy, string baseDirectory, string path)
+    {
+        return policy.Check(new FileAccessRequest
+        {
+            BaseDirectory = baseDirectory,
+            RequestedPath = path,
+            RealPath = RealPathOf(path)
+        }).IsAllowed;
+    }
+
+    /// <summary>
+    ///     Gets the path a file would be opened at, with every link among its existing folders followed: the temporary
+    ///     folder is behind a link on macOS (/var is /private/var), and a policy compares the real path with the real
+    ///     location of its roots.
+    /// </summary>
+    /// <param name="path">The full path.</param>
+    /// <returns>The path with the links of its existing folders resolved.</returns>
+    private static string RealPathOf(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var current = Path.GetPathRoot(full)!;
+        foreach (var part in full[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, part);
+            if (Directory.Exists(current) && new DirectoryInfo(current).ResolveLinkTarget(returnFinalTarget: true) is { } target)
+            {
+                current = target.FullName;
+            }
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    ///     Test that without either option the policy is the default, which allows every file.
+    /// </summary>
+    [Fact]
+    public void Context_ReadFileAccess_WithoutOptions_IsAllowAll()
+    {
+        // Arrange
+        using var directory = new TemporaryDirectory();
+
+        // Act
+        var policy = ReadFileAccess(directory.DirectoryPath, "in.yaml", null);
+
+        // Assert
+        Assert.Same(FileAccessPolicy.AllowAll, policy);
+    }
+
+    /// <summary>
+    ///     Test that each mode, in any letter case and with spaces around its tokens, builds its policy.
+    /// </summary>
+    /// <param name="mode">The value of <c>--file-access</c>.</param>
+    /// <param name="expected">The name of the policy.</param>
+    [Theory]
+    [InlineData("any", "any")]
+    [InlineData("roots", "roots")]
+    [InlineData("no-symlinks", "no-symlinks")]
+    [InlineData("roots,no-symlinks", "roots+no-symlinks")]
+    [InlineData("NO-SYMLINKS, roots", "roots+no-symlinks")]
+    public void Context_ReadFileAccess_EachMode_BuildsItsPolicy(string mode, string expected)
+    {
+        // Arrange
+        using var directory = new TemporaryDirectory();
+
+        // Act
+        var policy = ReadFileAccess(directory.DirectoryPath, "in.yaml", mode);
+
+        // Assert: the name, and the shared instances for the modes without folders
+        Assert.Equal(expected, policy.Name);
+        if (expected == "any")
+        {
+            Assert.Same(FileAccessPolicy.AllowAll, policy);
+        }
+        else if (expected == "no-symlinks")
+        {
+            Assert.Same(FileAccessPolicy.NoSymlinks, policy);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a value that is not a mode is a usage error that lists the modes.
+    /// </summary>
+    /// <param name="mode">The value of <c>--file-access</c>.</param>
+    [Theory]
+    [InlineData("all")]
+    [InlineData("any,roots")]
+    [InlineData("")]
+    [InlineData("roots,,no-symlinks")]
+    [InlineData("roots;no-symlinks")]
+    [InlineData("roots,roots")]
+    [InlineData("no-symlinks,NO-SYMLINKS")]
+    public void Context_ReadFileAccess_InvalidMode_IsUsageErrorListingTheModes(string mode)
+    {
+        // Arrange
+        using var directory = new TemporaryDirectory();
+
+        // Act
+        var failure = Assert.Throws<ArgumentException>(() => ReadFileAccess(directory.DirectoryPath, "in.yaml", mode));
+
+        // Assert
+        Assert.Equal(
+            $"'{mode}' is not a value of --file-access. Use any (the default), roots, no-symlinks, or roots,no-symlinks.",
+            failure.Message);
+    }
+
+    /// <summary>
+    ///     Test that <c>--allow-root</c> alone confines references to the folders it names (a relative folder taken from
+    ///     the working directory), which replace the default folders.
+    /// </summary>
+    [Fact]
+    public void Context_ReadFileAccess_AllowRootAlone_ConfinesToTheNamedFolders()
+    {
+        // Arrange: two folders, the second named by its full path, and the input in a third
+        using var directory = new TemporaryDirectory();
+        var a = CreateDirectory(directory, "a");
+        var b = CreateDirectory(directory, "b");
+        var inputFolder = CreateDirectory(directory, "input");
+        var input = Path.Combine(inputFolder, "in.yaml");
+
+        // Act
+        var policy = ReadFileAccess(directory.DirectoryPath, input, null, "a", b);
+
+        // Assert: the mode is roots; files in both folders are allowed; the folder of the input and the working
+        // directory are not default folders any more
+        Assert.Equal("roots", policy.Name);
+        Assert.True(Allows(policy, directory.DirectoryPath, Path.Combine(a, "x.yaml")));
+        Assert.True(Allows(policy, directory.DirectoryPath, Path.Combine(b, "y.yaml")));
+        Assert.False(Allows(policy, directory.DirectoryPath, Path.Combine(inputFolder, "z.yaml")));
+        Assert.False(Allows(policy, directory.DirectoryPath, Path.Combine(directory.DirectoryPath, "w.yaml")));
+    }
+
+    /// <summary>
+    ///     Test that <c>--allow-root</c> with a mode that has no folders is a usage error that names the conflict.
+    /// </summary>
+    /// <param name="mode">The value of <c>--file-access</c>.</param>
+    /// <param name="message">The message.</param>
+    /// <param name="hint">The hint.</param>
+    [Theory]
+    [InlineData(
+        "ANY",
+        "The options --file-access any and --allow-root cannot be used together.",
+        "--allow-root confines references to the folders it names: drop --file-access any, or write --file-access roots.")]
+    [InlineData(
+        "no-symlinks",
+        "The options --file-access no-symlinks and --allow-root cannot be used together.",
+        "To confine references to the folders and refuse links, write --file-access roots,no-symlinks with --allow-root.")]
+    public void Context_ReadFileAccess_AllowRootWithAnyOrNoSymlinks_IsUsageErrorNamingTheConflict(string mode, string message, string hint)
+    {
+        // Arrange
+        using var directory = new TemporaryDirectory();
+
+        // Act
+        var failure = Assert.Throws<ArgumentException>(() => ReadFileAccess(directory.DirectoryPath, "in.yaml", mode, "."));
+
+        // Assert
+        Assert.Equal($"{message} {hint}", failure.Message);
+    }
+
+    /// <summary>
+    ///     Test that an <c>--allow-root</c> folder that does not exist (or is a file) is a usage error.
+    /// </summary>
+    [Fact]
+    public void Context_ReadFileAccess_AllowRootThatDoesNotExist_IsUsageError()
+    {
+        // Arrange: a file where a folder is expected
+        using var directory = new TemporaryDirectory();
+        File.WriteAllText(directory.GetFilePath("file.txt"), "x");
+
+        // Act
+        var missing = Assert.Throws<ArgumentException>(() => ReadFileAccess(directory.DirectoryPath, "in.yaml", null, "missing"));
+        var file = Assert.Throws<ArgumentException>(() => ReadFileAccess(directory.DirectoryPath, "in.yaml", null, "file.txt"));
+
+        // Assert
+        Assert.Equal(
+            "The folder 'missing' of --allow-root does not exist. Name an existing folder; a relative folder is taken from the current folder.",
+            missing.Message);
+        Assert.StartsWith("The folder 'file.txt' of --allow-root does not exist.", file.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     Test that the default folders of <c>roots</c> are the working directory and the folder of each input outside
+    ///     it, once each.
+    /// </summary>
+    [Fact]
+    public void Context_DefaultRoots_AreTheWorkingDirectoryAndEachInputFolderOutsideIt()
+    {
+        // Arrange: the working directory, an input inside it, and two inputs in one other folder
+        using var directory = new TemporaryDirectory();
+        var work = CreateDirectory(directory, "work");
+        var inputs = new[]
+        {
+            Path.Combine(work, "sub", "a.yaml"),
+            "relative.yaml",
+            Path.Combine(directory.DirectoryPath, "other", "b.yaml"),
+            Path.Combine(directory.DirectoryPath, "other", "c.yaml")
+        };
+
+        // Act
+        var roots = Context.DefaultRoots(inputs, work);
+
+        // Assert
+        Assert.Equal([work, Path.Combine(directory.DirectoryPath, "other")], roots);
+    }
+
+    /// <summary>
+    ///     Test that <c>--file-access roots</c> without <c>--allow-root</c> allows the working directory and the folder of
+    ///     the input, and nothing else.
+    /// </summary>
+    [Fact]
+    public void Context_ReadFileAccess_RootsWithoutAllowRoot_UsesTheDefaultRoots()
+    {
+        // Arrange: the input outside the working directory (the roots are taken when the policy is made, so the folders exist)
+        using var directory = new TemporaryDirectory();
+        var work = CreateDirectory(directory, "work");
+        var site = CreateDirectory(directory, "site");
+        var input = Path.Combine(site, "in.yaml");
+
+        // Act
+        var policy = ReadFileAccess(work, input, "roots");
+
+        // Assert
+        Assert.Equal("roots", policy.Name);
+        Assert.True(Allows(policy, work, Path.Combine(work, "x.yaml")));
+        Assert.True(Allows(policy, work, Path.Combine(site, "y.yaml")));
+        Assert.False(Allows(policy, work, Path.Combine(directory.DirectoryPath, "z.yaml")));
+    }
+
+    /// <summary>Test that without --file-access and --allow-root the context's policy allows every file.</summary>
+    [Fact]
+    public void Context_Create_NoFileAccessOptions_IsAllowAll()
+    {
+        // Act
+        using var context = Context.Create(["--input", "a.yaml"]);
+
+        // Assert
+        Assert.Same(FileAccessPolicy.AllowAll, context.FileAccess);
+    }
+
+    /// <summary>Test that a repeated --file-access keeps the value of its last occurrence.</summary>
+    [Fact]
+    public void Context_Create_FileAccessRepeated_LastValueWins()
+    {
+        // Act
+        using var context = Context.Create(["--file-access", "roots", "--file-access", "no-symlinks"]);
+
+        // Assert
+        Assert.Same(FileAccessPolicy.NoSymlinks, context.FileAccess);
+    }
+
+    /// <summary>Test that a repeated --allow-root allows every folder it names.</summary>
+    [Fact]
+    public void Context_Create_AllowRootRepeated_AllFoldersAllowed()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var a = CreateDirectory(tmpDir, "a");
+        var b = CreateDirectory(tmpDir, "b");
+
+        // Act
+        using var context = Context.Create(["--allow-root", a, "--allow-root", b]);
+
+        // Assert
+        Assert.Equal("roots", context.FileAccess.Name);
+        Assert.True(Allows(context.FileAccess, a, Path.Combine(a, "x.yaml")));
+        Assert.True(Allows(context.FileAccess, b, Path.Combine(b, "y.yaml")));
+        Assert.False(Allows(context.FileAccess, tmpDir.DirectoryPath, Path.Combine(tmpDir.DirectoryPath, "z.yaml")));
+    }
+
+    /// <summary>Test that a mistake in the file-access options is reported before the config file is loaded.</summary>
+    [Fact]
+    public void Context_Create_FileAccessMistake_ReportedBeforeConfigIsLoaded()
+    {
+        // Arrange: a config file that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missingConfig = Path.Combine(tmpDir.DirectoryPath, "missing.yaml");
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(
+            () => Context.Create(["--config", missingConfig, "--file-access", "bogus"]));
+
+        // Assert: the file-access mistake is reported, not the missing config file
+        Assert.StartsWith("'bogus' is not a value of --file-access.", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Test that --file-access roots without --allow-root allows the working directory and the config file's folder.</summary>
+    [Fact]
+    public void Context_Create_RootsWithConfig_DefaultRootsIncludeConfigFolder()
+    {
+        // Arrange: a config file in a folder outside the working directory
+        using var tmpDir = new TemporaryDirectory(Path.GetTempPath());
+        var path = WriteConfig(tmpDir, OneTableConfig);
+        var configFolder = Path.GetDirectoryName(path)!;
+        var other = CreateDirectory(tmpDir, "other");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--file-access", "roots"]);
+
+        // Assert
+        Assert.Equal("roots", context.FileAccess.Name);
+        Assert.True(Allows(context.FileAccess, configFolder, Path.Combine(configFolder, "a.yaml")));
+        Assert.True(Allows(context.FileAccess, configFolder, Path.Combine(Environment.CurrentDirectory, "b.yaml")));
+        Assert.False(Allows(context.FileAccess, configFolder, Path.Combine(other, "c.yaml")));
     }
 }

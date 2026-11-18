@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 using DemaConsulting.DictionaryMark.Cli;
+using DemaConsulting.DictionaryMark.Files;
 using DemaConsulting.DictionaryMark.Utilities;
 using YamlDotNet.Core;
 
@@ -29,6 +30,9 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 /// </summary>
 internal static class DictionaryGenerator
 {
+    /// <summary>The hint added to every <c>file-access-denied</c> error.</summary>
+    private const string FileAccessDeniedHint = "Allow the file in the file-access policy, or reference a file it allows.";
+
     /// <summary>
     ///     Generates Markdown output for every job in the context.
     /// </summary>
@@ -78,7 +82,12 @@ internal static class DictionaryGenerator
     ///     and I/O or access errors writing the output file. Every expected exception is caught here
     ///     so that a failing job never stops the jobs that follow it. Relative inputs and the
     ///     relative output resolve against <see cref="TableJob.BaseDirectory"/>. Missing parent
-    ///     directories of the output file are created.
+    ///     directories of the output file are created. A config-file table job (one with an
+    ///     <see cref="TableJob.Index"/>) is judged by the file-access policy of the context: every
+    ///     input file is read through one <see cref="FileReferenceResolver"/> per job, whose base
+    ///     directory is the config file's folder, and the output path is checked by the same
+    ///     resolver before anything is created. A denial fails the job with <c>file-access-denied</c>.
+    ///     The command-line job is never judged.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
     internal static bool GenerateJob(Context context, TableJob job)
@@ -123,8 +132,19 @@ internal static class DictionaryGenerator
         var approved = new List<DictionaryEntry>();
         var deprecated = new List<DeprecatedEntry>();
 
+        // A config-file table job is judged by the file-access policy through one resolver per job, whose
+        // trusted base directory is the config file's folder (never --root or the config root key); the
+        // command-line job is trusted and reads by name
+        var resolver = job.Index != null
+            ? new FileReferenceResolver(new FileReferenceOptions
+            {
+                BaseDirectory = Path.GetDirectoryName(context.ConfigFilePath)!,
+                FileAccess = context.FileAccess
+            })
+            : null;
+
         // Load the input files as the selected kind
-        if (!LoadFiles(context, job, files, deprecatedKind, approved, deprecated))
+        if (!LoadFiles(context, job, resolver, files, deprecatedKind, approved, deprecated))
         {
             return false;
         }
@@ -153,7 +173,7 @@ internal static class DictionaryGenerator
             return true;
         }
 
-        return WriteOutputFile(context, job, output);
+        return WriteOutputFile(context, job, resolver, output);
     }
 
     /// <summary>
@@ -161,9 +181,10 @@ internal static class DictionaryGenerator
     /// </summary>
     /// <param name="context">The context for error reporting.</param>
     /// <param name="job">The job whose output file is written.</param>
+    /// <param name="resolver">The resolver that judges the output path of a config-file table job, or null for a trusted job.</param>
     /// <param name="output">The formatted Markdown.</param>
     /// <returns>True when the file was written; false after reporting an error.</returns>
-    private static bool WriteOutputFile(Context context, TableJob job, string output)
+    private static bool WriteOutputFile(Context context, TableJob job, FileReferenceResolver? resolver, string output)
     {
         var outputFile = job.OutputFile!;
 
@@ -178,6 +199,20 @@ internal static class DictionaryGenerator
         {
             Report(context, job, ex.Message);
             return false;
+        }
+
+        // A judged output is checked before anything is created, so a refused output writes nothing
+        if (resolver != null)
+        {
+            try
+            {
+                resolver.CheckOutputPath(fullPath);
+            }
+            catch (FileReferenceException ex)
+            {
+                Report(context, job, DescribeRefusal(ex, $"Failed to write output file '{outputFile}'"));
+                return false;
+            }
         }
 
         // Create missing parent directories and write the file
@@ -211,12 +246,32 @@ internal static class DictionaryGenerator
         context.WriteError(job.Label == null ? $"Error: {text}" : $"Error: {job.Label}: {text}");
 
     /// <summary>
+    ///     Describes a refusal of the file-access resolver: a policy denial (or a policy that cannot be
+    ///     applied) is a <c>file-access-denied</c> error with its hint; any other refusal is an ordinary
+    ///     read or write error.
+    /// </summary>
+    /// <param name="ex">The refusal.</param>
+    /// <param name="prefix">The text that introduces an ordinary read or write error.</param>
+    /// <returns>The error text without the <c>Error:</c> prefix.</returns>
+    private static string DescribeRefusal(FileReferenceException ex, string prefix) =>
+        ex.Kind is FileReferenceFailureKind.AccessDenied or FileReferenceFailureKind.RealPathUnavailable
+            ? $"file-access-denied: {ex.Message} {FileAccessDeniedHint}"
+            : $"{prefix}: {ex.Message}";
+
+    /// <summary>
     ///     Loads files of one kind into the matching list, reporting the first error.
     /// </summary>
+    /// <remarks>
+    ///     With a resolver (a config-file table job), every file the glob matched is read through it, so the
+    ///     file-access policy judges each match and the loader parses exactly the bytes that were approved; the
+    ///     first refused match fails the job, so a denied match is never skipped. Without a resolver the files
+    ///     are read by name.
+    /// </remarks>
     /// <returns>True when every file loaded; false after writing an error.</returns>
     private static bool LoadFiles(
         Context context,
         TableJob job,
+        FileReferenceResolver? resolver,
         IReadOnlyList<string> files,
         bool asDeprecated,
         List<DictionaryEntry> approved,
@@ -226,7 +281,26 @@ internal static class DictionaryGenerator
         {
             try
             {
-                if (asDeprecated)
+                if (resolver != null)
+                {
+                    // Read the match through the resolver; a file that vanished since the glob ran is not found
+                    var read = resolver.Resolve(file);
+                    if (read == null)
+                    {
+                        Report(context, job, $"Input file '{file}' was not found.");
+                        return false;
+                    }
+
+                    if (asDeprecated)
+                    {
+                        deprecated.AddRange(YamlDictionaryLoader.LoadDeprecated(file, read.Content));
+                    }
+                    else
+                    {
+                        approved.AddRange(YamlDictionaryLoader.Load(file, read.Content));
+                    }
+                }
+                else if (asDeprecated)
                 {
                     deprecated.AddRange(YamlDictionaryLoader.LoadDeprecated(file));
                 }
@@ -234,6 +308,11 @@ internal static class DictionaryGenerator
                 {
                     approved.AddRange(YamlDictionaryLoader.Load(file));
                 }
+            }
+            catch (FileReferenceException ex)
+            {
+                Report(context, job, DescribeRefusal(ex, $"Failed to read file '{file}'"));
+                return false;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || PathResolver.IsInvalidPathException(ex))
             {

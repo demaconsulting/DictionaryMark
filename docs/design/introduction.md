@@ -40,7 +40,8 @@ diagram or the prose below.
 The diagram below complements the structure view by showing how data flows at run time:
 `Program` dispatches the parsed command line, and the Dictionary subsystem loads the YAML files,
 checks for conflicts, and formats the Markdown output. An optional YAML configuration file, read by
-the Cli subsystem, can supply formatting defaults, a root directory and several table jobs.
+the Cli subsystem, can supply formatting defaults, a root directory and several table jobs. The inputs and outputs
+of those table jobs are judged by the file-access policy of the Files subsystem (not shown in the diagram).
 
 ![DictionaryMark architecture: the dictionarymark command drives Program, which uses the Cli, SelfTest,
 Utilities and Dictionary subsystems to turn YAML dictionary files, and an optional YAML configuration file of
@@ -53,12 +54,14 @@ log file](architecture.svg)
   - **DemaConsulting.DictionaryMark/** - DictionaryMark system source
     - **Cli/** - Cli subsystem
     - **Dictionary/** - Dictionary subsystem
+    - **Files/** - Files subsystem
     - **SelfTest/** - SelfTest subsystem
     - **Utilities/** - Utilities subsystem
 - **test/** - test projects
   - **DemaConsulting.DictionaryMark.Tests/** - DictionaryMark test source
     - **Cli/** - Cli subsystem tests
     - **Dictionary/** - Dictionary subsystem tests
+    - **Files/** - Files subsystem tests
     - **SelfTest/** - SelfTest subsystem tests
     - **Utilities/** - Utilities subsystem tests
 

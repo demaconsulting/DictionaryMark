@@ -27,6 +27,10 @@ input-files:
   - docs/design/dictionary-mark/utilities/path-resolver.md
   - docs/design/dictionary-mark/utilities/path-helpers.md
   - docs/design/dictionary-mark/utilities/temporary-directory.md
+  - docs/design/dictionary-mark/files.md
+  - docs/design/dictionary-mark/files/file-reference-resolver.md
+  - docs/design/dictionary-mark/files/file-access-policy.md
+  - docs/design/dictionary-mark/files/real-path.md
   - docs/design/ots.md
   - docs/design/ots/yaml-dot-net.md
   - docs/design/ots/file-system-globbing.md

@@ -308,3 +308,49 @@ scenarios are tested by the tests of the same names.
 **Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot**: Verifies that a relative `--config`
 is resolved against the working directory even when `--root` names a different directory. This
 scenario is tested by `Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot`.
+
+**Context_ReadFileAccess_WithoutOptions_IsAllowAll**: Test that without either option the policy is the default, which
+allows every file. This scenario is tested by `Context_ReadFileAccess_WithoutOptions_IsAllowAll`.
+
+**Context_ReadFileAccess_EachMode_BuildsItsPolicy**: Test that each mode, in any letter case and with spaces around its
+tokens, builds its policy. This scenario is tested by `Context_ReadFileAccess_EachMode_BuildsItsPolicy`.
+
+**Context_ReadFileAccess_InvalidMode_IsUsageErrorListingTheModes**: Test that a value that is not a mode is a usage
+error that lists the modes. This scenario is tested by `Context_ReadFileAccess_InvalidMode_IsUsageErrorListingTheModes`.
+
+**Context_ReadFileAccess_AllowRootAlone_ConfinesToTheNamedFolders**: Test that `--allow-root` alone confines references
+to the folders it names (a relative folder taken from the working directory), which replace the default folders. This
+scenario is tested by `Context_ReadFileAccess_AllowRootAlone_ConfinesToTheNamedFolders`.
+
+**Context_ReadFileAccess_AllowRootWithAnyOrNoSymlinks_IsUsageErrorNamingTheConflict**: Test that `--allow-root` with a
+mode that has no folders is a usage error that names the conflict. This scenario is tested by
+`Context_ReadFileAccess_AllowRootWithAnyOrNoSymlinks_IsUsageErrorNamingTheConflict`.
+
+**Context_ReadFileAccess_AllowRootThatDoesNotExist_IsUsageError**: Test that an `--allow-root` folder that does not
+exist (or is a file) is a usage error. This scenario is tested by
+`Context_ReadFileAccess_AllowRootThatDoesNotExist_IsUsageError`.
+
+**Context_DefaultRoots_AreTheWorkingDirectoryAndEachInputFolderOutsideIt**: Test that the default folders of `roots` are
+the working directory and the folder of each input outside it, once each. This scenario is tested by
+`Context_DefaultRoots_AreTheWorkingDirectoryAndEachInputFolderOutsideIt`.
+
+**Context_ReadFileAccess_RootsWithoutAllowRoot_UsesTheDefaultRoots**: Test that `--file-access roots` without
+`--allow-root` allows the working directory and the folder of the input, and nothing else. This scenario is tested by
+`Context_ReadFileAccess_RootsWithoutAllowRoot_UsesTheDefaultRoots`.
+
+**Context_Create_NoFileAccessOptions_IsAllowAll**: Test that without --file-access and --allow-root the context's policy
+allows every file. This scenario is tested by `Context_Create_NoFileAccessOptions_IsAllowAll`.
+
+**Context_Create_FileAccessRepeated_LastValueWins**: Test that a repeated --file-access keeps the value of its last
+occurrence. This scenario is tested by `Context_Create_FileAccessRepeated_LastValueWins`.
+
+**Context_Create_AllowRootRepeated_AllFoldersAllowed**: Test that a repeated --allow-root allows every folder it names.
+This scenario is tested by `Context_Create_AllowRootRepeated_AllFoldersAllowed`.
+
+**Context_Create_FileAccessMistake_ReportedBeforeConfigIsLoaded**: Test that a mistake in the file-access options is
+reported before the config file is loaded. This scenario is tested by
+`Context_Create_FileAccessMistake_ReportedBeforeConfigIsLoaded`.
+
+**Context_Create_RootsWithConfig_DefaultRootsIncludeConfigFolder**: Test that --file-access roots without --allow-root
+allows the working directory and the config file's folder. This scenario is tested by
+`Context_Create_RootsWithConfig_DefaultRootsIncludeConfigFolder`.

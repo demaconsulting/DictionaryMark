@@ -587,3 +587,133 @@ sections:
           - DictionaryMark_Root_SpecifiedTwice_ReturnsError
           - DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile
           - DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob
+
+      - id: DictionaryMark-System-FileAccess-Modes
+        title: >-
+          The tool shall judge the inputs and outputs of configuration-file tables by a file-access mode chosen with
+          the file-access option - any (the default, every regular local file), roots (only inside the allowed
+          folders), no-symlinks (no symbolic link or junction), or roots,no-symlinks (both) - and shall reject any
+          other value with an error and a non-zero exit code before any input is read.
+        justification: |
+          A configuration file may come from an untrusted source (a pull request, a shared repository); the person
+          running the tool must be able to choose how far its table inputs and outputs may reach, and a mistake in
+          that choice must never silently weaken it.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+          - DictionaryMark-Files-AccessPolicy
+        tests:
+          - DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs
+          - DictionaryMark_FileAccess_NoSymlinksAsProcess_DeniesLinkedConfigInput
+          - DictionaryMark_FileAccess_MistakesAsProcess_AreUsageErrors
+
+      - id: DictionaryMark-System-FileAccess-AllowRoot
+        title: >-
+          The tool shall accept a repeatable allow-root option naming a folder that configuration-file table
+          inputs and outputs may be in (a relative folder taken from the working directory), which implies the
+          roots mode and replaces the default folders, and shall reject it with an error and a non-zero exit code
+          when combined with the any or no-symlinks mode or when the folder does not exist.
+        justification: |
+          Users confine a run to the folders they trust; a folder that does not exist or a contradictory
+          combination of options is a mistake that must be reported rather than guessed at.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+          - DictionaryMark-Files-AccessPolicy
+        tests:
+          - DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs
+          - DictionaryMark_FileAccess_MistakesAsProcess_AreUsageErrors
+
+      - id: DictionaryMark-System-FileAccess-DefaultRoots
+        title: >-
+          The tool shall, in the roots mode without an allow-root option, allow configuration-file table inputs
+          and outputs inside the working directory and inside the folder of the configuration file.
+        justification: |
+          The common case - a configuration file in the repository being built - must work with the roots mode
+          alone, without naming every folder.
+        tags: [system]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+        tests:
+          - DictionaryMark_FileAccess_RootsWithoutAllowRoot_AllowsWorkingAndConfigFolders
+
+      - id: DictionaryMark-System-FileAccess-ConfigPathsJudged
+        title: >-
+          The tool shall judge every input file of a configuration-file table - each literal input and every
+          match of a glob pattern - by the file that was actually opened (its real path), shall parse exactly
+          the bytes that were judged, and shall read at most 16 MiB of each such file.
+        justification: |
+          A glob or a link can lead a table to a file the user never intended to expose; judging the opened file,
+          not its name, keeps a link swapped in by another process from slipping past the check, and the size
+          limit bounds the work an untrusted configuration file can cause.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Files-ReferenceResolution
+          - DictionaryMark-Files-RaceFreeCheck
+          - DictionaryMark-Files-BoundedReading
+        tests:
+          - DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs
+          - DictionaryMark_FileAccess_GlobMatchOutsideRoots_IsDeniedNotSkipped
+          - DictionaryMark_FileAccess_NoSymlinksAsProcess_DeniesLinkedConfigInput
+
+      - id: DictionaryMark-System-FileAccess-Outputs
+        title: >-
+          The tool shall judge the output file of every configuration-file table by the same file-access mode
+          before anything is created, so a refused output writes neither the file nor any folder.
+        justification: |
+          A configuration file that can choose where to write could overwrite files outside the folders the user
+          trusts; the check must come before the tool creates missing folders.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Files-OutputPaths
+        tests:
+          - DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs
+          - DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitCodeIsOne
+
+      - id: DictionaryMark-System-FileAccess-NeverList
+        title: >-
+          The tool shall refuse, in every file-access mode including the default, a configuration-file table input
+          or output that names a network location, a device (also a reserved device name on Windows), an alternate
+          data stream or a colon outside a Windows drive, a control character, or something other than a regular
+          file.
+        justification: |
+          Network paths can leak credentials and devices can hang or flood the tool; no configuration file needs
+          them, so they are refused even when every local file is allowed.
+        tags: [system]
+        children:
+          - DictionaryMark-Files-AlwaysRefused
+          - DictionaryMark-Files-OutputPaths
+        tests:
+          - DictionaryMark_FileAccess_DefaultMode_NeverListRefusesConfigPaths
+
+      - id: DictionaryMark-System-FileAccess-Denial
+        title: >-
+          The tool shall report a configuration-file table whose input or output the file-access mode refuses as a
+          file-access-denied error of that table, shall still run the other tables, and shall exit with a non-zero
+          exit code.
+        justification: |
+          One refused table must not hide the results of the others, and the user must be able to tell a policy
+          refusal from an ordinary read or write failure.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Files-ReferenceFailureReporting
+        tests:
+          - DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitCodeIsOne
+
+      - id: DictionaryMark-System-FileAccess-CommandLineTrusted
+        title: >-
+          The tool shall never judge the paths named on the command line (the config, input, output, log and
+          results options) by the file-access mode, and shall never let the configuration file's root key widen
+          the allowed folders.
+        justification: |
+          The person running the tool chose the command-line paths on purpose; only what an untrusted
+          configuration file names needs to be judged, and that file must not be able to move its own boundary.
+        tags: [system]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+        tests:
+          - DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged
+          - DictionaryMark_FileAccess_ConfigRootKey_DoesNotWidenAllowedFolders

@@ -72,6 +72,7 @@ internal static partial class Validation
         RunDeprecatedTableTest(context, testResults);
         RunColumnWidthsTest(context, testResults);
         RunConfigTablesTest(context, testResults);
+        RunFileAccessRootsTest(context, testResults);
 
         // Calculate totals
         var totalTests = testResults.Results.Count;
@@ -731,6 +732,80 @@ internal static partial class Validation
                 test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
                 test.ErrorMessage = $"Program exited with code {exitCode} or output files not created";
                 context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that <c>--allow-root</c> confines the outputs of a <c>--config</c> file: a table whose
+    ///     output is outside the allowed folder is denied with <c>file-access-denied</c> and writes nothing (not
+    ///     even its folder), while a table whose output is inside the folder is still generated.
+    /// </summary>
+    /// <remarks>
+    ///     The table inside the folder is a positive control: it proves that the allowed folder is not simply
+    ///     refusing everything (for example where the temporary folder is reached through a link).
+    /// </remarks>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunFileAccessRootsTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_FileAccessRoots";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var configFolder = Path.Combine(tempDir.DirectoryPath, "config");
+            var inputFile = tempDir.GetFilePath(Path.Combine("config", "terms.yaml"));
+            var configFile = tempDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+            var logFile = tempDir.GetFilePath("file-access.log");
+            var insideFile = Path.Combine(configFolder, "inside.md");
+            var outsideFolder = Path.Combine(tempDir.DirectoryPath, "out");
+            var outsideFile = Path.Combine(outsideFolder, "table.md");
+
+            File.WriteAllText(inputFile, $"Alpha: First letter{Environment.NewLine}");
+
+            // The first table writes inside the allowed folder; the second writes outside it
+            var nl = Environment.NewLine;
+            File.WriteAllText(
+                configFile,
+                $"tables:{nl}" +
+                $"  - input: terms.yaml{nl}    output: inside.md{nl}" +
+                $"  - input: terms.yaml{nl}    output: ../out/table.md{nl}");
+
+            var args = new[] { SilentArg, "--log", logFile, "--config", configFile, "--allow-root", configFolder };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            // The denied table fails the run, writes nothing, and is reported as file-access-denied
+            var insideWritten = File.Exists(insideFile) && File.ReadAllText(insideFile).Contains("- **Alpha**");
+            var nothingOutside = !File.Exists(outsideFile) && !Directory.Exists(outsideFolder);
+            var deniedLogged = File.Exists(logFile) && File.ReadAllText(logFile).Contains("file-access-denied");
+            if (exitCode == 1 && insideWritten && nothingOutside && deniedLogged)
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                context.WriteLine($"✓ {TestName} - Passed");
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage =
+                    $"Exit code {exitCode}, inside output written: {insideWritten}, " +
+                    $"nothing written outside: {nothingOutside}, denial logged: {deniedLogged}";
+                context.WriteError($"✗ {TestName} - Failed: {test.ErrorMessage}");
             }
         }
         // Generic catch is justified here as this is a test framework - any exception should be

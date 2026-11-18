@@ -115,3 +115,35 @@ sections:
                   Column widths are part of a job's formatting and must reach the formatter unchanged.
                 tests:
                   - DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput
+
+              - id: DictionaryMark-DictionaryGenerator-FileAccessInputs
+                title: >-
+                  The DictionaryGenerator shall read every file a configuration-file table job's input patterns
+                  match through one file-access resolver per job, whose base directory is the configuration file's
+                  folder, shall parse the bytes the resolver returned, shall fail the job at the first refused match
+                  (never skipping it) with a file-access-denied error naming the file and the policy when the policy
+                  denies it or cannot be applied, or with a read error for any other refusal (including a file larger
+                  than 16 MiB), and shall read the inputs of the command-line job by name without judging them.
+                justification: |
+                  Every match of a glob is a file the configuration file chose; skipping a denied match would silently
+                  produce a partial dictionary, and the policy must see the file that is actually parsed.
+                tests:
+                  - DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied
+                  - DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped
+                  - DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied
+                  - DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError
+                  - DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged
+
+              - id: DictionaryMark-DictionaryGenerator-FileAccessOutputs
+                title: >-
+                  The DictionaryGenerator shall check the output path of a configuration-file table job with the
+                  job's file-access resolver before creating any folder or writing the file, shall fail the job with
+                  a file-access-denied error when the policy denies it or cannot be applied, or with a write error for
+                  any other refusal, and shall still run the other jobs.
+                justification: |
+                  A refused output must leave no trace on disk, and one refused job must not hide the results of the
+                  others.
+                tests:
+                  - DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated
+                  - DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess
+                  - DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne

@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Files;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
@@ -570,5 +571,181 @@ public class DictionaryGeneratorTests
         // Assert: the separator has 25 and 75 dashes
         Assert.Equal(0, exitCode);
         Assert.Contains($"| :{new string('-', 25)} | :{new string('-', 75)} |", output);
+    }
+
+    /// <summary>Test that a config input outside the allowed roots fails its job with file-access-denied.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied()
+    {
+        // Arrange: the input lies next to the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/terms.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the job is denied and writes nothing
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): file-access-denied: The file '", err);
+        Assert.Contains("was denied by the file-access policy 'roots'.", err);
+        Assert.Contains("Allow the file in the file-access policy, or reference a file it allows.", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a glob whose matches lie both inside and outside the allowed roots fails its job: the match outside
+    ///     is denied rather than skipped, and the match inside is not used alone.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped()
+    {
+        // Arrange: one match inside the config folder (the root) and one in a sibling folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms-a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms-b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../*/terms-*.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the outside match fails the job, so no output is written from the inside match alone
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.Contains("terms-b.yaml", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>Test that a glob match reached through a directory link is denied under no-symlinks.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied()
+    {
+        // Arrange: config/alias is a link to config/real, which holds the dictionary
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "real", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: alias/*.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        FileTestSupport.CreateDirectoryLinkOrSkip(Path.Combine(root, "alias"), Path.Combine(root, "real"));
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--file-access", "no-symlinks");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.Contains("'no-symlinks'", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>Test that a config output outside the allowed roots is denied and nothing is created.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated()
+    {
+        // Arrange: the output folder lies outside the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: ../out/table.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: denied, and not even the output folder was created
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/table.md'): file-access-denied:", err);
+        Assert.False(Directory.Exists(Path.Combine(tmpDir.DirectoryPath, "out")));
+    }
+
+    /// <summary>
+    ///     Test that under the default mode a config output that breaks a never-list rule (a colon outside a drive, and
+    ///     on Windows a network path) is refused before anything is accessed or created.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess()
+    {
+        // Arrange: one output names an alternate data stream; on Windows another names a network share
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var network = OperatingSystem.IsWindows() ? "  - input: terms.yaml\n    output: //server/share/out.md\n" : string.Empty;
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: \"out.md:stream\"\n" + network);
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: ordinary write errors naming the broken rule; nothing was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to write output file 'out.md:stream': The path '", err);
+        Assert.Contains("is not allowed: the path contains a colon.", err);
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(config)!, "out.md")));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Contains("is not allowed: network paths are not permitted.", err);
+        }
+    }
+
+    /// <summary>Test that a config input longer than the 16 MiB size limit is an ordinary read error.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError()
+    {
+        // Arrange: a YAML comment one byte longer than the limit
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("config", "big.yaml"));
+        var bytes = new byte[(16 * 1024 * 1024) + 1];
+        Array.Fill(bytes, (byte)' ');
+        bytes[0] = (byte)'#';
+        File.WriteAllBytes(input, bytes);
+        var config = WriteConfig(tmpDir, "tables:\n  - input: big.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Failed to read file '{input}': The file '", err);
+        Assert.Contains("is larger than the allowed size.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+    }
+
+    /// <summary>Test that a denied job fails only itself: the other jobs run and the exit code is 1.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne()
+    {
+        // Arrange: the first job writes outside the allowed root; the second writes inside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: ../out/a.md\n  - input: terms.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/a.md'): file-access-denied:", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>Test that the command-line job is never judged by the file-access policy.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged()
+    {
+        // Arrange: the input and output lie outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var root = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "root")).FullName;
+        var input = tmpDir.GetFilePath(Path.Combine("outside", "terms.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var output = Path.Combine(tmpDir.DirectoryPath, "outside", "out", "terms.md");
+
+        // Act
+        var (_, err, exitCode) = Run("--allow-root", root, "--input", input, "--output", output);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(output));
     }
 }

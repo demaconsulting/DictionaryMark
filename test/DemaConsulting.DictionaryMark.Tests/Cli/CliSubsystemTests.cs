@@ -641,4 +641,51 @@ public class CliSubsystemTests
         Assert.Equal(1, exitCode);
         Assert.Contains($"Directory '{missing}' specified by --root option", error);
     }
+
+    /// <summary>
+    ///     Test that --allow-root confines the config-file table jobs: a table inside the folder is generated and a
+    ///     table writing outside it fails with file-access-denied and a non-zero exit code.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs()
+    {
+        // Arrange: two tables, one writing inside the config folder and one outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: inside.md\n  - input: terms.yaml\n    output: ../out/terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (exitCode, error) = RunMain("--config", config, "--allow-root", root);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.True(File.Exists(Path.Combine(root, "inside.md")));
+        Assert.Contains("file-access-denied:", error);
+        Assert.False(Directory.Exists(Path.Combine(tmpDir.DirectoryPath, "out")));
+    }
+
+    /// <summary>
+    ///     Test that a mistake in the file-access options exits non-zero with its usage error before any job runs.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero()
+    {
+        // Arrange: a config whose table would write a file if it ran
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var (modeExit, modeError) = RunMain("--config", config, "--file-access", "everything");
+        var (conflictExit, conflictError) = RunMain("--config", config, "--file-access", "any", "--allow-root", tmpDir.DirectoryPath);
+
+        // Assert: both are usage errors and no job ran
+        Assert.Equal(1, modeExit);
+        Assert.Contains("'everything' is not a value of --file-access.", modeError);
+        Assert.Equal(1, conflictExit);
+        Assert.Contains("The options --file-access any and --allow-root cannot be used together.", conflictError);
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(config)!, "out.md")));
+    }
 }

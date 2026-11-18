@@ -23,6 +23,7 @@ sections:
               - DictionaryMark-Validation-DeprecatedTable
               - DictionaryMark-Validation-ColumnWidths
               - DictionaryMark-Validation-ConfigTables
+              - DictionaryMark-Validation-FileAccessRoots
               - DictionaryMark-Validation-TrxOutput
               - DictionaryMark-Validation-JUnitOutput
               - DictionaryMark-Validation-UnsupportedExtension

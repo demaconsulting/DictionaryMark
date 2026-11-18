@@ -52,7 +52,8 @@ notice to `context`.
 - *Postconditions*: Banner written to context output.
 
 **PrintHelp** *(private)*: Writes the full usage and options text to `context`, including the
-dictionary generation options `--column-widths <w1,w2[,w3]>`, `--config <file>` and `--root <dir>`.
+dictionary generation options `--column-widths <w1,w2[,w3]>`, `--config <file>`, `--root <dir>`,
+`--file-access <mode>` and `--allow-root <dir>`.
 
 - *Parameters*: `Context context` — output channel.
 - *Returns*: `void`.

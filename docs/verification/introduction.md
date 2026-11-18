@@ -35,6 +35,10 @@ Local items:
     - **PathResolver**: path resolution against a root, with `..` and `${VAR}` support.
     - **PathHelpers**: safe path combination utilities.
     - **TemporaryDirectory**: disposable temporary directory helper.
+  - **Files**: file-access confinement subsystem (adapted from CanvasNet).
+    - **FileReferenceResolver**: reads judged files and checks output paths.
+    - **FileAccessPolicy**: the file-access policy and its built-in modes.
+    - **RealPath**: operating-system facts of an open file.
 
 OTS items:
 

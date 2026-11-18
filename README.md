@@ -43,6 +43,7 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - ⚙️ **Configuration File** - Keep formatting options and several table jobs in a YAML file beside the
   dictionaries
 - 📂 **Root Directory** - Resolve relative input and output paths against a chosen base directory
+- 🔒 **File Access** - Confine the inputs and outputs of configuration-file tables to chosen folders and refuse links
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
 
@@ -135,6 +136,8 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths (e.g. `25,75`) |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file |
 | `--root <dir>` | Base directory for relative input and output paths |
+| `--file-access <mode>` | Files `--config` tables may use: `any`, `roots`, `no-symlinks`, `roots,no-symlinks` |
+| `--allow-root <dir>` | Folder `--config` tables may use (repeatable; implies `roots`) |
 
 Missing parent directories of output files are created. Input patterns may use `..` segments before
 the first wildcard (for example `../shared/*.yaml`), and input and output paths may contain `${VAR}`
@@ -352,6 +355,33 @@ directory (for paths from the file) or the working directory (for command-line p
 ignore the root, and `--config`, `--log` and `--results` are never resolved against it. The root must
 exist; `${VAR}` and `..` are supported.
 
+### File Access
+
+A configuration file may come from a source you do not fully trust (for example a pull request). Its table inputs
+(every match of every glob) and outputs are judged by a file-access mode; the paths you name on the command line
+(`--config`, `--input`, `--output`, `--log`, `--results`) are never judged.
+
+```pwsh
+# Confine the tables of a configuration file to the repository folder
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root .
+
+# Also refuse any symbolic link or junction
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-access roots,no-symlinks
+```
+
+- `any` (the default) allows every regular local file, as Pandoc does.
+- `roots` allows only files inside the `--allow-root` folders, or, without `--allow-root`, inside the working
+  directory and the configuration file's folder. `--root` and the configuration `root:` key never widen it.
+- `no-symlinks` refuses a file reached through a symbolic link or junction below the configuration file's folder.
+
+Under every mode, network paths, device paths (and on Windows reserved names such as `NUL`), a colon outside a Windows
+drive, control characters, and anything that is not a regular file are refused, and each input is read up to 16 MiB.
+A refused table fails with `file-access-denied`, writes nothing, and the other tables still run (the exit code is
+non-zero). Known limits: a hard link cannot be told apart from its file; the output check is not race-proof (the write
+follows by name); glob matching can reveal file names (and check a literal network path) outside the allowed folders
+before the match is refused, although no content is read; and an `--allow-root` folder must exist when the run starts.
+See the User Guide for details.
+
 ### Conflicts
 
 The same term in several files is fine when the entries are identical. Entries that differ in `definition`, `pos`,
@@ -420,6 +450,8 @@ the results of each self-test. Each test proves a specific capability:
 - **`DictionaryMark_ColumnWidths`** - `--column-widths` sizes the table separator in proportion to the weights
 - **`DictionaryMark_ConfigTables`** - A `--config` file generates every table job, with config-relative
   `..` paths and missing output directories created
+- **`DictionaryMark_FileAccessRoots`** - With `--allow-root`, a `--config` table output outside the allowed folder
+  is denied with `file-access-denied` and nothing is written, while a table inside it is generated
 
 Results can be saved to a file:
 

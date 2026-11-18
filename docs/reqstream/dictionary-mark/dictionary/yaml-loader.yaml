@@ -111,3 +111,15 @@ sections:
                   - DictionaryEntry_Constructor_TermAndDefinition_HasDefaultMetadata
                   - DictionaryEntry_Constructor_FullMetadata_SetsProperties
                   - DictionaryEntry_Constructor_NullDefinition_ThrowsArgumentNullException
+
+              - id: DictionaryMark-YamlLoader-Content
+                title: >-
+                  The YamlDictionaryLoader class shall load approved-term and deprecated-term entries from the bytes of
+                  a file that were already read, decoding them as UTF-8 unless a byte order mark names another
+                  encoding, with the same entries, validation and source as loading the file by its path.
+                justification: |
+                  A caller that judged a file through the file-access policy must parse exactly the bytes it judged,
+                  rather than reading the file again by name.
+                tests:
+                  - YamlDictionaryLoader_Load_Content_EqualsPathOverload
+                  - YamlDictionaryLoader_LoadDeprecated_Content_EqualsPathOverload

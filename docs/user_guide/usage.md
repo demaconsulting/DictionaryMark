@@ -328,6 +328,78 @@ The base directory for a relative path is chosen as follows:
 - The root must be an existing directory and must not contain wildcards. `--root` may be given only
   once and must not be empty. The `root` key is checked even when `--root` overrides it.
 
+## File Access
+
+A configuration file may come from a source you do not fully trust, for example a pull request or a shared
+repository. DictionaryMark therefore judges every input and output its tables name by a file-access mode. The paths you
+name on the command line yourself (`--config`, `--input`, `--output`, `--log` and `--results`) are trusted and never
+judged.
+
+| Mode | What configuration tables may read and write |
+| :--- | :--- |
+| `any` (default) | Every regular local file, as Pandoc does |
+| `roots` | Only files inside the allowed folders |
+| `no-symlinks` | Only files not reached through a symbolic link or junction |
+| `roots,no-symlinks` | Both rules |
+
+Choose the mode with `--file-access <mode>` (case-insensitive; the two rules may be given in either order; if the
+option is repeated, the last value wins). Name the allowed folders with `--allow-root <dir>` (repeatable; a relative
+folder is taken from the working directory). `--allow-root` alone implies `roots`. With `roots` and no `--allow-root`,
+the allowed folders are the working directory and the configuration file's folder.
+
+```bash
+# Confine the tables of a configuration file to the repository folder
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root .
+
+# The same, and refuse every symbolic link or junction
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-access roots,no-symlinks
+```
+
+How the files are judged:
+
+- Every input is judged, including every match of a glob pattern. A match outside the allowed folders fails the
+  table; it is never skipped.
+- The decision is about the file that was actually opened (its real path), and the bytes that were judged are the
+  bytes that are parsed, so a link swapped in by another process cannot slip past the check.
+- Every output is judged before anything is written, so a refused output creates neither the file nor any folder.
+  An output that does not exist yet is judged by the real location of its deepest existing folder. An existing entry
+  at the output path that cannot be opened (for example a dangling link) is refused.
+- The `no-symlinks` rule trusts the configuration file's folder and the folders above it; a link below it is refused.
+- `--root` and the configuration `root:` key move the base of relative paths, but never widen the allowed folders.
+
+Under every mode, including the default `any`, these are refused for configuration tables: network paths
+(`\\server\share` and `//host`), device paths (and on Windows reserved names such as `NUL`, `CON` or `COM1` in any part
+of the path), a colon anywhere except in a Windows drive (an alternate data stream; on Linux and macOS a folder name
+with `:` too), control characters, anything that is not a regular file (a folder, a device, a named pipe), and on
+Windows a local path that leads to a network share through a link. Each input is read up to 16 MiB; a larger file is an
+error.
+
+A refused table fails with `file-access-denied`, writes nothing, and the other tables still run; the exit code is
+non-zero:
+
+```text
+Error: table job 2 ('../out/table.md'): file-access-denied: The file 'C:\repo\out\table.md' was denied by the
+file-access policy 'roots'. Allow the file in the file-access policy, or reference a file it allows.
+```
+
+A mistake in the options (an unknown mode, `--allow-root` with `any` or `no-symlinks`, or an `--allow-root` folder
+that does not exist) is reported before any input is read.
+
+Known limits:
+
+- A hard link cannot be told apart from the file it links to, so `no-symlinks` does not refuse it.
+- The output check is not race-proof: the write that follows goes by name, so a link swapped in between the check and
+  the write is not caught.
+- Glob matching lists folders and checks that literal inputs exist before each match is judged, so file names outside
+  the allowed folders can be learned (and a literal network path may be contacted for that check); no content of such
+  a file is read.
+- The real location of each allowed folder is captured when the run starts; a folder that does not exist then allows
+  nothing, even if a table creates it.
+- Paths are compared case-insensitively on Windows and macOS; on a case-sensitive volume, a sibling folder whose name
+  differs from an allowed folder only in letter case counts as inside it.
+- An existing output that cannot be opened for reading (for example a write-only file) is refused, and an output that
+  does not exist yet, written with short (8.3) names, is refused under `no-symlinks`.
+
 ## Silent Mode
 
 Suppress console output:
@@ -401,6 +473,7 @@ The self-validation suite runs the following tests:
 | `DictionaryMark_DeprecatedTable` | A deprecated-terms table is generated with `--kind deprecated` |
 | `DictionaryMark_ColumnWidths` | `--column-widths` sizes the table separator in proportion to the weights |
 | `DictionaryMark_ConfigTables` | A `--config` file generates every table job, with config-relative `..` paths |
+| `DictionaryMark_FileAccessRoots` | With `--allow-root`, an output outside the folder is denied, nothing written |
 
 ### Heading Depth
 
@@ -443,6 +516,8 @@ The following command-line options are supported:
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths, for example `25,75` |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file (once only) |
 | `--root <dir>` | Base directory for relative input and output paths (once only) |
+| `--file-access <mode>` | Files configuration tables may use: `any` (default), `roots`, `no-symlinks` or both |
+| `--allow-root <dir>` | A folder configuration tables may use (repeatable; implies `roots`) |
 
 # Examples
 

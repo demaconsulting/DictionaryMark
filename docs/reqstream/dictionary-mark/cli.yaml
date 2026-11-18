@@ -139,3 +139,20 @@ sections:
               - CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_MissingRoot_ExitsNonZero
+
+          - id: DictionaryMark-Cli-FileAccessOptions
+            title: >-
+              The CLI subsystem shall build one file-access policy per run from the file-access and allow-root
+              options - the default allowing every file, the roots mode allowing the allow-root folders or, without
+              them, the working directory and the configuration file's folder - before the configuration file is
+              loaded, and shall reject an unknown mode, a conflicting combination and a folder that does not exist
+              with an error.
+            justification: |
+              The CLI subsystem owns run settings; the file-access policy is one of them, and a mistake in it must
+              stop the run before any input is opened.
+            children:
+              - DictionaryMark-Context-FileAccessOptions
+              - DictionaryMark-Context-FileAccessDefaultRoots
+            tests:
+              - CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs
+              - CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero

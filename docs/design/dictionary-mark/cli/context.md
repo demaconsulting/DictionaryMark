@@ -4,12 +4,11 @@
 
 #### Purpose
 
-`Context` is created once per tool invocation via the `Create` factory method. It parses the
-argument list using the inner `ArgumentParser` helper, resolves the root directory, loads the
-configuration file, builds the generation jobs, opens any requested log file, and exposes the
-parsed flags as read-only properties. It owns the two output channels — console and log file —
-through `WriteLine` and `WriteError`. It signals errors both at construction time (exceptions) and
-at runtime (via `_hasErrors` flag).
+`Context` is created once per tool invocation via the `Create` factory method. It parses the argument list using the
+inner `ArgumentParser` helper, resolves the root directory, builds the file-access policy of the run, loads the
+configuration file, builds the generation jobs, opens any requested log file, and exposes the parsed flags as read-only
+properties. It owns the two output channels — console and log file — through `WriteLine` and `WriteError`. It signals
+errors both at construction time (exceptions) and at runtime (via `_hasErrors` flag).
 
 #### Data Model
 
@@ -85,6 +84,10 @@ command-line job when `--input` was given, or none.
 
 **UsesConfigTables**: `bool` — `true` when `Jobs` come from the configuration file's `tables`.
 
+**FileAccess**: `FileAccessPolicy` — The file-access policy that judges the inputs and outputs of
+configuration-table jobs, built from `--file-access` and `--allow-root`; default
+`FileAccessPolicy.AllowAll`. One policy per run, shared by every job.
+
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
 
 #### Key Methods
@@ -97,9 +100,13 @@ command-line job when `--input` was given, or none.
 2. If `--root` was given, resolve it with `PathResolver.ResolveExistingDirectory` against the
    working directory (description `--root option`).
 3. If `--config` was given, resolve it with `PathResolver.ResolvePath` against the working
-   directory (never the root) and load it with `ConfigFile.Load`.
-4. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
-5. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
+   directory (never the root).
+4. Build the file-access policy with `ReadFileAccess` (see below), with the configuration file as
+   the only input whose folder joins the default roots. A mistake is reported here, before the
+   configuration file or any input is read.
+5. If `--config` was given, load it with `ConfigFile.Load`.
+6. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
+7. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
    `--output` throws `ArgumentException` naming the file; otherwise each table becomes
    `TableJob.Create(index, inputs, output, base, [command line, job, config defaults])`. A
    column-width error from `TableJob.Create` is re-thrown with the `Config file '{path}': `
@@ -108,7 +115,7 @@ command-line job when `--input` was given, or none.
    The base directory comes from the private `SelectBaseDirectory(root, originDefault)`, which
    returns the root when set and otherwise the origin default (the configuration file's
    directory for table jobs, the working directory for the command-line job).
-6. Open the log file if `--log` was supplied.
+8. Open the log file if `--log` was supplied.
 
 - *Parameters*: `string[] args` — command-line arguments to parse.
 - *Returns*: `Context` — a fully initialized instance.
@@ -165,11 +172,36 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 `FileOrder`); `--kind <terms|deprecated>` → `Kind` (invalid value throws `ArgumentException`);
 `--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`;
 `--column-widths <w1,w2[,w3]>` → `ColumnWidths`; `--config <file>` → `ConfigFilePath` (once
-only); `--root <dir>` → `RootDirectory` (once only, non-empty).
+only); `--root <dir>` → `RootDirectory` (once only, non-empty); `--file-access <mode>` → the mode
+of `FileAccess` (the last occurrence wins, as in CanvasNet); `--allow-root <dir>` → an allowed
+folder of `FileAccess` (repeatable).
+
+**ReadFileAccess** (internal static, `Context.FileAccess.cs`, ported from CanvasNet's
+`RenderCommand.FileAccess.cs`): builds the policy from the last `--file-access` value, the
+`--allow-root` values, the inputs whose folders join the default roots (the configuration file), and
+the working directory. `--allow-root` alone implies `roots`; an explicit mode is parsed first
+(`ParseFileAccessMode`), so a bad value is reported as such. `--allow-root` with `any` or
+`no-symlinks` throws `ArgumentException` naming the conflict and how to fix it. Without `roots` the
+result is `FileAccessPolicy.AllowAll` or `FileAccessPolicy.NoSymlinks`. With `roots`, the folders are
+the `--allow-root` values (each resolved against the working directory by `ResolveRoot`, which
+throws `ArgumentException` for a folder that does not exist), or else `DefaultRoots`; the result is
+`UnderRoots(folders)`, combined with `NoSymlinks` for `roots,no-symlinks`. The messages and hints are
+CanvasNet's, joined into one `ArgumentException` message (`"{message} {hint}"`) because DictionaryMark
+reports usage errors as `ArgumentException`.
+
+**ParseFileAccessMode** (internal static): splits on `,`, trims and lower-cases each token; `any`
+alone is neither rule; otherwise every token must be `roots` or `no-symlinks`, each at most once,
+in either order. Anything else throws `ArgumentException("'{text}' is not a value of
+--file-access. Use any (the default), roots, no-symlinks, or roots,no-symlinks.")`.
+
+**DefaultRoots** (internal static): the working directory first, then the folder of each input that
+is not the working directory or inside it (`IsSameOrUnder`, a lexical comparison under the platform's
+case rule), without duplicates. An input whose path cannot be read is skipped.
 
 - Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized,
   invalid, repeated or missing its required value, when `--input`/`--output` is combined with
-  configuration tables, or when a column-width count does not match the table; throws
+  configuration tables, when a column-width count does not match the table, or when the
+  file-access options are invalid; throws
   `InvalidOperationException` when the root directory is invalid or missing, the configuration
   file is invalid, or the log file cannot be opened. `Program.Main` is expected to catch both
   types. All of these stop the run before any job runs.
@@ -186,6 +218,7 @@ only); `--root <dir>` → `RootDirectory` (once only, non-empty).
 - **TableJob** and **FormattingSettings** — Cli unit and supporting type; the generation jobs and
   the formatting precedence layers.
 - **PathResolver** — Utilities unit; resolves `--config` and `--root`.
+- **FileAccessPolicy** — Files unit; the policy built from `--file-access` and `--allow-root`.
 
 #### Callers
 

@@ -65,3 +65,8 @@ This scenario is tested by
 be zero, confirming per-job generation, path resolution against the job's base directory and output
 directory creation.
 This scenario is tested by `DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput`.
+
+**DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun**: Test that the dictionary subsystem
+judges config-file table inputs and outputs by the file-access policy: a table whose input lies outside the allowed
+folder fails with file-access-denied, while the other tables still generate their output. This scenario is tested by
+`DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun`.

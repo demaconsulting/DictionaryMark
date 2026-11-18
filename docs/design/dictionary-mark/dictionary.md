@@ -72,6 +72,15 @@ everything from resolving input file paths through formatting the final Markdown
 - *Constraints*: Throws `ArgumentException` on empty patterns and `InvalidOperationException` when a
   pattern matches nothing, a literal path does not exist, or a variable is undefined.
 
+**FileReferenceResolver**: The file-access engine from the Files subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `DictionaryGenerator` reads the input files of a configuration-table job and checks its output
+  path through one resolver per job
+- *Contract*: `Resolve(path)` returns the approved bytes or `null`; `CheckOutputPath(path)` returns when the output
+  may be written; both throw `FileReferenceException` (see *FileReferenceResolver Design*)
+- *Constraints*: The resolver's base directory is the configuration file's folder; `context.FileAccess` is its policy.
+
 **YamlDotNet**: OTS YAML parsing library.
 
 - *Type*: In-process .NET public API (NuGet package)
@@ -90,7 +99,9 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
    on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
-   `InvalidOperationException`.
+   `InvalidOperationException`. For a configuration-table job each match is first read through the job's
+   `FileReferenceResolver` (every match is judged by the file-access policy; a refused match fails the job, it is
+   never skipped) and the loader parses the bytes the resolver returned.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
    job; report each conflict and return early if any are found. Different jobs may use different or
    overlapping dictionaries.
@@ -99,13 +110,16 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
    produce the Markdown string. When `job.Options.ColumnWidths` is set, table separators are sized
    in proportion to the widths.
 5. Write the string to the job's output file — resolved against the job's base directory with
-   `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
+   `PathResolver.ResolvePath`, checked with `CheckOutputPath` for a configuration-table job before anything is
+   created, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
    report the error and return.
 
 Every job error is written through `context.WriteError`, prefixed with the job label
 (`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration
-tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported.
+tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported. A file-access refusal
+of a policy reads `file-access-denied: {message} Allow the file in the file-access policy, or reference a file it
+allows.`.
 
 #### Column widths
 

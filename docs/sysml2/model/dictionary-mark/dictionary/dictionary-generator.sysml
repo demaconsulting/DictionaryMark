@@ -16,4 +16,7 @@ package DictionaryMark {
     // DictionaryGenerator runs each job and resolves its output path against the job's base directory
     dependency DictionaryGenerator to TableJob;
     dependency DictionaryGenerator to PathResolver;
+
+    // DictionaryGenerator reads and checks the files of a configuration-table job through the resolver
+    dependency DictionaryGenerator to FileReferenceResolver;
 }

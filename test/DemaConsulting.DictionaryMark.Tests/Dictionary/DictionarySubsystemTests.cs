@@ -182,4 +182,31 @@ public class DictionarySubsystemTests
         Assert.Contains("| API |", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "table.md")));
         Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "bullets.md")));
     }
+
+    /// <summary>
+    ///     Test that the dictionary subsystem judges config-file table inputs and outputs by the file-access policy:
+    ///     a table whose input lies outside the allowed folder fails with file-access-denied, while the other tables
+    ///     still generate their output.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun()
+    {
+        // Arrange: the config folder is the only allowed root; one table reads a dictionary outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "secret.yaml")), "Secret: Hidden\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../other/secret.yaml\n    output: secret.md\n  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        using var context = Context.Create(["--silent", "--config", config, "--allow-root", root]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert: the denied table wrote nothing; the other table ran; the exit code reports the failure
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(File.Exists(Path.Combine(root, "secret.md")));
+        Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+    }
 }

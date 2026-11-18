@@ -128,3 +128,36 @@ its label. This scenario is tested by `DictionaryGenerator_Generate_ConflictsDet
 **DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput**: Verifies that `--column-widths 25,75`
 reaches the generated table separator. This scenario is tested by
 `DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput`.
+
+**DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied**: Test that a config input outside the allowed
+roots fails its job with file-access-denied. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped**: Test that a glob whose matches lie both
+inside and outside the allowed roots fails its job: the match outside is denied rather than skipped, and the match
+inside is not used alone. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped`.
+
+**DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied**: Test that a glob match
+reached through a directory link is denied under no-symlinks. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated**: Test that a config output outside the
+allowed roots is denied and nothing is created. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated`.
+
+**DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess**: Test that under the default mode a
+config output that breaks a never-list rule (a colon outside a drive, and on Windows a network path) is refused before
+anything is accessed or created. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess`.
+
+**DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError**: Test that a config input longer than the 16 MiB
+size limit is an ordinary read error. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError`.
+
+**DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne**: Test that a denied job fails only itself: the
+other jobs run and the exit code is 1. This scenario is tested by
+`DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne`.
+
+**DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged**: Test that the command-line job is never judged by the
+file-access policy. This scenario is tested by `DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged`.

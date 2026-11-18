@@ -142,3 +142,11 @@ This scenario is tested by `CliSubsystem_RootFlow_CommandLineRootOverridesConfig
 **CliSubsystem_RootFlow_MissingRoot_ExitsNonZero**: `Program.Main` is invoked with a `--root`
 that does not exist. Exit code must be 1 and stderr must name the directory and the option.
 This scenario is tested by `CliSubsystem_RootFlow_MissingRoot_ExitsNonZero`.
+
+**CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs**: Test that --allow-root confines the config-file table
+jobs: a table inside the folder is generated and a table writing outside it fails with file-access-denied and a non-zero
+exit code. This scenario is tested by `CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs`.
+
+**CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero**: Test that a mistake in the file-access options exits
+non-zero with its usage error before any job runs. This scenario is tested by
+`CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero`.
