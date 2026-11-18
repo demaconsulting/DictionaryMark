@@ -1,10 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640">
-  <!-- The README hero banner. YAML glossaries, rich entries, deprecated terms, and a configuration file of table jobs
-       flow into the dictionarymark tool, and come out as a Markdown table with sized columns, a bullet list, a
-       deprecated-terms table, and Pandoc documents. -->
+  <!-- The README hero banner. A YAML glossary, rich entries, deprecated terms, and a configuration file of table
+       jobs flow into the dictionarymark tool and come out as a Markdown table with sized columns, a bullet list, a
+       deprecated-terms table, and Pandoc documents.
+       The definitions and the left panel follow the shared DEMA Consulting hero (CanvasNet and BuildMark).
+       This file is docs/images/hero.svg, beside its rendered docs/images/hero.png (matching base names, per the
+       diagram documentation standard); the files it embeds are in docs/images/hero/. -->
+  <!-- TEMPLATE-DIRECTIVE:
+       This banner is shared by every DEMA Consulting repository so that their READMEs look like one family.
+       Customize it once, when the repository is created, and then only when what it shows changes.
+
+       FIXED (do not change): the definitions (styles, gradients, glows, dot grid, filters, markers), the
+       background, the logo and the "DEMA Consulting" eyebrow, the positions and sizes of the wordmark, underline
+       bar, tagline, body, command box, and footnote, the engine pill, and the card frames and flow geometry.
+       Keep every color, glow, and the background unchanged.
+
+       PER PROJECT: the wordmark words, the tagline, the body, the command, the footnote, the engine label, and the
+       input and output cards (their labels and the small illustration inside each). Every customization point
+       below has its own TEMPLATE-DIRECTIVE comment.
+
+       RULES FOR ALL ART:
+       - Draw the card art in SVG (shapes and text); no external raster images. A card may instead embed a real
+         source file of the repository with <image href="..."> (an .mmd, .vl.json, .scad, .svg, or a document
+         page), as CanvasNet does, when the repository has a suitable one. Put every embedded file in
+         docs/images/hero/ (beside dc-logo-dark.svg) and reference it as href="hero/name.ext".
+       - Every text is at least 22px in this 1600x640 frame (the .mini and .miniMono classes are 22px).
+       - Nothing may be clipped: keep each illustration inside its card panel and each label inside its card.
+       - Delete these TEMPLATE-DIRECTIVE comments once the banner is customized; keep the short descriptive
+         comments.
+       - Then run docs/images/render-hero.ps1, look at docs/images/hero.png, and commit hero.svg, hero.png,
+         and anything added to docs/images/hero/ together. -->
   <defs>
     <style>
-      /* DEMA hero template: the classes of the top-left block, copied from the CanvasNet hero */
       .word { font: bold 92px sans-serif; fill: #ffffff; }
       .eyebrow { font: bold 25px sans-serif; fill: #a5b4fc; }
       .tag { font: bold 40px sans-serif; fill: #f8fafc; }
@@ -14,11 +40,6 @@
       .file { fill: #f9a8d4; }
       .brandText { fill: url(#brand); }
       .note { font: italic 25px sans-serif; fill: #94a3b8; }
-      /* DictionaryMark: the product name and command are longer than CanvasNet's, so only their sizes change */
-      .word { font-size: 76px; }
-      .cmd { font-size: 19px; }
-
-      /* The flow on the right */
       .label { font: bold 25px sans-serif; fill: #f1f5f9; text-anchor: middle; }
       .engine { font: bold 32px monospace; fill: #ffffff; }
       .api { font: bold 25px sans-serif; fill: #c4b5fd; }
@@ -26,21 +47,6 @@
       .panel { fill: #0a1022; stroke: #ffffff; stroke-opacity: 0.06; }
       .flow { fill: none; stroke-width: 3; stroke-linecap: round; }
       .page { fill: #ffffff; filter: url(#paper); }
-      .code { font: 17px monospace; fill: #e2e8f0; }
-      .key { fill: #7dd3fc; }
-      .punct { fill: #94a3b8; }
-      .str { fill: #f9a8d4; }
-      .head { font: bold 16px sans-serif; fill: #ffffff; }
-      .th { font: bold 14px sans-serif; fill: #e0e7ff; }
-      .td { font: 14px sans-serif; fill: #cbd5e1; }
-      .tt { font: bold 14px sans-serif; fill: #f1f5f9; }
-      .old { font: 14px sans-serif; fill: #fda4af; }
-      .new { font: 14px sans-serif; fill: #5eead4; }
-      .li { font: 15px sans-serif; fill: #cbd5e1; }
-      .lb { font: bold 15px sans-serif; fill: #ffffff; }
-      .dim { font: bold 14px sans-serif; text-anchor: middle; }
-      .grid { fill: none; stroke: #475569; stroke-width: 1; }
-      .chip { font: bold 13px sans-serif; fill: #ffffff; text-anchor: middle; }
     </style>
 
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -63,7 +69,6 @@
     <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
       <circle cx="12" cy="12" r="1.2" fill="#a5b4fc" fill-opacity="0.16"/>
     </pattern>
-    <!-- DEMA hero template: the brand gradient of the product name, the underline bar, and the tagline -->
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#22d3ee"/>
       <stop offset="0.5" stop-color="#a78bfa"/>
@@ -90,6 +95,9 @@
     <filter id="blur" x="-30%" y="-150%" width="160%" height="400%">
       <feGaussianBlur stdDeviation="14"/>
     </filter>
+    <filter id="heat" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
 
     <marker id="headPink" viewBox="0 0 10 10" refX="2.5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
       <path d="M0,0 L10,5 L0,10 L2.5,5 z" fill="#f472b6"/>
@@ -103,228 +111,294 @@
     <marker id="headViolet" viewBox="0 0 10 10" refX="2.5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
       <path d="M0,0 L10,5 L0,10 L2.5,5 z" fill="#a78bfa"/>
     </marker>
+    <marker id="headBlue" viewBox="0 0 10 10" refX="2.5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+      <path d="M0,0 L10,5 L0,10 L2.5,5 z" fill="#60a5fa"/>
+    </marker>
     <marker id="headMint" viewBox="0 0 10 10" refX="2.5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
       <path d="M0,0 L10,5 L0,10 L2.5,5 z" fill="#5eead4"/>
     </marker>
+
+    <!-- The text and shapes inside the mini illustrations -->
+    <!-- TEMPLATE-DIRECTIVE: add any further classes the card art needs to this block (for example a 22px text
+         class in another color); keep the shared block above unchanged. -->
+    <style>
+      .mini { font: bold 22px sans-serif; }
+      .miniMono { font: bold 22px monospace; }
+      .bar { fill: #cbd5e1; }
+      .ink { fill: #1e293b; }
+      /* DictionaryMark: YAML snippets in the input cards, and Markdown tables and lists in the output cards */
+      .code { font: 22px monospace; fill: #e2e8f0; }
+      .key { fill: #7dd3fc; }
+      .punct { fill: #94a3b8; }
+      .str { fill: #f9a8d4; }
+      .th { font: bold 22px sans-serif; fill: #e0e7ff; }
+      .tt { font: bold 22px sans-serif; fill: #f1f5f9; }
+      .td { font: 22px sans-serif; fill: #cbd5e1; }
+      .old { font: 22px sans-serif; fill: #fda4af; }
+      .new { font: 22px sans-serif; fill: #5eead4; }
+      .dim { font: bold 22px sans-serif; text-anchor: middle; }
+      .chip { font: bold 22px sans-serif; fill: #ffffff; text-anchor: middle; }
+      .grid { fill: none; stroke: #475569; stroke-width: 1; }
+    </style>
   </defs>
 
   <!-- Background: deep gradient, soft glows, and a dot grid -->
   <rect width="1600" height="640" fill="url(#bg)"/>
   <ellipse cx="250" cy="170" rx="420" ry="300" fill="url(#glowViolet)"/>
-  <ellipse cx="1105" cy="294" rx="420" ry="220" fill="url(#glowCyan)"/>
+  <ellipse cx="1070" cy="294" rx="420" ry="220" fill="url(#glowCyan)"/>
   <ellipse cx="1480" cy="620" rx="380" ry="260" fill="url(#glowPink)"/>
   <rect width="1600" height="640" fill="url(#dots)"/>
 
-  <!-- DEMA hero template (top-left block), copied from the CanvasNet hero. To reuse it in another DEMA
-       repository, copy the template classes in the style element, the brand gradient, the background, and the
-       groups dema-brand, product-title, and product-pitch, with dc-logo-dark.svg beside the SVG file. Keep
-       dema-brand as it is. In product-title change only the two words of the name, the .word font size (92px
-       when the name fits), and the x of the gradient word: 52 plus the width of the white word. -->
-  <g id="dema-brand">
-    <image href="dc-logo-dark.svg" x="46" y="54" width="50" height="50"/>
-    <text class="eyebrow" x="100" y="90">DEMA Consulting</text>
-  </g>
-  <g id="product-title">
-    <text class="word" x="52" y="176">Dictionary</text>
-    <text class="word brandText" x="423.6" y="176">Mark</text>
-    <rect x="58" y="200" width="132" height="6" rx="3" fill="url(#brand)"/>
-  </g>
-  <g id="product-pitch">
-    <text class="tag" x="56" y="266">YAML dictionaries in.</text>
-    <text class="tag brandText" x="56" y="316">Markdown glossaries out.</text>
-    <text class="body" x="58" y="368">One .NET tool turns YAML term dictionaries</text>
-    <text class="body" x="58" y="402">into Markdown tables and bullet lists, for</text>
-    <text class="body" x="58" y="436">documents, docs pipelines and CI.</text>
-    <rect x="56" y="468" width="557" height="54" rx="12" fill="#0a1022" fill-opacity="0.8" stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.5"/>
-    <text class="cmd prompt" x="78" y="501">$</text>
-    <text class="cmd" x="100.8" y="501">dictionarymark --config</text>
-    <text class="cmd file" x="374.4" y="501">dictionarymark.yaml</text>
-    <text class="note" x="58" y="568">One config file, one run, every table.</text>
-  </g>
+  <!-- Wordmark and tagline -->
+  <image href="hero/dc-logo-dark.svg" x="46" y="54" width="50" height="50"/>
+  <text class="eyebrow" x="100" y="90">DEMA Consulting</text>
+  <!-- TEMPLATE-DIRECTIVE: the wordmark.
+       Split the project name into two words at a natural boundary (Build|Mark, Req|Stream, Canvas|Net). The
+       first word stays white at x="52"; the second gets the brand gradient (class "word brandText").
+       The second word starts exactly where the first one ends (no extra gap, as in CanvasNet and BuildMark):
+         x = 52 + 0.092 * (sum of the advance widths of the first word's letters)
+       using these Arial Bold / Liberation Sans Bold advance widths (in 1/1000 em; 92px makes 1 unit = 0.092px):
+         A 722  B 722  C 722  D 722  E 667  F 611  G 778  H 722  I 278  J 556  K 722  L 611  M 833
+         N 722  O 778  P 667  Q 778  R 722  S 667  T 611  U 722  V 667  W 944  X 667  Y 667  Z 611
+         a 556  b 611  c 556  d 611  e 556  f 333  g 611  h 611  i 278  j 278  k 556  l 278  m 889
+         n 611  o 611  p 611  q 611  r 389  s 556  t 333  u 611  v 556  w 778  x 556  y 556  z 500
+       Examples: "Canvas" = 3557 units, x = 379.2; "Build" = 2500 units, x = 282 (BuildMark uses 281.9);
+       "Tool" = 2111 units, x = 246.2. Check the result by rendering: the two words must read as one name with
+       the same spacing as the letters inside a word. The whole name must end before x = 560, so the sum over
+       both words must stay under about 5500 units (about 9 letters; "ProjectName" at 6113 units runs into the
+       cards). For a longer name, ask before shrinking the font. -->
+  <!-- DictionaryMark: "Dictionary" = 4890 units and "Mark" = 2334 units (7224 in all), so the name is drawn at
+       70px instead of 92px to end before x = 560 (at 557.7): x = 52 + 0.070 * 4890 = 394.3. -->
+  <text class="word" x="52" y="176" style="font-size: 70px">Dictionary</text>
+  <text class="word brandText" x="394.3" y="176" style="font-size: 70px">Mark</text>
+  <rect x="58" y="200" width="132" height="6" rx="3" fill="url(#brand)"/>
+  <!-- TEMPLATE-DIRECTIVE: the tagline is two short lines of at most about 22 characters each: a promise and
+       its payoff. The second line is in the brand gradient. Examples: "Every build, documented." / "Every change,
+       traced." (BuildMark); "Every format in." / "Crisp pictures out." (CanvasNet). -->
+  <text class="tag" x="56" y="266">YAML dictionaries in.</text>
+  <text class="tag brandText" x="56" y="316">Markdown glossaries out.</text>
+  <!-- TEMPLATE-DIRECTIVE: the body is three lines of at most about 38 characters each, saying what the project
+       does and for whom, in plain words. Break the lines by hand; SVG text does not wrap. -->
+  <text class="body" x="58" y="368">One .NET tool turns YAML term dictionaries</text>
+  <text class="body" x="58" y="402">into Markdown tables and bullet lists,</text>
+  <text class="body" x="58" y="436">for documents, docs pipelines and CI.</text>
+  <!-- TEMPLATE-DIRECTIVE: the command box shows the single most typical command.
+       ONE LINE (default, as CanvasNet): at most about 28 characters after the "$" prompt. The monospace font
+       advances 15px per character, so a part that starts N characters after x="108" is at x = 108 + 15 * N;
+       color file names and values with class "cmd file".
+       TWO LINES (as BuildMark), for a longer command: make the box 90px high, add the second line indented by
+       two characters, and move the footnote down to y="604":
+         <rect x="56" y="468" width="480" height="90" rx="12" ...same attributes as below.../>
+         <text class="cmd prompt" x="78" y="503">$</text>
+         <text class="cmd" x="108" y="503">first part of the command</text>
+         <text class="cmd" x="138" y="539">second part</text>
+         <text class="note" x="58" y="604">...</text>
+       LIBRARY repositories show a short C# call instead, without the "$" prompt: delete the prompt text, start
+       the code at x="78", and color the literal with class "cmd file", for example
+         var r = Report.Load("x");
+       Keep the box at width="480": nothing may reach the cards at x = 580. -->
+  <rect x="56" y="468" width="480" height="90" rx="12" fill="#0a1022" fill-opacity="0.8" stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="cmd prompt" x="78" y="503">$</text>
+  <text class="cmd" x="108" y="503">dictionarymark --config</text>
+  <text class="cmd file" x="138" y="539">dictionarymark.yaml</text>
+  <!-- TEMPLATE-DIRECTIVE: the footnote is one short italic line (at most about 34 characters), for example
+       "Built for Continuous Compliance." (BuildMark) or "This banner is that one SVG file." (CanvasNet). It is
+       at y="568" below a one-line command box and at y="604" below a two-line one. -->
+  <text class="note" x="58" y="604">One config file, one run, every table.</text>
 
-  <!-- Input cards: YAML snippets of each kind of input -->
+  <!-- TEMPLATE-DIRECTIVE: the right side tells the project's story from top to bottom: what goes in (input
+       cards), the project itself (the engine pill), and what comes out (output cards).
+       - TOOL repositories show the command-line flow: the files and services the tool reads, the tool, and the
+         reports or artifacts it writes (BuildMark: version tags, pull requests, issues, work items -> buildmark
+         -> Markdown notes, Pandoc PDF, release notes, CI pipelines).
+       - LIBRARY repositories show what the API consumes and produces instead: the inputs are the data or files
+         the API reads, the engine is the main type or namespace with the secondary label ".NET library", and
+         the outputs are the results a caller gets back.
+       Give each card a short label (one line, centered at the card's middle, fitting inside the card) and a small
+       illustration that says the same thing as the label. Each input card has a 112px accent bar on its top
+       edge in its flow color, centered on the card. -->
+
+  <!-- Input cards -->
+  <!-- TEMPLATE-DIRECTIVE: four input slots by default, each 236px wide with 12px gaps between x = 580 and
+       x = 1560. The widths may be rebalanced to fit the art (BuildMark uses 196, 196, 196, and 356), keeping the
+       12px gaps and the span; move the accent bar (center - 56), the panel (x + 8, width - 16), the label, and the
+       flow start (both at the card's center) with the card.
+       FIVE INPUTS (as CanvasNet): cards at x = 580, 759, 938, 1117 (width 167) and 1296 (width 264), centers
+       663.5, 842.5, 1021.5, 1200.5, and 1428, flowing to the engine at x = 930, 1000, 1070, 1140, and 1210.
+       THREE INPUTS: drop a card and its flow and spread the others over the same span. -->
+  <!-- DictionaryMark: the widths are rebalanced to 206, 242, 284, and 212 so that each YAML snippet fits at 22px
+       (centers 683, 919, 1194, and 1454). -->
   <g>
-    <rect class="card" x="650" y="40" width="217" height="160" rx="16"/>
-    <rect x="702.5" y="40" width="112" height="3" rx="1.5" fill="#f472b6"/>
-    <rect class="panel" x="658" y="48" width="201" height="112" rx="10"/>
-    <text class="code key" x="668" y="80">API</text>
-    <text class="code punct" x="698.6" y="80">:</text>
-    <text class="code" x="719" y="80">Application…</text>
-    <text class="code key" x="668" y="106">CLI</text>
-    <text class="code punct" x="698.6" y="106">:</text>
-    <text class="code" x="719" y="106">Command…</text>
-    <text class="code key" x="668" y="132">SDK</text>
-    <text class="code punct" x="698.6" y="132">:</text>
-    <text class="code" x="719" y="132">Software…</text>
-    <text class="label" x="758.5" y="190">Glossary</text>
+    <!-- Input one: a YAML glossary of terms and definitions -->
+    <rect class="card" x="580" y="40" width="206" height="160" rx="16"/>
+    <rect x="627" y="40" width="112" height="3" rx="1.5" fill="#fbbf24"/>
+    <rect class="panel" x="588" y="48" width="190" height="112" rx="10"/>
+    <text class="code" x="600" y="82"><tspan class="key">API</tspan><tspan class="punct">:</tspan> Applic…</text>
+    <text class="code" x="600" y="110"><tspan class="key">CLI</tspan><tspan class="punct">:</tspan> Comma…</text>
+    <text class="code" x="600" y="138"><tspan class="key">SDK</tspan><tspan class="punct">:</tspan> Softw…</text>
+    <text class="label" x="683" y="190">Glossary</text>
 
-    <rect class="card" x="881" y="40" width="217" height="160" rx="16"/>
-    <rect x="933.5" y="40" width="112" height="3" rx="1.5" fill="#fbbf24"/>
-    <rect class="panel" x="889" y="48" width="201" height="112" rx="10"/>
-    <text class="code key" x="899" y="74">bleed valve</text>
-    <text class="code punct" x="1011.2" y="74">:</text>
-    <text class="code key" x="919.4" y="97">definition</text>
-    <text class="code punct" x="1021.4" y="97">:</text>
-    <text class="code" x="1041.8" y="97">…</text>
-    <text class="code key" x="919.4" y="120">pos</text>
-    <text class="code punct" x="950" y="120">:</text>
-    <text class="code" x="970.4" y="120">noun</text>
-    <text class="code key" x="919.4" y="143">variants</text>
-    <text class="code punct" x="1001" y="143">: [</text>
-    <text class="code" x="1031.6" y="143">…</text>
-    <text class="code punct" x="1041.8" y="143">]</text>
-    <text class="label" x="989.5" y="190">Rich entries</text>
+    <!-- Input two: a rich entry with a definition, a part of speech, and variants -->
+    <rect class="card" x="798" y="40" width="242" height="160" rx="16"/>
+    <rect x="863" y="40" width="112" height="3" rx="1.5" fill="#22d3ee"/>
+    <rect class="panel" x="806" y="48" width="226" height="112" rx="10"/>
+    <text class="code" x="818" y="74"><tspan class="key">bleed valve</tspan><tspan class="punct">:</tspan></text>
+    <text class="code" x="844.4" y="98"><tspan class="key">definition</tspan><tspan class="punct">:</tspan> …</text>
+    <text class="code" x="844.4" y="122"><tspan class="key">pos</tspan><tspan class="punct">:</tspan> noun</text>
+    <text class="code" x="844.4" y="146"><tspan class="key">variants</tspan><tspan class="punct">: [</tspan>…<tspan class="punct">]</tspan></text>
+    <text class="label" x="919" y="190">Rich entries</text>
 
-    <rect class="card" x="1112" y="40" width="217" height="160" rx="16"/>
-    <rect x="1164.5" y="40" width="112" height="3" rx="1.5" fill="#22d3ee"/>
-    <rect class="panel" x="1120" y="48" width="201" height="112" rx="10"/>
-    <text class="code key" x="1128" y="80">bench mode</text>
-    <text class="code punct" x="1230" y="80">:</text>
-    <text class="code key" x="1148.4" y="106">use</text>
-    <text class="code punct" x="1179" y="106">:</text>
-    <text class="code" x="1199.4" y="106">Test Mode</text>
-    <text class="code key" x="1148.4" y="132">where</text>
-    <text class="code punct" x="1199.4" y="132">:</text>
-    <text class="code" x="1219.8" y="132">Product A</text>
-    <text class="label" x="1220.5" y="190">Deprecated</text>
+    <!-- Input three: a deprecated term with the term to use instead and where -->
+    <rect class="card" x="1052" y="40" width="284" height="160" rx="16"/>
+    <rect x="1138" y="40" width="112" height="3" rx="1.5" fill="#f472b6"/>
+    <rect class="panel" x="1060" y="48" width="268" height="112" rx="10"/>
+    <text class="code" x="1072" y="82"><tspan class="key">bench mode</tspan><tspan class="punct">:</tspan></text>
+    <text class="code" x="1098.4" y="110"><tspan class="key">use</tspan><tspan class="punct">:</tspan> Test Mode</text>
+    <text class="code" x="1098.4" y="138"><tspan class="key">where</tspan><tspan class="punct">:</tspan> Product A</text>
+    <text class="label" x="1194" y="190">Deprecated</text>
 
-    <rect class="card" x="1343" y="40" width="217" height="160" rx="16"/>
-    <rect x="1395.5" y="40" width="112" height="3" rx="1.5" fill="#a78bfa"/>
-    <rect class="panel" x="1351" y="48" width="201" height="112" rx="10"/>
-    <text class="code key" x="1361" y="74">format</text>
-    <text class="code punct" x="1422.2" y="74">:</text>
-    <text class="code" x="1442.6" y="74">table</text>
-    <text class="code key" x="1361" y="97">tables</text>
-    <text class="code punct" x="1422.2" y="97">:</text>
-    <text class="code punct" x="1381.4" y="120">-</text>
-    <text class="code key" x="1401.8" y="120">input</text>
-    <text class="code punct" x="1452.8" y="120">:</text>
-    <text class="code str" x="1473.2" y="120">…</text>
-    <text class="code key" x="1401.8" y="143">output</text>
-    <text class="code punct" x="1463" y="143">:</text>
-    <text class="code str" x="1483.4" y="143">…</text>
-    <text class="label" x="1451.5" y="190">Config file</text>
+    <!-- Input four: the configuration file with the format defaults and the table jobs -->
+    <rect class="card" x="1348" y="40" width="212" height="160" rx="16"/>
+    <rect x="1398" y="40" width="112" height="3" rx="1.5" fill="#60a5fa"/>
+    <rect class="panel" x="1356" y="48" width="196" height="112" rx="10"/>
+    <text class="code" x="1366" y="74"><tspan class="key">format</tspan><tspan class="punct">:</tspan> table</text>
+    <text class="code" x="1366" y="98"><tspan class="key">tables</tspan><tspan class="punct">:</tspan></text>
+    <text class="code" x="1392.4" y="122"><tspan class="punct">- </tspan><tspan class="key">input</tspan><tspan class="punct">:</tspan> <tspan class="str">…</tspan></text>
+    <text class="code" x="1418.8" y="146"><tspan class="key">output</tspan><tspan class="punct">:</tspan> <tspan class="str">…</tspan></text>
+    <text class="label" x="1454" y="190">Config file</text>
   </g>
 
-  <!-- Flows into the tool -->
+  <!-- Flows into the engine -->
+  <!-- TEMPLATE-DIRECTIVE: one flow per input card, from the card's center at y = 206 to the engine at y = 253:
+         M{center},206 C{center},236 {target},226 {target},253
+       with the four targets x = 950, 1030, 1110, and 1190 (five inputs: 930, 1000, 1070, 1140, and 1210). Keep
+       each flow, its start dot, its marker, and its card's accent bar in the same color (amber, cyan, pink, blue,
+       and violet for a fifth). -->
   <g class="flow">
-    <path d="M758.5,206 C758.5,236 965,226 965,253" stroke="#f472b6" marker-end="url(#headPink)"/>
-    <path d="M989.5,206 C989.5,236 1065,226 1065,253" stroke="#fbbf24" marker-end="url(#headAmber)"/>
-    <path d="M1220.5,206 C1220.5,236 1145,226 1145,253" stroke="#22d3ee" marker-end="url(#headCyan)"/>
-    <path d="M1451.5,206 C1451.5,236 1245,226 1245,253" stroke="#a78bfa" marker-end="url(#headViolet)"/>
+    <path d="M683,206 C683,236 950,226 950,253" stroke="#fbbf24" marker-end="url(#headAmber)"/>
+    <path d="M919,206 C919,236 1030,226 1030,253" stroke="#22d3ee" marker-end="url(#headCyan)"/>
+    <path d="M1194,206 C1194,236 1110,226 1110,253" stroke="#f472b6" marker-end="url(#headPink)"/>
+    <path d="M1454,206 C1454,236 1190,226 1190,253" stroke="#60a5fa" marker-end="url(#headBlue)"/>
   </g>
   <g stroke="#0a1022" stroke-width="2">
-    <circle cx="758.5" cy="206" r="5" fill="#f472b6"/>
-    <circle cx="989.5" cy="206" r="5" fill="#fbbf24"/>
-    <circle cx="1220.5" cy="206" r="5" fill="#22d3ee"/>
-    <circle cx="1451.5" cy="206" r="5" fill="#a78bfa"/>
+    <circle cx="683" cy="206" r="5" fill="#fbbf24"/>
+    <circle cx="919" cy="206" r="5" fill="#22d3ee"/>
+    <circle cx="1194" cy="206" r="5" fill="#f472b6"/>
+    <circle cx="1454" cy="206" r="5" fill="#60a5fa"/>
   </g>
-
-  <!-- The tool -->
-  <rect x="843" y="262" width="524" height="64" rx="32" fill="url(#brand)" opacity="0.55" filter="url(#blur)"/>
-  <rect x="843" y="262" width="524" height="64" rx="32" fill="url(#engineFill)" stroke="url(#brand)" stroke-width="2.5"/>
-  <rect x="867" y="276" width="36" height="36" rx="9" fill="url(#brand)"/>
+  <!-- The engine -->
+  <!-- TEMPLATE-DIRECTIVE: the engine pill shows the tool's command name (or, for a library, the main type or
+       namespace) in monospace, and after the divider a secondary label: ".NET tool", ".NET library", or
+       ".NET API". The monospace name advances 19.2px per character from x = 936, so up to 9 characters fit
+       before the divider at x = 1120. For a longer name, move the divider to about 936 + 19.2 * N + 12 and the
+       secondary label 20px after it, and widen both pill rectangles so that the label ends at least 24px before
+       the right edge, keeping the pill centered at x = 1070 (x = 1070 - width / 2) and moving the icon and the name
+       with its left edge. The document icon may be replaced by another small white glyph in the same 36px tile. -->
+  <!-- DictionaryMark: "dictionarymark" is 14 characters, so the pill is 512px wide (x = 814), the name starts at
+       x = 890, the divider is at x = 1171, and the label starts at x = 1191. The glyph is a bullet list. -->
+  <rect x="814" y="262" width="512" height="64" rx="32" fill="url(#brand)" opacity="0.55" filter="url(#blur)"/>
+  <rect x="814" y="262" width="512" height="64" rx="32" fill="url(#engineFill)" stroke="url(#brand)" stroke-width="2.5"/>
+  <rect x="838" y="276" width="36" height="36" rx="9" fill="url(#brand)"/>
   <g fill="#ffffff">
-    <circle cx="875" cy="286" r="2.5"/>
-    <rect x="880" y="284" width="15" height="4" rx="2"/>
-    <circle cx="875" cy="294" r="2.5"/>
-    <rect x="880" y="292" width="11" height="4" rx="2"/>
-    <circle cx="875" cy="302" r="2.5"/>
-    <rect x="880" y="300" width="15" height="4" rx="2"/>
+    <circle cx="846" cy="286" r="2.5"/>
+    <rect x="851" y="284" width="15" height="4" rx="2"/>
+    <circle cx="846" cy="294" r="2.5"/>
+    <rect x="851" y="292" width="11" height="4" rx="2"/>
+    <circle cx="846" cy="302" r="2.5"/>
+    <rect x="851" y="300" width="15" height="4" rx="2"/>
   </g>
-  <text class="engine" x="919" y="305">dictionarymark</text>
-  <line x1="1208" y1="278" x2="1208" y2="310" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5"/>
-  <text class="api" x="1228" y="303">.NET tool</text>
+  <text class="engine" x="890" y="305">dictionarymark</text>
+  <line x1="1171" y1="278" x2="1171" y2="310" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text class="api" x="1191" y="303">.NET tool</text>
 
-  <!-- Flows out of the tool -->
+  <!-- Flows out of the engine -->
+  <!-- TEMPLATE-DIRECTIVE: one flow per output card, from the engine at x = 980, 1040, 1100, and 1160 to the
+       card's center at y = 381. Keep these as they are unless the output cards move. -->
   <g class="flow" stroke="#5eead4">
-    <path d="M1005,330 C1005,356 755,356 755,381" marker-end="url(#headMint)"/>
-    <path d="M1075,330 C1075,356 966,356 966,381" marker-end="url(#headMint)"/>
-    <path d="M1135,330 C1135,356 1217,356 1217,381" marker-end="url(#headMint)"/>
-    <path d="M1205,330 C1205,356 1468,356 1468,381" marker-end="url(#headMint)"/>
+    <path d="M980,330 C980,356 728,356 728,381" marker-end="url(#headMint)"/>
+    <path d="M1040,330 C1040,356 999,356 999,381" marker-end="url(#headMint)"/>
+    <path d="M1100,330 C1100,356 1232,356 1232,381" marker-end="url(#headMint)"/>
+    <path d="M1160,330 C1160,356 1457,356 1457,381" marker-end="url(#headMint)"/>
   </g>
   <g fill="#5eead4" stroke="#0a1022" stroke-width="2">
-    <circle cx="1005" cy="330" r="5"/>
-    <circle cx="1075" cy="330" r="5"/>
-    <circle cx="1135" cy="330" r="5"/>
-    <circle cx="1205" cy="330" r="5"/>
+    <circle cx="980" cy="330" r="5"/>
+    <circle cx="1040" cy="330" r="5"/>
+    <circle cx="1100" cy="330" r="5"/>
+    <circle cx="1160" cy="330" r="5"/>
   </g>
 
-  <!-- Output cards: the Markdown that dictionarymark writes, and the documents that use it -->
+  <!-- Output tiles -->
+  <!-- TEMPLATE-DIRECTIVE: four output slots, shared by CanvasNet and BuildMark: x = 580 (width 296), 889 (220),
+       1122 (220), and 1355 (205), centers 728, 999, 1232, and 1457. The first is the widest: put the main result
+       there. Keep each illustration inside its panel (y = 398 to 550) and the label at y = 585. -->
   <g>
-    <!-- A table with sized columns (column widths 25,75) -->
-    <rect class="card" x="650" y="390" width="210" height="210" rx="16"/>
-    <rect class="panel" x="658" y="398" width="194" height="152" rx="10"/>
-    <g stroke-width="2" stroke-linecap="round">
-      <path d="M667,409 V417 M667,413 H709 M709,409 V417" stroke="#22d3ee" fill="none"/>
-      <path d="M713,409 V417 M713,413 H845 M845,409 V417" stroke="#f472b6" fill="none"/>
+    <!-- Output one: a Markdown table with sized columns (column widths 25,75) -->
+    <rect class="card" x="580" y="390" width="296" height="210" rx="16"/>
+    <rect class="panel" x="588" y="398" width="280" height="152" rx="10"/>
+    <text class="dim" x="632" y="426" fill="#22d3ee">25</text>
+    <text class="dim" x="760" y="426" fill="#f472b6">75</text>
+    <g stroke-width="2" stroke-linecap="round" fill="none">
+      <path d="M601,432 V442 M601,437 H662 M662,432 V442" stroke="#22d3ee"/>
+      <path d="M666,432 V442 M666,437 H855 M855,432 V442" stroke="#f472b6"/>
     </g>
-    <text class="dim" x="688" y="434" fill="#22d3ee">25</text>
-    <text class="dim" x="779" y="434" fill="#f472b6">75</text>
-    <rect x="666" y="442" width="180" height="24" fill="#312e81"/>
-    <rect class="grid" x="666" y="442" width="180" height="96"/>
-    <path class="grid" d="M711,442 V538 M666,466 H846 M666,490 H846 M666,514 H846"/>
-    <text class="th" x="672" y="459">Term</text>
-    <text class="th" x="717" y="459">Definition</text>
-    <text class="tt" x="672" y="483">API</text>
-    <text class="td" x="717" y="483">Application Prog…</text>
-    <text class="tt" x="672" y="507">CLI</text>
-    <text class="td" x="717" y="507">Command-line…</text>
-    <text class="tt" x="672" y="531">SDK</text>
-    <text class="td" x="717" y="531">Software Devel…</text>
-    <text class="label" x="755" y="585">Sized table</text>
+    <rect x="600" y="448" width="256" height="30" fill="#312e81"/>
+    <rect class="grid" x="600" y="448" width="256" height="90"/>
+    <path class="grid" d="M664,448 V538 M600,478 H856 M600,508 H856"/>
+    <text class="th" x="607" y="471">Term</text>
+    <text class="th" x="671" y="471">Definition</text>
+    <text class="tt" x="607" y="501">API</text>
+    <text class="td" x="671" y="501">Application…</text>
+    <text class="tt" x="607" y="531">CLI</text>
+    <text class="td" x="671" y="531">Command-line…</text>
+    <text class="label" x="728" y="585">Sized table</text>
 
-    <!-- A bullet list -->
-    <rect class="card" x="874" y="390" width="184" height="210" rx="16"/>
-    <rect class="panel" x="882" y="398" width="168" height="152" rx="10"/>
-    <text class="head" x="894" y="430">Glossary</text>
+    <!-- Output two: a Markdown bullet list -->
+    <rect class="card" x="889" y="390" width="220" height="210" rx="16"/>
+    <rect class="panel" x="897" y="398" width="204" height="152" rx="10"/>
+    <text class="tt" x="911" y="432">Glossary</text>
     <g fill="#22d3ee">
-      <circle cx="898" cy="459" r="3.5"/>
-      <circle cx="898" cy="489" r="3.5"/>
-      <circle cx="898" cy="519" r="3.5"/>
+      <circle cx="916" cy="460" r="4"/>
+      <circle cx="916" cy="492" r="4"/>
+      <circle cx="916" cy="524" r="4"/>
     </g>
-    <text class="lb" x="908" y="464">API</text>
-    <text class="li" x="933" y="464">: Application…</text>
-    <text class="lb" x="908" y="494">CLI</text>
-    <text class="li" x="932.2" y="494">: Command…</text>
-    <text class="lb" x="908" y="524">SDK</text>
-    <text class="li" x="939.7" y="524">: Software…</text>
-    <text class="label" x="966" y="585">Bullet list</text>
+    <text class="tt" x="928" y="468">API</text>
+    <text class="td" x="964.7" y="468">: Applic…</text>
+    <text class="tt" x="928" y="500">CLI</text>
+    <text class="td" x="963.4" y="500">: Comma…</text>
+    <text class="tt" x="928" y="532">SDK</text>
+    <text class="td" x="974.4" y="532">: Softw…</text>
+    <text class="label" x="999" y="585">Bullet list</text>
 
-    <!-- A deprecated-terms table -->
-    <rect class="card" x="1072" y="390" width="290" height="210" rx="16"/>
-    <rect class="panel" x="1080" y="398" width="274" height="152" rx="10"/>
-    <text class="head" x="1090" y="430">Deprecated Terms</text>
-    <rect x="1090" y="446" width="254" height="26" fill="#312e81"/>
-    <rect class="grid" x="1090" y="446" width="254" height="78"/>
-    <path class="grid" d="M1180,446 V524 M1268,446 V524 M1090,472 H1344 M1090,498 H1344"/>
-    <text class="th" x="1097" y="464">Not used</text>
-    <text class="th" x="1187" y="464">Use instead</text>
-    <text class="th" x="1275" y="464">Where</text>
-    <text class="old" x="1097" y="490">bench mode</text>
-    <text class="new" x="1187" y="490">Test Mode</text>
-    <text class="td" x="1275" y="490">Product A</text>
-    <text class="old" x="1097" y="516">Zorbix unit</text>
-    <text class="new" x="1187" y="516">Zorbix</text>
-    <text class="label" x="1217" y="585">Deprecated table</text>
+    <!-- Output three: a deprecated-terms table (not used, use instead, where) -->
+    <rect class="card" x="1122" y="390" width="220" height="210" rx="16"/>
+    <rect class="panel" x="1130" y="398" width="204" height="152" rx="10"/>
+    <rect x="1140" y="408" width="184" height="30" fill="#312e81"/>
+    <rect class="grid" x="1140" y="408" width="184" height="132"/>
+    <path class="grid" d="M1140,438 H1324 M1140,472 H1324 M1140,506 H1324"/>
+    <text class="th" x="1148" y="431">Deprecated</text>
+    <text class="old" x="1148" y="463">bench mode</text>
+    <path d="M1149,490 H1163 M1157,484 L1164,490 L1157,496" fill="none" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="new" x="1174" y="497">Test Mode</text>
+    <text class="td" x="1148" y="531">in Product A</text>
+    <text class="label" x="1232" y="585">Deprecated table</text>
 
-    <!-- Pandoc documents: PDF and HTML -->
-    <rect class="card" x="1376" y="390" width="184" height="210" rx="16"/>
-    <rect class="panel" x="1384" y="398" width="168" height="152" rx="10"/>
-    <path class="page" d="M1400 408 L1484 408 L1500 424 L1500 542 L1400 542 Z"/>
-    <path d="M1484 408 L1484 424 L1500 424 Z" fill="#cbd5e1"/>
-    <rect x="1410" y="420" width="50" height="8" rx="4" fill="#4f46e5"/>
-    <rect x="1410" y="436" width="72" height="5" rx="2.5" fill="#cbd5e1"/>
-    <rect x="1410" y="446" width="60" height="5" rx="2.5" fill="#cbd5e1"/>
-    <rect x="1410" y="458" width="80" height="9" fill="#c7d2fe"/>
-    <rect x="1410" y="458" width="80" height="45" fill="none" stroke="#94a3b8" stroke-width="1"/>
-    <path d="M1430,458 V503 M1410,467 H1490 M1410,479 H1490 M1410,491 H1490" fill="none" stroke="#94a3b8" stroke-width="1"/>
-    <rect x="1410" y="512" width="72" height="5" rx="2.5" fill="#cbd5e1"/>
-    <rect x="1410" y="522" width="52" height="5" rx="2.5" fill="#cbd5e1"/>
-    <rect x="1488" y="468" width="52" height="22" rx="6" fill="#dc2626"/>
-    <text class="chip" x="1514" y="484">PDF</text>
-    <rect x="1488" y="498" width="52" height="22" rx="6" fill="#ea580c"/>
-    <text class="chip" x="1514" y="514">HTML</text>
-    <text class="label" x="1468" y="585">Pandoc docs</text>
+    <!-- Output four: Pandoc documents in PDF and HTML that include the generated Markdown -->
+    <rect class="card" x="1355" y="390" width="205" height="210" rx="16"/>
+    <rect class="panel" x="1363" y="398" width="189" height="152" rx="10"/>
+    <path class="page" d="M1377 408 L1449 408 L1465 424 L1465 542 L1377 542 Z"/>
+    <path d="M1449 408 L1449 424 L1465 424 Z" fill="#cbd5e1"/>
+    <rect x="1387" y="420" width="44" height="8" rx="4" fill="#4f46e5"/>
+    <rect class="bar" x="1387" y="436" width="56" height="5" rx="2.5"/>
+    <rect class="bar" x="1387" y="446" width="46" height="5" rx="2.5"/>
+    <rect x="1387" y="458" width="68" height="9" fill="#c7d2fe"/>
+    <rect x="1387" y="458" width="68" height="45" fill="none" stroke="#94a3b8" stroke-width="1"/>
+    <path d="M1404,458 V503 M1387,467 H1455 M1387,479 H1455 M1387,491 H1455" fill="none" stroke="#94a3b8" stroke-width="1"/>
+    <rect class="bar" x="1387" y="512" width="56" height="5" rx="2.5"/>
+    <rect class="bar" x="1387" y="522" width="40" height="5" rx="2.5"/>
+    <rect x="1472" y="440" width="72" height="32" rx="7" fill="#dc2626"/>
+    <text class="chip" x="1508" y="464">PDF</text>
+    <rect x="1472" y="486" width="72" height="32" rx="7" fill="#ea580c"/>
+    <text class="chip" x="1508" y="510">HTML</text>
+    <text class="label" x="1457" y="585">Pandoc docs</text>
   </g>
 </svg>
