@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="970" height="748" viewBox="0 0 970 748" font-family="Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="970" height="938" viewBox="0 0 970 938" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
     </marker>
   </defs>
   <!-- Transparent canvas; a white rounded card keeps the diagram readable in light and dark themes -->
-  <rect x="14" y="16" width="945" height="716" rx="28" fill="#d5dce6"/>
-  <rect x="10" y="10" width="945" height="716" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="14" y="16" width="945" height="906" rx="28" fill="#d5dce6"/>
+  <rect x="10" y="10" width="945" height="906" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
 
   <g transform="translate(30,30)">
     <!-- Caller -->
@@ -14,10 +14,10 @@
     <text x="440" y="31" font-size="16" font-family="Consolas, monospace" font-weight="600" fill="#92400e" text-anchor="middle">dictionarymark</text>
     <text x="440" y="53" font-size="13" fill="#92400e" text-anchor="middle">command-line tool run by you or your documentation pipeline</text>
     <line x1="440" y1="74" x2="440" y2="118" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <text x="452" y="100" font-size="12" fill="#334155">--input, --config, --root, --format, --column-widths ...</text>
+    <text x="452" y="100" font-size="12" fill="#334155">--input, --config, --format, --file-access, --allow-root ...</text>
 
     <!-- DictionaryMark frame -->
-    <rect x="180" y="122" width="520" height="550" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
+    <rect x="180" y="122" width="520" height="740" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
     <text x="196" y="148" font-size="14" font-weight="600" fill="#2563eb">DemaConsulting.DictionaryMark</text>
 
     <!-- Program -->
@@ -31,8 +31,8 @@
     <g font-size="12" text-anchor="middle">
       <rect x="214" y="266" width="144" height="62" rx="6" fill="#ffffff" stroke="#2563eb"/>
       <text x="286" y="284" font-family="Consolas, monospace" fill="#1e3a8a">Context</text>
-      <text x="286" y="301" fill="#1e40af">parsed flags,</text>
-      <text x="286" y="317" fill="#1e40af">output and log</text>
+      <text x="286" y="301" fill="#1e40af">parsed flags, log,</text>
+      <text x="286" y="317" fill="#1e40af">file-access policy</text>
       <rect x="368" y="266" width="144" height="62" rx="6" fill="#ffffff" stroke="#2563eb"/>
       <text x="440" y="284" font-family="Consolas, monospace" fill="#1e3a8a">ConfigFile</text>
       <text x="440" y="301" fill="#1e40af">YAML defaults, root</text>
@@ -94,11 +94,39 @@
     <text x="75" y="294" font-size="12" font-family="Consolas, monospace" fill="#475569" text-anchor="middle">dictionarymark.yaml</text>
     <text x="75" y="310" font-size="12" fill="#475569" text-anchor="middle">optional, table jobs</text>
     <line x1="154" y1="285" x2="210" y2="285" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="75" y="568" font-size="11" fill="#334155" text-anchor="middle">--input, or config jobs</text>
     <rect x="0" y="578" width="150" height="66" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
     <text x="75" y="601" font-size="15" font-weight="600" fill="#334155" text-anchor="middle">YAML files</text>
     <text x="75" y="620" font-size="12" fill="#475569" text-anchor="middle">term dictionaries or</text>
     <text x="75" y="636" font-size="12" fill="#475569" text-anchor="middle">deprecated terms</text>
     <line x1="154" y1="611" x2="210" y2="611" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- Files -->
+    <rect x="200" y="688" width="480" height="158" rx="12" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <text x="440" y="713" font-size="16" font-weight="600" fill="#7c2d12" text-anchor="middle">Files</text>
+    <g font-size="12" text-anchor="middle">
+      <rect x="214" y="724" width="190" height="108" rx="6" fill="#ffffff" stroke="#ea580c"/>
+      <text x="309" y="744" font-family="Consolas, monospace" fill="#7c2d12">FileReferenceResolver</text>
+      <text x="309" y="766" fill="#9a3412">opens, judges and reads</text>
+      <text x="309" y="782" fill="#9a3412">config-job inputs;</text>
+      <text x="309" y="804" fill="#9a3412">judges config-job</text>
+      <text x="309" y="820" fill="#9a3412">outputs before writing</text>
+      <rect x="470" y="724" width="196" height="42" rx="6" fill="#ffffff" stroke="#ea580c"/>
+      <text x="568" y="741" font-family="Consolas, monospace" fill="#7c2d12">FileAccessPolicy</text>
+      <text x="568" y="758" fill="#9a3412">any, roots, no-symlinks</text>
+      <rect x="470" y="790" width="196" height="42" rx="6" fill="#ffffff" stroke="#ea580c"/>
+      <text x="568" y="807" font-family="Consolas, monospace" fill="#7c2d12">RealPath</text>
+      <text x="568" y="824" fill="#9a3412">facts of an open file</text>
+    </g>
+    <line x1="404" y1="745" x2="466" y2="745" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="435" y="739" font-size="11" fill="#334155" text-anchor="middle">asks</text>
+    <line x1="404" y1="811" x2="466" y2="811" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="435" y="805" font-size="11" fill="#334155" text-anchor="middle">opens</text>
+    <line x1="568" y1="766" x2="568" y2="786" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <polyline points="75,648 75,778 210,778" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="88" y="770" font-size="11" fill="#334155">config-job inputs</text>
+    <line x1="282" y1="724" x2="282" y2="648" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="290" y="678" font-size="11" fill="#334155">approved bytes</text>
 
     <!-- Outputs -->
     <text x="815" y="240" font-size="13" font-weight="600" fill="#475569" text-anchor="middle">Outputs</text>
@@ -119,5 +147,8 @@
     <text x="815" y="618" font-size="12" fill="#166534" text-anchor="middle">or one file per config job;</text>
     <text x="815" y="634" font-size="12" fill="#166534" text-anchor="middle">missing folders created</text>
     <line x1="666" y1="553" x2="726" y2="553" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <polyline points="680,767 815,767 815,660" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a)"/>
+    <text x="824" y="696" font-size="11" fill="#334155">config-job outputs</text>
+    <text x="824" y="711" font-size="11" fill="#334155">judged before write</text>
   </g>
 </svg>
