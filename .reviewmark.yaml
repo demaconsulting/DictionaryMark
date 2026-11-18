@@ -16,7 +16,7 @@ needs-review:
   - "docs/user_guide/**/*.md"     # User guide documentation
   - "!**/obj/**"                  # Exclude build output
   - "!**/bin/**"                  # Exclude build output
-  - "!node_modules/**"            # Exclude npm dependencies
+  - "!**/generated/**"            # Exclude generated files
   - "!**/.venv/**"                # Exclude Python virtual environment
 
 # Evidence source: review data and index.json are located in the 'reviews' branch
@@ -51,6 +51,7 @@ reviews:
       - "docs/user_guide/**/*.md"
     paths:
       - "requirements.yaml"
+      - "docs/reqstream/quality.yaml"
       - "docs/design/introduction.md"
       - "docs/sysml2/**/*.sysml"
 
@@ -78,7 +79,6 @@ reviews:
       - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/platform-requirements.yaml"
-      - "docs/reqstream/quality.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
