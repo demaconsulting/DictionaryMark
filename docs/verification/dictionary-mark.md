@@ -232,9 +232,38 @@ This scenario is tested by `DictionaryMark_Root_CommandLineRoot_OverridesConfigR
 `DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory` and
 `DictionaryMark_Config_NoRoot_CommandLinePathsUseWorkingDirectory`.
 
-**RootValidation**: A missing `--root` directory, a repeated or empty `--root`, a configuration
-`root` naming a missing directory, and a `root` key inside a table job must each be rejected with
-an error and exit code 1.
+**RootValidation**: A missing `--root` directory, a repeated or empty `--root`, and a `root` key inside a table job
+must each be rejected with an error and exit code 1.
 This scenario is tested by `DictionaryMark_Root_MissingDirectory_ReturnsError`,
-`DictionaryMark_Root_SpecifiedTwice_ReturnsError`, `DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile`
-and `DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob`.
+`DictionaryMark_Root_SpecifiedTwice_ReturnsError` and `DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob`.
+
+**ConfigRootTextOnly**: A configuration `root` key is resolved as text and never probed. A `root` naming a folder that
+does not exist must not be rejected when the file is loaded; its table must fail with `Input file '...' was not found.`
+reported by the file-access resolver, and nothing may be created. A `root` naming a network share
+(`//dictionarymark-test.invalid/share`, and on Windows also `\\dictionarymark-test.invalid\share`) must fail its table
+through the resolver - refused as a network path on every platform, because the root is joined with the table's paths
+as text before normalization - with no "does not exist" or "not found" error.
+This scenario is tested by `DictionaryMark_Config_NonexistentRoot_JobFailsThroughResolver` and
+`DictionaryMark_Config_NetworkRoot_JobFailsThroughResolverWithoutProbing`.
+
+**FileAccess**: The file-access options must confine the inputs and outputs of configuration-file tables: with
+`--allow-root` a table inside the folder is generated while a table whose input or output lies outside it is denied with
+`file-access-denied` and writes nothing; `--file-access no-symlinks` must deny an input reached through a directory
+link; `--file-access roots` alone must allow the working directory and the configuration file's folder; every glob match
+must be judged (a match outside the folder fails its table); a literal input must be judged before it is looked up (a
+missing file outside the folder is denied, while a missing file inside it is not found); the default mode must still
+refuse never-list paths, and
+refuse a network input pattern before anything is listed; a denied table must fail alone with exit code 1; command-line
+paths must never be judged; the configuration `root` key must never widen the allowed folders; and every mistake in the
+options must be a usage error reported before any input is read. This scenario is tested by
+`DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs`,
+`DictionaryMark_FileAccess_MistakesAsProcess_AreUsageErrors`,
+`DictionaryMark_FileAccess_NoSymlinksAsProcess_DeniesLinkedConfigInput`,
+`DictionaryMark_FileAccess_DefaultMode_NeverListRefusesConfigPaths`,
+`DictionaryMark_FileAccess_NetworkInputPattern_RefusedBeforeListing`,
+`DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged`,
+`DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitCodeIsOne`,
+`DictionaryMark_FileAccess_RootsWithoutAllowRoot_AllowsWorkingAndConfigFolders`,
+`DictionaryMark_FileAccess_GlobMatchOutsideRoots_IsDeniedNotSkipped`,
+`DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup` and
+`DictionaryMark_FileAccess_ConfigRootKey_DoesNotWidenAllowedFolders`.

@@ -11,7 +11,8 @@ loaded defaults, root directory and table jobs, or on the exception message.
 - **YamlDotNet** — the real parser is used, so malformed YAML produces the real `YamlException`
   that `ConfigFile` must wrap.
 - **PathResolver** — the real resolver is used for the `root` key, so the root tests confirm
-  `${VAR}` expansion, `..` normalization and the existence check through `ConfigFile`.
+  `${VAR}` expansion, `..` normalization and that the key is resolved as text only (a folder that
+  does not exist, or a network share, is accepted without being probed) through `ConfigFile`.
 - **File system** — configuration files and root directories are created in a
   `TemporaryDirectory`. Nothing is mocked.
 
@@ -81,13 +82,18 @@ These scenarios are tested by the tests of the same names.
 **ConfigFile_Load_Root_ResolvedRelativeToConfigDirectory**,
 **ConfigFile_Load_RootWithParentSegments_Normalized** and
 **ConfigFile_Load_RootEnvironmentVariable_Expanded**: `root: docs`, `root: ../..` and
-`root: ${VAR}` resolve to the full path of the existing directory, relative to the configuration
+`root: ${VAR}` resolve to the full path of the directory, relative to the configuration
 file. These scenarios are tested by the tests of the same names.
 
-**ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile** and
-**ConfigFile_Load_RootMissingDirectory_ThrowsNamingFile**: An undefined variable and a missing
-directory are rejected with the file prefix and the resolver's message. These scenarios are tested
-by the tests of the same names.
+**ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile**: An undefined variable is rejected with the file prefix and
+the resolver's message. This scenario is tested by `ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile`.
+
+**ConfigFile_Load_RootMissingDirectory_ResolvedAsTextWithoutError** and
+**ConfigFile_Load_RootNetworkShare_ResolvedAsTextWithoutError**: `root: missing` (a folder that does not exist) loads
+without error, `RootDirectory` is its full path and nothing is created; `root: //dictionarymark-test.invalid/share`
+loads without contacting the host, `RootText` keeps the unnormalized `//dictionarymark-test.invalid/share`, and on
+Windows `RootDirectory` is the UNC path `\\dictionarymark-test.invalid\share`. These scenarios are tested by the tests
+of the same names.
 
 **ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile** and
 **ConfigFile_Load_PathInvalidCharacter_ThrowsNamingFile**: A `root` value and a configuration file

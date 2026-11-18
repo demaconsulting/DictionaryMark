@@ -125,11 +125,14 @@ sections:
           - id: DictionaryMark-Cli-RootDirectory
             title: >-
               The CLI subsystem shall determine the base directory for relative input and output paths from the
-              root option, then the configuration file root key, then the path's origin default, and shall reject
-              root directories that do not exist.
+              root option, then the configuration file root key, then the path's origin default, shall reject a
+              root option naming a directory that does not exist, and shall resolve the configuration file root
+              key as text only, without accessing the file system.
             justification: |
               A root directory lets users run the tool from any working directory with repository-relative
-              paths; the CLI subsystem owns run settings, so it selects the base directory for every job.
+              paths; the CLI subsystem owns run settings, so it selects the base directory for every job. The
+              root option is trusted command-line input, while the root key is untrusted configuration content
+              that may only move where relative paths point.
             children:
               - DictionaryMark-Context-RootOption
               - DictionaryMark-Context-BaseDirectorySelection
@@ -139,3 +142,21 @@ sections:
               - CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_MissingRoot_ExitsNonZero
+              - CliSubsystem_RootFlow_NonexistentConfigRoot_FailsJobNotLoad
+
+          - id: DictionaryMark-Cli-FileAccessOptions
+            title: >-
+              The CLI subsystem shall build one file-access policy per run from the file-access and allow-root
+              options - the default allowing every file, the roots mode allowing the allow-root folders or, without
+              them, the working directory and the configuration file's folder - before the configuration file is
+              loaded, and shall reject an unknown mode, a conflicting combination and a folder that does not exist
+              with an error.
+            justification: |
+              The CLI subsystem owns run settings; the file-access policy is one of them, and a mistake in it must
+              stop the run before any input is opened.
+            children:
+              - DictionaryMark-Context-FileAccessOptions
+              - DictionaryMark-Context-FileAccessDefaultRoots
+            tests:
+              - CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs
+              - CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero

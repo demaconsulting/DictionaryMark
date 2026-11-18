@@ -40,8 +40,13 @@ is rejected at the top level and in a job. `root` inside a job is rejected with 
 **BaseDirectory**: `string` — Directory that contains the configuration file. Default base
 directory for the paths of table jobs.
 
-**RootDirectory**: `string?` — Resolved, existing full path of the top-level `root` key; `null`
-when the key is absent.
+**RootDirectory**: `string?` — Full path of the top-level `root` key, resolved as text only; `null`
+when the key is absent. The folder is never probed, so it may not exist.
+
+**RootText**: `string?` — The `root` key with `${VAR}` expanded and rooted at the file's directory, but
+not normalized; `null` when the key is absent. Normalization can change what the text names (on Linux
+and macOS a leading `//` collapses to `/`), so the file-access resolver's text rules are given the
+job paths built on this text.
 
 **Defaults**: `FormattingSettings` — Top-level formatting defaults; members not given are `null`.
 
@@ -59,8 +64,8 @@ when the key is absent.
 - *Parameters*: `string path` — path of the configuration file (normally already a full path).
 - *Returns*: `ConfigFile` — the validated configuration.
 - *Preconditions*: `path` is not null.
-- *Postconditions*: Every key has been validated; `RootDirectory`, when set, names an existing
-  directory.
+- *Postconditions*: Every key has been validated; `RootDirectory`, when set, is a normalized full
+  path that has not been checked on disk.
 
 Algorithm:
 
@@ -74,10 +79,15 @@ Algorithm:
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
 5. When `root` was given, resolve it with
-   `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key")`. This expands
-   `${VAR}`, roots the value at the file's directory, normalizes `..`, rejects wildcards, and
-   requires the directory to exist. The root is validated even when `--root` will override it, so
-   a file's validity does not depend on the command line.
+   `PathResolver.ResolveDirectory(root, BaseDirectory, "root key")`. This expands `${VAR}`,
+   roots the value at the file's directory, normalizes `..` and rejects wildcards, as text only.
+   The expanded and rooted text before normalization is kept as `RootText`
+   (`PathResolver.Combine(root, BaseDirectory, "root key")`).
+   The key is untrusted content whose only role is the base that relative job paths are combined
+   with, so it is never probed: a folder that does not exist, or a network share, is left to the
+   file-access resolver, which judges each job's inputs and outputs when the job runs (denied or not
+   found). The root is validated even when `--root` will override it, so a file's validity does not
+   depend on the command line.
 
 Value parsing uses the same rules as the command line: choices are case-insensitive; `depth` and
 the `column-widths` items are parsed with `NumberStyles.None` and the invariant culture, which
@@ -101,9 +111,10 @@ the key. Examples:
   `key 'root' must be a non-empty string`.
 - Root resolution errors from `PathResolver` are re-thrown with the file prefix and the original
   as the inner exception, for example
-  `Config file '...': Directory '...' specified by root key 'docs' does not exist.` This includes a
+  `Config file '...': Root key 'docs/*' must not contain wildcard characters.` This includes a
   malformed or overlong root (for example a null character), which `PathResolver` reports as
-  `Config file '...': Invalid root key '{root}': {reason}`.
+  `Config file '...': Invalid root key '{root}': {reason}`. A root that does not exist is not an
+  error of the file.
 - A configuration file path that `Path.GetFullPath` rejects is reported as
   `Config file '{path}': invalid path: {reason}`, and a path-validation exception while reading
   the file is reported as `cannot be read: {reason}`.

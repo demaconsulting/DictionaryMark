@@ -80,8 +80,9 @@ job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_InvalidOutputPathCharacter_ContinuesWithLaterJob`.
 
 **DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob**: Verifies that when
-the first job's input pattern contains a null character, the job is reported as an invalid input
-pattern with its label, the exit code is 1, and the second job still writes its output. This
+the first job's input pattern contains a null character, the job is refused by the never-list control-character rule
+before anything is listed (the character shown as `?`), with its label, the exit code is 1, and the second job still
+writes its output. This
 scenario is tested by `DictionaryGenerator_Generate_InvalidInputPathCharacter_ContinuesWithLaterJob`.
 
 **DictionaryGenerator_Generate_OutputParentIsFile_ContinuesWithLaterJob**: Verifies that when the
@@ -128,3 +129,82 @@ its label. This scenario is tested by `DictionaryGenerator_Generate_ConflictsDet
 **DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput**: Verifies that `--column-widths 25,75`
 reaches the generated table separator. This scenario is tested by
 `DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput`.
+
+**DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied**: Test that a config input outside the allowed
+roots fails its job with file-access-denied. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup**: Test that a literal config input
+that does not exist, outside the allowed roots, fails its job with file-access-denied rather than a not-found error, so
+its existence is never probed. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup`.
+
+**DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound**: Test that a literal config input
+inside the allowed roots that does not exist (in a folder that does not exist either) fails its job with
+`Input file '{full path}' was not found.`, the resolver's outcome, and writes no output. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound`.
+
+**DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped**: Test that a glob whose matches lie both
+inside and outside the allowed roots fails its job: the match outside is denied rather than skipped, and the match
+inside is not used alone. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped`.
+
+**DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied**: Test that a glob match
+reached through a directory link is denied under no-symlinks. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated**: Test that a config output outside the
+allowed roots is denied and nothing is created. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated`.
+
+**DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess**: Test that under the default mode a
+config output that breaks a never-list rule (a colon outside a drive, and on Windows a network path) is refused before
+anything is accessed or created. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess`.
+
+**DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization**: Test that a config output naming a
+network share (`//dictionarymark-test.invalid/share/out.md` on every platform, and on Windows also the backslash
+spelling) is refused by the network-path rule before anything is accessed or created, because the resolver sees the
+path before a leading `//` can collapse to `/` on Linux and macOS. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization**: Test that a relative config
+output under a `root` key naming a network share (`//dictionarymark-test.invalid/share`, and on Windows also
+`\\dictionarymark-test.invalid\share`) is refused by the network-path rule on every platform, because the root is
+joined with the output as text before normalization. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError**: Test that a config input longer than the 16 MiB
+size limit is an ordinary read error. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError`.
+
+**DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne**: Test that a denied job fails only itself: the
+other jobs run and the exit code is 1. This scenario is tested by
+`DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne`.
+
+**DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged**: Test that the command-line job is never judged by the
+file-access policy. This scenario is tested by `DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged`.
+
+**DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing**: Test that a config pattern
+naming a network share with forward slashes is refused by the network-path rule before any folder is listed (not with
+"matched no files"), writes nothing, and the other job still runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing**: Test on Windows that a
+config pattern naming a network share with backslashes is refused before any folder is listed, and the other job still
+runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing**: Test that a URL-like config pattern is refused
+by the colon rule before any folder is listed, with the ordinary error rather than `file-access-denied`, and the other
+job still runs. This scenario is tested by `DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing`.
+
+**DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization**: Test that a relative config
+input under a `root` key naming a network share is refused by the network-path rule on every platform before it is
+looked up, because the root is joined with the pattern as text before normalization. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing**: Test on Windows that a config
+pattern with a reserved device-name component (`NUL`, `C:/NUL`, `CON`, `AUX`, `COM1`, `LPT1`) is refused by the
+device-name rule before any folder is listed, and the other job still runs. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing`.

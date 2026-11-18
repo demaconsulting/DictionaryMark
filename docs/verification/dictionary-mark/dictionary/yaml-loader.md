@@ -101,3 +101,11 @@ This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_ValidEntries_Ret
 
 **YamlDictionaryLoader_LoadDeprecated_Invalid_Throws**: A missing `use`, unknown key or non-object
 value is rejected. This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_Invalid_Throws`.
+
+**YamlDictionaryLoader_Load_Content_EqualsPathOverload**: Test that loading approved terms from the bytes of a file
+gives the same entries as loading the file by path, for each supported encoding. This scenario is tested by
+`YamlDictionaryLoader_Load_Content_EqualsPathOverload`.
+
+**YamlDictionaryLoader_LoadDeprecated_Content_EqualsPathOverload**: Test that loading deprecated terms from the bytes of
+a file gives the same entries as loading the file by path, for each supported encoding. This scenario is tested by
+`YamlDictionaryLoader_LoadDeprecated_Content_EqualsPathOverload`.

@@ -182,4 +182,95 @@ public class DictionarySubsystemTests
         Assert.Contains("| API |", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "table.md")));
         Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "bullets.md")));
     }
+
+    /// <summary>
+    ///     Test that the dictionary subsystem judges config-file table inputs and outputs by the file-access policy:
+    ///     a table whose input lies outside the allowed folder fails with file-access-denied, while the other tables
+    ///     still generate their output.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun()
+    {
+        // Arrange: the config folder is the only allowed root; one table reads a dictionary outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "secret.yaml")), "Secret: Hidden\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../other/secret.yaml\n    output: secret.md\n  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        using var context = Context.Create(["--silent", "--config", config, "--allow-root", root]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert: the denied table wrote nothing; the other table ran; the exit code reports the failure
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(File.Exists(Path.Combine(root, "secret.md")));
+        Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+    }
+
+    /// <summary>
+    ///     Test that a configuration table whose input pattern names a network share is refused before anything is
+    ///     listed, and the other table still runs.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun()
+    {
+        // Arrange: one table names a share; the other reads a local dictionary
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: \"//dictionarymark-test.invalid/share/*.yaml\"\n    output: share.md\n" +
+            "  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        using var context = Context.Create(["--silent", "--config", config]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert: the refused table wrote nothing; the other table ran; the exit code reports the failure
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(File.Exists(Path.Combine(root, "share.md")));
+        Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+    }
+
+    /// <summary>
+    ///     Test that a literal configuration input is judged before it is looked up: a missing file outside the allowed
+    ///     root is denied (not reported as not found), a missing file inside it is not found, and the other table runs.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup()
+    {
+        // Arrange: the config folder is the only allowed root; two tables name missing files, one outside and one inside
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../other/missing.yaml\n    output: outside.md\n"
+            + "  - input: missing.yaml\n    output: inside.md\n  - input: terms.yaml\n    output: terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var originalError = Console.Error;
+        using var errWriter = new StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            using var context = Context.Create(["--config", config, "--allow-root", root]);
+
+            // Act
+            DictionaryGenerator.Generate(context);
+
+            // Assert: denied outside, not found inside, and the valid table ran
+            var err = errWriter.ToString();
+            Assert.Equal(1, context.ExitCode);
+            Assert.Contains("Error: table job 1 ('outside.md'): file-access-denied:", err);
+            Assert.Contains($"Error: table job 2 ('inside.md'): Input file '{Path.Combine(root, "missing.yaml")}' was not found.", err);
+            Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
 }

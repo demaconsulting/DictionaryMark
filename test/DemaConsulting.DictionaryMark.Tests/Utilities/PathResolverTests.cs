@@ -160,6 +160,7 @@ public class PathResolverTests
         Assert.Throws<ArgumentNullException>(() => PathResolver.ResolvePath("p", "base", null!));
         Assert.Throws<ArgumentNullException>(() => PathResolver.ExpandEnvironmentVariables(null!, "d"));
         Assert.Throws<ArgumentNullException>(() => PathResolver.ResolveExistingDirectory(null!, "base", "d"));
+        Assert.Throws<ArgumentNullException>(() => PathResolver.ResolveDirectory("p", null!, "d"));
     }
 
     /// <summary>Test that an existing relative directory resolves to its full path.</summary>
@@ -290,6 +291,60 @@ public class PathResolverTests
 
         // Assert: the message names the description and the value
         Assert.StartsWith($"Invalid --root option '{path}': ", ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that a directory resolved as text is returned as its normalized full path even when it does not exist.
+    /// </summary>
+    [Fact]
+    public void PathResolver_ResolveDirectory_MissingDirectory_ReturnsNormalizedFullPath()
+    {
+        // Arrange: a base directory without the requested sub-directory
+        using var tmpDir = new TemporaryDirectory();
+        var expected = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act: resolve a missing directory reached through '..' segments
+        var result = PathResolver.ResolveDirectory("a/../missing", tmpDir.DirectoryPath, "root key");
+
+        // Assert: the normalized full path is returned and nothing was created
+        Assert.Equal(expected, result);
+        Assert.False(Directory.Exists(expected));
+    }
+
+    /// <summary>Test that ${VAR} references in a directory resolved as text are expanded.</summary>
+    [Fact]
+    public void PathResolver_ResolveDirectory_EnvironmentVariable_Expanded()
+    {
+        // Arrange: a variable naming a folder below the base directory
+        using var tmpDir = new TemporaryDirectory();
+        Environment.SetEnvironmentVariable(VariableName, "shared");
+        try
+        {
+            // Act: resolve the variable reference
+            var result = PathResolver.ResolveDirectory("${" + VariableName + "}/docs", tmpDir.DirectoryPath, "root key");
+
+            // Assert: the variable is expanded and the path rooted at the base directory
+            Assert.Equal(Path.Combine(tmpDir.DirectoryPath, "shared", "docs"), result);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that wildcard characters are rejected in a directory resolved as text.</summary>
+    [Fact]
+    public void PathResolver_ResolveDirectory_Wildcard_Throws()
+    {
+        // Arrange: a base directory
+        using var tmpDir = new TemporaryDirectory();
+
+        // Act: resolve a wildcard directory
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => PathResolver.ResolveDirectory("sub?", tmpDir.DirectoryPath, "root key"));
+
+        // Assert: the message names the description (capitalized) and the value
+        Assert.Equal("Root key 'sub?' must not contain wildcard characters.", ex.Message);
     }
 
     /// <summary>Test that path-validation exceptions are classified as invalid-path exceptions.</summary>

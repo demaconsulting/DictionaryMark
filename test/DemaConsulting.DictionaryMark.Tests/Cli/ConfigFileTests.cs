@@ -447,18 +447,48 @@ public class ConfigFileTests
         Assert.StartsWith($"Config file '{path}': Environment variable '{VariableName}' referenced by root key", ex.Message);
     }
 
-    /// <summary>Test that a missing root directory is an error naming the file.</summary>
+    /// <summary>
+    ///     Test that a root naming a folder that does not exist is accepted as text: the key is never probed, so its
+    ///     full path is returned and the jobs that use it are judged when they run.
+    /// </summary>
     [Fact]
-    public void ConfigFile_Load_RootMissingDirectory_ThrowsNamingFile()
+    public void ConfigFile_Load_RootMissingDirectory_ResolvedAsTextWithoutError()
     {
         // Arrange: a root that does not exist
         using var tmpDir = new TemporaryDirectory();
         var path = WriteConfig(tmpDir, "root: missing\n");
         var full = Path.Combine(Path.GetDirectoryName(path)!, "missing");
 
-        // Act / Assert: the error names the file and the directory
-        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
-        Assert.Equal($"Config file '{path}': Directory '{full}' specified by root key 'missing' does not exist.", ex.Message);
+        // Act: load the config
+        var config = ConfigFile.Load(path);
+
+        // Assert: the root is the full path of the missing folder, which was not created
+        Assert.Equal(full, config.RootDirectory);
+        Assert.False(Directory.Exists(full));
+    }
+
+    /// <summary>
+    ///     Test that a root naming a network share is accepted as text without contacting the host: loading returns
+    ///     at once and leaves the share to the file-access resolver when the jobs run.
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_RootNetworkShare_ResolvedAsTextWithoutError()
+    {
+        // Arrange: a root naming a share on a host that cannot exist (the .invalid top-level domain)
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: //dictionarymark-test.invalid/share\n");
+
+        // Act: load the config
+        var config = ConfigFile.Load(path);
+
+        // Assert: the root is the normalized text of the share; on Windows it is the UNC path. The root text keeps
+        // the leading "//" that normalization collapses on Linux and macOS
+        Assert.NotNull(config.RootDirectory);
+        Assert.Equal("//dictionarymark-test.invalid/share", config.RootText);
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(@"\\dictionarymark-test.invalid\share", config.RootDirectory);
+        }
     }
 
     /// <summary>Test that a root with a character invalid on every platform is an error naming the file.</summary>

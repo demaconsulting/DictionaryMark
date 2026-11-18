@@ -22,6 +22,7 @@ package DictionaryMark {
         part cli : CliSubsystem;
         part dictionary : DictionarySubsystem;
         part selfTest : SelfTestSubsystem;
+        part files : FilesSubsystem;
         part utilities : UtilitiesSubsystem;
         part yamlDotNet : YamlDotNet;
         part fileSystemGlobbing : FileSystemGlobbing;

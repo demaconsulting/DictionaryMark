@@ -144,13 +144,54 @@ internal static partial class PathResolver
         exception is (ArgumentException and not ArgumentNullException) or NotSupportedException or PathTooLongException;
 
     /// <summary>
+    ///     Resolves a directory path against a base directory as text only, without accessing the file system.
+    /// </summary>
+    /// <remarks>
+    ///     Used for the <c>root</c> key of a configuration file, which is untrusted content: its only role is
+    ///     the base that relative job paths are combined with, so it is never probed. Whether the files a job
+    ///     reaches through it exist, and whether they may be read or written, is decided later by the
+    ///     file-access resolver. A root becomes the literal prefix of every rooted glob pattern, so a wildcard
+    ///     in it would corrupt the split between the literal base directory and the wildcard remainder;
+    ///     wildcards are therefore rejected. Stateless and thread-safe; reads environment variables only.
+    /// </remarks>
+    /// <param name="path">The directory path to resolve. Must not be null.</param>
+    /// <param name="baseDirectory">The directory that a relative path is rooted at. Must not be null.</param>
+    /// <param name="description">
+    ///     Description of where the path came from (for example <c>root key</c>), used in error messages.
+    ///     Must not be null.
+    /// </param>
+    /// <returns>The normalized full path; the directory may or may not exist.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when a referenced variable is undefined, the expanded path contains <c>*</c> or <c>?</c>,
+    ///     or the path is malformed or too long; the message names the description and path.
+    /// </exception>
+    public static string ResolveDirectory(string path, string baseDirectory, string description)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(baseDirectory);
+        ArgumentNullException.ThrowIfNull(description);
+
+        // Expand and root the path, rejecting wildcards before any normalization
+        var combined = Combine(path, baseDirectory, description);
+        if (combined.Contains('*') || combined.Contains('?'))
+        {
+            throw new InvalidOperationException(
+                $"{Capitalize(description)} '{path}' must not contain wildcard characters.");
+        }
+
+        // Collapse "." and ".." segments; this is text arithmetic and touches nothing on disk
+        return GetFullPath(combined, path, description);
+    }
+
+    /// <summary>
     ///     Resolves a directory path against a base directory and requires the directory to exist.
     /// </summary>
     /// <remarks>
-    ///     Used for root (base) directories. A root becomes the literal prefix of every rooted glob
-    ///     pattern, so a wildcard in it would corrupt the split between the literal base directory
-    ///     and the wildcard remainder; wildcards are therefore rejected. The check for existence
-    ///     performs file-system access; an existing file is not accepted as a directory.
+    ///     Used for the trusted <c>--root</c> command-line option. The path is first resolved as text by
+    ///     <see cref="ResolveDirectory"/> (which rejects wildcards); the check for existence then performs
+    ///     file-system access; an existing file is not accepted as a directory.
     /// </remarks>
     /// <param name="path">The directory path to resolve. Must not be null.</param>
     /// <param name="baseDirectory">The directory that a relative path is rooted at. Must not be null.</param>
@@ -167,21 +208,9 @@ internal static partial class PathResolver
     /// </exception>
     public static string ResolveExistingDirectory(string path, string baseDirectory, string description)
     {
-        // Validate input
-        ArgumentNullException.ThrowIfNull(path);
-        ArgumentNullException.ThrowIfNull(baseDirectory);
-        ArgumentNullException.ThrowIfNull(description);
-
-        // Expand and root the path, rejecting wildcards before any normalization
-        var combined = Combine(path, baseDirectory, description);
-        if (combined.Contains('*') || combined.Contains('?'))
-        {
-            throw new InvalidOperationException(
-                $"{Capitalize(description)} '{path}' must not contain wildcard characters.");
-        }
-
-        // Normalize the path and require the directory to exist
-        var full = GetFullPath(combined, path, description);
+        // Resolve the path as text (validating the arguments and rejecting wildcards), then require the
+        // directory to exist
+        var full = ResolveDirectory(path, baseDirectory, description);
         if (!Directory.Exists(full))
         {
             throw new InvalidOperationException(

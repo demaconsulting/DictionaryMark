@@ -4,7 +4,7 @@
 
 #### Purpose
 
-`Validation.Run` prints a system information header, executes ten fixed in-process self-tests,
+`Validation.Run` prints a system information header, executes eleven fixed in-process self-tests,
 prints a pass/fail summary, and optionally writes results to a TRX or JUnit XML file. Each test
 runs the real `Program` logic with temporary YAML input files and a log file to capture output.
 `Validation` is a static class with no instance state.
@@ -21,7 +21,7 @@ optionally writes a results file.
 - *Parameters*: `Context context` — provides output channels and the optional results file path.
 - *Returns*: `void`.
 - *Preconditions*: `context` is non-null.
-- *Postconditions*: All ten tests executed; summary printed; results file written if
+- *Postconditions*: All eleven tests executed; summary printed; results file written if
   `context.ResultsFile` is set; `context.WriteError` called for each failed test.
 
 Throws `ArgumentNullException` when `context` is null.
@@ -118,6 +118,19 @@ read `../shared/*.yaml` and `../shared/terms.yaml` and write `../out/table.md` a
 created beforehand. Runs `Program.Run` with `--config` and verifies both outputs exist with the
 table and bullet content. This exercises configuration loading, the formatting precedence,
 config-relative `..` path resolution and output directory creation on each deployment platform.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunFileAccessRootsTest** *(private)* (`DictionaryMark_FileAccessRoots`): Writes a dictionary and a configuration
+file in `config/` with two jobs that read `terms.yaml`: the first writes `inside.md` (inside the folder), the second
+writes `../out/table.md` (outside it). Runs `Program.Run` with `--log`, `--config` and `--allow-root config` and
+verifies that the exit code is 1, `config/inside.md` holds the bullet entry (a positive control proving the allowed
+folder is not simply refusing everything, which matters where the temporary folder is reached through a link, as on
+macOS), neither `out/table.md` nor the `out` folder exists, and the log contains `file-access-denied`. This exercises
+the file-access confinement of configuration-table outputs on each deployment platform.
 
 - *Parameters*: `Context context`; `TestResults testResults`.
 - *Returns*: `void`.

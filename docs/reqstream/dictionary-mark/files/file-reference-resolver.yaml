@@ -1,0 +1,258 @@
+---
+# DictionaryMark FileReferenceResolver unit requirements
+#
+# These requirements describe the behavior of the FileReferenceResolver unit of the Files subsystem: the resolver
+# that turns a path a configuration file names into the bytes of a regular file after a caller-chosen
+# FileAccessPolicy approved the opened file, and checks an output path before anything is written, together with its
+# FileReferenceOptions, FileReference, FileReferenceException and FileReferenceFailureKind types. The unit is adapted
+# from CanvasNet's FileReferenceResolver; see docs/verification/dictionary-mark/files/file-reference-resolver.md for
+# the test-evidence mapping.
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Files Requirements
+        sections:
+          - title: FileReferenceResolver Requirements
+            requirements:
+              - id: DictionaryMark-FileReferenceResolver-Candidates
+                title: >-
+                  The FileReferenceResolver class shall look up a relative reference in the base directory, shall
+                  look up an absolute reference (and on Windows a drive path) as exactly one candidate, shall
+                  collapse dot and dot-dot segments, including those that leave the base directory, and shall treat
+                  backslashes as forward slashes so that every spelling of a path names one file.
+                justification: |
+                  Configuration files reference files relative to themselves and by absolute path, as Pandoc
+                  documents do; one deterministic lookup lets authors predict which file is read.
+                tests:
+                  - FileReferenceResolver_Resolve_DotDotLeavingTheBase_IsReadUnderAllowAll
+                  - FileReferenceResolver_Resolve_AbsolutePath_IsASingleCandidateAndIsRead
+                  - FileReferenceResolver_Resolve_BackslashesAndDotSegments_NameOneFile
+                  - FileReferenceResolver_Resolve_DrivePath_IsAbsoluteOnWindowsAndInvalidElsewhere
+
+              - id: DictionaryMark-FileReferenceResolver-PathText
+                title: >-
+                  The FileReferenceResolver class shall refuse, before any file-system access and under every
+                  policy, an empty or white-space reference, a reference with a control character (including NUL, DEL
+                  and the C1 range), a device path, a network path (UNC or a leading double slash), a reference with a
+                  colon other than the drive of an absolute Windows path, and, on Windows, a reference whose full path
+                  is in a device namespace or has a reserved device name in any component (CON, PRN, AUX, NUL,
+                  COM0-COM9, LPT0-LPT9, the superscript-digit forms, CONIN$ and CONOUT$, in any letter case and with
+                  an extension, trailing spaces or dots, or a stream suffix), unless it stays under an ordinary
+                  extended-length configured directory with the same root (a drive or a volume GUID), each with a
+                  FileReferenceException of the matching kind, and shall reject a null reference with
+                  ArgumentNullException.
+                justification: |
+                  These forms are never a safe local file: network paths can leak credentials, device paths and
+                  alternate data streams reach things that are not files, and control characters hide the real text.
+                  Only a drive or volume root is known to map no device names.
+                tests:
+                  - FileReferenceResolver_Resolve_HostilePathText_IsRejectedWithoutAnyAccess
+                  - FileReferenceResolver_Resolve_NullPath_ThrowsArgumentNullException
+                  - "windows@FileReferenceResolver_Resolve_LegacyDeviceName_IsInvalidPathAndNoDeviceIsOpened"
+                  - "windows@FileReferenceResolver_Resolve_LegacyDeviceNameWithExtendedLengthBaseDirectory_IsInvalidPathAndNoDeviceIsOpened"
+                  - "windows@FileReferenceResolver_Resolve_DeviceNamespaceBaseDirectory_IsInvalidPathAndNothingIsOpened"
+                  - "windows@FileReferenceResolver_Resolve_VolumeGuidBaseDirectory_ReadsTheFile"
+                  - RealPath_IsWindowsDeviceName_RecognizesEveryReservedSpelling
+                  - RealPath_IsOrdinaryExtendedPath_AcceptsOnlyDriveAndVolumeRoots
+
+              - id: DictionaryMark-FileReferenceResolver-MissingFiles
+                title: >-
+                  The FileReferenceResolver class shall report a reference for which no file exists - including a
+                  dangling link and a file whose open reports "not found" - as no file, and shall report every
+                  reference as no file when no base directory is configured.
+                justification: |
+                  A missing file is an ordinary outcome that callers handle in their own way; only a refusal or a
+                  read failure is exceptional.
+                tests:
+                  - FileReferenceResolver_Resolve_MissingFileAndDanglingLink_ReturnNull
+                  - FileReferenceResolver_Resolve_FileNotFoundFromOpen_ReturnsNull
+                  - FileReferenceResolver_Resolve_NoBaseDirectory_ReturnsNull
+
+              - id: DictionaryMark-FileReferenceResolver-PolicyEvaluation
+                title: >-
+                  The FileReferenceResolver class shall ask the configured file-access policy about every file it
+                  opens, before reading it, with the configured base directory as the trusted origin, the path that
+                  was opened and the real path of the opened file; shall read the file only when the policy allows
+                  it; shall treat a policy that throws or returns no decision as a denial while letting a
+                  cancellation pass through; shall ask the policy again whenever a cached file is resolved again; and
+                  shall let a policy refuse a path as written before the file is opened.
+                justification: |
+                  The policy is the host's rule; it must see the facts of the file that would actually be read, a
+                  failing policy must never allow, and a path outside the allowed area must never be opened.
+                tests:
+                  - FileReferenceResolver_Resolve_PolicyDenial_IsAccessDeniedWithFactsAndNothingRead
+                  - FileReferenceResolver_Resolve_ThrowingOrNullPolicy_IsAccessDeniedAndCancellationPassesThrough
+                  - FileReferenceResolver_Resolve_CachedFile_IsReCheckedOnEveryResolveButReadOnce
+                  - FileReferenceResolver_Resolve_UnderRootsPreCheck_DeniesBeforeTheOpen
+
+              - id: DictionaryMark-FileReferenceResolver-NetworkTarget
+                title: >-
+                  On Windows the FileReferenceResolver class shall refuse with NetworkPath, under every policy and
+                  without reading it, a referenced file whose real path is a network location while the path as written
+                  is not (a link to a share), and shall read files whose path as written is itself on a mapped network
+                  drive or share.
+                justification: |
+                  A link from a local folder to a share would make a configuration file reach the network (and offer
+                  the user's credentials) where the host expected a local file; a host working on a share keeps
+                  working.
+                tests:
+                  - "windows@FileReferenceResolver_Resolve_LocalPathWhoseRealPathIsANetworkShare_IsNetworkPathUnderEveryPolicy"
+
+              - id: DictionaryMark-FileReferenceResolver-RaceFree
+                title: >-
+                  The FileReferenceResolver class shall take the real path it gives the policy from the open file,
+                  not from its name, shall read the bytes from that same open file, and shall capture the real
+                  location of every trusted folder a built-in policy compares against before the open, so that a
+                  file moved, a link added or removed, or a trusted folder renamed and replaced by a link around the
+                  open neither changes the decision nor what is read.
+                justification: |
+                  Another process that can change the directory tree must not be able to redirect a read after the
+                  decision; deciding on the open file against folder locations fixed before the open closes that
+                  window.
+                tests:
+                  - FileReferenceResolver_Resolve_FileMovedAndFolderSwappedForOutsideLinkAfterOpen_IsAllowedWithOriginalBytes
+                  - FileReferenceResolver_Resolve_OutsideLinkReplacedByInsideFolderAfterOpen_IsAccessDeniedUnderUnderRoots
+                  - FileReferenceResolver_Resolve_OutsideLinkReplacedByInsideFolderAfterOpen_IsAccessDeniedUnderNoSymlinks
+                  - "windows@FileReferenceResolver_Resolve_RootReplacedByOutsideLinkBeforeTheOpen_IsAccessDenied"
+                  - "ubuntu@FileReferenceResolver_Resolve_RootReplacedByOutsideLinkBeforeTheOpen_IsAccessDenied"
+                  - "macos@FileReferenceResolver_Resolve_RootReplacedByOutsideLinkBeforeTheOpen_IsAccessDenied"
+                  - FileReferenceResolver_Resolve_AnchorLocationNotCaptured_IsAccessDeniedUnderNoSymlinks
+                  - FileReferenceResolver_Resolve_InjectedOutsideRealPath_IsAccessDenied
+                  - FileReferenceResolver_Resolve_InjectedRealPath_IsTheOneInTheRequestAndTheResult
+
+              - id: DictionaryMark-FileReferenceResolver-RealPathUnavailable
+                title: >-
+                  The FileReferenceResolver class shall refuse a file with RealPathUnavailable, without reading it,
+                  when the configured policy needs the real path and it cannot be determined, while the default
+                  policy, which needs no real path, still reads the file.
+                justification: |
+                  A restrictive policy that cannot be applied must fail closed; the default must keep working on a
+                  platform or in a container that cannot tell the real path of an open file.
+                tests:
+                  - FileReferenceResolver_Resolve_RestrictivePolicyWithoutRealPath_IsRealPathUnavailable
+
+              - id: DictionaryMark-FileReferenceResolver-RegularFile
+                title: >-
+                  The FileReferenceResolver class shall refuse, under every policy and without reading it, a
+                  referenced path that is not known to be a regular file - a directory, a device, a named pipe, which
+                  shall not block the open, or a handle whose type the platform cannot tell - with NotARegularFile.
+                justification: |
+                  A device can return endless or sensitive data and a named pipe can hang the reader; once absolute
+                  references are allowed, such paths are one reference away. A handle of unknown type may be either,
+                  so it is refused (fail closed).
+                tests:
+                  - FileReferenceResolver_Resolve_DirectoryAtFilePath_IsNotARegularFile
+                  - FileReferenceResolver_Resolve_UnknownFileType_IsNotARegularFileUnderEveryPolicy
+                  - "windows@FileReferenceResolver_Resolve_InjectedNulHandle_IsNotARegularFile"
+                  - "ubuntu@FileReferenceResolver_Resolve_DevNull_IsNotARegularFile"
+                  - "macos@FileReferenceResolver_Resolve_DevNull_IsNotARegularFile"
+                  - "ubuntu@FileReferenceResolver_Resolve_Fifo_IsNotARegularFileWithoutBlocking"
+                  - "macos@FileReferenceResolver_Resolve_Fifo_IsNotARegularFileWithoutBlocking"
+
+              - id: DictionaryMark-FileReferenceResolver-Reading
+                title: >-
+                  The FileReferenceResolver class shall open files read-only with read, write and delete sharing,
+                  shall report an existing file whose open or read fails as CannotRead (keeping the cause), never as
+                  missing, and shall read a file that another process holds open for writing.
+                justification: |
+                  An inaccessible file is not a missing one, and a concurrent writer or rename must not turn a read
+                  into a sharing violation.
+                tests:
+                  - FileReferenceResolver_Resolve_OpenFailure_IsCannotRead
+                  - FileReferenceResolver_Resolve_FileHeldOpenByWriter_IsStillRead
+
+              - id: DictionaryMark-FileReferenceResolver-Limits
+                title: >-
+                  The FileReferenceResolver class shall, under every policy, read at most the configured number of
+                  bytes of a file (16 MiB by default), accepting exactly the limit, refusing a longer file with
+                  TooLarge, and stopping a stream that never ends one chunk past the limit.
+                justification: |
+                  A configuration file is untrusted input; the size of the files it reads bounds memory whatever the
+                  host's policy.
+                tests:
+                  - FileReferenceResolver_Resolve_MaxFileBytesAtLimitAndOneOver
+                  - FileReferenceResolver_ReadBounded_EndlessStream_StopsAtTheBound
+
+              - id: DictionaryMark-FileReferenceResolver-Cache
+                title: >-
+                  The FileReferenceResolver class shall open each distinct path at most once per instance,
+                  remembering a miss and a failure as well as a file, shall return the same file instance for every
+                  spelling of one path, and shall not read a file again after it changed.
+                justification: |
+                  Repeated reads would multiply the cost of a hostile input and let a file change between two reads
+                  of one operation.
+                tests:
+                  - FileReferenceResolver_Resolve_SameFileTwice_IsOpenedOnceAndReturnsTheSameInstance
+
+              - id: DictionaryMark-FileReferenceResolver-Failures
+                title: >-
+                  The FileReferenceException class shall carry the failure kind, the reference as written (control
+                  characters replaced, also when constructed directly), the rule or policy reason, the policy name and
+                  hint, the path that was opened and its real path, and the underlying cause, and its message shall
+                  echo the reference as written and name the policy but never add the resolved path, the real path, the
+                  base directory, nor a policy reason; the FileReferenceResolver class shall report a base
+                  directory that is not a valid path as InvalidBaseDirectory and reject invalid options at construction.
+                justification: |
+                  Callers map a failure to their own diagnostic without parsing text and must be able to show the
+                  message to an untrusted author, which reveals nothing the author did not write; invalid
+                  configuration should fail immediately.
+                tests:
+                  - FileReferenceException_Constructor_EveryKind_KeepsFactsAndHidesHostPath
+                  - FileReferenceException_Constructor_NullReference_ThrowsArgumentNullException
+                  - FileReferenceException_Constructor_ControlCharacters_AreReplacedInReferenceAndMessage
+                  - FileReferenceResolver_Resolve_AbsoluteReferenceDenied_MessageEchoesItButNotTheRealPathOrBase
+                  - FileReferenceResolver_Resolve_InvalidBaseDirectory_IsInvalidBaseDirectory
+                  - FileReferenceResolver_Constructor_InvalidArguments_Throw
+
+              - id: DictionaryMark-FileReferenceResolver-OutputPath
+                title: >-
+                  The FileReferenceResolver class shall check an output path without creating, writing or reading
+                  anything, applying in order: the path-text refusals; the policy's check of the path as written,
+                  before anything is opened; for an existing directory entry at the path (a link, including a dangling
+                  link, counting as one), the open and inspection of that entry, refusing an entry that cannot be
+                  opened and one that is not a regular file; for an output that does not exist yet, a real path made
+                  of the real location of its deepest existing folder followed by the rest of the path, refusing as
+                  CannotRead a folder above it that is a link whose target cannot be resolved; on Windows,
+                  the NetworkPath refusal of a local path whose real path is a network location; the
+                  RealPathUnavailable refusal when a restrictive policy needs a real path that cannot be determined;
+                  and the policy's check of the real path.
+                justification: |
+                  An output named by a configuration file must be held to the rules of an input before any folder is
+                  created, so a refused output writes nothing; an output that does not exist yet has no open file to
+                  judge, so its folder is judged instead.
+                tests:
+                  - FileReferenceResolver_CheckOutputPath_NullPath_Throws
+                  - FileReferenceResolver_CheckOutputPath_InsideRootsWithMissingParents_IsAllowedAndCreatesNothing
+                  - FileReferenceResolver_CheckOutputPath_ExistingFileInsideRoots_IsAllowedAndUnchanged
+                  - FileReferenceResolver_CheckOutputPath_OutsideRoots_IsAccessDeniedBeforeAnyOpen
+                  - FileReferenceResolver_CheckOutputPath_NeverListText_IsRefusedUnderAllowAll
+                  - "windows@FileReferenceResolver_CheckOutputPath_DeviceName_IsInvalidPathOnWindows"
+                  - FileReferenceResolver_CheckOutputPath_ExistingDirectory_IsNotARegularFile
+                  - FileReferenceResolver_CheckOutputPath_ExistingFileThroughDirectoryLinkUnderNoSymlinks_IsAccessDenied
+                  - FileReferenceResolver_CheckOutputPath_MissingFileUnderParentLinkLeavingTheRoots_IsAccessDenied
+                  - FileReferenceResolver_CheckOutputPath_MissingFileUnderDirectoryLinkUnderNoSymlinks_IsAccessDenied
+                  - FileReferenceResolver_CheckOutputPath_DanglingLinkAtOutput_IsRefusedUnderEveryPolicy
+                  - FileReferenceResolver_CheckOutputPath_DanglingLinkAboveMissingOutput_IsRefusedUnderEveryPolicy
+                  - FileReferenceResolver_CheckOutputPath_RealPathUnavailable_IsRealPathUnavailable
+                  - "windows@FileReferenceResolver_CheckOutputPath_ParentOnNetworkShare_IsNetworkPath"
+                  - FileReferenceResolver_CheckOutputPath_ExistingFileOpenFailure_IsCannotRead
+                  - FileReferenceResolver_CheckOutputPath_NoBaseDirectory_ThrowsInvalidOperationException
+
+              - id: DictionaryMark-FileReferenceResolver-PatternText
+                title: >-
+                  The FileReferenceResolver class shall check the text of an input pattern against its path-text
+                  refusals (the never list) without touching the file system, refusing a pattern that is empty,
+                  contains a control character, names a network location or a device path, carries a colon outside
+                  a Windows drive, or (on Windows) has a reserved device-name component, with the same failure kind
+                  and reason a read of that path gets.
+                justification: |
+                  Listing the folders of a network pattern contacts the host before any match can be judged, which on
+                  Windows can expose the user's credentials; the read's own text rules refuse it first.
+                tests:
+                  - FileReferenceResolver_CheckPatternText_NullPattern_Throws
+                  - FileReferenceResolver_CheckPatternText_LocalGlob_Passes
+                  - FileReferenceResolver_CheckPatternText_ForwardSlashShare_IsNetworkPath
+                  - "windows@FileReferenceResolver_CheckPatternText_BackslashShareOnWindows_IsNetworkPath"
+                  - FileReferenceResolver_CheckPatternText_UrlLikePattern_IsInvalidPath
+                  - "windows@FileReferenceResolver_CheckPatternText_ReservedDeviceNameOnWindows_IsInvalidPath"

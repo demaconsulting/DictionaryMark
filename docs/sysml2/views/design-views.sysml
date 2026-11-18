@@ -29,4 +29,8 @@ package DictionaryMark {
     view UtilitiesView {
         expose UtilitiesSubsystem;
     }
+
+    view FilesView {
+        expose FilesSubsystem;
+    }
 }

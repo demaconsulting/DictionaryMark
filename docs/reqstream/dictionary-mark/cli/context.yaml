@@ -201,3 +201,40 @@ sections:
                   - Context_Create_NoRoot_ConfigTablesUseConfigDirectory
                   - Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory
                   - Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot
+
+              - id: DictionaryMark-Context-FileAccessOptions
+                title: >-
+                  The Context class shall parse the --file-access option (keeping the value of its last occurrence)
+                  and the repeatable --allow-root option, and shall build from them, before the configuration file is
+                  loaded, the file-access policy of the run: any (the default) allows every file, roots confines to
+                  folders, no-symlinks refuses links, roots,no-symlinks applies both (tokens in any order and letter
+                  case), and --allow-root alone implies roots with the named folders (a relative folder taken from the
+                  working directory) replacing the default folders; it shall reject with ArgumentException an unknown
+                  or repeated token, --allow-root with any or no-symlinks, and an --allow-root folder that does not
+                  exist, with messages that name the mistake and how to fix it.
+                justification: |
+                  The options must mean exactly what CanvasNet's options of the same name mean, and every mistake
+                  must be reported before any input is read.
+                tests:
+                  - Context_ReadFileAccess_WithoutOptions_IsAllowAll
+                  - Context_ReadFileAccess_EachMode_BuildsItsPolicy
+                  - Context_ReadFileAccess_InvalidMode_IsUsageErrorListingTheModes
+                  - Context_ReadFileAccess_AllowRootAlone_ConfinesToTheNamedFolders
+                  - Context_ReadFileAccess_AllowRootWithAnyOrNoSymlinks_IsUsageErrorNamingTheConflict
+                  - Context_ReadFileAccess_AllowRootThatDoesNotExist_IsUsageError
+                  - Context_Create_NoFileAccessOptions_IsAllowAll
+                  - Context_Create_FileAccessRepeated_LastValueWins
+                  - Context_Create_AllowRootRepeated_AllFoldersAllowed
+                  - Context_Create_FileAccessMistake_ReportedBeforeConfigIsLoaded
+
+              - id: DictionaryMark-Context-FileAccessDefaultRoots
+                title: >-
+                  The Context class shall, for the roots mode without --allow-root, allow the working directory and
+                  the folder of the configuration file when it is not the working directory or inside it, once each.
+                justification: |
+                  A configuration file usually lives in the repository being built; its folder and the folder the
+                  user runs from are the natural default boundary.
+                tests:
+                  - Context_DefaultRoots_AreTheWorkingDirectoryAndEachInputFolderOutsideIt
+                  - Context_ReadFileAccess_RootsWithoutAllowRoot_UsesTheDefaultRoots
+                  - Context_Create_RootsWithConfig_DefaultRootsIncludeConfigFolder

@@ -7,8 +7,8 @@ returned path or the exception message.
 #### Verification Approach
 
 `PathResolver` has no dependencies to mock. Its collaborators are the .NET path and environment
-APIs and, for `ResolveExistingDirectory`, the real file system. Directories and files are created
-in a `TemporaryDirectory` so that existence checks run against real paths.
+APIs and, for `ResolveExistingDirectory`, the real file system (`ResolveDirectory` never touches it). Directories and
+files are created in a `TemporaryDirectory` so that existence checks run against real paths.
 
 #### Test Environment
 
@@ -72,6 +72,17 @@ be rejected. This scenario is tested by `PathResolver_ResolveExistingDirectory_P
 **PathResolver_ResolveExistingDirectory_Wildcard_Throws**: A value containing `*` must be rejected
 with the capitalized description in the message. This scenario is tested by
 `PathResolver_ResolveExistingDirectory_Wildcard_Throws`.
+
+**PathResolver_ResolveDirectory_MissingDirectory_ReturnsNormalizedFullPath**: `a/../missing`, a folder that does not
+exist, must resolve as text to the normalized full path, with no error and nothing created. This scenario is tested by
+`PathResolver_ResolveDirectory_MissingDirectory_ReturnsNormalizedFullPath`.
+
+**PathResolver_ResolveDirectory_EnvironmentVariable_Expanded**: `${VAR}/docs` must be expanded and rooted at the base
+directory without the folder existing. This scenario is tested by
+`PathResolver_ResolveDirectory_EnvironmentVariable_Expanded`.
+
+**PathResolver_ResolveDirectory_Wildcard_Throws**: A value containing `?` must be rejected with the capitalized
+description in the message. This scenario is tested by `PathResolver_ResolveDirectory_Wildcard_Throws`.
 
 **PathResolver_ResolvePath_NullCharacter_ThrowsInvalidOperationExceptionNamingPath** and
 **PathResolver_ResolveExistingDirectory_NullCharacter_ThrowsInvalidOperationExceptionNamingPath**:

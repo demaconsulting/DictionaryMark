@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System.Text;
 using System.Text.RegularExpressions;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
@@ -28,9 +29,9 @@ namespace DemaConsulting.DictionaryMark.Dictionary;
 ///     Loads dictionary entries from YAML files.
 /// </summary>
 /// <remarks>
-///     Static utility class with no instance state. <see cref="Load"/> reads approved-term files
+///     Static utility class with no instance state. <see cref="Load(string)"/> reads approved-term files
 ///     (a term maps to a definition string or to an object with <c>definition</c>, <c>pos</c>,
-///     <c>variants</c> and <c>visible</c>); <see cref="LoadDeprecated"/> reads deprecated-term files
+///     <c>variants</c> and <c>visible</c>); <see cref="LoadDeprecated(string)"/> reads deprecated-term files
 ///     (a term maps to an object with <c>use</c> and optional <c>where</c>). Validation happens at
 ///     load time so downstream consumers always receive validated, unambiguous data.
 /// </remarks>
@@ -72,8 +73,43 @@ internal static partial class YamlDictionaryLoader
         // Validate input
         ArgumentNullException.ThrowIfNull(filePath);
 
+        // Read file content (let IOException propagate)
         var source = Path.GetFullPath(filePath);
-        var mapping = ReadRootMapping(filePath, source);
+        return ParseApproved(File.ReadAllText(filePath), source);
+    }
+
+    /// <summary>
+    ///     Loads approved-term entries from the bytes of a YAML file that were already read.
+    /// </summary>
+    /// <remarks>
+    ///     Exists so that a caller which read and approved the bytes of a file (through the file-access
+    ///     resolver) parses exactly those bytes, rather than reading the file again by name. The bytes are
+    ///     decoded as <see cref="File.ReadAllText(string)"/> decodes a file: UTF-8 unless a byte order mark
+    ///     names another encoding. Parsing and validation are those of <see cref="Load(string)"/>. Stateless
+    ///     and thread-safe.
+    /// </remarks>
+    /// <param name="filePath">The path of the file the bytes came from, used as the entry source. Must not be null.</param>
+    /// <param name="content">The bytes of the file.</param>
+    /// <returns>The entries, as for <see cref="Load(string)"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
+    /// <exception cref="YamlException">Thrown when the content is not syntactically valid YAML.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
+    /// </exception>
+    public static IReadOnlyList<DictionaryEntry> Load(string filePath, ReadOnlyMemory<byte> content)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        return ParseApproved(Decode(content), Path.GetFullPath(filePath));
+    }
+
+    /// <summary>
+    ///     Parses the text of an approved-terms file into entries.
+    /// </summary>
+    private static List<DictionaryEntry> ParseApproved(string content, string source)
+    {
+        var mapping = ReadRootMapping(content, source);
         if (mapping == null)
         {
             return [];
@@ -118,8 +154,42 @@ internal static partial class YamlDictionaryLoader
         // Validate input
         ArgumentNullException.ThrowIfNull(filePath);
 
+        // Read file content (let IOException propagate)
         var source = Path.GetFullPath(filePath);
-        var mapping = ReadRootMapping(filePath, source);
+        return ParseDeprecatedFile(File.ReadAllText(filePath), source);
+    }
+
+    /// <summary>
+    ///     Loads deprecated-term entries from the bytes of a YAML file that were already read.
+    /// </summary>
+    /// <remarks>
+    ///     Exists so that a caller which read and approved the bytes of a file (through the file-access
+    ///     resolver) parses exactly those bytes. The bytes are decoded as <see cref="File.ReadAllText(string)"/>
+    ///     decodes a file. Parsing and validation are those of <see cref="LoadDeprecated(string)"/>. Stateless
+    ///     and thread-safe.
+    /// </remarks>
+    /// <param name="filePath">The path of the file the bytes came from, used as the entry source. Must not be null.</param>
+    /// <param name="content">The bytes of the file.</param>
+    /// <returns>The entries, as for <see cref="LoadDeprecated(string)"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> is null.</exception>
+    /// <exception cref="YamlException">Thrown when the content is not syntactically valid YAML.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
+    /// </exception>
+    public static IReadOnlyList<DeprecatedEntry> LoadDeprecated(string filePath, ReadOnlyMemory<byte> content)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        return ParseDeprecatedFile(Decode(content), Path.GetFullPath(filePath));
+    }
+
+    /// <summary>
+    ///     Parses the text of a deprecated-terms file into entries.
+    /// </summary>
+    private static List<DeprecatedEntry> ParseDeprecatedFile(string content, string source)
+    {
+        var mapping = ReadRootMapping(content, source);
         if (mapping == null)
         {
             return [];
@@ -143,13 +213,20 @@ internal static partial class YamlDictionaryLoader
     }
 
     /// <summary>
-    ///     Reads a file and returns its root mapping node, or null for an empty file.
+    ///     Decodes the bytes of a file the way <see cref="File.ReadAllText(string)"/> does: UTF-8 unless a
+    ///     byte order mark names another encoding.
     /// </summary>
-    private static YamlMappingNode? ReadRootMapping(string filePath, string source)
+    private static string Decode(ReadOnlyMemory<byte> content)
     {
-        // Read file content (let IOException propagate)
-        var content = File.ReadAllText(filePath);
+        using var reader = new StreamReader(new MemoryStream(content.ToArray()), Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return reader.ReadToEnd();
+    }
 
+    /// <summary>
+    ///     Parses the text of a file and returns its root mapping node, or null for an empty file.
+    /// </summary>
+    private static YamlMappingNode? ReadRootMapping(string content, string source)
+    {
         var yaml = new YamlStream();
         using var reader = new StringReader(content);
         yaml.Load(reader);

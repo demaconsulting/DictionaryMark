@@ -6,7 +6,7 @@ formatted Markdown output as bullet lists or tables.
 
 ## Architecture
 
-DictionaryMark is organized into four subsystems and one top-level Program unit.
+DictionaryMark is organized into five subsystems and one top-level Program unit.
 
 ![System Structure](DictionaryMarkView.svg)
 
@@ -25,6 +25,11 @@ conflicts, and renders Markdown output.
 
 **SelfTest Subsystem** contains `Validation`, which runs in-process self-tests when the user
 invokes the tool with `--validate`.
+
+**Files Subsystem** contains `FileReferenceResolver`, `FileAccessPolicy`, and `RealPath`, adapted from
+CanvasNet. It decides which local files the tables of a configuration file may read and write, reads the input files
+it allows from the handle it judged, and checks every output path before anything is written. `Context` builds the
+policy of a run and `DictionaryGenerator` reads and checks each configuration-table job's files through it.
 
 **Utilities Subsystem** contains `GlobMatcher`, `PathResolver`, `PathHelpers`, and
 `TemporaryDirectory`, providing shared file-matching, path-resolution and path-safety services
@@ -51,6 +56,8 @@ selection, output formatting, and operational mode.
   column header), `--where-header <text>` (deprecated-table "where used" column header),
   `--column-widths <w1,w2[,w3]>` (relative table column widths), `--config <file>` (configuration
   file), `--root <dir>` (base directory for relative input and output paths),
+  `--file-access <any|roots|no-symlinks|roots,no-symlinks>` (which files configuration tables may read and write;
+  the last occurrence wins), `--allow-root <dir>` (an allowed folder, repeatable; implies `roots`),
   and `--results`/`--result <file>` (results file). Returns exit code 0 on
   success, 1 on error.
 - *Constraints*: Relative input patterns and output paths are resolved against the root
@@ -72,7 +79,8 @@ directory, and optional table jobs.
   *ConfigFile Design* for the full schema.
 - *Constraints*: Unknown or misplaced keys are errors. Relative paths in the file resolve against
   the root directory when one is given, and otherwise against the file's directory. When the file
-  defines tables, `--input` and `--output` are rejected.
+  defines tables, `--input` and `--output` are rejected. The table inputs (every glob match) and outputs are judged
+  by the file-access policy of the run; the `root` key never widens the allowed folders.
 
 ## Dependencies
 
@@ -88,15 +96,36 @@ directory, and optional table jobs.
 N/A — DictionaryMark is a development tool with no patient-safety or safety-critical risk
 classification. No software-item segregation is required by the applicable risk framework.
 
-The one security boundary in the system is path-traversal prevention: caller-supplied file paths
-are validated by `PathHelpers.SafePathCombine` before any file-system operation combines a base
-directory with an untrusted relative path. This boundary is enforced entirely within the Utilities
-subsystem.
+The system has two security boundaries:
+
+- **Path-traversal prevention for the tool's own files**: caller-supplied file paths are validated by
+  `PathHelpers.SafePathCombine` before any file-system operation combines a base directory with an untrusted
+  relative path (Utilities subsystem).
+- **File-access confinement for configuration files**: the trust boundary is the command line. Every command-line option
+  (including `--file-access`, `--allow-root`, `--root` and the `--config` path) is trusted, and reading the
+  configuration file is never judged; the content of the configuration file may come from an untrusted source, so
+  everything it names reaches the disk only through `FileReferenceResolver` and `CheckOutputPath`. Its `root:` key is
+  resolved as text only (never probed) and only moves where relative table paths point; it never widens the allowed
+  folders. Every input and output its tables name is judged by the file-access policy chosen with `--file-access` and
+  `--allow-root` (Files subsystem). The policy is built before any input is read; every literal input is handed to
+  `FileReferenceResolver` without being looked up first, and every glob match is read through it; the resolver decides
+  about the opened file and parses the bytes it judged; every output is checked with `CheckOutputPath` before any folder
+  is created. Network, device and alternate-data-stream paths, control characters and non-regular files are refused
+  under every mode, including the default `any`. Paths named on the command line are trusted and never judged. A denial
+  by the file-access mode fails only its table job with `file-access-denied`; any other refusal (a never-list path, a
+  non-regular file, an input over 16 MiB) fails only its table job with the ordinary read or write error. Known limits:
+  the write that follows the output check goes by name, so it is not free of races; each table input pattern is checked
+  against the never list before anything is listed, so a network, device or URL-like pattern is refused without
+  contacting a host, but glob matching of a wildcard pattern under local folders enumerates folder and file names before
+  each match is judged (the one accepted access outside the resolver), so names outside the allowed folders can be
+  learned, although no content is read; a hard link cannot be told apart from its file; a judged input is limited to 16
+  MiB; and a root that does not exist when the run starts allows nothing.
 
 ## Data Flow
 
 1. The user invokes the tool; `Program.Main` creates a `Context` from the command-line arguments.
-   `Context` resolves `--root`, loads the `--config` file (if any), and builds the generation jobs:
+   `Context` resolves `--root` and `--config`, builds the file-access policy from `--file-access` and
+   `--allow-root`, loads the `--config` file (if any), and builds the generation jobs:
    one per configuration table, or one command-line job for `--input`. Each job carries its
    effective formatting (command line, then job, then configuration defaults, then built-in
    defaults) and its base directory (see the precedence below). Any validation failure stops the
@@ -104,14 +133,19 @@ subsystem.
 2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
    `context.HeadingDepth` controls the Markdown heading level of the validation report header.
 3. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
-4. `GlobMatcher.Resolve` resolves the job's input patterns against its base directory.
-5. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list.
+4. The job's input patterns are resolved against its base directory: `GlobMatcher.Resolve` resolves every
+   pattern of the command-line job and the wildcard patterns of a configuration-table job; a literal pattern of a
+   configuration-table job is only expanded, rooted and normalized as text.
+5. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list. For a
+   configuration-table job, each file is first read through the job's `FileReferenceResolver`, which judges the
+   opened file by the policy, and the loader parses the bytes it returned.
 6. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
    `context.WriteError` and halts output generation for that job.
 7. `MarkdownFormatter.Format` renders the validated entries as a Markdown string, sizing table
    columns by the job's column widths when given.
 8. The formatted Markdown is written to the job's output file (resolved against its base
-   directory, creating missing parent directories), or to stdout if no output file was specified.
+   directory, creating missing parent directories), or to stdout if no output file was specified. For a
+   configuration-table job, the output path is first checked with `CheckOutputPath`.
 9. Errors of configuration jobs are prefixed with `table job {n} ('{output}')`; when any
    configuration job failed, a summary `{failed} of {total} table jobs failed` is reported.
 
@@ -129,7 +163,8 @@ Base directory for relative input patterns and output paths:
   platform-specific APIs are used in core logic.
 - **Target frameworks**: net10.0, net11.0 (`RollForward=LatestMajor`); distributed as a .NET global
   tool (`PackAsTool`).
-- **Input size**: no enforced limit on the number of YAML files or entries.
+- **Input size**: no enforced limit on the number of YAML files or entries; a configuration-table input file is
+  read up to 16 MiB.
 - **Output size**: no enforced limit; formatted output is buffered in memory before writing.
 - **Encoding**: all file I/O uses UTF-8 without BOM.
 - **Exit-code contract**: exit code 0 means no errors recorded; exit code 1 means at least one

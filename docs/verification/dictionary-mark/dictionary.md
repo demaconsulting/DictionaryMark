@@ -65,3 +65,19 @@ This scenario is tested by
 be zero, confirming per-job generation, path resolution against the job's base directory and output
 directory creation.
 This scenario is tested by `DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput`.
+
+**DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun**: Test that the dictionary subsystem
+judges config-file table inputs and outputs by the file-access policy: a table whose input lies outside the allowed
+folder fails with file-access-denied, while the other tables still generate their output. This scenario is tested by
+`DictionarySubsystem_FileAccess_ConfigJobOutsideRoots_DeniedAndOtherJobsRun`.
+
+**DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun**: Test that a configuration table whose input
+pattern names a network share is refused before anything is listed and writes nothing, while the other table still
+generates its output and the exit code is 1. This scenario is tested by
+`DictionarySubsystem_FileAccess_NetworkPattern_RefusedAndOtherJobsRun`.
+
+**DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup**: Test that literal configuration inputs are judged
+before they are looked up: with the configuration folder as the only allowed root, a missing file outside it fails its
+table with `file-access-denied`, a missing file inside it fails its table with `Input file '...' was not found.`, and a
+third table still generates its output. This scenario is tested by
+`DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup`.

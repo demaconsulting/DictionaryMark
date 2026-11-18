@@ -38,10 +38,18 @@ strings `true`/`false`. Unknown keys are errors.
 required non-empty `use` and an optional `where`; no definition. Returns
 `IReadOnlyList<DeprecatedEntry>`.
 
+**Load(filePath, content)** and **LoadDeprecated(filePath, content)**: The same parsing and validation as the path
+overloads, applied to the bytes of a file that were already read, so a caller that judged a file through the
+file-access resolver parses exactly the bytes it judged. The bytes are decoded as `File.ReadAllText` decodes a file
+(UTF-8 unless a byte order mark names another encoding, via `StreamReader` with
+`detectEncodingFromByteOrderMarks`). `filePath` is used only as the entry `Source` (made full) and in messages. The
+path overloads read the file with `File.ReadAllText`; all four share the private `ReadRootMapping(content, source)`
+and the entry parsers.
+
 #### Error Handling
 
 - `ArgumentNullException` — thrown when `filePath` is null; must be supplied by the caller.
-- `IOException` — thrown when the file cannot be read (not found, access denied, etc.).
+- `IOException` — thrown by the path overloads when the file cannot be read (not found, access denied, etc.).
 - `InvalidOperationException` — thrown when the YAML root is not a mapping node, a key is
   non-scalar or empty, a value is not a string or object, a field is invalid, an unknown key is
   present, a definition or `use` is missing, or a duplicate key is found within the same file. The
@@ -59,5 +67,7 @@ them via `context.WriteError`, and returns without generating output.
 
 #### Callers
 
-- **DictionaryGenerator.Generate** — calls `YamlDictionaryLoader.Load(filePath)` once per resolved
-  input file; accumulates the returned lists for conflict detection.
+- **DictionaryGenerator.Generate** — calls `YamlDictionaryLoader.Load(filePath)` (or `LoadDeprecated`) once per
+  resolved input file of the command-line job, and the content overloads once per input file of a configuration-table
+  job, with the bytes returned by the job's `FileReferenceResolver`; accumulates the returned lists for conflict
+  detection.

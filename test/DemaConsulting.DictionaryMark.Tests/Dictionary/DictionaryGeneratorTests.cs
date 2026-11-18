@@ -20,6 +20,7 @@
 
 using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Tests.Files;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Tests.Dictionary;
@@ -366,9 +367,10 @@ public class DictionaryGeneratorTests
         // Act
         var (_, err, exitCode) = Run("--config", config);
 
-        // Assert: the first job is reported as an invalid input pattern; the second job still wrote its output
+        // Assert: the never list refuses the control character before anything is listed; the second job still ran
         Assert.Equal(1, exitCode);
-        Assert.Contains("Error: table job 1 ('a.md'): Invalid input pattern:", err);
+        Assert.Contains("Error: table job 1 ('a.md'): Failed to resolve input pattern 'bad?name.yaml': The path '", err);
+        Assert.Contains("is not allowed: the path contains a control character.", err);
         Assert.Contains("Error: 1 of 2 table jobs failed.", err);
         Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
     }
@@ -570,5 +572,453 @@ public class DictionaryGeneratorTests
         // Assert: the separator has 25 and 75 dashes
         Assert.Equal(0, exitCode);
         Assert.Contains($"| :{new string('-', 25)} | :{new string('-', 75)} |", output);
+    }
+
+    /// <summary>Test that a config input outside the allowed roots fails its job with file-access-denied.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputOutsideRoots_FileAccessDenied()
+    {
+        // Arrange: the input lies next to the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/terms.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the job is denied and writes nothing
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): file-access-denied: The file '", err);
+        Assert.Contains("was denied by the file-access policy 'roots'.", err);
+        Assert.Contains("Allow the file in the file-access policy, or reference a file it allows.", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a literal config input outside the allowed roots is judged before it is looked up: a file that does
+    ///     not exist there is reported as file-access-denied, not as not found, so its existence is never probed.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigLiteralInputOutsideRoots_DeniedWithoutLookup()
+    {
+        // Arrange: the input names a missing file next to the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/missing.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var missing = Path.Combine(tmpDir.DirectoryPath, "shared", "missing.yaml");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the policy refused the path as written; nothing reports whether the file exists
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): file-access-denied: The file '", err);
+        Assert.Contains("was denied by the file-access policy 'roots'.", err);
+        Assert.DoesNotContain("was not found", err);
+        Assert.DoesNotContain("Input directory", err);
+        Assert.False(File.Exists(missing));
+    }
+
+    /// <summary>
+    ///     Test that a literal config input inside the allowed roots that does not exist is reported clearly as not
+    ///     found, through the resolver's outcome.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound()
+    {
+        // Arrange: the input names a missing file in a missing folder below the config folder (the allowed root)
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "tables:\n  - input: sub/missing.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var missing = Path.Combine(root, "sub", "missing.yaml");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: a not-found error naming the full path; no output was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('out.md'): Input file '{missing}' was not found.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a glob whose matches lie both inside and outside the allowed roots fails its job: the match outside
+    ///     is denied rather than skipped, and the match inside is not used alone.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped()
+    {
+        // Arrange: one match inside the config folder (the root) and one in a sibling folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms-a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms-b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../*/terms-*.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the outside match fails the job, so no output is written from the inside match alone
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.Contains("terms-b.yaml", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>Test that a glob match reached through a directory link is denied under no-symlinks.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigGlobMatchThroughLinkUnderNoSymlinks_FileAccessDenied()
+    {
+        // Arrange: config/alias is a link to config/real, which holds the dictionary
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "real", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: alias/*.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        FileTestSupport.CreateDirectoryLinkOrSkip(Path.Combine(root, "alias"), Path.Combine(root, "real"));
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--file-access", "no-symlinks");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.Contains("'no-symlinks'", err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>Test that a config output outside the allowed roots is denied and nothing is created.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigOutputOutsideRoots_DeniedAndNothingCreated()
+    {
+        // Arrange: the output folder lies outside the config folder, which is the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: ../out/table.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: denied, and not even the output folder was created
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/table.md'): file-access-denied:", err);
+        Assert.False(Directory.Exists(Path.Combine(tmpDir.DirectoryPath, "out")));
+    }
+
+    /// <summary>
+    ///     Test that under the default mode a config output that breaks a never-list rule (a colon outside a drive, and
+    ///     on Windows a network path) is refused before anything is accessed or created.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNeverListOutputUnderAny_RefusedWithoutAccess()
+    {
+        // Arrange: one output names an alternate data stream; on Windows another names a network share
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var network = OperatingSystem.IsWindows() ? "  - input: terms.yaml\n    output: //server/share/out.md\n" : string.Empty;
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: \"out.md:stream\"\n" + network);
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: ordinary write errors naming the broken rule; nothing was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to write output file 'out.md:stream': The path '", err);
+        Assert.Contains("is not allowed: the path contains a colon.", err);
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(config)!, "out.md")));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Contains("is not allowed: network paths are not permitted.", err);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a config output naming a network share is refused on every platform before anything is accessed or
+    ///     created: on Linux and macOS a leading "//" would collapse to a local "/" if normalized before the check, and
+    ///     on Windows the backslash spelling is refused as well.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkOutput_RefusedBeforeNormalization()
+    {
+        // Arrange: a forward-slash share on every platform; on Windows also a backslash share
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var backslash = OperatingSystem.IsWindows()
+            ? "  - input: terms.yaml\n    output: '\\\\dictionarymark-test.invalid\\share\\out.md'\n"
+            : string.Empty;
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: \"//dictionarymark-test.invalid/share/out.md\"\n" + backslash);
+        var jobs = OperatingSystem.IsWindows() ? 2 : 1;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: every job is refused by the network-path rule, so nothing was written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('//dictionarymark-test.invalid/share/out.md'): Failed to write output file " +
+            "'//dictionarymark-test.invalid/share/out.md': The path '//dictionarymark-test.invalid/share/out.md' is not " +
+            "allowed: network paths are not permitted.",
+            err);
+        Assert.Contains($"Error: {jobs} of {jobs} table jobs failed.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+    }
+
+    /// <summary>
+    ///     Test that a relative config output under a root key naming a network share is refused on every platform
+    ///     before anything is accessed or created: the root is joined with the output as text, so a leading "//" is not
+    ///     collapsed to a local "/" on Linux and macOS, and on Windows the backslash spelling is refused as well.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization()
+    {
+        // Arrange: one config per spelling of the share; the input is an absolute local file, so only the output is
+        // rooted at the share
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("local", "terms.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var roots = OperatingSystem.IsWindows()
+            ? new[] { "\"//dictionarymark-test.invalid/share\"", "'\\\\dictionarymark-test.invalid\\share'" }
+            : ["\"//dictionarymark-test.invalid/share\""];
+
+        foreach (var root in roots)
+        {
+            var config = WriteConfig(tmpDir, $"root: {root}\ntables:\n  - input: '{input}'\n    output: out.md\n");
+
+            // Act
+            var (_, err, exitCode) = Run("--config", config);
+
+            // Assert: the output is refused by the network-path rule; the input was not the problem
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Error: table job 1 ('out.md'): Failed to write output file 'out.md': The path '", err);
+            Assert.Contains("is not allowed: network paths are not permitted.", err);
+            Assert.DoesNotContain("file-access-denied", err);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a relative config input under a root key naming a network share is refused on every platform before
+    ///     it is looked up: the root is joined with the pattern as text, so a leading "//" is not collapsed to a local "/"
+    ///     on Linux and macOS.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization()
+    {
+        // Arrange: the root names a share; the literal input and the output are relative to it
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir,
+            "root: \"//dictionarymark-test.invalid/share\"\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the input pattern is refused by the network-path rule before any lookup
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): Failed to resolve input pattern 'terms.yaml': The path '", err);
+        Assert.Contains("is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("was not found", err);
+    }
+
+    /// <summary>
+    ///     Test that on Windows a config pattern with a reserved device-name component is refused before any folder is
+    ///     listed, so the device is never probed, and the other job still runs.
+    /// </summary>
+    /// <param name="pattern">The input pattern.</param>
+    [Theory]
+    [InlineData("NUL/*.yaml")]
+    [InlineData("C:/NUL/*.yaml")]
+    [InlineData("CON/*.yaml")]
+    [InlineData("AUX/*.yaml")]
+    [InlineData("COM1/*.yaml")]
+    [InlineData("LPT1/*.yaml")]
+    public void DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing(string pattern)
+    {
+        // Reserved device names exist only on Windows
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            $"tables:\n  - input: \"{pattern}\"\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: refused by the device-name rule, so nothing was listed; the other job wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('a.md'): Failed to resolve input pattern '{pattern}': The path '", err);
+        Assert.Contains("is not allowed: the path names a device.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>Test that a config input longer than the 16 MiB size limit is an ordinary read error.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError()
+    {
+        // Arrange: a YAML comment one byte longer than the limit
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("config", "big.yaml"));
+        var bytes = new byte[(16 * 1024 * 1024) + 1];
+        Array.Fill(bytes, (byte)' ');
+        bytes[0] = (byte)'#';
+        File.WriteAllBytes(input, bytes);
+        var config = WriteConfig(tmpDir, "tables:\n  - input: big.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Failed to read file '{input}': The file '", err);
+        Assert.Contains("is larger than the allowed size.", err);
+        Assert.DoesNotContain("file-access-denied", err);
+    }
+
+    /// <summary>Test that a denied job fails only itself: the other jobs run and the exit code is 1.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne()
+    {
+        // Arrange: the first job writes outside the allowed root; the second writes inside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: ../out/a.md\n  - input: terms.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/a.md'): file-access-denied:", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>Test that the command-line job is never judged by the file-access policy.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged()
+    {
+        // Arrange: the input and output lie outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var root = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "root")).FullName;
+        var input = tmpDir.GetFilePath(Path.Combine("outside", "terms.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var output = Path.Combine(tmpDir.DirectoryPath, "outside", "out", "terms.md");
+
+        // Act
+        var (_, err, exitCode) = Run("--allow-root", root, "--input", input, "--output", output);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that a config pattern naming a network share with forward slashes is refused before any folder is listed:
+    ///     the job fails with the network-path rule (not "matched no files"), and the other job still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing()
+    {
+        // Arrange: on every platform the resolver's text rules treat a leading "//" as a network path
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: \"//dictionarymark-test.invalid/share/*.yaml\"\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: refused by the never list, so the share was never listed; the other job wrote its output
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern '//dictionarymark-test.invalid/share/*.yaml': " +
+            "The path '//dictionarymark-test.invalid/share/*.yaml' is not allowed: network paths are not permitted.",
+            err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that on Windows a config pattern naming a network share with backslashes is refused before any folder is
+    ///     listed, and the other job still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkPatternBackslashesOnWindows_RefusedBeforeListing()
+    {
+        // A backslash is an ordinary file-name character on Linux and macOS, so only Windows reads this as a share
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: '\\\\dictionarymark-test.invalid\\share\\*.yaml'\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern '\\\\dictionarymark-test.invalid\\share\\*.yaml': ",
+            err);
+        Assert.Contains("is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that a URL-like config pattern is refused by the colon rule before any folder is listed, and the other job
+    ///     still runs.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigUrlPattern_RefusedBeforeListing()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: \"https://dictionarymark-test.invalid/terms/*.yaml\"\n    output: a.md\n" +
+            "  - input: b.yaml\n    output: b.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): Failed to resolve input pattern 'https://dictionarymark-test.invalid/terms/*.yaml': ",
+            err);
+        Assert.Contains("is not allowed: the path contains a colon.", err);
+        Assert.DoesNotContain("matched no files", err);
+        Assert.DoesNotContain("file-access-denied", err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.False(File.Exists(Path.Combine(root, "a.md")));
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(Path.Combine(root, "b.md")));
     }
 }

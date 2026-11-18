@@ -102,3 +102,6 @@ deployment environment. This scenario is tested by
 reports `DictionaryMark_ConfigTables` as passed, confirming configuration table jobs with
 config-relative `..` paths and output directory creation work in the deployment environment. This
 scenario is tested by `Validation_Run_WithSilentContext_ConfigTablesTestPasses`.
+
+**Validation_Run_WithSilentContext_FileAccessRootsTestPasses**: Test that Run includes a file-access roots test that
+passes. This scenario is tested by `Validation_Run_WithSilentContext_FileAccessRootsTestPasses`.

@@ -5,7 +5,9 @@ package DictionaryMark {
         doc /* Command-line argument parser and I/O owner. */
 
         metadata info : SoftwareInfo {
-            sourceFiles = ("src/DemaConsulting.DictionaryMark/Cli/Context.cs");
+            sourceFiles = (
+                "src/DemaConsulting.DictionaryMark/Cli/Context.cs",
+                "src/DemaConsulting.DictionaryMark/Cli/Context.FileAccess.cs");
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Cli/ContextTests.cs");
             designFiles = ("docs/design/dictionary-mark/cli/context.md");
             verificationFiles = ("docs/verification/dictionary-mark/cli/context.md");
@@ -17,4 +19,7 @@ package DictionaryMark {
     dependency Context to ConfigFile;
     dependency Context to TableJob;
     dependency Context to PathResolver;
+
+    // Context builds the file-access policy of the run from --file-access and --allow-root
+    dependency Context to FileAccessPolicy;
 }

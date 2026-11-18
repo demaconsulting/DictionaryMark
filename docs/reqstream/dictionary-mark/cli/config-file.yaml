@@ -88,16 +88,22 @@ sections:
                 title: >-
                   The ConfigFile unit shall accept an optional top-level non-empty root string, resolve it
                   relative to the configuration file's directory with ${VAR} expansion and parent-directory
-                  normalization, and reject a missing directory or a root key inside a table job, with an error
-                  naming the file and the job.
+                  normalization as text only, without accessing the file system (so a folder that does not exist
+                  or a network location is accepted), and reject a root with wildcard characters, an undefined
+                  variable or a malformed path, or a root key inside a table job, with an error naming the file
+                  and the job.
                 justification: |
                   The root key lets a configuration file kept in a tools folder use repository-relative paths.
+                  The file's content is not trusted, so the key only moves where relative paths point and is
+                  never probed; the paths it leads to are judged when the jobs run.
                 tests:
                   - ConfigFile_Load_Root_ResolvedRelativeToConfigDirectory
                   - ConfigFile_Load_RootWithParentSegments_Normalized
                   - ConfigFile_Load_RootEnvironmentVariable_Expanded
                   - ConfigFile_Load_RootUndefinedVariable_ThrowsNamingFile
-                  - ConfigFile_Load_RootMissingDirectory_ThrowsNamingFile
+                  - ConfigFile_Load_RootMissingDirectory_ResolvedAsTextWithoutError
+                  - ConfigFile_Load_RootNetworkShare_ResolvedAsTextWithoutError
+                  - ConfigFile_Load_RootInvalidCharacter_ThrowsNamingFile
                   - ConfigFile_Load_RootInvalidValue_Throws
                   - ConfigFile_Load_RootInTableJob_ThrowsNamingJob
                   - ConfigFile_Load_NoRoot_RootDirectoryIsNull

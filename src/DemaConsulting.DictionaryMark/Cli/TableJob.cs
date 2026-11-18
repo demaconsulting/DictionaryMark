@@ -58,6 +58,18 @@ internal sealed class TableJob
     public string BaseDirectory { get; }
 
     /// <summary>
+    ///     Gets the base directory as text before normalization: <c>${VAR}</c> references expanded and rooted, but
+    ///     <c>.</c>, <c>..</c> and repeated separators kept. Equal to <see cref="BaseDirectory"/> unless the base
+    ///     is the configuration file's <c>root</c> key.
+    /// </summary>
+    /// <remarks>
+    ///     Normalization can change what a path names (on Linux and macOS a leading <c>//</c> collapses to
+    ///     <c>/</c>), so the file-access resolver's text rules are given a job's paths rooted at this text, and the
+    ///     normalized <see cref="BaseDirectory"/> is used only afterwards.
+    /// </remarks>
+    public string BaseDirectoryText { get; }
+
+    /// <summary>
     ///     Gets the label used to prefix error messages (<c>table job {n} ('{output}')</c>), or null
     ///     for the command-line job so its messages are unchanged.
     /// </summary>
@@ -73,6 +85,7 @@ internal sealed class TableJob
     /// <param name="inputPatterns">The input patterns.</param>
     /// <param name="outputFile">The output path, or null for stdout.</param>
     /// <param name="baseDirectory">The base directory for relative paths.</param>
+    /// <param name="baseDirectoryText">The base directory as text before normalization.</param>
     /// <param name="label">The error-message label, or null.</param>
     /// <param name="options">The effective formatting options.</param>
     private TableJob(
@@ -80,6 +93,7 @@ internal sealed class TableJob
         IReadOnlyList<string> inputPatterns,
         string? outputFile,
         string baseDirectory,
+        string baseDirectoryText,
         string? label,
         MarkdownOptions options)
     {
@@ -87,6 +101,7 @@ internal sealed class TableJob
         InputPatterns = inputPatterns;
         OutputFile = outputFile;
         BaseDirectory = baseDirectory;
+        BaseDirectoryText = baseDirectoryText;
         Label = label;
         Options = options;
     }
@@ -113,6 +128,10 @@ internal sealed class TableJob
     ///     The formatting layers, highest precedence first. Must not be null; null elements are
     ///     skipped.
     /// </param>
+    /// <param name="baseDirectoryText">
+    ///     The base directory as text before normalization, or null when it is <paramref name="baseDirectory"/>
+    ///     itself.
+    /// </param>
     /// <returns>The validated job.</returns>
     /// <exception cref="ArgumentNullException">Thrown when a required argument is null.</exception>
     /// <exception cref="ArgumentException">
@@ -124,7 +143,8 @@ internal sealed class TableJob
         IReadOnlyList<string> inputPatterns,
         string? outputFile,
         string baseDirectory,
-        IReadOnlyList<FormattingSettings?> layers)
+        IReadOnlyList<FormattingSettings?> layers,
+        string? baseDirectoryText = null)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(inputPatterns);
@@ -170,7 +190,7 @@ internal sealed class TableJob
             ColumnWidths = widths
         };
 
-        return new TableJob(index, [.. inputPatterns], outputFile, baseDirectory, label, options);
+        return new TableJob(index, [.. inputPatterns], outputFile, baseDirectory, baseDirectoryText ?? baseDirectory, label, options);
     }
 
     /// <summary>

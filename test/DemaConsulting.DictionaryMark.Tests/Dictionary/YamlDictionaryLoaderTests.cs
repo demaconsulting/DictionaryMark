@@ -382,4 +382,93 @@ public class YamlDictionaryLoaderTests
         Assert.Contains("Deprecated term 'a'", ex.Message);
         Assert.Contains(expected, ex.Message);
     }
+
+    /// <summary>
+    ///     Gets the encodings the content overloads must decode as the path overloads do: UTF-8 without and with a
+    ///     byte order mark, and UTF-16 little-endian with a byte order mark.
+    /// </summary>
+    /// <returns>The encoding names.</returns>
+    public static TheoryData<string> ContentEncodings() => ["utf-8", "utf-8-bom", "utf-16le-bom"];
+
+    /// <summary>
+    ///     Writes text to a file in an encoding and returns the bytes written.
+    /// </summary>
+    /// <param name="path">The file path.</param>
+    /// <param name="text">The text.</param>
+    /// <param name="encoding">The encoding name from <see cref="ContentEncodings"/>.</param>
+    /// <returns>The bytes of the file.</returns>
+    private static byte[] WriteEncoded(string path, string text, string encoding)
+    {
+        System.Text.Encoding chosen = encoding switch
+        {
+            "utf-8-bom" => new System.Text.UTF8Encoding(true),
+            "utf-16le-bom" => new System.Text.UnicodeEncoding(false, true),
+            _ => new System.Text.UTF8Encoding(false),
+        };
+        var bytes = chosen.GetPreamble().Concat(chosen.GetBytes(text)).ToArray();
+        File.WriteAllBytes(path, bytes);
+        return bytes;
+    }
+
+    /// <summary>
+    ///     Test that loading approved terms from the bytes of a file gives the same entries as loading the file by
+    ///     path, for each supported encoding.
+    /// </summary>
+    /// <param name="encoding">The encoding name.</param>
+    [Theory]
+    [MemberData(nameof(ContentEncodings))]
+    public void YamlDictionaryLoader_Load_Content_EqualsPathOverload(string encoding)
+    {
+        // Arrange: a file with a non-ASCII definition
+        var tmpFile = Path.GetTempFileName();
+        try
+        {
+            var bytes = WriteEncoded(tmpFile, "Café: A small restaurant\nAPI:\n  definition: Interface\n  pos: noun\n", encoding);
+
+            // Act
+            var fromPath = YamlDictionaryLoader.Load(tmpFile);
+            var fromContent = YamlDictionaryLoader.Load(tmpFile, bytes);
+
+            // Assert: the same entries, with the same source
+            Assert.Equal(
+                fromPath.Select(e => (e.Term, e.Definition, string.Join(",", e.Pos), string.Join(",", e.Variants), e.Visible, e.Source)),
+                fromContent.Select(e => (e.Term, e.Definition, string.Join(",", e.Pos), string.Join(",", e.Variants), e.Visible, e.Source)));
+            Assert.Equal("Café", fromContent[0].Term);
+        }
+        finally
+        {
+            File.Delete(tmpFile);
+        }
+    }
+
+    /// <summary>
+    ///     Test that loading deprecated terms from the bytes of a file gives the same entries as loading the file by
+    ///     path, for each supported encoding.
+    /// </summary>
+    /// <param name="encoding">The encoding name.</param>
+    [Theory]
+    [MemberData(nameof(ContentEncodings))]
+    public void YamlDictionaryLoader_LoadDeprecated_Content_EqualsPathOverload(string encoding)
+    {
+        // Arrange
+        var tmpFile = Path.GetTempFileName();
+        try
+        {
+            var bytes = WriteEncoded(tmpFile, "bench mode: { use: Test Mode, where: Café menu }\n", encoding);
+
+            // Act
+            var fromPath = YamlDictionaryLoader.LoadDeprecated(tmpFile);
+            var fromContent = YamlDictionaryLoader.LoadDeprecated(tmpFile, bytes);
+
+            // Assert
+            Assert.Equal(
+                fromPath.Select(e => (e.Term, e.Use, e.Where, e.Source)),
+                fromContent.Select(e => (e.Term, e.Use, e.Where, e.Source)));
+            Assert.Equal("Café menu", fromContent[0].Where);
+        }
+        finally
+        {
+            File.Delete(tmpFile);
+        }
+    }
 }

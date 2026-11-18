@@ -16,7 +16,7 @@ needs-review:
   - "docs/user_guide/**/*.md"     # User guide documentation
   - "!**/obj/**"                  # Exclude build output
   - "!**/bin/**"                  # Exclude build output
-  - "!node_modules/**"            # Exclude npm dependencies
+  - "!**/generated/**"            # Exclude generated files
   - "!**/.venv/**"                # Exclude Python virtual environment
 
 # Evidence source: review data and index.json are located in the 'reviews' branch
@@ -51,6 +51,7 @@ reviews:
       - "docs/user_guide/**/*.md"
     paths:
       - "requirements.yaml"
+      - "docs/reqstream/quality.yaml"
       - "docs/design/introduction.md"
       - "docs/sysml2/**/*.sysml"
 
@@ -78,7 +79,6 @@ reviews:
       - "docs/reqstream/dictionary-mark.yaml"
     paths:
       - "docs/reqstream/dictionary-mark/platform-requirements.yaml"
-      - "docs/reqstream/quality.yaml"
       - "docs/design/introduction.md"
       - "docs/design/dictionary-mark.md"
       - "docs/design/dictionary-mark/**/*.md"
@@ -142,7 +142,7 @@ reviews:
       - "docs/reqstream/dictionary-mark/cli/context.yaml"
       - "docs/design/dictionary-mark/cli/context.md"
       - "docs/verification/dictionary-mark/cli/context.md"
-      - "src/**/Cli/Context.cs"
+      - "src/**/Cli/Context*.cs"
       - "test/**/Cli/ContextTests.cs"
 
   # DictionaryMark-Cli-ConfigFile Review (unit under a subsystem)
@@ -353,6 +353,73 @@ reviews:
       - "docs/verification/dictionary-mark/utilities/temporary-directory.md"
       - "src/**/Utilities/TemporaryDirectory.cs"
       - "test/**/Utilities/TemporaryDirectoryTests.cs"
+
+  # DictionaryMark-Files Review (subsystem)
+  - id: DictionaryMark-Files
+    title: Review that DictionaryMark Files Satisfies Subsystem Requirements
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/files.yaml"
+      - "docs/design/dictionary-mark/files.md"
+      - "docs/verification/dictionary-mark/files.md"
+      - "test/**/Files/FilesSubsystemTests.cs"
+      - "test/**/Files/*Support.cs"
+
+  # DictionaryMark-Files-FileReferenceResolver Review (unit under a subsystem)
+  - id: DictionaryMark-Files-FileReferenceResolver
+    title: Review that DictionaryMark Files FileReferenceResolver Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/files.md"
+      - "docs/reqstream/dictionary-mark/files.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/files/file-reference-resolver.yaml"
+      - "docs/design/dictionary-mark/files/file-reference-resolver.md"
+      - "docs/verification/dictionary-mark/files/file-reference-resolver.md"
+      - "src/**/Files/FileReferenceResolver*.cs"
+      - "src/**/Files/FileReferenceOptions.cs"
+      - "src/**/Files/FileReference.cs"
+      - "src/**/Files/FileReferenceException.cs"
+      - "src/**/Files/FileReferenceFailureKind.cs"
+      - "test/**/Files/FileReferenceResolver*Tests.cs"
+      - "test/**/Files/FileReferenceExceptionTests.cs"
+
+  # DictionaryMark-Files-FileAccessPolicy Review (unit under a subsystem)
+  - id: DictionaryMark-Files-FileAccessPolicy
+    title: Review that DictionaryMark Files FileAccessPolicy Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/files.md"
+      - "docs/reqstream/dictionary-mark/files.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/files/file-access-policy.yaml"
+      - "docs/design/dictionary-mark/files/file-access-policy.md"
+      - "docs/verification/dictionary-mark/files/file-access-policy.md"
+      - "src/**/Files/FileAccessPolicy*.cs"
+      - "src/**/Files/FileAccessRequest.cs"
+      - "src/**/Files/FileAccessDecision.cs"
+      - "test/**/Files/FileAccessPolicyTests.cs"
+
+  # DictionaryMark-Files-RealPath Review (unit under a subsystem)
+  - id: DictionaryMark-Files-RealPath
+    title: Review that DictionaryMark Files RealPath Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/files.md"
+      - "docs/reqstream/dictionary-mark/files.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/files/real-path.yaml"
+      - "docs/design/dictionary-mark/files/real-path.md"
+      - "docs/verification/dictionary-mark/files/real-path.md"
+      - "src/**/Files/RealPath*.cs"
+      - "src/**/Files/NativeMethods.cs"
+      - "src/**/Files/FileOpenHooks.cs"
+      - "test/**/Files/RealPathTests.cs"
 
   # OTS Items
   - id: OTS-BuildMark

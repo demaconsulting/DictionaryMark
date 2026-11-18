@@ -136,3 +136,14 @@ sections:
                   confirmed on each deployment platform.
                 tests:
                   - Validation_Run_WithSilentContext_ConfigTablesTestPasses
+
+              - id: DictionaryMark-Validation-FileAccessRoots
+                title: >-
+                  The Validation unit shall confirm that the allow-root option confines configuration-file table
+                  outputs in the deployment environment: a table writing outside the allowed folder is denied with
+                  file-access-denied and writes nothing, while a table writing inside it is generated.
+                justification: |
+                  Real paths and links differ between operating systems (for example the macOS temporary folder),
+                  so file-access confinement must be confirmed on each deployment platform.
+                tests:
+                  - Validation_Run_WithSilentContext_FileAccessRootsTestPasses

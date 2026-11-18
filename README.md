@@ -12,6 +12,12 @@
 [![Security](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=security_rating)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![NuGet](https://img.shields.io/nuget/v/DemaConsulting.DictionaryMark?style=plastic)](https://www.nuget.org/packages/DemaConsulting.DictionaryMark)
 
+![DictionaryMark banner: the DictionaryMark name with the tagline 'YAML dictionaries in. Markdown glossaries out.'
+and the command 'dictionarymark --config dictionarymark.yaml'. A YAML glossary, rich entries with definition, pos
+and variants, deprecated terms with use and where, and a configuration file of table jobs flow on curved arrows into
+the dictionarymark .NET tool, and arrows lead out to a Markdown table with 25 to 75 column widths, a bullet list, a
+deprecated-terms table, and Pandoc documents in PDF and HTML][hero]
+
 ## Overview
 
 DictionaryMark is a .NET command-line tool that reads YAML dictionary files and generates
@@ -43,6 +49,7 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - ⚙️ **Configuration File** - Keep formatting options and several table jobs in a YAML file beside the
   dictionaries
 - 📂 **Root Directory** - Resolve relative input and output paths against a chosen base directory
+- 🔒 **File Access** - Confine the inputs and outputs of configuration-file tables to chosen folders and refuse links
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
 
@@ -135,6 +142,8 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths (e.g. `25,75`) |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file |
 | `--root <dir>` | Base directory for relative input and output paths |
+| `--file-access <mode>` | Files `--config` tables may use: `any`, `roots`, `no-symlinks`, `roots,no-symlinks` |
+| `--allow-root <dir>` | Folder `--config` tables may use (repeatable; implies `roots`) |
 
 Missing parent directories of output files are created. Input patterns may use `..` segments before
 the first wildcard (for example `../shared/*.yaml`), and input and output paths may contain `${VAR}`
@@ -349,8 +358,47 @@ tables:
 
 The base directory is `--root` if given, else the configuration `root`, else the configuration file's
 directory (for paths from the file) or the working directory (for command-line paths). Absolute paths
-ignore the root, and `--config`, `--log` and `--results` are never resolved against it. The root must
-exist; `${VAR}` and `..` are supported.
+ignore the root, and `--config`, `--log` and `--results` are never resolved against it. `--root` must
+exist. The configuration `root:` is only the base that relative job paths are combined with: it is
+resolved as text and never checked on disk, so a `root:` that does not exist (or names a network share)
+makes the tables that use it fail through the file-access checks below (not found, or refused). Both
+support `${VAR}` and `..`, and neither may contain wildcards.
+
+### File Access
+
+The command line is trusted: every option, including `--config`, `--file-access`, `--allow-root` and `--root`, is
+taken as given, and reading the configuration file itself is never judged. The content of the configuration file is
+not trusted, because it may come from a source you do not fully trust (for example a pull request). Everything it
+names, including its `root:` key, reaches the disk only through the file-access checks: its table inputs (each literal
+input and every match of every glob) and outputs are judged by a file-access mode, and `root:` only moves where its
+relative paths point. The paths you name on the command line (`--config`, `--input`, `--output`, `--log`,
+`--results`) are never judged.
+
+```pwsh
+# Confine the tables of a configuration file to the repository folder
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root .
+
+# Also refuse any symbolic link or junction
+dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-access roots,no-symlinks
+```
+
+- `any` (the default) allows every regular local file, as Pandoc does.
+- `roots` allows only files inside the `--allow-root` folders, or, without `--allow-root`, inside the working
+  directory and the configuration file's folder. `--root` and the configuration `root:` key never widen it.
+- `no-symlinks` refuses a file reached through a symbolic link or junction below the configuration file's folder.
+
+Under every mode, network paths, device paths (and on Windows reserved names such as `NUL`), a colon outside a Windows
+drive, control characters, and anything that is not a regular file are refused, and each input is read up to 16 MiB.
+A table whose input or output the file-access mode denies fails with `file-access-denied`; a table that breaks one of
+the rules above (or names a file over 16 MiB) fails with the ordinary `Failed to read file` or
+`Failed to write output file` error, which names the rule. Either way the table writes nothing, the other tables still
+run, and the exit code is non-zero. Known limits: a hard link cannot be told apart from its file; the output check is
+not race-proof (the write follows by name); a literal configuration input is judged before it is looked up, so its
+existence is never revealed outside the allowed folders; a configuration input pattern that breaks one of the rules
+above (such as a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but
+listing the local folders of a wildcard pattern can reveal file names outside the allowed folders before the match is
+refused, although no content is read; and an `--allow-root` folder must exist when the run starts.
+See the User Guide for details.
 
 ### Conflicts
 
@@ -420,6 +468,8 @@ the results of each self-test. Each test proves a specific capability:
 - **`DictionaryMark_ColumnWidths`** - `--column-widths` sizes the table separator in proportion to the weights
 - **`DictionaryMark_ConfigTables`** - A `--config` file generates every table job, with config-relative
   `..` paths and missing output directories created
+- **`DictionaryMark_FileAccessRoots`** - With `--allow-root`, a `--config` table output outside the allowed folder
+  is denied with `file-access-denied` and nothing is written, while a table inside it is generated
 
 Results can be saved to a file:
 
@@ -454,3 +504,5 @@ DictionaryMark is built with the following open-source projects:
 - [Microsoft.Extensions.FileSystemGlobbing](https://www.nuget.org/packages/Microsoft.Extensions.FileSystemGlobbing)
   \- Glob pattern matching for file system paths
 - [DemaConsulting.TestResults](https://github.com/demaconsulting/TestResults) - TRX and JUnit XML test results library
+
+[hero]: https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/images/hero.png

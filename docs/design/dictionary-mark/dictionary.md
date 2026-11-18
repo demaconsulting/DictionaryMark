@@ -65,12 +65,22 @@ everything from resolving input file paths through formatting the final Markdown
 **GlobMatcher.Resolve**: Strict file pattern resolution from the Utilities subsystem.
 
 - *Type*: In-process .NET public API
-- *Role*: Consumer — `DictionaryGenerator` calls this to resolve patterns to file paths
+- *Role*: Consumer — `DictionaryGenerator` calls this to resolve every pattern of the command-line job and the
+  wildcard patterns of a configuration-table job to file paths
 - *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` returns a sorted,
   deduplicated list of absolute file paths after expanding `${VAR}` references and rooting relative
   patterns at the base directory.
 - *Constraints*: Throws `ArgumentException` on empty patterns and `InvalidOperationException` when a
   pattern matches nothing, a literal path does not exist, or a variable is undefined.
+
+**FileReferenceResolver**: The file-access engine from the Files subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `DictionaryGenerator` reads the input files of a configuration-table job and checks its output
+  path through one resolver per job
+- *Contract*: `Resolve(path)` returns the approved bytes or `null`; `CheckOutputPath(path)` returns when the output
+  may be written; both throw `FileReferenceException` (see *FileReferenceResolver Design*)
+- *Constraints*: The resolver's base directory is the configuration file's folder; `context.FileAccess` is its policy.
 
 **YamlDotNet**: OTS YAML parsing library.
 
@@ -85,12 +95,19 @@ everything from resolving input file paths through formatting the final Markdown
 `DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
 job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. Call `GlobMatcher.Resolve` for the job's input patterns and base directory
-   (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
-   on `ArgumentException` or `InvalidOperationException`, or when no files are found.
+1. Resolve the job's input patterns against its base directory. The command-line job calls
+   `GlobMatcher.Resolve` for every pattern (strict: `${VAR}` expansion, every pattern must match,
+   literal paths must exist). A configuration-table job's patterns are untrusted content: a literal
+   pattern (no wildcard after `${VAR}` expansion) is only expanded, rooted and normalized as text and
+   is never looked up, because its file is read through the resolver in step 2, which applies the
+   policy before it looks for the file; only its wildcard patterns go to `GlobMatcher.Resolve`. Return
+   early on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
-   `InvalidOperationException`.
+   `InvalidOperationException`. For a configuration-table job each literal input and each match is first read
+   through the job's `FileReferenceResolver` (every file is judged by the file-access policy; a refused match fails
+   the job, it is never skipped; a literal input that does not exist is reported as not found) and the loader parses
+   the bytes the resolver returned.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
    job; report each conflict and return early if any are found. Different jobs may use different or
    overlapping dictionaries.
@@ -98,14 +115,18 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
    (deprecated terms) with `job.Options`, using only entries from the primary input files, to
    produce the Markdown string. When `job.Options.ColumnWidths` is set, table separators are sized
    in proportion to the widths.
-5. Write the string to the job's output file — resolved against the job's base directory with
-   `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
+5. Write the string to the job's output file — rooted at the job's base directory as text and checked, before
+   normalization, with `CheckOutputPath` for a configuration-table job before anything is created, then normalized
+   with `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
    report the error and return.
 
 Every job error is written through `context.WriteError`, prefixed with the job label
 (`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration
-tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported.
+tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported. A file-access refusal
+of a policy reads `file-access-denied: {message} Allow the file in the file-access policy, or reference a file it
+allows.`; any other refusal of a judged path (a never-list path, a non-regular file, an input over 16 MiB) reads
+`Failed to read file '{file}': {message}` or `Failed to write output file '{file}': {message}`.
 
 #### Column widths
 

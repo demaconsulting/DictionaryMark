@@ -8,7 +8,7 @@ The Cli subsystem handles command-line argument parsing, configuration files, ge
 program output for DictionaryMark. It contains three units and one supporting data type:
 
 - `Context` encapsulates all argument-parsing logic, selects the root (base) directory, builds the
-  generation jobs, and owns both output channels (console and log file).
+  file-access policy of the run and the generation jobs, and owns both output channels (console and log file).
 - `ConfigFile` loads and validates the YAML configuration file named by `--config`: formatting
   defaults, the optional `root` key, and optional table jobs.
 - `TableJob` is one resolved generation job: input patterns, output path, base directory, and the
@@ -32,14 +32,16 @@ instance and the `TableJob` instances it exposes.
   `Help`, `Silent`, `Validate`; option properties `InputPatterns`, `OutputFile`, `Format`,
   `SortBy`, `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `ResultsFile`,
   `Kind`, `UseHeader`, `WhereHeader`, `TermHeaderSpecified`, `ColumnWidths`, `ConfigFilePath`,
-  `RootDirectory`, `CommandLineFormatting`; the generation jobs `Jobs` and the flag
-  `UsesConfigTables`; output methods `WriteLine(string)` and `WriteError(string)`; derived
+  `RootDirectory`, `CommandLineFormatting`, `FileAccess` (the file-access policy); the generation jobs `Jobs`
+  and the flag `UsesConfigTables`; output methods `WriteLine(string)` and `WriteError(string)`; derived
   property `ExitCode` (0 or 1).
-- *Constraints*: `Context` implements `IDisposable`; callers must dispose to release the log file
-  `StreamWriter`. Throws `ArgumentException` for unknown flags, invalid option values, repeated
-  `--config` or `--root`, `--input`/`--output` combined with configuration tables, and a
-  column-width count that does not match the table. Throws `InvalidOperationException` for an
-  invalid or missing root directory, an invalid configuration file, and an unopenable log file.
+- *Constraints*: `Context` implements `IDisposable`; callers must dispose to release the log file `StreamWriter`. Throws
+  `ArgumentException` for unknown flags, invalid option values, repeated `--config` or `--root`, `--input`/`--output`
+  combined with configuration tables, and a column-width count that does not match the table, and for invalid
+  file-access options (an unknown mode, `--allow-root` with `any` or `no-symlinks`, an `--allow-root` folder that does
+  not exist). Throws `InvalidOperationException` for an invalid or missing `--root` directory, an invalid configuration
+  file (including a `root` key that is malformed, has wildcards or an undefined variable; the key is never probed),
+  and an unopenable log file.
 
 **TableJob**: One generation job, consumed by the Dictionary subsystem.
 
@@ -65,8 +67,18 @@ subsystem.
 
 - *Type*: In-process .NET API
 - *Role*: Consumer — `Context` resolves `--config` and `--root`; `ConfigFile` resolves `root`
-- *Contract*: `ResolvePath` and `ResolveExistingDirectory` (see *PathResolver Design*)
+- *Contract*: `ResolvePath`, `ResolveExistingDirectory` (for `--root`) and `ResolveDirectory` (for the
+  configuration `root` key, text only) (see *PathResolver Design*)
 - *Constraints*: N/A
+
+**FileAccessPolicy**: The file-access policy from the Files subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `Context` builds the run's policy with `FileAccessPolicy.AllowAll`, `NoSymlinks`,
+  `UnderRoots` and `Combine`
+- *Contract*: see *FileAccessPolicy Design*
+- *Constraints*: `UnderRoots` captures the real location of each folder when it is created, so the folders must
+  exist before the run starts.
 
 ### Design
 
@@ -77,8 +89,11 @@ each recognized flag sets a property; unrecognized flags and invalid values thro
 command-line `FormattingSettings` layer. `Context.Create` then:
 
 1. Resolves `--root` against the working directory (it must exist).
-2. Resolves `--config` against the working directory (never the root) and loads it with
-   `ConfigFile.Load`, which also resolves the file's `root` key against the file's directory.
+2. Resolves `--config` against the working directory (never the root), then builds the file-access policy from
+   `--file-access` and `--allow-root` (`Context.FileAccess.cs`, see *Context Design*), so a mistake there is
+   reported before any input is read, and then loads the configuration file with `ConfigFile.Load`, which also
+   resolves the file's `root` key against the file's directory as text only: the key is untrusted content and is
+   never probed, so a `root` that does not exist is left to the file-access resolver when the jobs run.
 3. Selects the effective root: `--root`, else the configuration `root`, else none.
 4. Builds the jobs. With configuration tables, one `TableJob` per table, with formatting layers
    command line, job, configuration defaults, and base directory root, else the configuration

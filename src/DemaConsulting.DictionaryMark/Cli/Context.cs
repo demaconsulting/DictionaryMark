@@ -20,6 +20,7 @@
 
 using System.Globalization;
 using DemaConsulting.DictionaryMark.Dictionary;
+using DemaConsulting.DictionaryMark.Files;
 using DemaConsulting.DictionaryMark.Utilities;
 
 namespace DemaConsulting.DictionaryMark.Cli;
@@ -27,7 +28,7 @@ namespace DemaConsulting.DictionaryMark.Cli;
 /// <summary>
 ///     Context class that handles command-line arguments and program output.
 /// </summary>
-internal sealed class Context : IDisposable
+internal sealed partial class Context : IDisposable
 {
     /// <summary>
     ///     Log file stream writer (if logging is enabled).
@@ -137,6 +138,12 @@ internal sealed class Context : IDisposable
     public bool UsesConfigTables { get; private init; }
 
     /// <summary>
+    ///     Gets the file-access policy that judges the inputs and outputs of config-file table jobs, built from
+    ///     --file-access and --allow-root; <see cref="FileAccessPolicy.AllowAll"/> when neither was given.
+    /// </summary>
+    public FileAccessPolicy FileAccess { get; private init; } = FileAccessPolicy.AllowAll;
+
+    /// <summary>
     ///     Gets the proposed exit code for the application (0 for success, 1 for errors).
     /// </summary>
     public int ExitCode => _hasErrors ? 1 : 0;
@@ -156,21 +163,25 @@ internal sealed class Context : IDisposable
     ///     delegated to the inner <c>ArgumentParser</c> helper so that validation and default-setting logic are
     ///     isolated from the immutable <c>Context</c> properties. This separation means <c>Context</c> is always
     ///     fully initialized or never created. The steps are, in order: parse the arguments; resolve --root
-    ///     against the working directory; resolve --config against the working directory (never the root) and
-    ///     load it, which also resolves its <c>root</c> key; reject --input/--output when the config defines
-    ///     tables; build the jobs with the base directory --root, else config <c>root</c>, else the path's origin
-    ///     default; and finally open the log file. Every validation failure stops the run before any job runs.
-    ///     Performs file-system I/O (root existence, config file, log file). Stateless after construction;
+    ///     against the working directory; resolve --config against the working directory (never the root);
+    ///     build the file-access policy from --file-access and --allow-root, so a mistake there is reported
+    ///     before any input is opened; load the config, which also resolves its <c>root</c> key as text only (the
+    ///     key is untrusted content and is never probed); reject
+    ///     --input/--output when the config defines tables; build the jobs with the base directory --root, else
+    ///     config <c>root</c>, else the path's origin default; and finally open the log file. Every validation failure stops the run before any job runs.
+    ///     Performs file-system I/O (--root existence, config file, log file). Stateless after construction;
     ///     thread-safe for concurrent reads.
     /// </remarks>
     /// <param name="args">Command-line arguments. Must not be null.</param>
     /// <returns>A fully initialized <see cref="Context"/> with all parsed properties set.</returns>
     /// <exception cref="ArgumentException">
     ///     Thrown when arguments are invalid, an option is repeated, --input or --output is combined with a
-    ///     config file that defines tables, or the column-width count does not match the table shape.
+    ///     config file that defines tables, the column-width count does not match the table shape, or the
+    ///     file-access options are invalid (an unknown mode, --allow-root with any or no-symlinks, or an
+    ///     --allow-root folder that does not exist).
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the root directory or config file path is malformed, invalid or missing, the config file is
+    ///     Thrown when the --root directory or config file path is malformed, invalid or missing, the config file is
     ///     missing or invalid, or the specified log file cannot be opened.
     /// </exception>
     public static Context Create(string[] args)
@@ -186,22 +197,30 @@ internal sealed class Context : IDisposable
             ? PathResolver.ResolveExistingDirectory(parser.RootDirectory, Environment.CurrentDirectory, "--root option")
             : null;
 
-        // Locate and load the config file (relative to the working directory, never the root)
-        string? configPath = null;
-        ConfigFile? config = null;
-        if (parser.ConfigPath != null)
-        {
-            configPath = PathResolver.ResolvePath(parser.ConfigPath, Environment.CurrentDirectory, "config file path");
-            config = ConfigFile.Load(configPath);
-        }
+        // Locate the config file (relative to the working directory, never the root)
+        var configPath = parser.ConfigPath != null
+            ? PathResolver.ResolvePath(parser.ConfigPath, Environment.CurrentDirectory, "config file path")
+            : null;
 
-        // Select the effective root and the effective top-level formatting settings
+        // Build the file-access policy before any input is opened; the default roots are the working directory
+        // and the config file's folder
+        var fileAccess = ReadFileAccess(
+            parser.FileAccessMode,
+            parser.AllowRoots,
+            configPath is null ? [] : [configPath],
+            Environment.CurrentDirectory);
+
+        // Load the config file
+        var config = configPath != null ? ConfigFile.Load(configPath) : null;
+
+        // Select the effective root (and its text before normalization) and the effective top-level formatting settings
         var rootDirectory = commandLineRoot ?? config?.RootDirectory;
+        var rootText = commandLineRoot ?? config?.RootText;
         var commandLine = parser.Formatting;
         var effective = commandLine.Over(config?.Defaults ?? FormattingSettings.Empty);
 
         // Build the generation jobs
-        var jobs = BuildJobs(parser, config, rootDirectory);
+        var jobs = BuildJobs(parser, config, rootDirectory, rootText);
 
         var result = new Context
         {
@@ -226,7 +245,8 @@ internal sealed class Context : IDisposable
             RootDirectory = rootDirectory,
             CommandLineFormatting = commandLine,
             Jobs = jobs,
-            UsesConfigTables = config is { Tables.Count: > 0 }
+            UsesConfigTables = config is { Tables.Count: > 0 },
+            FileAccess = fileAccess
         };
 
         // Copy input patterns
@@ -249,17 +269,19 @@ internal sealed class Context : IDisposable
     ///     precedence order, the command line, the job, and the config defaults, and whose base directory is
     ///     the root or else the config file's directory. Otherwise, when --input was given, a single
     ///     command-line job is created with the command line and config defaults as layers and the root or
-    ///     else the working directory as base directory.
+    ///     else the working directory as base directory. A config table job also receives the root's text before
+    ///     normalization, so the file-access resolver's text rules see its paths as written.
     /// </remarks>
     /// <param name="parser">The parsed arguments.</param>
     /// <param name="config">The loaded config file, or null.</param>
     /// <param name="rootDirectory">The effective root directory, or null.</param>
+    /// <param name="rootText">The effective root directory as text before normalization, or null.</param>
     /// <returns>The jobs; empty when there is nothing to generate.</returns>
     /// <exception cref="ArgumentException">
     ///     Thrown when --input or --output is combined with config tables, or a job's column-width count does
     ///     not match its table shape.
     /// </exception>
-    private static List<TableJob> BuildJobs(ArgumentParser parser, ConfigFile? config, string? rootDirectory)
+    private static List<TableJob> BuildJobs(ArgumentParser parser, ConfigFile? config, string? rootDirectory, string? rootText)
     {
         var commandLine = parser.Formatting;
 
@@ -279,12 +301,19 @@ internal sealed class Context : IDisposable
             }
 
             var baseDirectory = SelectBaseDirectory(rootDirectory, config.BaseDirectory);
+            var baseDirectoryText = SelectBaseDirectory(rootText, config.BaseDirectory);
             var jobs = new List<TableJob>();
             foreach (var table in config.Tables)
             {
                 try
                 {
-                    jobs.Add(TableJob.Create(table.Index, table.Inputs, table.Output, baseDirectory, [commandLine, table.Settings, config.Defaults]));
+                    jobs.Add(TableJob.Create(
+                        table.Index,
+                        table.Inputs,
+                        table.Output,
+                        baseDirectory,
+                        [commandLine, table.Settings, config.Defaults],
+                        baseDirectoryText));
                 }
                 catch (ArgumentException ex)
                 {
@@ -397,6 +426,15 @@ internal sealed class Context : IDisposable
         public string? RootDirectory { get; private set; }
 
         /// <summary>
+        ///     Gets the file-access mode as written, or null when --file-access was not given; when it is
+        ///     repeated, the last value wins.
+        /// </summary>
+        public string? FileAccessMode { get; private set; }
+
+        /// <summary>Gets the --allow-root folders as written, in order (repeatable).</summary>
+        public List<string> AllowRoots { get; } = [];
+
+        /// <summary>
         ///     Gets the formatting options that were given explicitly; members not given remain null so that
         ///     lower-precedence layers (config file, built-in defaults) can supply them.
         /// </summary>
@@ -481,6 +519,14 @@ internal sealed class Context : IDisposable
 
                 case "--root":
                     RootDirectory = ParseRootArgument(arg, args, index);
+                    return index + 1;
+
+                case FileAccessOption:
+                    FileAccessMode = GetRequiredStringArgument(arg, args, index, "a file-access mode");
+                    return index + 1;
+
+                case AllowRootOption:
+                    AllowRoots.Add(GetRequiredStringArgument(arg, args, index, "a folder path"));
                     return index + 1;
 
                 default:

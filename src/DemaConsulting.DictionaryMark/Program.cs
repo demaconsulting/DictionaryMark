@@ -190,6 +190,8 @@ internal static class Program
         context.WriteLine("  --column-widths <w1,w2[,w3]>      Relative table column widths (e.g. 25,75)");
         context.WriteLine("  --config <file>                   Read formatting defaults and table jobs from a YAML file");
         context.WriteLine("  --root <dir>                      Base directory for relative input and output paths");
+        context.WriteLine("  --file-access <mode>              Which local files config-file tables may read and write: any (default; every regular file), roots (only inside the --allow-root folders), no-symlinks (no symbolic link or junction), or roots,no-symlinks");
+        context.WriteLine("  --allow-root <dir>                A folder config-file table inputs and outputs may be in (repeatable; implies --file-access roots); without it roots allows the current folder and the config file's folder");
     }
 
     /// <summary>

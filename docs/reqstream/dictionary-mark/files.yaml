@@ -1,0 +1,153 @@
+---
+# DictionaryMark Files subsystem requirements
+#
+# These requirements decompose the DictionaryMark system's file-access confinement into the Files subsystem's own
+# responsibility: resolving a path a configuration file names to the bytes of a regular file after a host-chosen
+# file-access policy approved the file that was actually opened, checking an output path a configuration file names
+# against the same rules before anything is written, refusing what is never safe, and reporting each refusal in a
+# form a caller can map to its own error. The subsystem is adapted from the Files subsystem of CanvasNet. Each
+# requirement here links down to the unit requirements of the FileReferenceResolver, FileAccessPolicy and RealPath
+# units.
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Files Requirements
+        requirements:
+          - id: DictionaryMark-Files-ReferenceResolution
+            title: >-
+              The Files subsystem shall resolve a referenced path - relative, with dot-dot segments, or absolute -
+              against a base directory, reading every regular local file under the default policy, treating every
+              spelling of a path as one file read once per resolver, and reporting a path that names no file,
+              including a dangling link, as no file rather than a failure.
+            justification: |
+              Configuration files name their inputs the way Pandoc documents name files; a caller needs one
+              deterministic lookup and a clear distinction between "not there" and "refused".
+            children:
+              - DictionaryMark-FileReferenceResolver-Candidates
+              - DictionaryMark-FileReferenceResolver-MissingFiles
+              - DictionaryMark-FileReferenceResolver-Cache
+            tests:
+              - FilesSubsystem_ReferenceResolution_RelativeDotDotAndAbsoluteReferences_AreReadUnderTheDefaultPolicy
+
+          - id: DictionaryMark-Files-AccessPolicy
+            title: >-
+              The Files subsystem shall ask a caller-chosen file-access policy about every referenced file it
+              opens, with the host-chosen base directory, the path as written and the real path of the opened file,
+              shall read the file only when the policy allows it, and shall provide policies that allow every file,
+              that confine files to chosen folders, and that refuse files reached through a symbolic link or
+              junction, combinable with each other.
+            justification: |
+              Hosts differ in which files a configuration file may read; one hook with useful built-ins lets the
+              tool express each mode once, and the same rule then holds for every table input and output.
+            children:
+              - DictionaryMark-FileReferenceResolver-PolicyEvaluation
+              - DictionaryMark-FileAccessPolicy-AllowAll
+              - DictionaryMark-FileAccessPolicy-UnderRoots
+              - DictionaryMark-FileAccessPolicy-NoSymlinks
+              - DictionaryMark-FileAccessPolicy-Combine
+              - DictionaryMark-FileAccessPolicy-Decision
+            tests:
+              - FilesSubsystem_AccessPolicy_RootsAndNoSymlinksCombined_ReadsInsideAndDeniesEscapeAndLink
+
+          - id: DictionaryMark-Files-RaceFreeCheck
+            title: >-
+              The Files subsystem shall decide about the file that was opened, not about its name: the real path
+              it judges shall come from the open file itself and the bytes it returns shall be read from that same
+              open file, so a link swapped in or out of the directory tree after the open does not change the
+              decision or what is read.
+            justification: |
+              A check by name followed by an open by name can be raced by another process that changes the tree
+              in between; deciding on the open file removes that window on every supported operating system.
+            children:
+              - DictionaryMark-FileReferenceResolver-RaceFree
+              - DictionaryMark-RealPath-FinalPath
+              - DictionaryMark-RealPath-CanonicalDirectory
+              - DictionaryMark-RealPath-Comparison
+            tests:
+              - "windows@FilesSubsystem_RaceFreeCheck_SwapAfterOpen_DecisionFollowsTheOpenedFile"
+              - "ubuntu@FilesSubsystem_RaceFreeCheck_SwapAfterOpen_DecisionFollowsTheOpenedFile"
+              - "macos@FilesSubsystem_RaceFreeCheck_SwapAfterOpen_DecisionFollowsTheOpenedFile"
+
+          - id: DictionaryMark-Files-AlwaysRefused
+            title: >-
+              The Files subsystem shall refuse, under every policy and before any access, a referenced path that
+              is empty, contains a control character, names a network location or a device (also, on Windows, a
+              reserved device name such as NUL, CON, COM1 or NUL.txt in any component), or carries an alternate data
+              stream, shall refuse on Windows a referenced file whose path as written is local but whose opened file
+              lies on a network share, shall refuse a referenced file that is not a regular file without blocking on
+              a named pipe, and shall refuse a file when a restrictive policy needs its real path and the platform
+              cannot tell it.
+            justification: |
+              Network paths can leak credentials, devices and named pipes can hang or flood a reader, and a
+              policy that cannot be applied must fail closed rather than allow.
+            children:
+              - DictionaryMark-FileReferenceResolver-PathText
+              - DictionaryMark-FileReferenceResolver-RegularFile
+              - DictionaryMark-FileReferenceResolver-RealPathUnavailable
+              - DictionaryMark-FileReferenceResolver-NetworkTarget
+              - DictionaryMark-RealPath-RegularFile
+              - DictionaryMark-RealPath-NonBlockingOpen
+              - DictionaryMark-RealPath-Unavailable
+              - DictionaryMark-RealPath-NetworkLocation
+            tests:
+              - FilesSubsystem_AlwaysRefused_NetworkDeviceAndNonRegularReferences_AreRefusedUnderAllowAll
+
+          - id: DictionaryMark-Files-BoundedReading
+            title: >-
+              The Files subsystem shall read a file with shared access, never reporting an unreadable file as
+              missing, within a configured byte limit (16 MiB by default) that also stops a stream that never
+              ends.
+            justification: |
+              Files named by a configuration file are untrusted input; an unbounded read would exhaust memory, and
+              an inaccessible file must not be mistaken for a missing one.
+            children:
+              - DictionaryMark-FileReferenceResolver-Reading
+              - DictionaryMark-FileReferenceResolver-Limits
+            tests:
+              - FilesSubsystem_BoundedReading_SizeLimit_ReadsAtTheLimitAndRefusesALongerFile
+
+          - id: DictionaryMark-Files-ReferenceFailureReporting
+            title: >-
+              The Files subsystem shall report every refusal and read failure of a referenced file as an
+              exception that carries a failure kind, the reference as written, and - for a policy denial - the
+              policy name, its reason and hint, the path that was opened and its real path, while its message
+              echoes the reference as written and names the policy but never adds the resolved or real path, the
+              base directory, or the policy's reason.
+            justification: |
+              Callers turn a refusal into their own diagnostic with their own wording and location without
+              parsing text, and must be able to show the message to the untrusted author of a document safely.
+            children:
+              - DictionaryMark-FileReferenceResolver-Failures
+            tests:
+              - FilesSubsystem_ReferenceFailureReporting_DenialCarriesFactsWithoutHostPathInMessage
+
+          - id: DictionaryMark-Files-OutputPaths
+            title: >-
+              The Files subsystem shall check an output path a document names, before anything is created or
+              written, with the rules and in the order it applies to a referenced file: the path-text refusals, the
+              policy's check of the path as written, the regular-file and open checks of an existing entry at the
+              path (a link, including a dangling link, counting as an existing entry), the network-target refusal,
+              the fail-closed real-path rule, and the policy's check of the real path, where the real path of an
+              output that does not exist yet is the real location of its deepest existing folder followed by the
+              rest of the path.
+            justification: |
+              A configuration file names outputs as well as inputs; an output must not let a document write outside
+              the folders the host allowed, through a link the policy refuses, to a device, or to a network share.
+            children:
+              - DictionaryMark-FileReferenceResolver-OutputPath
+            tests:
+              - FilesSubsystem_OutputPaths_NeverListAndPolicyApplyBeforeAnyWrite
+
+          - id: DictionaryMark-Files-PatternText
+            title: >-
+              The Files subsystem shall refuse an input pattern by the path-text refusals it applies to a referenced
+              path (a network location, a device path, a colon outside a Windows drive, a control character), before
+              any folder of the pattern is listed and without touching the file system.
+            justification: |
+              A configuration file may name a pattern on a network share; listing it would contact the host and could
+              expose credentials before any match is judged.
+            children:
+              - DictionaryMark-FileReferenceResolver-PatternText
+            tests:
+              - FilesSubsystem_PatternText_NeverListRefusesPatternsBeforeListing
