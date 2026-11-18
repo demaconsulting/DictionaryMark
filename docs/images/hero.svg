@@ -5,30 +5,6 @@
        The definitions and the left panel follow the shared DEMA Consulting hero (CanvasNet and BuildMark).
        This file is docs/images/hero.svg, beside its rendered docs/images/hero.png (matching base names, per the
        diagram documentation standard); the files it embeds are in docs/images/hero/. -->
-  <!-- TEMPLATE-DIRECTIVE:
-       This banner is shared by every DEMA Consulting repository so that their READMEs look like one family.
-       Customize it once, when the repository is created, and then only when what it shows changes.
-
-       FIXED (do not change): the definitions (styles, gradients, glows, dot grid, filters, markers), the
-       background, the logo and the "DEMA Consulting" eyebrow, the positions and sizes of the wordmark, underline
-       bar, tagline, body, command box, and footnote, the engine pill, and the card frames and flow geometry.
-       Keep every color, glow, and the background unchanged.
-
-       PER PROJECT: the wordmark words, the tagline, the body, the command, the footnote, the engine label, and the
-       input and output cards (their labels and the small illustration inside each). Every customization point
-       below has its own TEMPLATE-DIRECTIVE comment.
-
-       RULES FOR ALL ART:
-       - Draw the card art in SVG (shapes and text); no external raster images. A card may instead embed a real
-         source file of the repository with <image href="..."> (an .mmd, .vl.json, .scad, .svg, or a document
-         page), as CanvasNet does, when the repository has a suitable one. Put every embedded file in
-         docs/images/hero/ (beside dc-logo-dark.svg) and reference it as href="hero/name.ext".
-       - Every text is at least 22px in this 1600x640 frame (the .mini and .miniMono classes are 22px).
-       - Nothing may be clipped: keep each illustration inside its card panel and each label inside its card.
-       - Delete these TEMPLATE-DIRECTIVE comments once the banner is customized; keep the short descriptive
-         comments.
-       - Then run docs/images/render-hero.ps1, look at docs/images/hero.png, and commit hero.svg, hero.png,
-         and anything added to docs/images/hero/ together. -->
   <defs>
     <style>
       .word { font: bold 92px sans-serif; fill: #ffffff; }
@@ -119,8 +95,6 @@
     </marker>
 
     <!-- The text and shapes inside the mini illustrations -->
-    <!-- TEMPLATE-DIRECTIVE: add any further classes the card art needs to this block (for example a 22px text
-         class in another color); keep the shared block above unchanged. -->
     <style>
       .mini { font: bold 22px sans-serif; }
       .miniMono { font: bold 22px monospace; }
@@ -152,80 +126,24 @@
   <!-- Wordmark and tagline -->
   <image href="hero/dc-logo-dark.svg" x="46" y="54" width="50" height="50"/>
   <text class="eyebrow" x="100" y="90">DEMA Consulting</text>
-  <!-- TEMPLATE-DIRECTIVE: the wordmark.
-       Split the project name into two words at a natural boundary (Build|Mark, Req|Stream, Canvas|Net). The
-       first word stays white at x="52"; the second gets the brand gradient (class "word brandText").
-       The second word starts exactly where the first one ends (no extra gap, as in CanvasNet and BuildMark):
-         x = 52 + 0.092 * (sum of the advance widths of the first word's letters)
-       using these Arial Bold / Liberation Sans Bold advance widths (in 1/1000 em; 92px makes 1 unit = 0.092px):
-         A 722  B 722  C 722  D 722  E 667  F 611  G 778  H 722  I 278  J 556  K 722  L 611  M 833
-         N 722  O 778  P 667  Q 778  R 722  S 667  T 611  U 722  V 667  W 944  X 667  Y 667  Z 611
-         a 556  b 611  c 556  d 611  e 556  f 333  g 611  h 611  i 278  j 278  k 556  l 278  m 889
-         n 611  o 611  p 611  q 611  r 389  s 556  t 333  u 611  v 556  w 778  x 556  y 556  z 500
-       Examples: "Canvas" = 3557 units, x = 379.2; "Build" = 2500 units, x = 282 (BuildMark uses 281.9);
-       "Tool" = 2111 units, x = 246.2. Check the result by rendering: the two words must read as one name with
-       the same spacing as the letters inside a word. The whole name must end before x = 560, so the sum over
-       both words must stay under about 5500 units (about 9 letters; "ProjectName" at 6113 units runs into the
-       cards). For a longer name, ask before shrinking the font. -->
   <!-- DictionaryMark: "Dictionary" = 4890 units and "Mark" = 2334 units (7224 in all), so the name is drawn at
        70px instead of 92px to end before x = 560 (at 557.7): x = 52 + 0.070 * 4890 = 394.3. -->
   <text class="word" x="52" y="176" style="font-size: 70px">Dictionary</text>
   <text class="word brandText" x="394.3" y="176" style="font-size: 70px">Mark</text>
   <rect x="58" y="200" width="132" height="6" rx="3" fill="url(#brand)"/>
-  <!-- TEMPLATE-DIRECTIVE: the tagline is two short lines of at most about 22 characters each: a promise and
-       its payoff. The second line is in the brand gradient. Examples: "Every build, documented." / "Every change,
-       traced." (BuildMark); "Every format in." / "Crisp pictures out." (CanvasNet). -->
   <text class="tag" x="56" y="266">YAML dictionaries in.</text>
   <text class="tag brandText" x="56" y="316">Markdown glossaries out.</text>
-  <!-- TEMPLATE-DIRECTIVE: the body is three lines of at most about 38 characters each, saying what the project
-       does and for whom, in plain words. Break the lines by hand; SVG text does not wrap. -->
   <text class="body" x="58" y="368">One .NET tool turns YAML term dictionaries</text>
   <text class="body" x="58" y="402">into Markdown tables and bullet lists,</text>
   <text class="body" x="58" y="436">for documents, docs pipelines and CI.</text>
-  <!-- TEMPLATE-DIRECTIVE: the command box shows the single most typical command.
-       ONE LINE (default, as CanvasNet): at most about 28 characters after the "$" prompt. The monospace font
-       advances 15px per character, so a part that starts N characters after x="108" is at x = 108 + 15 * N;
-       color file names and values with class "cmd file".
-       TWO LINES (as BuildMark), for a longer command: make the box 90px high, add the second line indented by
-       two characters, and move the footnote down to y="604":
-         <rect x="56" y="468" width="480" height="90" rx="12" ...same attributes as below.../>
-         <text class="cmd prompt" x="78" y="503">$</text>
-         <text class="cmd" x="108" y="503">first part of the command</text>
-         <text class="cmd" x="138" y="539">second part</text>
-         <text class="note" x="58" y="604">...</text>
-       LIBRARY repositories show a short C# call instead, without the "$" prompt: delete the prompt text, start
-       the code at x="78", and color the literal with class "cmd file", for example
-         var r = Report.Load("x");
-       Keep the box at width="480": nothing may reach the cards at x = 580. -->
   <rect x="56" y="468" width="480" height="90" rx="12" fill="#0a1022" fill-opacity="0.8" stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.5"/>
   <text class="cmd prompt" x="78" y="503">$</text>
   <text class="cmd" x="108" y="503">dictionarymark --config</text>
   <text class="cmd file" x="138" y="539">dictionarymark.yaml</text>
-  <!-- TEMPLATE-DIRECTIVE: the footnote is one short italic line (at most about 34 characters), for example
-       "Built for Continuous Compliance." (BuildMark) or "This banner is that one SVG file." (CanvasNet). It is
-       at y="568" below a one-line command box and at y="604" below a two-line one. -->
   <text class="note" x="58" y="604">One config file, one run, every table.</text>
 
-  <!-- TEMPLATE-DIRECTIVE: the right side tells the project's story from top to bottom: what goes in (input
-       cards), the project itself (the engine pill), and what comes out (output cards).
-       - TOOL repositories show the command-line flow: the files and services the tool reads, the tool, and the
-         reports or artifacts it writes (BuildMark: version tags, pull requests, issues, work items -> buildmark
-         -> Markdown notes, Pandoc PDF, release notes, CI pipelines).
-       - LIBRARY repositories show what the API consumes and produces instead: the inputs are the data or files
-         the API reads, the engine is the main type or namespace with the secondary label ".NET library", and
-         the outputs are the results a caller gets back.
-       Give each card a short label (one line, centered at the card's middle, fitting inside the card) and a small
-       illustration that says the same thing as the label. Each input card has a 112px accent bar on its top
-       edge in its flow color, centered on the card. -->
 
   <!-- Input cards -->
-  <!-- TEMPLATE-DIRECTIVE: four input slots by default, each 236px wide with 12px gaps between x = 580 and
-       x = 1560. The widths may be rebalanced to fit the art (BuildMark uses 196, 196, 196, and 356), keeping the
-       12px gaps and the span; move the accent bar (center - 56), the panel (x + 8, width - 16), the label, and the
-       flow start (both at the card's center) with the card.
-       FIVE INPUTS (as CanvasNet): cards at x = 580, 759, 938, 1117 (width 167) and 1296 (width 264), centers
-       663.5, 842.5, 1021.5, 1200.5, and 1428, flowing to the engine at x = 930, 1000, 1070, 1140, and 1210.
-       THREE INPUTS: drop a card and its flow and spread the others over the same span. -->
   <!-- DictionaryMark: the widths are rebalanced to 206, 242, 284, and 212 so that each YAML snippet fits at 22px
        (centers 683, 919, 1194, and 1454). -->
   <g>
@@ -269,11 +187,6 @@
   </g>
 
   <!-- Flows into the engine -->
-  <!-- TEMPLATE-DIRECTIVE: one flow per input card, from the card's center at y = 206 to the engine at y = 253:
-         M{center},206 C{center},236 {target},226 {target},253
-       with the four targets x = 950, 1030, 1110, and 1190 (five inputs: 930, 1000, 1070, 1140, and 1210). Keep
-       each flow, its start dot, its marker, and its card's accent bar in the same color (amber, cyan, pink, blue,
-       and violet for a fifth). -->
   <g class="flow">
     <path d="M683,206 C683,236 950,226 950,253" stroke="#fbbf24" marker-end="url(#headAmber)"/>
     <path d="M919,206 C919,236 1030,226 1030,253" stroke="#22d3ee" marker-end="url(#headCyan)"/>
@@ -287,13 +200,6 @@
     <circle cx="1454" cy="206" r="5" fill="#60a5fa"/>
   </g>
   <!-- The engine -->
-  <!-- TEMPLATE-DIRECTIVE: the engine pill shows the tool's command name (or, for a library, the main type or
-       namespace) in monospace, and after the divider a secondary label: ".NET tool", ".NET library", or
-       ".NET API". The monospace name advances 19.2px per character from x = 936, so up to 9 characters fit
-       before the divider at x = 1120. For a longer name, move the divider to about 936 + 19.2 * N + 12 and the
-       secondary label 20px after it, and widen both pill rectangles so that the label ends at least 24px before
-       the right edge, keeping the pill centered at x = 1070 (x = 1070 - width / 2) and moving the icon and the name
-       with its left edge. The document icon may be replaced by another small white glyph in the same 36px tile. -->
   <!-- DictionaryMark: "dictionarymark" is 14 characters, so the pill is 512px wide (x = 814), the name starts at
        x = 890, the divider is at x = 1171, and the label starts at x = 1191. The glyph is a bullet list. -->
   <rect x="814" y="262" width="512" height="64" rx="32" fill="url(#brand)" opacity="0.55" filter="url(#blur)"/>
@@ -312,8 +218,6 @@
   <text class="api" x="1191" y="303">.NET tool</text>
 
   <!-- Flows out of the engine -->
-  <!-- TEMPLATE-DIRECTIVE: one flow per output card, from the engine at x = 980, 1040, 1100, and 1160 to the
-       card's center at y = 381. Keep these as they are unless the output cards move. -->
   <g class="flow" stroke="#5eead4">
     <path d="M980,330 C980,356 728,356 728,381" marker-end="url(#headMint)"/>
     <path d="M1040,330 C1040,356 999,356 999,381" marker-end="url(#headMint)"/>
@@ -328,9 +232,6 @@
   </g>
 
   <!-- Output tiles -->
-  <!-- TEMPLATE-DIRECTIVE: four output slots, shared by CanvasNet and BuildMark: x = 580 (width 296), 889 (220),
-       1122 (220), and 1355 (205), centers 728, 999, 1232, and 1457. The first is the widest: put the main result
-       there. Keep each illustration inside its panel (y = 398 to 550) and the label at y = 585. -->
   <g>
     <!-- Output one: a Markdown table with sized columns (column widths 25,75) -->
     <rect class="card" x="580" y="390" width="296" height="210" rx="16"/>
