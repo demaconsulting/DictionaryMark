@@ -100,8 +100,8 @@ For configuration jobs, every message above is prefixed with the job label, for 
 - **GlobMatcher** — Utilities subsystem; resolves glob patterns to concrete file paths.
 - **PathResolver** — Utilities subsystem; resolves the output path against the job's base
   directory.
-- **YamlDictionaryLoader** — Dictionary subsystem unit; loads flat YAML key-value pairs from each
-  file.
+- **YamlDictionaryLoader** — Dictionary subsystem unit; loads approved-term and deprecated-term entries
+  from each YAML file.
 - **ConflictDetector** — Dictionary subsystem unit; detects term conflicts across loaded entries.
 - **MarkdownFormatter** — Dictionary subsystem unit; formats deduplicated entries as a Markdown
   string.

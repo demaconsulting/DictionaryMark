@@ -5,7 +5,7 @@
 YamlDotNet parses YAML dictionary files into an in-memory representation used by
 `YamlDictionaryLoader`. DictionaryMark relies on `YamlStream`, `YamlMappingNode`, and
 `YamlScalarNode` from the `YamlDotNet.RepresentationModel` namespace to convert raw YAML text into
-flat key-value entries. YamlDotNet is verified indirectly by the `YamlDictionaryLoaderTests` unit
+term-keyed dictionary entries. YamlDotNet is verified indirectly by the `YamlDictionaryLoaderTests` unit
 tests. Each scenario drives `YamlDictionaryLoader.Load` with a specific YAML input and asserts the
 expected outcome. Because `YamlDictionaryLoader` delegates all parsing to YamlDotNet, correct test
 outcomes constitute evidence that the required YamlDotNet APIs function as specified. No separate

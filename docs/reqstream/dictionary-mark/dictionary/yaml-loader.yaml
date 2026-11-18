@@ -9,10 +9,10 @@ sections:
           - title: YamlDictionaryLoader Requirements
             requirements:
               - id: DictionaryMark-YamlLoader-Load
-                title: The YamlDictionaryLoader class shall load flat YAML key-value mappings as dictionary entries.
+                title: The YamlDictionaryLoader class shall load a YAML mapping of terms as dictionary entries.
                 justification: |
                   YAML is a human-friendly format for maintaining dictionary data. The loader must
-                  handle flat mappings and report structural errors clearly.
+                  handle a mapping of terms to entries and report structural errors clearly.
                 children:
                   - DictionaryMark-OTS-YamlDotNet
                 tests:
@@ -21,9 +21,11 @@ sections:
                   - YamlDictionaryLoader_Load_SingleEntry_ReturnsOneEntry
 
               - id: DictionaryMark-YamlLoader-StructureErrors
-                title: The YamlDictionaryLoader class shall throw InvalidOperationException for non-flat YAML structures.
+                title: >-
+                  The YamlDictionaryLoader class shall throw InvalidOperationException when the YAML root
+                  is not a mapping of terms or an entry has an invalid structure.
                 justification: |
-                  Non-flat YAML (nested mappings, sequences) is not a valid dictionary format.
+                  A sequence root or an entry object with unsupported keys is not a valid dictionary format.
                   The loader must reject such structures with a clear error to help users fix invalid files.
                 tests:
                   - YamlDictionaryLoader_Load_NestedYaml_ThrowsInvalidOperationException

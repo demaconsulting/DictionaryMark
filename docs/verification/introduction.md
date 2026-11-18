@@ -25,7 +25,7 @@ Local items:
     - **TableJob**: resolved table generation job with merged formatting settings.
   - **Dictionary**: dictionary processing subsystem.
     - **DictionaryGenerator**: orchestrates dictionary generation.
-    - **YamlDictionaryLoader**: loads YAML flat-dictionary files.
+    - **YamlDictionaryLoader**: loads YAML approved-term and deprecated-term files.
     - **ConflictDetector**: detects term conflicts across files.
     - **MarkdownFormatter**: formats entries as Markdown.
   - **SelfTest**: self-validation subsystem.
