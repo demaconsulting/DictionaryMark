@@ -48,7 +48,7 @@ public class RealPathTests
         // Assert
         Assert.True(facts.IsRegularFile);
         Assert.NotNull(facts.FinalPath);
-        Assert.True(RealPath.PathsEqual(expected, facts.FinalPath), $"Expected '{expected}', got '{facts.FinalPath}'.");
+        Assert.True(RealPath.RealPathsEqual(expected, facts.FinalPath), $"Expected '{expected}', got '{facts.FinalPath}'.");
     }
 
     /// <summary>Test that the real path of a file opened through a folder link names the link's target.</summary>
@@ -72,7 +72,7 @@ public class RealPathTests
 
         // Assert
         Assert.True(facts.IsRegularFile);
-        Assert.True(RealPath.PathsEqual(expected, facts.FinalPath!), $"Expected '{expected}', got '{facts.FinalPath}'.");
+        Assert.True(RealPath.RealPathsEqual(expected, facts.FinalPath!), $"Expected '{expected}', got '{facts.FinalPath}'.");
     }
 
     /// <summary>Test that on macOS the real path of a temporary file names /private, where /var really lives.</summary>
@@ -185,7 +185,7 @@ public class RealPathTests
         // Assert
         Assert.NotNull(canonicalLink);
         Assert.NotNull(canonicalTarget);
-        Assert.True(RealPath.PathsEqual(canonicalTarget, canonicalLink));
+        Assert.True(RealPath.RealPathsEqual(canonicalTarget, canonicalLink));
         Assert.EndsWith("target", canonicalLink.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -201,6 +201,120 @@ public class RealPathTests
 
         // Assert
         Assert.Null(canonical);
+    }
+
+    /// <summary>
+    ///     Test that a file opened by a path in another letter case than stored reports its real path in the stored
+    ///     letter case, on a file system that ignores case (Windows and macOS by default).
+    /// </summary>
+    [Fact]
+    public void RealPath_Inspect_DifferentlyCasedPath_ReportsStoredCase()
+    {
+        // Arrange: Glossary/Terms.yaml, opened as glossary/terms.yaml where letter case is ignored
+        using var tmpDir = new TemporaryDirectory();
+        Assert.SkipWhen(
+            CaseSensitiveFolder.IsCaseSensitive(tmpDir.DirectoryPath),
+            "The temporary folder distinguishes letter case, so a differently cased path names nothing.");
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "Glossary")).FullName;
+        File.WriteAllText(Path.Combine(folder, "Terms.yaml"), "x");
+
+        // Act
+        HandleFacts facts;
+        using (var handle = RealPath.OpenForRead(Path.Combine(tmpDir.DirectoryPath, "glossary", "terms.yaml")))
+        {
+            facts = RealPath.Inspect(handle);
+        }
+
+        // Assert: the stored names, compared exactly
+        Assert.NotNull(facts.FinalPath);
+        Assert.EndsWith(Path.Combine("Glossary", "Terms.yaml"), facts.FinalPath, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     Test that the real location of a folder named in another letter case than stored is reported in the
+    ///     stored letter case, on a file system that ignores case (Windows and macOS by default).
+    /// </summary>
+    [Fact]
+    public void RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase()
+    {
+        // Arrange: Glossary, named as glossary where letter case is ignored
+        using var tmpDir = new TemporaryDirectory();
+        Assert.SkipWhen(
+            CaseSensitiveFolder.IsCaseSensitive(tmpDir.DirectoryPath),
+            "The temporary folder distinguishes letter case, so a differently cased path names nothing.");
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "Glossary")).FullName;
+
+        // Act
+        var lower = RealPath.TryGetCanonicalDirectory(Path.Combine(tmpDir.DirectoryPath, "glossary"));
+        var stored = RealPath.TryGetCanonicalDirectory(folder);
+
+        // Assert: both spellings report the stored name, compared exactly
+        Assert.NotNull(lower);
+        Assert.NotNull(stored);
+        Assert.EndsWith("Glossary", lower.TrimEnd(Path.DirectorySeparatorChar), StringComparison.Ordinal);
+        Assert.True(RealPath.RealPathsEqual(stored, lower), $"Expected '{stored}', got '{lower}'.");
+    }
+
+    /// <summary>
+    ///     Test that in a folder that distinguishes letter case, files in sibling folders whose names differ only in
+    ///     letter case report distinct real paths, each in its exact letter case.
+    /// </summary>
+    [Fact]
+    public void RealPath_Inspect_CaseVariantSiblings_ReportsEachExactly()
+    {
+        // Arrange: allowed/a.yaml and ALLOWED/a.yaml in a case-sensitive folder
+        using var caseSensitive = CaseSensitiveFolder.CreateOrSkip();
+        var lowerFile = Path.Combine(caseSensitive.FolderPath, "allowed", "a.yaml");
+        var upperFile = Path.Combine(caseSensitive.FolderPath, "ALLOWED", "a.yaml");
+        Directory.CreateDirectory(Path.GetDirectoryName(lowerFile)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(upperFile)!);
+        File.WriteAllText(lowerFile, "lower");
+        File.WriteAllText(upperFile, "upper");
+
+        // Act
+        string? lowerReal;
+        string? upperReal;
+        using (var handle = RealPath.OpenForRead(lowerFile))
+        {
+            lowerReal = RealPath.Inspect(handle).FinalPath;
+        }
+
+        using (var handle = RealPath.OpenForRead(upperFile))
+        {
+            upperReal = RealPath.Inspect(handle).FinalPath;
+        }
+
+        // Assert: each real path keeps its own letter case, and they differ
+        Assert.NotNull(lowerReal);
+        Assert.NotNull(upperReal);
+        Assert.EndsWith(Path.Combine("allowed", "a.yaml"), lowerReal, StringComparison.Ordinal);
+        Assert.EndsWith(Path.Combine("ALLOWED", "a.yaml"), upperReal, StringComparison.Ordinal);
+        Assert.False(RealPath.RealPathsEqual(lowerReal, upperReal));
+    }
+
+    /// <summary>
+    ///     Test that on Linux and macOS the real location of a folder that may be searched but not read is still
+    ///     reported (on macOS through the <c>realpath(3)</c> fallback, as the folder cannot be opened for reading).
+    /// </summary>
+    [Fact]
+    public void RealPath_TryGetCanonicalDirectory_SearchOnlyFolder_ReturnsRealPath()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "Folder permissions are tested on Linux and macOS only.");
+
+        // Arrange: a folder and its real location while it is still readable
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "search-only")).FullName;
+        var expected = RealPath.TryGetCanonicalDirectory(folder);
+
+        // Act: only search (execute) permission for the owner
+        var canonical = WithUnixMode(folder, UnixFileMode.UserExecute, () => RealPath.TryGetCanonicalDirectory(folder));
+
+        // Assert
+        Assert.NotNull(expected);
+        Assert.NotNull(canonical);
+        Assert.True(RealPath.RealPathsEqual(expected, canonical), $"Expected '{expected}', got '{canonical}'.");
     }
 
     /// <summary>Test that opening an existing file for writing keeps its content.</summary>
@@ -270,7 +384,7 @@ public class RealPathTests
         Assert.Equal(PathState.Exists, fileFacts.State);
         Assert.Equal(OperatingSystem.IsMacOS() ? null : false, fileFacts.IsDirectory);
         Assert.NotNull(fileFacts.FinalPath);
-        Assert.True(RealPath.PathsEqual(Path.Join(canonicalFolder, "a.yaml"), fileFacts.FinalPath));
+        Assert.True(RealPath.RealPathsEqual(Path.Join(canonicalFolder, "a.yaml"), fileFacts.FinalPath));
     }
 
     /// <summary>
@@ -302,7 +416,7 @@ public class RealPathTests
         Assert.Equal(PathState.Exists, folderFacts.State);
         Assert.True(folderFacts.IsDirectory);
         Assert.NotNull(folderFacts.FinalPath);
-        Assert.True(RealPath.PathsEqual(canonicalFolder, folderFacts.FinalPath));
+        Assert.True(RealPath.RealPathsEqual(canonicalFolder, folderFacts.FinalPath));
 
         // Assert: a file is not an existing folder (missing on macOS, where the open requires a folder)
         Assert.False(fileFacts.State == PathState.Exists && fileFacts.IsDirectory != false);
@@ -404,35 +518,79 @@ public class RealPathTests
         Assert.Equal("x", content);
     }
 
-    /// <summary>Test that the folder boundary is a directory separator, not a name prefix.</summary>
+    /// <summary>
+    ///     Test that the folder boundary is a directory separator, not a name prefix, for real paths and for paths
+    ///     as written.
+    /// </summary>
     [Fact]
     public void RealPath_IsUnder_BoundaryIsSeparator()
     {
         // Arrange
         var folder = Path.GetFullPath("docs");
 
-        // Act / Assert
-        Assert.True(RealPath.IsUnder(folder, folder));
-        Assert.True(RealPath.IsUnder(Path.Combine(folder, "a", "b.yaml"), folder));
-        Assert.True(RealPath.IsUnder(Path.Combine(folder, "a"), folder + Path.DirectorySeparatorChar));
-        Assert.False(RealPath.IsUnder(folder + "2", folder));
-        Assert.False(RealPath.IsUnder(Path.GetDirectoryName(folder)!, folder));
+        // Act / Assert: both containment checks share the boundary rule
+        foreach (var isUnder in new Func<string, string, bool>[] { RealPath.IsUnderRealPath, RealPath.IsWrittenUnder })
+        {
+            Assert.True(isUnder(folder, folder));
+            Assert.True(isUnder(Path.Combine(folder, "a", "b.yaml"), folder));
+            Assert.True(isUnder(Path.Combine(folder, "a"), folder + Path.DirectorySeparatorChar));
+            Assert.False(isUnder(folder + "2", folder));
+            Assert.False(isUnder(Path.GetDirectoryName(folder)!, folder));
+        }
     }
 
-    /// <summary>Test that path equality follows the platform's case rule.</summary>
+    /// <summary>Test that real paths are equal only with the same letter case, on every platform.</summary>
     [Fact]
-    public void RealPath_PathsEqual_PlatformCaseRule()
+    public void RealPath_RealPathsEqual_LetterCaseSignificant()
     {
         // Arrange
         var path = Path.GetFullPath("Docs");
         var upper = Path.Combine(Path.GetDirectoryName(path)!, "DOCS");
 
         // Act
-        var equal = RealPath.PathsEqual(path, upper);
+        var equal = RealPath.RealPathsEqual(path, upper);
 
-        // Assert: case-insensitive on Windows and macOS, case-sensitive elsewhere
+        // Assert: letter case is significant everywhere; a trailing separator is ignored
+        Assert.False(equal);
+        Assert.True(RealPath.RealPathsEqual(path, path + Path.DirectorySeparatorChar));
+    }
+
+    /// <summary>Test that equality of paths as written follows the platform's default letter-case rule.</summary>
+    [Fact]
+    public void RealPath_WrittenPathsEqual_PlatformCaseRule()
+    {
+        // Arrange
+        var path = Path.GetFullPath("Docs");
+        var upper = Path.Combine(Path.GetDirectoryName(path)!, "DOCS");
+
+        // Act
+        var equal = RealPath.WrittenPathsEqual(path, upper);
+
+        // Assert: case-insensitive on Windows and macOS, case-sensitive elsewhere; a trailing separator is ignored
         Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), equal);
-        Assert.True(RealPath.PathsEqual(path, path + Path.DirectorySeparatorChar));
+        Assert.True(RealPath.WrittenPathsEqual(path, path + Path.DirectorySeparatorChar));
+    }
+
+    /// <summary>
+    ///     Test that a real path in a folder whose name differs from a folder's only in letter case is not under that
+    ///     folder on any platform, while as written it is under it on Windows and macOS (the pre-filter).
+    /// </summary>
+    [Fact]
+    public void RealPath_IsUnderRealPath_CaseVariantFolder_NotUnder()
+    {
+        // Arrange: allowed and its case-variant sibling ALLOWED
+        var parent = Path.GetFullPath("base");
+        var allowed = Path.Combine(parent, "allowed");
+        var variant = Path.Combine(parent, "ALLOWED", "a.yaml");
+
+        // Act
+        var realUnder = RealPath.IsUnderRealPath(variant, allowed);
+        var writtenUnder = RealPath.IsWrittenUnder(variant, allowed);
+
+        // Assert
+        Assert.False(realUnder);
+        Assert.True(RealPath.IsUnderRealPath(Path.Combine(allowed, "a.yaml"), allowed));
+        Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), writtenUnder);
     }
 
     /// <summary>Test that the common ancestor is the deepest folder two paths share by whole components.</summary>
@@ -451,6 +609,30 @@ public class RealPathTests
         // Assert
         Assert.Equal(Path.Combine(root, "config"), ancestor);
         Assert.Equal(root, sibling);
+    }
+
+    /// <summary>
+    ///     Test that folder names differing only in letter case are not shared by the common ancestor on any platform,
+    ///     while on Windows a drive letter differing in case is the same root.
+    /// </summary>
+    [Fact]
+    public void RealPath_CommonAncestor_ComponentsDifferingInCase_NotShared()
+    {
+        // Arrange: a path through Proj and a trusted base below proj
+        var root = Path.GetFullPath("base");
+        var first = Path.Combine(root, "Proj", "docs", "a.yaml");
+        var second = Path.Combine(root, "proj", "cfg");
+
+        // Act
+        var ancestor = RealPath.CommonAncestor(first, second);
+
+        // Assert: the case variant ends the shared folders
+        Assert.Equal(root, ancestor);
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(@"c:\base", RealPath.CommonAncestor(@"c:\base\x", @"C:\base\y"));
+            Assert.Equal(@"c:\", RealPath.CommonAncestor(@"c:\base\x", @"C:\BASE\y"));
+        }
     }
 
     /// <summary>Test that UNC paths are network locations and local paths are not.</summary>
@@ -648,5 +830,33 @@ public class RealPathTests
         // Assert
         Assert.NotNull(linkTarget);
         Assert.Null(networkTarget);
+    }
+
+    /// <summary>
+    ///     Runs an action while a folder has the given Unix permissions, restoring its permissions afterwards.
+    /// </summary>
+    /// <typeparam name="T">The result type of the action.</typeparam>
+    /// <param name="folder">The full path of the folder.</param>
+    /// <param name="mode">The permissions to apply during the action.</param>
+    /// <param name="action">The action.</param>
+    /// <returns>What the action returned.</returns>
+    /// <exception cref="PlatformNotSupportedException">Thrown on Windows, which has no Unix permissions.</exception>
+    private static T WithUnixMode<T>(string folder, UnixFileMode mode, Func<T> action)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException("Unix permissions are not available on Windows.");
+        }
+
+        var original = File.GetUnixFileMode(folder);
+        File.SetUnixFileMode(folder, mode);
+        try
+        {
+            return action();
+        }
+        finally
+        {
+            File.SetUnixFileMode(folder, original);
+        }
     }
 }

@@ -344,10 +344,16 @@ configuration file may read and write.
 - **`roots`**: only a file inside an allowed folder. Both the path as written (after `${VAR}`
   expansion, the base directory and `..`) and the real path of the opened file must be inside an
   allowed folder. A symbolic link or junction that leads out of the folders is therefore denied, and so
-  is a path outside the folders that links back in.
+  is a path outside the folders that links back in. The real path is compared with letter case
+  significant: on a file system or folder that distinguishes case (a Linux file system, a Windows folder
+  with case sensitivity enabled, a case-sensitive macOS volume), a folder whose name differs from an
+  allowed folder's only in letter case is outside; on one that ignores case (the Windows and macOS
+  default), a path written in another letter case is allowed.
 - **`no-symlinks`**: a path may not pass through a symbolic link or junction below the configuration
   file's folder. That folder and the folders above it are trusted, so a linked home or temporary folder
-  does not count.
+  does not count. The folders above it are matched with letter case significant, so a path written in
+  another letter case than the configuration file's folder trusts fewer folders, and a link named like
+  one of them in another letter case is not trusted.
 - **`roots,no-symlinks`**: both rules.
 
 The mode may be written in any letter case (`Roots`, `ROOTS,no-symlinks`). Any other value, or the

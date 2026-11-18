@@ -21,7 +21,9 @@ and the native contracts follow the DEMA Consulting CanvasNet tool, which proves
   `Exists` (the entry was opened) and `Unknown` (the open failed for another reason).
 - **PathFacts** (`readonly record struct`): `State` (`PathState`), `IsDirectory` (`bool?`, null when the entry
   is missing or the platform cannot tell; always null on macOS) and `FinalPath` (`string?`).
-- `PathComparison` (`StringComparison`): `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` elsewhere.
+- `WrittenPathComparison` (`StringComparison`): the platform's default letter-case rule for paths as written,
+  `OrdinalIgnoreCase` on Windows and macOS and `Ordinal` elsewhere. It is used only for paths as written, as a
+  pre-filter, never for a decision on real paths. Real paths are always compared with `Ordinal`.
 - A cached flag records whether the Linux C library lacks `fstat` (glibc before 2.33), so that `__fxstat` is
   used instead. This is the only state, and a race on it only repeats the probe.
 
@@ -102,16 +104,61 @@ Rationale: on macOS, `realpath(3)` does not report `ENOTDIR` for a file even wit
 has no folder check at the end of its walk), so it cannot tell a folder. `O_SEARCH` would avoid the read
 permission, but the oldest macOS release that honors it is unverified. Never throws.
 
-**TryGetCanonicalDirectory(fullPath)**: The final path of `InspectPath`, used for the allowed folders.
+**TryGetCanonicalDirectory(fullPath)**: The real location of a folder, used for the allowed folders and the
+no-symlinks anchor. It must come from the same source as the real path of a file, because the two are compared
+exactly.
+
+- *Windows and Linux*: the final path of `InspectPath` (a handle).
+- *macOS*: the final path of `InspectFolder` (the `O_DIRECTORY` handle and `proc_pidfdinfo`, the same source as
+  every file's real path). Only when that reports `Unknown` (the folder exists but cannot be opened for
+  reading, for example a folder that may be searched but not read, or one protected by the system) does it fall
+  back to `InspectPath` (`realpath(3)`). A file or a missing folder (`Missing`) gives null.
+
 Returns null when the entry does not exist or cannot be resolved. Never throws.
 
 **ExpandShortNames(fullPath)**: On Windows, for a path that contains `~`, `GetLongPathNameW` expands short
 (8.3) names. Every other path is returned unchanged.
 
-**PathsEqual, IsUnder, CommonAncestor**: Comparisons under `PathComparison`, ignoring trailing separators.
-macOS paths are compared in composed Unicode form. `IsUnder` uses a separator boundary, so `/a/bc` is not
-under `/a/b`. `CommonAncestor` compares whole components and returns null for paths on different Windows
-drives.
+**RealPathsEqual, IsUnderRealPath, WrittenPathsEqual, IsWrittenUnder, CommonAncestor**: Path comparisons.
+
+- `RealPathsEqual` and `IsUnderRealPath` compare real paths with `Ordinal` (letter case significant) on every
+  platform. `IsUnderRealPath` is the authoritative containment check of the file-access policy.
+- `WrittenPathsEqual` and `IsWrittenUnder` compare paths as written with `WrittenPathComparison`. A caller may
+  use them only as a pre-filter, followed by an exact check of the real path before anything is read, written,
+  listed or created.
+- All four share one implementation per operation, parameterized by the comparison. They ignore trailing
+  separators and compare macOS paths in composed Unicode form. The containment checks use a separator boundary,
+  so `/a/bc` is not under `/a/b`.
+- `CommonAncestor` compares whole folder names with `Ordinal`. The root is compared with `OrdinalIgnoreCase` on
+  Windows only, where drive letters and `\\server\share` names never distinguish case, and with `Ordinal`
+  elsewhere. It returns null for paths on different roots. A name that differs only in letter case ends the
+  shared folders, so on a folder that distinguishes case a link named as a case variant of a folder above the
+  configuration file (`Proj` beside `proj`) is never taken for that folder and trusted as the no-symlinks
+  anchor. A path written in another letter case than the configuration folder only gets a shallower, stricter
+  anchor.
+
+**Letter case.** Real paths are compared exactly because a folder or volume may distinguish letter case on
+every platform: a Windows folder with per-folder case sensitivity (`fsutil file setCaseSensitiveInfo`), a
+case-sensitive APFS volume on macOS, and every ordinary Linux file system. If two real paths differ only in
+letter case, either the folder distinguishes case, so they are different entries and must not be taken for one,
+or it does not, so they are the same entry and the exact comparison refuses a legitimate path. That is a false
+denial, which fails closed. An exact comparison can therefore never admit an entry an allowed folder does not
+contain; a comparison that ignores case can. The sources of real paths report letter case as follows:
+
+- *Windows*: `GetFinalPathNameByHandleW` with `FILE_NAME_NORMALIZED` reports the stored name of every
+  component, whatever letter case the path was opened with, and distinguishes case-variant siblings in a
+  case-sensitive folder. A network share whose server cannot normalize names may report the letter case of the
+  open.
+- *macOS*: `realpath(3)` replaces every component with its stored name (Apple Libc asks the file system for
+  the real name of each component). `proc_pidfdinfo` reports the name chain of the vnode: the stored name on
+  HFS+; on APFS (closed source) most likely the same. Allowed folders, anchors and created folders take their
+  real location from a handle too, so both sides of a comparison come from the same vnode name chain.
+- *Linux*: `/proc/self/fd` reports the names of the lookup, which on an ordinary (case-sensitive) file system
+  are the stored names. On an ext4 or f2fs case-folding (casefold) folder the name may be the one of the
+  lookup that first found the entry.
+
+Every mismatch these sources can produce (a case-folding Linux folder, a share that cannot normalize names, an
+APFS name in the letter case of a lookup) only refuses a legitimate path. None can admit a path outside.
 
 **IsWindowsDeviceName, HasWindowsDeviceName, IsWindowsDeviceNamespace**: Pure text checks.
 

@@ -50,12 +50,19 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         <item>
 ///             Under <see cref="FileAccessMode.Roots"/>, both the full path as written (after <c>${VAR}</c>
 ///             expansion, rooting and <c>..</c> normalization) and the real path of the opened file must be inside an
-///             allowed folder.
+///             allowed folder. Real paths are compared with letter case significant on every platform, so on a file
+///             system or folder that distinguishes case a folder whose name differs from an allowed folder's only in
+///             letter case is outside; the path as written is compared with the platform's default letter-case rule
+///             (ignoring case on Windows and macOS), only as a pre-filter before the real path is judged.
 ///         </item>
 ///         <item>
 ///             Under <see cref="FileAccessMode.NoSymlinks"/>, the real path must equal the path as written below the
-///             trusted anchor (the deepest folder the path shares with the configuration file's folder), so no
-///             symbolic link or junction lies below it; the anchor and the folders above it are trusted.
+///             trusted anchor (the deepest folder the path shares with the configuration file's folder, found
+///             comparing folder names with letter case significant), so no symbolic link or junction lies below it;
+///             the anchor and the folders above it are trusted. The anchor's real location must be an exact prefix
+///             of the real path; the part below it is compared with the platform's default letter-case rule, so on a
+///             folder that distinguishes case a link whose target differs from its own path only in letter case
+///             within the anchor's tree is not detected by this rule alone.
 ///         </item>
 ///         <item>
 ///             In a mode other than <see cref="FileAccessMode.None"/>, a path whose real path cannot be determined is
@@ -116,6 +123,14 @@ namespace DemaConsulting.DictionaryMark.Utilities;
 ///         <item>
 ///             A named pipe with no reader, whose non-blocking open for writing fails with <c>ENXIO</c> on Linux
 ///             and macOS, is denied as not a regular file, so the write never blocks.
+///         </item>
+///         <item>
+///             Real paths are compared with letter case significant on every platform (the allowed-folder check, the
+///             no-symlinks anchor's real location and folder names, and each created output folder), and on macOS
+///             the real location of an allowed folder or anchor comes from a handle (<c>realpath(3)</c> only for a
+///             folder that cannot be opened for reading), because on a case-sensitive folder or volume CanvasNet's
+///             case-insensitive comparison on Windows and macOS admits a case-variant sibling of an allowed folder
+///             and can trust a link named as a case variant of a folder above the configuration file.
 ///         </item>
 ///         <item>
 ///             The denial is reported as <c>file-access-denied</c> in the per-job error of the tool, because that
@@ -663,7 +678,8 @@ internal sealed partial class FileAccessPolicy
     ///     the device before its handle can be judged; on Windows a local folder that leads to a network location;
     ///     in a restrictive mode its real path), and an existing output, judged by its handle (a folder, on Linux and
     ///     macOS a real path under <c>/dev</c>, and its real path). The missing folders are then created one at a
-    ///     time, each verified by its real path when its parent's real path is known. An existing output is opened
+    ///     time, each verified by the real path of its own folder handle (letter case significant) when its parent's
+    ///     real path is known. An existing output is opened
     ///     without truncation and a missing one is created exclusively (which never follows a link at the output
     ///     name); the handle is judged, and only then is the file truncated and written as UTF-8 without a
     ///     byte-order mark, like <see cref="File.WriteAllText(string, string)"/>. A folder swapped by another process
@@ -770,9 +786,13 @@ internal sealed partial class FileAccessPolicy
     /// </summary>
     /// <remarks>
     ///     The anchor is the deepest folder the path shares with the trusted base folder (or the root of the path
-    ///     when there is no trusted base). It and everything above it are trusted, so links there (for example
-    ///     macOS <c>/var</c>) do not count. Capturing before the open means an anchor replaced by a link afterwards
-    ///     leads the open elsewhere, and the real path then no longer matches.
+    ///     when there is no trusted base), comparing folder names with letter case significant
+    ///     (<see cref="RealPath.CommonAncestor(string, string)"/>), so on a folder that distinguishes case a link
+    ///     named as a case variant of a folder above the configuration file is never taken for that folder and
+    ///     trusted. It and everything above it are trusted, so links there (for example macOS <c>/var</c>) do not
+    ///     count. Its real location comes from a handle (<see cref="RealPath.TryGetCanonicalDirectory(string)"/>),
+    ///     like the real path it is compared with. Capturing before the open means an anchor replaced by a link
+    ///     afterwards leads the open elsewhere, and the real path then no longer matches.
     /// </remarks>
     /// <param name="writtenPath">The path as written.</param>
     /// <param name="fullPath">The full path.</param>
@@ -797,6 +817,10 @@ internal sealed partial class FileAccessPolicy
     ///     Judges a folder by its real location: the deepest existing parent folder of an output, or a folder about to
     ///     be listed.
     /// </summary>
+    /// <remarks>
+    ///     Under roots the folder must pass the written pre-filter (<see cref="IsWrittenInside(string)"/>) and its
+    ///     real location must lie inside an allowed folder's real location, compared with letter case significant.
+    /// </remarks>
     /// <param name="shown">The path or pattern shown in the message.</param>
     /// <param name="fullPath">The full output path, or the folder itself when it is listed.</param>
     /// <param name="folder">The folder (for an output, the output path when no folder exists).</param>
@@ -908,9 +932,13 @@ internal sealed partial class FileAccessPolicy
     /// </summary>
     /// <remarks>
     ///     Each folder is created in a parent that was already judged or verified. When the parent's real location
-    ///     is known, the new folder's real location (from a handle) must be the parent's real location followed by
-    ///     its name, which catches a folder swapped for a link while it was created. When it is unknown (mode any on
-    ///     a platform that cannot tell), the folders are created without verification.
+    ///     is known, the new folder is opened as a folder (<see cref="RealPath.InspectFolder(string)"/>, a handle on
+    ///     every platform, the same source as the parent's real location) and its real location must be exactly
+    ///     (letter case significant) the parent's real location followed by its name as written. The folder was just
+    ///     created with that name, so the file system stores it so; any difference, a missing folder or one that is
+    ///     not a folder means another process created or replaced it (for example with a link) while it was created,
+    ///     and the write is denied. When the parent's real location is unknown (mode any on a platform that cannot
+    ///     tell), the folders are created without verification.
     /// </remarks>
     /// <param name="shown">The output path as written.</param>
     /// <param name="missing">The missing folders, outermost first.</param>
@@ -928,8 +956,13 @@ internal sealed partial class FileAccessPolicy
                 continue;
             }
 
-            var created = RealPath.InspectPath(folder).FinalPath;
-            if (created == null || !RealPath.PathsEqual(created, Path.Join(canonical, Path.GetFileName(folder))))
+            // Verify the created folder by its own handle: an existing folder at exactly the expected real path
+            var facts = RealPath.InspectFolder(folder);
+            var created = facts.FinalPath;
+            if (facts.State != PathState.Exists
+                || facts.IsDirectory == false
+                || created == null
+                || !RealPath.RealPathsEqual(created, Path.Join(canonical, Path.GetFileName(folder))))
             {
                 throw new FileAccessDeniedException(
                     shown,
@@ -1096,6 +1129,15 @@ internal sealed partial class FileAccessPolicy
     ///     Determines whether a full path as written lies inside an allowed folder, in the folder's given or real
     ///     spelling, also comparing the long spelling of a path written with short (8.3) Windows names.
     /// </summary>
+    /// <remarks>
+    ///     Uses the platform's default letter-case rule (ignoring case on Windows and macOS) as a pre-filter, so a
+    ///     path written in another letter case than the folder on disk passes on a file system that ignores case.
+    ///     It is never the only roots check: before anything is read, written, listed or created, the real path is
+    ///     judged exactly (<see cref="CheckRealPath(string, string, string?, AnchorSnapshot?)"/>, or the folder check
+    ///     in <see cref="CheckFolder(string, string, string, string?, AnchorSnapshot?, bool)"/>). The residual: on a
+    ///     folder that distinguishes case, a case-variant sibling of an allowed folder passes this pre-filter and is
+    ///     opened for inspection (nothing is read or written) before its real path is refused.
+    /// </remarks>
     /// <param name="fullPath">The full path.</param>
     /// <returns>True when the path is inside an allowed folder.</returns>
     private bool IsWrittenInside(string fullPath)
@@ -1123,9 +1165,20 @@ internal sealed partial class FileAccessPolicy
     ///     written below it, so no link lies below the anchor.
     /// </summary>
     /// <remarks>
-    ///     A path written with short (8.3) Windows names is compared in its long spelling too. The expansion keeps
-    ///     one component per component, so the part below the anchor is the same number of trailing components of
-    ///     the long spelling; a link still shows up as a different real path.
+    ///     <para>
+    ///         The anchor's real location must be an exact prefix of the real path (letter case significant, as for
+    ///         every real-path comparison), so the real path cannot lie in a case-variant sibling of the anchor. The
+    ///         part below the anchor is compared with the path as written under the platform's default letter-case
+    ///         rule, so a path written in another letter case than the folders on disk still matches on a file system
+    ///         that ignores case. The residual: on a folder that distinguishes case, a link whose target differs from
+    ///         the link's own path only in letter case within the anchor's tree is not detected by this rule alone;
+    ///         it cannot lead outside the anchor's real tree, and the roots rule still compares exactly.
+    ///     </para>
+    ///     <para>
+    ///         A path written with short (8.3) Windows names is compared in its long spelling too. The expansion keeps
+    ///         one component per component, so the part below the anchor is the same number of trailing components of
+    ///         the long spelling; a link still shows up as a different real path.
+    ///     </para>
     /// </remarks>
     /// <param name="anchor">The anchor snapshot.</param>
     /// <param name="fullPath">The full path as written.</param>
@@ -1134,7 +1187,7 @@ internal sealed partial class FileAccessPolicy
     private static bool MatchesWithoutLinks(AnchorSnapshot anchor, string fullPath, string realPath)
     {
         var relative = Path.GetRelativePath(anchor.Anchor, fullPath);
-        if (RealPath.PathsEqual(Expected(anchor.Canonical, relative), realPath))
+        if (MatchesBelowAnchor(anchor.Canonical, relative, realPath))
         {
             return true;
         }
@@ -1148,10 +1201,26 @@ internal sealed partial class FileAccessPolicy
         var count = relative.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
         var longParts = longPath.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries);
         return longParts.Length >= count
-            && RealPath.PathsEqual(
-                Expected(anchor.Canonical, string.Join(Path.DirectorySeparatorChar, longParts[^count..])),
-                realPath);
+            && MatchesBelowAnchor(
+                anchor.Canonical, string.Join(Path.DirectorySeparatorChar, longParts[^count..]), realPath);
     }
+
+    /// <summary>
+    ///     Determines whether a real path is the real location of the anchor followed by a path as written below it.
+    /// </summary>
+    /// <remarks>
+    ///     The anchor's real location is compared exactly (it and the real path both come from handles); only the
+    ///     part as written below it is compared under the platform's default letter-case rule.
+    /// </remarks>
+    /// <param name="canonicalAnchor">The real location of the anchor.</param>
+    /// <param name="relative">The path below the anchor as written (<c>.</c> for the anchor itself).</param>
+    /// <param name="realPath">The real path.</param>
+    /// <returns>True when the real path is the expected one.</returns>
+    private static bool MatchesBelowAnchor(string canonicalAnchor, string relative, string realPath) =>
+        relative == "."
+            ? RealPath.RealPathsEqual(canonicalAnchor, realPath)
+            : RealPath.IsUnderRealPath(realPath, canonicalAnchor)
+                && RealPath.WrittenPathsEqual(Expected(canonicalAnchor, relative), realPath);
 
     /// <summary>
     ///     Computes the real path a file must have when no link lies below the anchor.
@@ -1234,19 +1303,32 @@ internal sealed partial class FileAccessPolicy
     private sealed record AllowedFolder(string Lexical, string? Canonical)
     {
         /// <summary>
-        ///     Determines whether a path as written lies inside the folder, in its given or its real spelling.
+        ///     Determines whether a path as written lies inside the folder, in its given or its real spelling, under
+        ///     the platform's default letter-case rule.
         /// </summary>
+        /// <remarks>
+        ///     A pre-filter only (ignoring case on Windows and macOS, so a path written in another letter case than
+        ///     the folder on disk is accepted on a file system that ignores case): every caller also judges the real
+        ///     path with <see cref="ContainsRealPath(string)"/> before anything is read, written, listed or created.
+        /// </remarks>
         /// <param name="path">The full path.</param>
         /// <returns>True when it is inside.</returns>
         public bool ContainsWrittenPath(string path) =>
-            RealPath.IsUnder(path, Lexical) || (Canonical is { } canonical && RealPath.IsUnder(path, canonical));
+            RealPath.IsWrittenUnder(path, Lexical)
+            || (Canonical is { } canonical && RealPath.IsWrittenUnder(path, canonical));
 
         /// <summary>
-        ///     Determines whether a real path lies inside the real location captured when the policy was created.
+        ///     Determines whether a real path lies inside the real location captured when the policy was created,
+        ///     comparing letter case exactly.
         /// </summary>
+        /// <remarks>
+        ///     The authoritative roots check: on a folder or volume that distinguishes case, a sibling whose name
+        ///     differs from the allowed folder's only in letter case is a different folder and outside.
+        /// </remarks>
         /// <param name="path">The real path.</param>
         /// <returns>True when it is inside.</returns>
-        public bool ContainsRealPath(string path) => Canonical is { } canonical && RealPath.IsUnder(path, canonical);
+        public bool ContainsRealPath(string path) =>
+            Canonical is { } canonical && RealPath.IsUnderRealPath(path, canonical);
     }
 }
 

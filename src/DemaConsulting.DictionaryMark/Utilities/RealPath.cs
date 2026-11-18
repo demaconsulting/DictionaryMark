@@ -82,6 +82,18 @@ internal readonly record struct PathFacts(PathState State, bool? IsDirectory, st
 ///         fact it is reported as unknown (null) and the caller fails closed.
 ///     </para>
 ///     <para>
+///         Real paths are compared with letter case significant on every platform
+///         (<see cref="RealPathsEqual(string, string)"/>, <see cref="IsUnderRealPath(string, string)"/>), because a
+///         folder or volume may distinguish case on any of them. The sources report the letter case the file system
+///         stores: Windows <c>GetFinalPathNameByHandleW</c> with normalized names, macOS <c>proc_pidfdinfo</c> (the
+///         name chain of the vnode) and <c>realpath(3)</c> (which replaces every component with its stored name).
+///         Linux <c>/proc/self/fd</c> reports the names of the lookup, which on an ordinary (case-sensitive) file
+///         system are the stored names; on a case-folding folder (ext4 or f2fs casefold) or a network share that
+///         cannot normalize names a real path may carry another letter case than stored. Every such mismatch can
+///         only refuse a legitimate path (a false denial), never admit one outside. Paths as written are compared
+///         by the platform's default rule (<see cref="WrittenPathComparison"/>), only as a pre-filter.
+///     </para>
+///     <para>
 ///         All members are thread-safe. The only state is a benign cache of which Linux <c>stat</c> entry point the
 ///         C library exports; a race merely repeats the probe.
 ///     </para>
@@ -101,63 +113,122 @@ internal static partial class RealPath
     private static readonly char[] Separators = ['/', '\\'];
 
     /// <summary>
-    ///     Gets the comparison under which two full paths name the same file on this platform: case-insensitive on
-    ///     Windows and macOS (their default file systems), ordinal elsewhere.
+    ///     Gets the platform's default letter-case rule for paths as written: case-insensitive on Windows and macOS
+    ///     (their default file systems), ordinal elsewhere.
     /// </summary>
-    internal static StringComparison PathComparison { get; } =
+    /// <remarks>
+    ///     Used only for paths as the user wrote them (<see cref="WrittenPathsEqual(string, string)"/>,
+    ///     <see cref="IsWrittenUnder(string, string)"/>), so a path written in another letter case than the folder
+    ///     on disk still passes a pre-filter on a file system that ignores case. It is never the rule of a decision
+    ///     on real paths: a folder or volume may distinguish case on any platform (a Windows folder with per-folder
+    ///     case sensitivity, a case-sensitive APFS volume), and there two names that differ only in case are
+    ///     different entries.
+    /// </remarks>
+    internal static StringComparison WrittenPathComparison { get; } =
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
 
     /// <summary>
-    ///     Determines whether two full paths name the same location under the platform comparison.
-    /// </summary>
-    /// <remarks>Trailing separators are ignored and macOS paths are compared in composed Unicode form.</remarks>
-    /// <param name="left">A full path. Must not be null.</param>
-    /// <param name="right">Another full path. Must not be null.</param>
-    /// <returns>True when both paths name the same location.</returns>
-    internal static bool PathsEqual(string left, string right) =>
-        string.Equals(Normalize(TrimEnd(left)), Normalize(TrimEnd(right)), PathComparison);
-
-    /// <summary>
-    ///     Determines whether a full path is a folder or lies below it.
+    ///     Determines whether two real paths name the same location, comparing letter case exactly on every platform.
     /// </summary>
     /// <remarks>
-    ///     The boundary is a directory separator, so a sibling whose name merely starts with the folder's name
-    ///     (<c>/a/bc</c> against <c>/a/b</c>) is not below it.
+    ///     <para>
+    ///         Real paths come from handles (or <c>realpath(3)</c>), which report each name in the letter case the
+    ///         file system stores (see the type remarks). If two real paths differ only in letter case, either the
+    ///         folder distinguishes case, so they are different entries and must not be taken for one, or it does
+    ///         not, so they are the same entry and the exact comparison merely refuses it: a false denial that fails
+    ///         closed. An exact comparison can therefore never admit an entry it should not; one ignoring case can.
+    ///     </para>
+    ///     <para>Trailing separators are ignored and macOS paths are compared in composed Unicode form.</para>
+    /// </remarks>
+    /// <param name="left">A real path. Must not be null.</param>
+    /// <param name="right">Another real path. Must not be null.</param>
+    /// <returns>True when both paths name the same location.</returns>
+    internal static bool RealPathsEqual(string left, string right) => PathsEqual(left, right, StringComparison.Ordinal);
+
+    /// <summary>
+    ///     Determines whether a real path is a folder's real path or lies below it, comparing letter case exactly on
+    ///     every platform.
+    /// </summary>
+    /// <remarks>
+    ///     The authoritative containment check of the file-access policy: a sibling whose name differs from the
+    ///     folder's only in letter case (<c>ALLOWED</c> against <c>allowed</c>) is outside, which is right on a
+    ///     file system that distinguishes case and a false denial (fail closed) on one that does not; see
+    ///     <see cref="RealPathsEqual(string, string)"/>. The boundary is a directory separator, so a sibling whose
+    ///     name merely starts with the folder's name (<c>/a/bc</c> against <c>/a/b</c>) is not below it.
+    /// </remarks>
+    /// <param name="path">The real path to test. Must not be null.</param>
+    /// <param name="folder">The real path of the folder. Must not be null.</param>
+    /// <returns>True when <paramref name="path"/> is <paramref name="folder"/> or lies below it.</returns>
+    internal static bool IsUnderRealPath(string path, string folder) => IsUnder(path, folder, StringComparison.Ordinal);
+
+    /// <summary>
+    ///     Determines whether two full paths as written name the same location under the platform's default
+    ///     letter-case rule (<see cref="WrittenPathComparison"/>).
+    /// </summary>
+    /// <remarks>
+    ///     For paths as written only, never as the sole decision on a real path: on a folder that distinguishes case
+    ///     it can take two different entries for one. Trailing separators are ignored and macOS paths are compared
+    ///     in composed Unicode form.
+    /// </remarks>
+    /// <param name="left">A full path. Must not be null.</param>
+    /// <param name="right">Another full path. Must not be null.</param>
+    /// <returns>True when both paths name the same location under the platform rule.</returns>
+    internal static bool WrittenPathsEqual(string left, string right) =>
+        PathsEqual(left, right, WrittenPathComparison);
+
+    /// <summary>
+    ///     Determines whether a full path as written is a folder or lies below it, under the platform's default
+    ///     letter-case rule (<see cref="WrittenPathComparison"/>).
+    /// </summary>
+    /// <remarks>
+    ///     A pre-filter for paths as written, so a path written in another letter case than the allowed folder is
+    ///     accepted on a file system that ignores case. The caller must also judge the real path with
+    ///     <see cref="IsUnderRealPath(string, string)"/> before anything is read, written, listed or created, because
+    ///     on a folder that distinguishes case this check lets a case-variant sibling through. The boundary is a
+    ///     directory separator, as for <see cref="IsUnderRealPath(string, string)"/>.
     /// </remarks>
     /// <param name="path">The full path to test. Must not be null.</param>
     /// <param name="folder">The full path of the folder. Must not be null.</param>
     /// <returns>True when <paramref name="path"/> is <paramref name="folder"/> or lies below it.</returns>
-    internal static bool IsUnder(string path, string folder)
-    {
-        var normalizedPath = Normalize(TrimEnd(path));
-        var trimmedFolder = Normalize(TrimEnd(folder));
-        return string.Equals(normalizedPath, trimmedFolder, PathComparison)
-            || normalizedPath.StartsWith(trimmedFolder.TrimEnd(Separators) + Path.DirectorySeparatorChar, PathComparison)
-            || normalizedPath.StartsWith(trimmedFolder.TrimEnd(Separators) + Path.AltDirectorySeparatorChar, PathComparison);
-    }
+    internal static bool IsWrittenUnder(string path, string folder) => IsUnder(path, folder, WrittenPathComparison);
 
     /// <summary>
-    ///     Gets the deepest folder that two full paths share, comparing whole components.
+    ///     Gets the deepest folder that two full paths share, comparing whole folder names with letter case
+    ///     significant.
     /// </summary>
+    /// <remarks>
+    ///     Used to find the trusted anchor of the no-symlinks rule, below which no link may lie. Folder names are
+    ///     compared exactly because, on a folder that distinguishes case, a link named as a case variant of a folder
+    ///     above the configuration file (<c>Proj</c> beside <c>proj</c>) would otherwise be taken for that folder
+    ///     and trusted. A path written in another letter case than the configuration folder therefore only shares
+    ///     fewer folders with it: the anchor is shallower and stricter, never wider. The root is compared ignoring
+    ///     case on Windows only, where drive letters and <c>\\server\share</c> names never distinguish case.
+    /// </remarks>
     /// <param name="first">A full path. Must not be null.</param>
     /// <param name="second">Another full path. Must not be null.</param>
-    /// <returns>The shared folder, or null when the paths are on different roots (for example Windows drives).</returns>
+    /// <returns>
+    ///     The shared folder (spelled as in <paramref name="first"/>), or null when the paths are on different roots
+    ///     (for example Windows drives).
+    /// </returns>
     internal static string? CommonAncestor(string first, string second)
     {
+        var rootComparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
         var root = Path.GetPathRoot(first);
-        if (string.IsNullOrEmpty(root) || !string.Equals(root, Path.GetPathRoot(second), PathComparison))
+        if (string.IsNullOrEmpty(root) || !string.Equals(root, Path.GetPathRoot(second), rootComparison))
         {
             return null;
         }
 
-        // Count the leading components the two paths share below the common root
+        // Count the leading components the two paths share below the common root, letter case significant
         var firstParts = first[root.Length..].Split(Separators, StringSplitOptions.RemoveEmptyEntries);
         var secondParts = second[root.Length..].Split(Separators, StringSplitOptions.RemoveEmptyEntries);
         var count = 0;
         while (count < firstParts.Length && count < secondParts.Length
-            && string.Equals(firstParts[count], secondParts[count], PathComparison))
+            && string.Equals(firstParts[count], secondParts[count], StringComparison.Ordinal))
         {
             count++;
         }
@@ -422,15 +493,40 @@ internal static partial class RealPath
     }
 
     /// <summary>
-    ///     Gets the real location of an existing folder (or file) by name: its final path once links, junctions and
-    ///     short names are resolved.
+    ///     Gets the real location of an existing folder by name: its final path once links, junctions and short names
+    ///     are resolved, in the letter case the file system stores.
     /// </summary>
     /// <remarks>
-    ///     The final path of <see cref="InspectPath(string)"/>; used for the allowed folders. Never throws.
+    ///     <para>
+    ///         Used for the allowed folders and the no-symlinks anchor, whose real locations are compared exactly with
+    ///         the real paths of handles, so they come from the same mechanism. Windows and Linux use the handle of
+    ///         <see cref="InspectPath(string)"/> (on Windows and Linux a file's path is reported too). macOS uses the
+    ///         <c>O_DIRECTORY</c> handle of <see cref="InspectFolder(string)"/> (<c>proc_pidfdinfo</c>, the same
+    ///         source as every file's real path), and falls back to <c>realpath(3)</c> only when the folder exists
+    ///         but cannot be opened for reading (<see cref="PathState.Unknown"/>, for example a folder that may be
+    ///         searched but not read, or one protected by the system); a file or a missing folder has no real
+    ///         location there.
+    ///     </para>
+    ///     <para>Never throws.</para>
     /// </remarks>
     /// <param name="fullPath">The full path. Must not be null.</param>
     /// <returns>The real path, or null when it does not exist, cannot be opened, or the platform cannot tell.</returns>
-    internal static string? TryGetCanonicalDirectory(string fullPath) => InspectPath(fullPath).FinalPath;
+    internal static string? TryGetCanonicalDirectory(string fullPath)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return InspectPath(fullPath).FinalPath;
+        }
+
+        // macOS: the folder's own handle, or realpath(3) when the folder exists but cannot be opened for reading
+        var folder = InspectFolder(fullPath);
+        return folder.State switch
+        {
+            PathState.Exists => folder.FinalPath,
+            PathState.Unknown => InspectPath(fullPath).FinalPath,
+            _ => null,
+        };
+    }
 
     /// <summary>
     ///     Reports whether a path exists, whether it is a folder and what its real path is, from a handle opened
@@ -553,6 +649,43 @@ internal static partial class RealPath
     /// <returns>The answer, or null when the mode is unknown.</returns>
     private static bool? IsRegularMode(int? mode) =>
         mode is { } value ? (value & UnixTypeMask) == UnixRegularFile : null;
+
+    /// <summary>
+    ///     Determines whether two paths name the same location under a given letter-case rule.
+    /// </summary>
+    /// <remarks>
+    ///     The one implementation behind <see cref="RealPathsEqual(string, string)"/> and
+    ///     <see cref="WrittenPathsEqual(string, string)"/>, so the two differ only in the rule they pass. Trailing
+    ///     separators are ignored and macOS paths are compared in composed Unicode form.
+    /// </remarks>
+    /// <param name="left">A full path. Must not be null.</param>
+    /// <param name="right">Another full path. Must not be null.</param>
+    /// <param name="comparison">The letter-case rule.</param>
+    /// <returns>True when both paths name the same location under the rule.</returns>
+    private static bool PathsEqual(string left, string right, StringComparison comparison) =>
+        string.Equals(Normalize(TrimEnd(left)), Normalize(TrimEnd(right)), comparison);
+
+    /// <summary>
+    ///     Determines whether a path is a folder or lies below it under a given letter-case rule.
+    /// </summary>
+    /// <remarks>
+    ///     The one implementation behind <see cref="IsUnderRealPath(string, string)"/> and
+    ///     <see cref="IsWrittenUnder(string, string)"/>. The boundary is a directory separator, so a sibling whose
+    ///     name merely starts with the folder's name (<c>/a/bc</c> against <c>/a/b</c>) is not below it.
+    /// </remarks>
+    /// <param name="path">The full path to test. Must not be null.</param>
+    /// <param name="folder">The full path of the folder. Must not be null.</param>
+    /// <param name="comparison">The letter-case rule.</param>
+    /// <returns>True when <paramref name="path"/> is <paramref name="folder"/> or lies below it.</returns>
+    private static bool IsUnder(string path, string folder, StringComparison comparison)
+    {
+        var normalizedPath = Normalize(TrimEnd(path));
+        var trimmedFolder = Normalize(TrimEnd(folder));
+        var prefix = trimmedFolder.TrimEnd(Separators);
+        return string.Equals(normalizedPath, trimmedFolder, comparison)
+            || normalizedPath.StartsWith(prefix + Path.DirectorySeparatorChar, comparison)
+            || normalizedPath.StartsWith(prefix + Path.AltDirectorySeparatorChar, comparison);
+    }
 
     /// <summary>
     ///     Removes trailing directory separators, keeping a root such as <c>/</c> or <c>C:\</c> intact.

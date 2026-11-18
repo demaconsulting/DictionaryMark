@@ -123,13 +123,33 @@ internal static class LinkSupport
         RunProcess("cmd.exe", "/c", "mklink", "/J", linkPath, targetPath) == 0 && Directory.Exists(linkPath);
 
     /// <summary>
-    ///     Runs a program with arguments and waits for it to exit.
+    ///     Runs a program with arguments and waits for it to exit, without a time limit.
     /// </summary>
     /// <param name="program">The program.</param>
     /// <param name="arguments">The arguments.</param>
     /// <returns>The exit code, or -1 when the program cannot be started.</returns>
-    private static int RunProcess(string program, params string[] arguments)
+    private static int RunProcess(string program, params string[] arguments) =>
+        RunProcess(program, arguments, timeout: null, out _);
+
+    /// <summary>
+    ///     Runs a program with arguments and waits for it to exit, killing it (and its child processes) when it does
+    ///     not exit in time, and captures what it printed.
+    /// </summary>
+    /// <remarks>
+    ///     Shared by the test helpers that drive system tools (<c>mklink</c>, <c>mkfifo</c>, <c>fsutil</c>,
+    ///     <c>hdiutil</c>), so a hung tool can only skip a test, never hang the test run. Standard output and error
+    ///     are read asynchronously, so a tool that prints much cannot block on a full pipe. Never throws for a
+    ///     program that cannot be started or killed.
+    /// </remarks>
+    /// <param name="program">The program.</param>
+    /// <param name="arguments">The arguments.</param>
+    /// <param name="timeout">The time the program may run, or null to wait without a limit.</param>
+    /// <param name="output">Set to what the program printed to standard output and error (possibly empty).</param>
+    /// <returns>The exit code, or -1 when the program cannot be started or did not exit in time.</returns>
+    internal static int RunProcess(
+        string program, IReadOnlyList<string> arguments, TimeSpan? timeout, out string output)
     {
+        output = string.Empty;
         var startInfo = new ProcessStartInfo(program)
         {
             RedirectStandardOutput = true,
@@ -142,22 +162,49 @@ internal static class LinkSupport
             startInfo.ArgumentList.Add(argument);
         }
 
+        Process? process;
         try
         {
-            using var process = Process.Start(startInfo);
-            if (process == null)
-            {
-                return -1;
-            }
-
-            process.StandardOutput.ReadToEnd();
-            process.StandardError.ReadToEnd();
-            process.WaitForExit();
-            return process.ExitCode;
+            process = Process.Start(startInfo);
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            output = ex.Message;
+            return -1;
+        }
+
+        if (process == null)
         {
             return -1;
+        }
+
+        using (process)
+        {
+            // Read both streams while waiting, so a full pipe cannot block the program
+            var standardOutput = process.StandardOutput.ReadToEndAsync();
+            var standardError = process.StandardError.ReadToEndAsync();
+            var exited = timeout is { } limit
+                ? process.WaitForExit((int)Math.Min(limit.TotalMilliseconds, int.MaxValue))
+                : process.WaitForExit(Timeout.Infinite);
+
+            // A program that did not exit in time is killed with its child processes and counts as failed
+            if (!exited)
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // The program exited between the wait and the kill, or cannot be killed; it counts as failed
+                }
+            }
+
+            // Collect what was printed; a killed program closes its pipes, and the wait is bounded regardless
+            var streamWait = TimeSpan.FromSeconds(10);
+            var printed = Task.WaitAll([standardOutput, standardError], streamWait);
+            output = printed ? (standardOutput.Result + standardError.Result).Trim() : string.Empty;
+            return exited ? process.ExitCode : -1;
         }
     }
 }

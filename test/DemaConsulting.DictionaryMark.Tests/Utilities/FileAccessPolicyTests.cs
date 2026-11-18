@@ -565,6 +565,194 @@ public class FileAccessPolicyTests
         Assert.StartsWith("the path as written is outside the allowed folders", ex.Reason);
     }
 
+    /// <summary>
+    ///     Test that under roots a file whose real path lies in a folder whose name differs from the allowed folder's
+    ///     only in letter case is denied by its real path, on every platform (the real path is injected).
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_RealPathInCaseVariantSibling_Denied()
+    {
+        // Arrange: an inspector that reports the file in ALLOWED, the case variant of the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var file = WriteFile(tmpDir, "allowed/a.yaml");
+        var variant = CaseVariantRealPath(PathIn(tmpDir, "allowed"), "a.yaml");
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.Roots, [PathIn(tmpDir, "allowed")], null, _ => new HandleFacts(true, variant));
+
+        // Act / Assert
+        var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText(Judged("a.yaml", file)));
+        Assert.Equal(
+            "its real path is outside the allowed folders, so it leads out through a symbolic link or junction (--file-access roots)",
+            ex.Reason);
+        Assert.Equal(variant, ex.RealPath);
+    }
+
+    /// <summary>
+    ///     Test that under roots an existing output whose opened handle reports a real path in a case-variant
+    ///     sibling of the allowed folder is denied before it is truncated, on every platform (the real path is
+    ///     injected).
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_RealPathInCaseVariantSibling_ContentUnchanged()
+    {
+        // Arrange: an existing output and an inspector that reports it in ALLOWED
+        using var tmpDir = new TemporaryDirectory();
+        var output = WriteFile(tmpDir, "allowed/out.md", "original");
+        var variant = CaseVariantRealPath(PathIn(tmpDir, "allowed"), "out.md");
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.Roots, [PathIn(tmpDir, "allowed")], null, _ => new HandleFacts(true, variant));
+
+        // Act / Assert
+        var ex = Assert.Throws<FileAccessDeniedException>(
+            () => policy.WriteAllText(Judged("out.md", output), "replaced"));
+        Assert.StartsWith("its real path is outside the allowed folders", ex.Reason);
+        Assert.Equal("original", File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that under roots, in a folder that distinguishes letter case, a file inside the allowed folder is read
+    ///     and one in a sibling whose name differs only in letter case is denied.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_CaseVariantSiblingOfAllowedFolder_Denied()
+    {
+        // Arrange: allowed/a.yaml and ALLOWED/a.yaml, with only allowed allowed
+        using var caseSensitive = CaseSensitiveFolder.CreateOrSkip();
+        var inside = WriteFileIn(caseSensitive.FolderPath, "allowed/a.yaml", Content);
+        var secret = WriteFileIn(caseSensitive.FolderPath, "ALLOWED/a.yaml", "SECRET: outside the allowed folder\n");
+        var policy = FileAccessPolicy.Create(
+            FileAccessMode.Roots, [Path.Combine(caseSensitive.FolderPath, "allowed")], null);
+
+        // Act
+        var text = policy.ReadAllText(Judged(inside, inside));
+        var denied = Record.Exception(() => policy.ReadAllText(Judged(secret, secret)));
+
+        // Assert: by the path as written on Linux, by the real path on Windows and macOS
+        Assert.Equal(Content, text);
+        var ex = Assert.IsType<FileAccessDeniedException>(denied);
+        Assert.Contains("outside the allowed folders", ex.Reason);
+    }
+
+    /// <summary>
+    ///     Test that under roots, in a folder that distinguishes letter case, an output in a sibling whose name differs
+    ///     from the allowed folder's only in letter case is denied and nothing, not even a folder, is created.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_CaseVariantSiblingOfAllowedFolder_DeniedNothingWritten()
+    {
+        // Arrange: allowed and ALLOWED, with only allowed allowed
+        using var caseSensitive = CaseSensitiveFolder.CreateOrSkip();
+        var allowed = Directory.CreateDirectory(Path.Combine(caseSensitive.FolderPath, "allowed")).FullName;
+        var variant = Directory.CreateDirectory(Path.Combine(caseSensitive.FolderPath, "ALLOWED")).FullName;
+        var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [allowed], null);
+        var output = Path.Combine(variant, "new", "written.md");
+
+        // Act
+        var denied = Record.Exception(() => policy.WriteAllText(Judged(output, output), "x"));
+
+        // Assert: denied before anything was created in the case-variant sibling
+        var ex = Assert.IsType<FileAccessDeniedException>(denied);
+        Assert.Contains("the allowed folders", ex.Reason);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(variant));
+    }
+
+    /// <summary>
+    ///     Test that under roots, in a folder that distinguishes letter case, a glob whose literal folder is a sibling
+    ///     whose name differs from the allowed folder's only in letter case is denied before it is listed.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ResolvePattern_CaseVariantSiblingFolder_DeniedBeforeListing()
+    {
+        // Arrange: ALLOWED/a.yaml, which the glob would match, with only allowed allowed
+        using var caseSensitive = CaseSensitiveFolder.CreateOrSkip();
+        var allowed = Directory.CreateDirectory(Path.Combine(caseSensitive.FolderPath, "allowed")).FullName;
+        WriteFileIn(caseSensitive.FolderPath, "ALLOWED/a.yaml", Content);
+        var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [allowed], null);
+        var rooted = Path.Combine(caseSensitive.FolderPath, "ALLOWED", "*.yaml");
+
+        // Act
+        var denied = Record.Exception(() => policy.ResolvePattern("../ALLOWED/*.yaml", "../ALLOWED/*.yaml", rooted));
+
+        // Assert: the pattern fails instead of returning the match
+        var ex = Assert.IsType<FileAccessDeniedException>(denied);
+        Assert.Equal("../ALLOWED/*.yaml", ex.WrittenPath);
+        Assert.Contains("the allowed folders", ex.Reason);
+    }
+
+    /// <summary>
+    ///     Test that, on a file system that ignores letter case, a path written in another letter case than the folders
+    ///     on disk, with the allowed folder and the trusted base also written so, is read under roots and under
+    ///     roots,no-symlinks.
+    /// </summary>
+    /// <param name="modeText">The mode as written.</param>
+    [Theory]
+    [InlineData("roots")]
+    [InlineData("roots,no-symlinks")]
+    public void FileAccessPolicy_ReadAllText_DifferentlyCasedWrittenPath_Allowed(string modeText)
+    {
+        // Arrange: Docs/a.yaml on disk; allowed folder and trusted base written as docs, file read as DOCS/A.yaml
+        using var tmpDir = new TemporaryDirectory();
+        Assert.SkipWhen(
+            CaseSensitiveFolder.IsCaseSensitive(tmpDir.DirectoryPath),
+            "The temporary folder distinguishes letter case, so a differently cased path names nothing.");
+        WriteFile(tmpDir, "Docs/a.yaml");
+        var writtenFolder = PathIn(tmpDir, "docs");
+        var policy = FileAccessPolicy.Create(FileAccessPolicy.ParseMode(modeText), [writtenFolder], writtenFolder);
+        var path = PathIn(tmpDir, "DOCS/A.yaml");
+
+        // Act
+        var text = policy.ReadAllText(Judged("A.yaml", path));
+
+        // Assert
+        Assert.Equal(Content, text);
+    }
+
+    /// <summary>
+    ///     Test that, on a file system that ignores letter case, an output written in another letter case than the
+    ///     allowed folder on disk is written under roots, and its missing folder is created and verified.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_WriteAllText_DifferentlyCasedWrittenPath_CreatesAndWrites()
+    {
+        // Arrange: Out on disk; allowed folder written as out, output written as OUT/new/x.md
+        using var tmpDir = new TemporaryDirectory();
+        Assert.SkipWhen(
+            CaseSensitiveFolder.IsCaseSensitive(tmpDir.DirectoryPath),
+            "The temporary folder distinguishes letter case, so a differently cased path names nothing.");
+        Directory.CreateDirectory(PathIn(tmpDir, "Out"));
+        var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [PathIn(tmpDir, "out")], null);
+
+        // Act
+        policy.WriteAllText(Judged("OUT/new/x.md", PathIn(tmpDir, "OUT/new/x.md")), "# X\n");
+
+        // Assert: the content is in the stored folder, and the new folder has the name as written
+        Assert.Equal("# X\n", File.ReadAllText(PathIn(tmpDir, "Out/new/x.md")));
+        Assert.Equal("new", Path.GetFileName(Assert.Single(Directory.GetDirectories(PathIn(tmpDir, "Out")))));
+    }
+
+    /// <summary>
+    ///     Test that under no-symlinks, in a folder that distinguishes letter case, a link named as a case variant of a
+    ///     folder above the trusted base (Proj beside proj) is not trusted as the anchor, so a path through it is
+    ///     denied.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_ReadAllText_NoSymlinksCaseVariantAnchorLink_Denied()
+    {
+        // Arrange: proj/cfg is the trusted base, Proj -> elsewhere holds docs/a.yaml
+        using var caseSensitive = CaseSensitiveFolder.CreateOrSkip();
+        var trustedBase = Directory.CreateDirectory(Path.Combine(caseSensitive.FolderPath, "proj", "cfg")).FullName;
+        WriteFileIn(caseSensitive.FolderPath, "elsewhere/docs/a.yaml", Content);
+        LinkSupport.CreateDirectoryLinkOrSkip(
+            Path.Combine(caseSensitive.FolderPath, "Proj"), Path.Combine(caseSensitive.FolderPath, "elsewhere"));
+        var policy = FileAccessPolicy.Create(FileAccessMode.NoSymlinks, [], trustedBase);
+        var path = Path.Combine(caseSensitive.FolderPath, "Proj", "docs", "a.yaml");
+
+        // Act / Assert
+        var ex = Assert.Throws<FileAccessDeniedException>(
+            () => policy.ReadAllText(Judged("../../Proj/docs/a.yaml", path)));
+        Assert.StartsWith("its real path differs from the path as written", ex.Reason);
+    }
+
     /// <summary>Test that a literal pattern outside the allowed folders is denied before anything is touched.</summary>
     [Fact]
     public void FileAccessPolicy_ResolvePattern_LiteralOutside_Denied()
@@ -650,7 +838,7 @@ public class FileAccessPolicyTests
             $"its folder '{PathIn(tmpDir, "allowed/lnk")}' leads out of the allowed folders through a symbolic link or junction (--file-access roots)",
             ex.Reason);
         Assert.NotNull(ex.RealPath);
-        Assert.True(RealPath.PathsEqual(RealPath.TryGetCanonicalDirectory(PathIn(tmpDir, "outside"))!, ex.RealPath));
+        Assert.True(RealPath.RealPathsEqual(RealPath.TryGetCanonicalDirectory(PathIn(tmpDir, "outside"))!, ex.RealPath));
     }
 
     /// <summary>
@@ -908,7 +1096,7 @@ public class FileAccessPolicyTests
         var ex = Assert.Throws<FileAccessDeniedException>(() => policy.ReadAllText(Judged("link/a.yaml", path)));
         Assert.StartsWith("its real path is outside the allowed folders", ex.Reason);
         Assert.NotNull(ex.RealPath);
-        Assert.True(RealPath.IsUnder(ex.RealPath, RealPath.TryGetCanonicalDirectory(PathIn(tmpDir, "outside"))!));
+        Assert.True(RealPath.IsUnderRealPath(ex.RealPath, RealPath.TryGetCanonicalDirectory(PathIn(tmpDir, "outside"))!));
     }
 
     /// <summary>Test that a path written outside the allowed folders is denied even when it links back in.</summary>
@@ -1643,6 +1831,33 @@ public class FileAccessPolicyTests
     /// <returns>The full path.</returns>
     private static string PathIn(TemporaryDirectory tmpDir, string relativePath) =>
         Path.Combine(tmpDir.DirectoryPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    /// <summary>Writes a file below a folder, creating its parent folders, and returns its full path.</summary>
+    /// <param name="folder">The full path of the folder.</param>
+    /// <param name="relativePath">The path below the folder, with '/' separators.</param>
+    /// <param name="content">The content.</param>
+    /// <returns>The full path.</returns>
+    private static string WriteFileIn(string folder, string relativePath, string content)
+    {
+        var path = Path.Combine(folder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>
+    ///     Builds the real path a file would have in the case-variant sibling of an existing folder: the folder's real
+    ///     location with its last name in upper case, followed by the file name.
+    /// </summary>
+    /// <param name="folder">The full path of an existing folder with a lower-case name.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <returns>The real path in the case-variant sibling.</returns>
+    private static string CaseVariantRealPath(string folder, string fileName)
+    {
+        var canonical = RealPath.TryGetCanonicalDirectory(folder)!.TrimEnd(Path.DirectorySeparatorChar);
+        var name = Path.GetFileName(canonical);
+        return Path.Join(Path.GetDirectoryName(canonical), name.ToUpperInvariant(), fileName);
+    }
 
     /// <summary>Creates a fake link reader in which the entry lnk under the temporary folder leads to a share.</summary>
     /// <param name="tmpDir">The temporary folder.</param>

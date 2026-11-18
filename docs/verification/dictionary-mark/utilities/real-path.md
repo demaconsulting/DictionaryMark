@@ -26,14 +26,22 @@ further test runs the walk with the default reader over a real local folder link
   open does not finish within 10 seconds.
 - The `FindNetworkLinkTarget` tests run on Windows only, because network locations exist only there; elsewhere
   they are skipped with a reason. The injected link reader needs no privilege and no share.
+- The stored-letter-case tests open a path in another letter case than stored, so they need a temporary
+  folder that ignores case (Windows and macOS by default). They are skipped with a reason where the
+  temporary folder distinguishes case (Linux).
+- The case-variant sibling test needs a folder that distinguishes case, made by the `CaseSensitiveFolder` test
+  helper (see the Test Helpers verification design): an ordinary folder on Linux, per-folder case sensitivity
+  on Windows, a case-sensitive APFS disk image on macOS. It is skipped with a reason where none can be made.
+- The search-only folder test changes Unix permissions, so it runs on Linux and macOS only.
 - Requirements use `windows@`, `ubuntu@` and `macos@` source filters, so the evidence for each
   platform's code comes from a run on that platform.
 
 #### Acceptance Criteria
 
 - All unit tests in `RealPathTests.cs` pass with zero failures on Windows, Linux and macOS.
-- A test may be skipped only on a platform it does not apply to, and every requirement has at least one
-  passing test on each platform its source filter names.
+- A test may be skipped only on a platform it does not apply to, or where the machine cannot make the
+  case-sensitive or case-insensitive folder it needs, and every requirement has at least one passing test on
+  each platform its source filter names.
 
 #### Test Scenarios
 
@@ -61,6 +69,20 @@ inspected, cannot be asked; both facts are reported as unknown (null), never as 
 **RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull**: A linked folder resolves to its
 target, and a missing folder has no real location.
 
+**RealPath_Inspect_DifferentlyCasedPath_ReportsStoredCase** and
+**RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase** (Windows and macOS): A file
+stored as `Glossary/Terms.yaml`, opened as `glossary/terms.yaml`, reports a real path ending in
+`Glossary/Terms.yaml`, compared exactly; the folder named `glossary` reports the same real location as the
+folder named `Glossary`, ending in `Glossary`.
+
+**RealPath_Inspect_CaseVariantSiblings_ReportsEachExactly**: In a folder that distinguishes case, files in the
+sibling folders `allowed` and `ALLOWED` report distinct real paths, each in its own exact letter case.
+
+**RealPath_TryGetCanonicalDirectory_SearchOnlyFolder_ReturnsRealPath** (Linux and macOS): A folder whose owner
+may only search it (execute permission only) still has its real location reported, equal to the one reported
+while it was readable; on macOS this exercises the `realpath(3)` fallback for a folder that cannot be opened for
+reading. The permissions are restored afterwards.
+
 **RealPath_InspectPath_FileFolderMissing_Classified**: From a handle opened without access rights, a missing
 file, a path through a missing folder and a folder link whose target was removed are missing; a folder and a
 file exist, with their type (unknown on macOS), and the file's real path is its folder's real path followed by
@@ -81,14 +103,22 @@ content unchanged, and exclusive creation fails when the name is taken.
 **RealPath_TryOpenExistingForWrite_Directory_ReturnsNull** (Linux and macOS): Opening a folder for writing
 fails with `EISDIR`, which is reported as null (not openable).
 
-**RealPath_IsUnder_BoundaryIsSeparator**, **RealPath_PathsEqual_PlatformCaseRule**,
-**RealPath_CommonAncestor_ReturnsDeepestSharedFolder** and
+**RealPath_IsUnder_BoundaryIsSeparator**, **RealPath_RealPathsEqual_LetterCaseSignificant**,
+**RealPath_WrittenPathsEqual_PlatformCaseRule**, **RealPath_IsUnderRealPath_CaseVariantFolder_NotUnder**,
+**RealPath_CommonAncestor_ReturnsDeepestSharedFolder**,
+**RealPath_CommonAncestor_ComponentsDifferingInCase_NotShared** and
 **RealPath_ExpandShortNames_PathWithoutShortName_Unchanged**: These cover the comparison helpers.
 
-- A folder contains itself and its descendants but not `folder2` or its parent.
-- Equality is case-insensitive on Windows and macOS and case-sensitive on Linux, and ignores a trailing
-  separator.
-- The common ancestor compares whole components (`config` and `configs` share only their parent).
+- A folder contains itself and its descendants but not `folder2` or its parent, both for real paths and for
+  paths as written.
+- Real paths differing only in letter case (`Docs` and `DOCS`) are not equal on any platform, and a file in
+  `ALLOWED` is not under `allowed` by its real path on any platform.
+- Paths as written are equal ignoring case on Windows and macOS and case-sensitive on Linux, so `ALLOWED/a.yaml`
+  is under `allowed` as written on Windows and macOS (the pre-filter) and not on Linux.
+- Equality ignores a trailing separator.
+- The common ancestor compares whole components (`config` and `configs` share only their parent) with letter
+  case significant (`Proj` and `proj` share only their parent); on Windows the drive letter is compared ignoring
+  case (`c:\base\x` and `C:\base\y` share `c:\base`).
 - A path without a short name is returned unchanged.
 
 **RealPath_IsNetworkLocation_UncAndLocal_Classified**: On Windows UNC and `\\?\UNC\` paths are network

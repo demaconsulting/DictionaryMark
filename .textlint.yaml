@@ -75,16 +75,25 @@ words:
   - venv
   - yamldotnet
   - yamlfix
-  # Native operating-system calls, flags and device names used by the real-path unit and its tests
+  # Native operating-system calls, flags and device names used by the real-path unit and its tests, and the
+  # case-sensitive file-system tools (fsutil, hdiutil) and their options used by the test helpers
+  - APFS
+  - casefold
   - CLOEXEC
   - CONIN
   - CONOUT
   - fcntl
+  - fsutil
   - fxstat
   - libc
   - mkfifo
   - mklink
+  - mountpoint
+  - noautoopen
+  - nobrowse
+  - noverify
   - pidfdinfo
+  - volname
 
 # Exclude common build artifacts, dependencies, and vendored third-party code
 ignorePaths:

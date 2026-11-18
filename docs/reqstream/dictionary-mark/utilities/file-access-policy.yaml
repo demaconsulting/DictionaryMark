@@ -104,10 +104,13 @@ sections:
                 title: >-
                   Under the roots mode, the FileAccessPolicy unit shall deny, before opening it, a path whose full
                   path as written is not inside an allowed folder, using whole path components so a sibling folder
-                  with a shared name prefix is outside.
+                  with a shared name prefix is outside, and comparing letter case by the platform's default rule
+                  (ignoring case on Windows and macOS) as a check made before the real path is judged.
                 justification: |
                   A path that climbs out with parent-directory segments or a variable must be refused without
-                  touching the file it names.
+                  touching the file it names. The path as written follows the platform's default letter-case rule,
+                  so a path written in another letter case than the folder on disk is not refused before its real
+                  path, which is always judged exactly, can be checked.
                 tests:
                   - FileAccessPolicy_ReadAllText_InsideFolder_ReturnsContent
                   - FileAccessPolicy_ReadAllText_WrittenPathOutside_DeniedBeforeOpen
@@ -118,12 +121,25 @@ sections:
               - id: DictionaryMark-FileAccessPolicy-RootsRealPath
                 title: >-
                   Under the roots mode, the FileAccessPolicy unit shall deny a file whose real path is outside the
-                  real location of every allowed folder, and a file whose path as written is outside even when it
-                  links back in, while allowing a link that stays inside.
+                  real location of every allowed folder, comparing letter case exactly, so a folder whose name
+                  differs from an allowed folder's only in letter case is outside on a file system that
+                  distinguishes case, while a path written in another letter case that names a file inside an
+                  allowed folder on a file system that ignores case is allowed; and shall deny a file whose path as
+                  written is outside even when it links back in, while allowing a link that stays inside.
                 justification: |
                   Both the written and the real path must be inside, or a link could lead out or a path outside
-                  could link in.
+                  could link in. A folder or volume may distinguish letter case on every platform (a Windows folder
+                  with per-folder case sensitivity, a case-sensitive APFS volume), and there a case-variant sibling
+                  of an allowed folder is a different folder, so ignoring case would let it be read and written.
                 tests:
+                  - FileAccessPolicy_ReadAllText_RealPathInCaseVariantSibling_Denied
+                  - FileAccessPolicy_WriteAllText_RealPathInCaseVariantSibling_ContentUnchanged
+                  - ubuntu@FileAccessPolicy_ReadAllText_CaseVariantSiblingOfAllowedFolder_Denied
+                  - ubuntu@FileAccessPolicy_WriteAllText_CaseVariantSiblingOfAllowedFolder_DeniedNothingWritten
+                  - windows@FileAccessPolicy_ReadAllText_DifferentlyCasedWrittenPath_Allowed
+                  - macos@FileAccessPolicy_ReadAllText_DifferentlyCasedWrittenPath_Allowed
+                  - windows@FileAccessPolicy_WriteAllText_DifferentlyCasedWrittenPath_CreatesAndWrites
+                  - macos@FileAccessPolicy_WriteAllText_DifferentlyCasedWrittenPath_CreatesAndWrites
                   - windows@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
                   - ubuntu@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
                   - macos@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
@@ -138,11 +154,15 @@ sections:
                 title: >-
                   Under the no-symlinks mode, the FileAccessPolicy unit shall deny a file whose real path differs
                   from the real location of its trusted anchor (the deepest folder it shares with the trusted base
-                  folder) followed by the path as written below it, trusting links in the anchor and above it.
+                  folder, comparing folder names with letter case significant) followed by the path as written below
+                  it, trusting links in the anchor and above it.
                 justification: |
                   Comparing the real path with the expected path detects any symbolic link or junction below the
-                  anchor without walking each component by name, which would race with changes.
+                  anchor without walking each component by name, which would race with changes. On a file system
+                  that distinguishes case, a link named as a case variant of a folder above the trusted base folder
+                  must not be taken for that folder and trusted.
                 tests:
+                  - ubuntu@FileAccessPolicy_ReadAllText_NoSymlinksCaseVariantAnchorLink_Denied
                   - windows@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
                   - ubuntu@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
                   - macos@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
@@ -229,6 +249,7 @@ sections:
                   - windows@FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing
                   - ubuntu@FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing
                   - macos@FileAccessPolicy_ResolvePattern_RootsLinkUnderWildcardLeadingOut_DeniedBeforeListing
+                  - ubuntu@FileAccessPolicy_ResolvePattern_CaseVariantSiblingFolder_DeniedBeforeListing
 
               - id: DictionaryMark-FileAccessPolicy-HandleClassification
                 title: >-

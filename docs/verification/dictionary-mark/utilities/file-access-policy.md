@@ -48,12 +48,21 @@ A recording inspector also proves that a folder is told by its handle, not by a 
 - **FileAccessPolicy_ReadAllText_RelativePathOnAdminShare_Allowed** reads through the administrative share
   `\\localhost\{drive}$`. It needs an administrator account and the Server service and is skipped with a
   reason when the share is not reachable. It is supplementary and is not requirement evidence.
+- The case-variant sibling tests need a folder that distinguishes letter case, made by the
+  `CaseSensitiveFolder` test helper (see the Test Helpers verification design): an ordinary folder on Linux,
+  per-folder case sensitivity on Windows, a case-sensitive APFS disk image on macOS. They are skipped with a
+  reason where none can be made. Their requirement evidence is taken from Linux runs only; the Windows and
+  macOS runs are supplementary until a CI run shows that the hosted runners can make such a folder. The
+  injected-real-path tests (`..._RealPathInCaseVariantSibling_...`) need no such folder and run on every
+  platform.
+- The differently-cased written path tests need a temporary folder that ignores letter case (Windows and macOS
+  by default). They are skipped with a reason where the temporary folder distinguishes case (Linux).
 
 #### Acceptance Criteria
 
 - All unit tests in `FileAccessPolicyTests.cs` pass with zero failures on Windows, Linux and macOS.
-- A test may be skipped only for the platform, link-privilege or share reasons above, and every requirement
-  has at least one passing test on each platform its source filter names.
+- A test may be skipped only for the platform, link-privilege, share or letter-case-folder reasons above, and
+  every requirement has at least one passing test on each platform its source filter names.
 
 #### Test Scenarios
 
@@ -227,6 +236,28 @@ inside is listed (its file is matched through the link and directly), and a link
 outside is denied with the exact message and no handle opened; `docs2` is outside `docs`; a literal pattern
 outside is denied before anything is touched.
 
+**FileAccessPolicy_ReadAllText_RealPathInCaseVariantSibling_Denied** and
+**FileAccessPolicy_WriteAllText_RealPathInCaseVariantSibling_ContentUnchanged**: On every platform, an injected
+inspector reports the real path of the opened file in `ALLOWED`, the case variant of the allowed folder
+`allowed`. Under roots the read is denied with the real-path reason and that real path, and the existing
+output is denied before it is truncated, so its content is unchanged.
+
+**FileAccessPolicy_ReadAllText_CaseVariantSiblingOfAllowedFolder_Denied**,
+**FileAccessPolicy_WriteAllText_CaseVariantSiblingOfAllowedFolder_DeniedNothingWritten** and
+**FileAccessPolicy_ResolvePattern_CaseVariantSiblingFolder_DeniedBeforeListing**: In a folder that distinguishes
+case, with sibling folders `allowed` and `ALLOWED` and only `allowed` allowed, under roots a file in `allowed`
+is read while one in `ALLOWED` is denied as outside the allowed folders. An output in a missing folder of
+`ALLOWED` is denied and nothing, not even the folder, is created there. A glob whose literal folder is
+`ALLOWED` fails, naming the pattern as written, instead of returning the match. On Linux the denial comes from
+the path as written, on Windows and macOS from the real path.
+
+**FileAccessPolicy_ReadAllText_DifferentlyCasedWrittenPath_Allowed** and
+**FileAccessPolicy_WriteAllText_DifferentlyCasedWrittenPath_CreatesAndWrites** (Windows and macOS): Where the
+temporary folder ignores case, a file stored as `Docs/a.yaml` is read as `DOCS/A.yaml` with the allowed folder
+and the trusted base written as `docs`, under roots and under roots,no-symlinks. An output written as
+`OUT/new/x.md` with the allowed folder written as `out` (stored as `Out`) is written into `Out/new`, and the
+created folder, verified exactly, has the name `new` as written.
+
 **FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied**,
 **FileAccessPolicy_ReadAllText_OutsidePathLinkingBackIn_Denied** and
 **FileAccessPolicy_ReadAllText_DirectoryLinkStayingInside_Allowed**: A folder link that leads out is
@@ -238,6 +269,11 @@ written. A link that stays inside is allowed.
 **FileAccessPolicy_ReadAllText_NoSymlinksFileSymlink_Denied**: Under no-symlinks a folder link below
 the configuration folder is denied, a link above it is trusted, and a file that is itself a link is
 denied.
+
+**FileAccessPolicy_ReadAllText_NoSymlinksCaseVariantAnchorLink_Denied**: In a folder that distinguishes case,
+with the trusted base `proj/cfg` and a folder link `Proj` to `elsewhere`, under no-symlinks a file read through
+`Proj/docs/a.yaml` is denied because its real path differs from the path as written: the link `Proj` is not
+taken for the folder `proj` above the trusted base and trusted as the anchor.
 
 **FileAccessPolicy_ReadAllText_RealPathUnknown_DeniedUnderRestrictiveModes** and
 **FileAccessPolicy_ReadAllText_RealPathUnknown_AllowedUnderAny**: With an inspector that cannot tell

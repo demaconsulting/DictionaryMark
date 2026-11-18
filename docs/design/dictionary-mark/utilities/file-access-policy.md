@@ -44,7 +44,10 @@ including listing a folder and telling whether an entry exists. The unit keeps t
   no-symlinks.
 - A private `AllowedFolder` record per folder holds the `Lexical` full path and the `Canonical` real
   location captured once when the policy is created. A folder whose real location cannot be determined has
-  no canonical form and allows no file (fail closed).
+  no canonical form and allows no file (fail closed). `ContainsWrittenPath` tests a path as written against
+  either form with `RealPath.IsWrittenUnder` (the platform's default letter-case rule, a pre-filter).
+  `ContainsRealPath` tests a real path against `Canonical` with `RealPath.IsUnderRealPath` (letter case
+  significant), the authoritative roots check.
 - A private handle inspector, `Func<SafeFileHandle, HandleFacts>`, defaults to `RealPath.Inspect`. Tests
   inject a double to simulate a platform that cannot tell a fact.
 - A private link reader, `Func<string, string?>`, defaults to `RealPath.ReadLinkTarget`. It reads the
@@ -84,7 +87,8 @@ order. Anything else, including an empty item, throws `ArgumentException` with t
 
 **Create(mode, allowedFolders, trustedBase)**: Normalizes each folder with `Path.GetFullPath`, removes
 duplicates and, in a restrictive mode, captures each folder's real location with
-`RealPath.TryGetCanonicalDirectory`. The real locations are never looked up again, so a folder renamed and
+`RealPath.TryGetCanonicalDirectory` (from a handle on every platform; on macOS `realpath(3)` only for a folder
+that cannot be opened for reading). The real locations are never looked up again, so a folder renamed and
 replaced by a link later cannot widen the policy.
 
 **DescribeNeverAccessed(string path)**: A pure text check of a path as written (after `${VAR}` expansion)
@@ -148,7 +152,8 @@ An internal overload takes a link reader and a folder inspector for tests.
 `DescribeNeverAccessed` to `Expanded` and `DescribeNeverAccessedFullPath` to `FullPath`, walks `FullPath` for a
 link to a network location (`CheckNetworkLink`), and under roots requires `FullPath` as written to be inside an
 allowed folder (in its lexical or canonical form, also comparing the long spelling of a path written with short
-8.3 Windows names). The denial names `Shown`.
+8.3 Windows names). This written check uses the platform's default letter-case rule; it is a pre-filter, and
+the real path is always judged exactly afterwards (see Letter case below). The denial names `Shown`.
 
 **ResolvePattern(writtenPattern, expandedPattern, rootedPattern)**: Judges an input pattern of a
 configuration-file job and resolves it to `JudgedPath` values, judging every folder before it is listed.
@@ -186,7 +191,8 @@ the folders.
    path the link leads to as its real path; the open therefore does not contact the network through a link
    present when the path is judged.
 2. Under no-symlinks, capture the anchor and its real location before the open. The anchor is the deepest
-   folder the path shares with `TrustedBase`, or the root of the path.
+   folder the path shares with `TrustedBase`, comparing folder names with letter case significant
+   (`RealPath.CommonAncestor`), or the root of the path.
 3. Open with `RealPath.OpenForRead`, which does not block on Linux and macOS. A folder opens too (on Windows
    with backup semantics), so it is told by its handle, never by a by-name probe.
 4. Inspect the handle. Deny it when it is not a regular file (a folder, or a device node on Linux and macOS),
@@ -194,8 +200,9 @@ the folders.
    entry point that is missing, or a native call that failed, leaves the facts unknown), with the type-unknown
    reason, so an interop failure is never reported as a special file. Deny it
    when `LeadsToNetwork(fullPath, realPath)`. In a restrictive mode, deny it when the real path is unknown,
-   when (roots) the real path is not inside a folder's canonical location, or when (no-symlinks) the real path
-   is not the anchor's real location followed by the written path below the anchor.
+   when (roots) the real path is not inside a folder's canonical location (letter case significant), or when
+   (no-symlinks) the real path is not the anchor's real location (an exact prefix) followed by the written path
+   below the anchor (compared under the platform's default letter-case rule).
 5. Read from the same handle as UTF-8 with byte-order-mark detection, like `File.ReadAllText`.
 
 **WriteAllText(JudgedPath path, content)**: The judged write. Nothing is created or written until the
@@ -213,15 +220,18 @@ pre-checks pass.
 3. Judge that folder by its real location (`CheckFolder`). On Linux and macOS, deny it when its real location is
    `/dev` or under `/dev/`, in every mode, so a link cannot lead an output into `/dev`. Deny a local folder whose
    real location is a network location (`LeadsToNetwork`). In a restrictive mode, deny it when its real location
-   is unknown, when (roots) it is outside the allowed folders, or when (no-symlinks) it passes through a link
-   below the anchor.
+   is unknown, when (roots) it fails the written pre-filter or its real location is outside the allowed folders'
+   real locations (letter case significant), or when (no-symlinks) it passes through a link below the anchor.
 4. When no level is missing, judge an existing output by `RealPath.InspectPath` (which follows any link): a
    missing entry is created, except that a restrictive mode denies a dangling link; a folder is denied; on Linux
    and macOS a real path under `/dev` (a link to a device) is denied in every mode; the real path is judged by
    `CheckRealPath`.
 5. Create the missing folders one level at a time, in every mode. When the parent's real location is known,
-   each new folder's real location (from `InspectPath`) must be its parent's real location followed by its
-   name. This catches a folder swapped for a link while it is created. When it is unknown (mode any on a
+   each new folder is opened as a folder (`RealPath.InspectFolder`, a handle on every platform, the same source
+   as the parent's real location). It must exist as a folder, and its real location must equal exactly (letter
+   case significant) its parent's real location followed by its name as written. The folder was just created
+   with that name, so the file system stores it so; a difference means another process created or replaced it,
+   for example with a link, while it was created. When the parent's real location is unknown (mode any on a
    platform that cannot tell), the folders are created without verification.
 6. Open an existing output with `RealPath.TryOpenExistingForWrite`, which never truncates (on Linux and macOS
    a folder gives null and is denied as not a regular file). Create a missing one with
@@ -229,6 +239,34 @@ pre-checks pass.
 7. Judge the handle as in step 4 of the read.
 8. Only then truncate the file and write the content as UTF-8 without a byte-order mark, like
    `File.WriteAllText`.
+
+**Letter case.** A folder or volume may distinguish letter case on every platform (a Windows folder with
+per-folder case sensitivity, a case-sensitive APFS volume, every ordinary Linux file system). The rules are:
+
+- *Roots, real path*: compared with letter case significant on every platform (`RealPath.IsUnderRealPath`). On
+  a folder that distinguishes case, a sibling whose name differs from an allowed folder's only in letter case
+  (`ALLOWED` beside `allowed`) is a different folder and is outside. On one that ignores case, real paths carry
+  the stored letter case (see the RealPath design), so a path written in another letter case is still inside.
+  An exact comparison can only refuse a legitimate path (fail closed), never admit one outside.
+- *Roots, path as written*: compared with the platform's default rule (ignoring case on Windows and macOS), so
+  a path written in another letter case than the folder on disk is not refused before its real path can be
+  judged. It is a pre-filter only: every caller (`CheckPath` followed by `CheckHandle` or `CheckExistingOutput`
+  and `CheckRealPath` for reads and writes, and `CheckFolder` for output and listed folders) judges the real
+  path exactly before anything is read, written, listed or created. The residual: on a folder that
+  distinguishes case on Windows or macOS, a case-variant sibling passes the pre-filter and is opened for
+  inspection (nothing is read or written) before its real path is refused. Linux's pre-filter is already exact.
+- *No-symlinks anchor*: found comparing folder names with letter case significant (the root ignoring case on
+  Windows only). Otherwise, on a folder that distinguishes case, a link named as a case variant of a folder
+  above the configuration file (`Proj` beside `proj`) would be taken for that folder and trusted, and every path
+  through it would match. A path written in another letter case than the configuration folder only gets a
+  shallower anchor, which is stricter.
+- *No-symlinks match*: the anchor's real location must be an exact prefix of the real path, and the part below
+  it is compared with the path as written under the platform's default rule, so a path written in another
+  letter case still matches where case is ignored. The residual: on a folder that distinguishes case, a link
+  whose target differs from the link's own path only in letter case, within the anchor's tree, is not detected
+  by no-symlinks alone. It cannot lead outside the anchor's real tree, and roots still compares exactly when
+  combined. Detecting it would need a per-folder case-sensitivity query, which is not done.
+- *Created folders*: verified exactly (step 5 of the write).
 
 **Differences from CanvasNet.** These are deliberate:
 
@@ -263,6 +301,13 @@ pre-checks pass.
 - **Named pipe as an output.** CanvasNet never writes. On Linux and macOS the non-blocking open for writing of a
   named pipe with no reader fails with `ENXIO`. DictionaryMark treats that as not a regular file, so the write
   is denied without blocking.
+- **Letter case of real paths.** CanvasNet compares real paths, the no-symlinks anchor and its location caches
+  ignoring case on Windows and macOS, so on a case-sensitive folder or volume it admits a case-variant sibling
+  of an allowed folder and can trust a link named as a case variant of a folder above the configuration file.
+  DictionaryMark compares every real path, and the anchor's folder names, with letter case significant, keeps
+  the platform rule only for the written pre-filter, and on macOS takes the real location of an allowed folder
+  or anchor from a handle (`realpath(3)` only for a folder that cannot be opened for reading), the same source
+  as every file's real path.
 - **Error format.** CanvasNet reports `file-access-denied` in its own diagnostic shape. DictionaryMark puts
   `file-access-denied: '{written}' (real path '{real}'): {reason}` in the per-job error
   (`Error: table job N ('{written}'): …`), because that is its existing error convention. The code name is the

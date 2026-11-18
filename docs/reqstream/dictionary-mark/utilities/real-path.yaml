@@ -11,10 +11,16 @@ sections:
               - id: DictionaryMark-RealPath-FinalPath
                 title: >-
                   The RealPath unit shall report the real path of an open file, with symbolic links, junctions and
-                  system folder links resolved, on Windows, Linux and macOS.
+                  system folder links resolved, on Windows, Linux and macOS, in the letter case the file system
+                  stores, whatever letter case it was opened with, on Windows and macOS.
                 justification: |
-                  Access decisions must be made on the file that was actually opened, not on its name.
+                  Access decisions must be made on the file that was actually opened, not on its name. Real paths
+                  are compared with letter case significant, so they must carry the stored letter case for a path
+                  written in another letter case to be allowed where the file system ignores case.
                 tests:
+                  - windows@RealPath_Inspect_DifferentlyCasedPath_ReportsStoredCase
+                  - macos@RealPath_Inspect_DifferentlyCasedPath_ReportsStoredCase
+                  - ubuntu@RealPath_Inspect_CaseVariantSiblings_ReportsEachExactly
                   - windows@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
                   - ubuntu@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
                   - macos@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
@@ -49,12 +55,20 @@ sections:
                   or realpath(3) (macOS), whose result is judged, whether a path exists (a missing entry, a missing
                   folder of its path and a link whose target is missing being missing), whether it is a folder
                   (except on macOS) and its real location, also for a Windows path longer than the classic limit;
-                  and, for a folder check, whether the path is an existing folder on every platform (on macOS from a
-                  handle opened with O_DIRECTORY, so a file is missing).
+                  for a folder check, whether the path is an existing folder on every platform (on macOS from a
+                  handle opened with O_DIRECTORY, so a file is missing); and the real location of a folder from a
+                  handle on every platform (on macOS from the O_DIRECTORY handle, using realpath(3) only for a folder
+                  that cannot be opened for reading), in the letter case the file system stores.
                 justification: |
                   Allowed folders, trusted anchors, listed folders, output folders and existing outputs are judged by
-                  facts taken from a handle, whose real path follows any link swapped in before the open.
+                  facts taken from a handle, whose real path follows any link swapped in before the open. The real
+                  location of an allowed folder or anchor is compared exactly with the real path of a file, so both
+                  must come from the same source and carry the stored letter case.
                 tests:
+                  - windows@RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase
+                  - macos@RealPath_TryGetCanonicalDirectory_DifferentlyCasedPath_ReportsStoredCase
+                  - ubuntu@RealPath_TryGetCanonicalDirectory_SearchOnlyFolder_ReturnsRealPath
+                  - macos@RealPath_TryGetCanonicalDirectory_SearchOnlyFolder_ReturnsRealPath
                   - RealPath_InspectPath_FileFolderMissing_Classified
                   - RealPath_InspectFolder_FolderFileMissing_Classified
                   - windows@RealPath_InspectPath_LongPath_ReportsRealPath
@@ -79,14 +93,22 @@ sections:
 
               - id: DictionaryMark-RealPath-Comparison
                 title: >-
-                  The RealPath unit shall compare paths with the platform's case rule, treat a folder boundary as a
-                  whole component, and find the deepest folder two paths share.
+                  The RealPath unit shall compare real paths with letter case significant on every platform, compare
+                  paths as written with the platform's default letter-case rule (ignoring case on Windows and
+                  macOS), treat a folder boundary as a whole component, and find the deepest folder two paths share
+                  comparing folder names with letter case significant (drive and share roots ignoring case on
+                  Windows).
                 justification: |
-                  Confinement decisions depend on exact, platform-correct path comparisons.
+                  Confinement decisions depend on exact, platform-correct path comparisons. A folder or volume may
+                  distinguish letter case on every platform, so a comparison of real paths that ignores case could
+                  take a case-variant sibling for an allowed folder, while an exact one can only refuse a path.
                 tests:
                   - RealPath_IsUnder_BoundaryIsSeparator
-                  - RealPath_PathsEqual_PlatformCaseRule
+                  - RealPath_RealPathsEqual_LetterCaseSignificant
+                  - RealPath_WrittenPathsEqual_PlatformCaseRule
+                  - RealPath_IsUnderRealPath_CaseVariantFolder_NotUnder
                   - RealPath_CommonAncestor_ReturnsDeepestSharedFolder
+                  - RealPath_CommonAncestor_ComponentsDifferingInCase_NotShared
                   - RealPath_ExpandShortNames_PathWithoutShortName_Unchanged
 
               - id: DictionaryMark-RealPath-Classification

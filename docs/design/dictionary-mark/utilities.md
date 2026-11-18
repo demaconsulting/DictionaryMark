@@ -108,7 +108,9 @@ None of these units depends on any other DictionaryMark subsystem.
   IsDirectory, FinalPath)` from a handle (Windows, Linux) or `realpath(3)` (macOS), never throws),
   `InspectFolder` (the same facts from one open of a folder; on macOS with `O_DIRECTORY`, never throws),
   `TryGetCanonicalDirectory`, `ExpandShortNames`,
-  and the comparison and classification helpers `PathsEqual`, `IsUnder`, `CommonAncestor`,
+  and the comparison and classification helpers `RealPathsEqual` and `IsUnderRealPath` (real paths, letter
+  case significant), `WrittenPathsEqual` and `IsWrittenUnder` (paths as written, the platform's default
+  letter-case rule, a pre-filter only), `CommonAncestor` (folder names with letter case significant),
   `IsWindowsDeviceName`, `IsWindowsDeviceNamespace`, `IsNetworkLocation` and `IsLink`, and the link
   helpers `ReadLinkTarget` and `FindNetworkLinkTarget` (a Windows walk that finds a link to a network
   location without following any link).

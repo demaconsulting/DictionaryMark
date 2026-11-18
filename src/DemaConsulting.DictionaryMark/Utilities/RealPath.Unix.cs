@@ -400,6 +400,12 @@ internal static partial class RealPath
     ///         is missing and a missing parent folder. <c>O_RDONLY</c> needs read permission on the folder, so a
     ///         folder that may be searched but not read is <see cref="PathState.Unknown"/>.
     ///     </para>
+    ///     <para>
+    ///         It also supplies the real location of the allowed folders and the no-symlinks anchor
+    ///         (<see cref="TryGetCanonicalDirectory(string)"/>), so the prefixes compared exactly with the real path
+    ///         of a file come from the same source as that path; <see cref="TryGetCanonicalDirectory(string)"/>
+    ///         falls back to <c>realpath(3)</c> when this reports <see cref="PathState.Unknown"/>.
+    ///     </para>
     /// </remarks>
     /// <param name="path">The full path.</param>
     /// <returns>The facts.</returns>

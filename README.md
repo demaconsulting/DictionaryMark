@@ -365,7 +365,10 @@ A configuration file may come from someone you do not trust, for example a pull 
 - **`any`** (the default): every regular local file, as in earlier versions.
 - **`roots`**: only files inside an allowed folder. Both the path as written (after `${VAR}`, the base
   directory and `..`) and the real path of the opened file must be inside, so a symbolic link or
-  junction that leads out is denied, and so is a path outside that links back in.
+  junction that leads out is denied, and so is a path outside that links back in. The real path is
+  compared with letter case significant: on a file system or folder that distinguishes case, a folder
+  whose name differs from an allowed folder's only in letter case is outside; on one that ignores case,
+  a path written in another letter case is allowed.
 - **`no-symlinks`**: a path may not pass through a symbolic link or junction below the configuration
   file's folder; that folder and the folders above it are trusted.
 - **`roots,no-symlinks`**: both rules.
