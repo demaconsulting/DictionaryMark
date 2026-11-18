@@ -57,9 +57,13 @@ because the code analysis requires exceptions to be public; every other type of 
 
 **`FileReferenceResolver`** is created for one operation (one table job) with the options and (internally) the
 `FileOpenHooks` test seams. It holds the outcome of every key that was looked up (a file, a remembered failure, or a
-miss) and the real location of every trusted folder a policy compares against, captured on first use. **It is not
-thread-safe**: one instance per operation. A candidate (private record `Candidate`) carries its `Key` and its `Origin`
-(the base directory).
+miss) and the real location of every trusted folder a policy compares against, captured on first use. Both caches,
+and the anchor locations of each pre-open snapshot, are keyed by the path as written compared exactly
+(`RealPath.KeyComparer`, ordinal on every platform), because whether a folder is case-sensitive cannot be told: on a
+case-sensitive folder `.../Allowed/a.txt` and `.../allowed/a.txt` are two files and never share an entry, and on a
+case-insensitive folder another spelling of the same file is only an extra entry, opened and judged on its own.
+**It is not thread-safe**: one instance per operation. A candidate (private record `Candidate`) carries its `Key` and
+its `Origin` (the base directory).
 
 **Invariants**: no byte of a file is read before the policy (when it needs the real path) allowed the open handle; the
 bytes come from the handle the policy was asked about; a key is opened at most once per instance except after a
@@ -146,15 +150,14 @@ cancellation raised by the policy passes through unwrapped. Invalid options are 
   decides where the write lands. A dangling link on the way up is refused rather than treated as a missing folder,
   because the write would follow it once its target appears.
 
-**Known limits**: where Windows cannot tell the real path, the default policy reads the file without the network
-check (a restrictive policy fails closed with `RealPathUnavailable`); a SUBST or DFS path whose drive is local but
-whose target is remote is refused (fail closed); paths are compared case-insensitively on Windows and macOS (see
-*FileAccessPolicy Design*); a hard link cannot be told apart from the file itself; a file deleted after it is opened
-has no real path on Linux, so a restrictive policy refuses it; the output check is not free of races, because the
-write goes by name (a link swapped in between the check and the write is not caught), and a missing parent folder that
-is a dangling link is judged by the folder above it; an existing output that cannot be opened for reading is refused
-(`CannotRead`); and an output that does not exist yet, spelled with short (8.3) names below the anchor, is refused
-under `no-symlinks` (fail closed).
+**Known limits**: where Windows cannot tell the real path, the default policy reads the file without the network check
+(a restrictive policy fails closed with `RealPathUnavailable`); a SUBST or DFS path whose drive is local but whose
+target is remote is refused (fail closed); a hard link cannot be told apart from the file itself; a file deleted after
+it is opened has no real path on Linux, so a restrictive policy refuses it; the output check is not free of races,
+because the write goes by name (a link swapped in between the check and the write is not caught), and a missing parent
+folder that is a dangling link is judged by the folder above it; an existing output that cannot be opened for reading is
+refused (`CannotRead`); and an output that does not exist yet, spelled with short (8.3) names below the anchor, is
+refused under `no-symlinks` (fail closed).
 
 #### Dependencies
 

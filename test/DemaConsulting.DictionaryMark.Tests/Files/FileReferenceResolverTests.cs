@@ -480,6 +480,96 @@ public class FileReferenceResolverTests
     }
 
     /// <summary>
+    ///     Validates that two spellings of a path that differ only in letter case are separate cache entries on every
+    ///     platform: each is opened and judged on its own, and the second never reuses the outcome of the first. On a
+    ///     case-insensitive folder both name the same file (an extra entry); on a case-sensitive folder the second does
+    ///     not exist.
+    /// </summary>
+    [Fact]
+    public void FileReferenceResolver_Resolve_SpellingsDifferingOnlyInCase_AreSeparateCacheEntries()
+    {
+        // Arrange
+        using var directory = new FileTestDirectory();
+        directory.Write("a.txt", "a");
+        var opened = new List<string>();
+        var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path }, Recording(opened));
+
+        // Act
+        var lower = resolver.Resolve("a.txt");
+        var upper = resolver.Resolve("A.txt");
+        var lowerAgain = resolver.Resolve("a.txt");
+
+        // Assert: both spellings reached the opener once each, and neither answered for the other
+        Assert.Equal([Path.GetFullPath(directory.Combine("a.txt")), Path.GetFullPath(directory.Combine("A.txt"))], opened);
+        Assert.NotSame(lower, upper);
+        Assert.Same(lower, lowerAgain);
+    }
+
+    /// <summary>
+    ///     Validates that two files whose folders differ only in letter case are each read with their own bytes, under a
+    ///     policy that captures folder locations. Skips where the temporary folder is observed to be case-insensitive,
+    ///     because the two files cannot both exist there; no file-system setting is changed.
+    /// </summary>
+    [Fact]
+    public void FileReferenceResolver_Resolve_FilesDifferingOnlyInCase_AreReadSeparatelyWhereTheFolderIsCaseSensitive()
+    {
+        // Arrange: "Allowed/a.txt" exists; whether "allowed" names it too is the file system's own answer
+        using var directory = new FileTestDirectory();
+        directory.Write("Allowed/a.txt", "upper");
+        if (Directory.Exists(directory.Combine("allowed")))
+        {
+            Assert.Skip("The temporary folder is observed to be case-insensitive.");
+        }
+
+        directory.Write("allowed/a.txt", "lower");
+        var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path, FileAccess = FileAccessPolicy.NoSymlinks });
+
+        // Act
+        var upper = resolver.Resolve("Allowed/a.txt");
+        var lower = resolver.Resolve("allowed/a.txt");
+
+        // Assert
+        Assert.Equal("upper", Text(upper));
+        Assert.Equal("lower", Text(lower));
+    }
+
+    /// <summary>
+    ///     Validates that trusted folders that differ only in letter case are captured separately before the open on
+    ///     every platform: each is asked for its own location, and the policy sees each with its own location.
+    /// </summary>
+    [Fact]
+    public void FileReferenceResolver_Resolve_AnchorsDifferingOnlyInCase_AreCapturedSeparately()
+    {
+        // Arrange: a policy that names two anchors that differ only in letter case
+        using var directory = new FileTestDirectory();
+        directory.Write("a.txt", "a");
+        var upperAnchor = Path.GetFullPath(directory.Combine("Allowed"));
+        var lowerAnchor = Path.GetFullPath(directory.Combine("allowed"));
+        var policy = new AnchoredPolicy([upperAnchor, lowerAnchor]);
+        var asked = new List<string>();
+        var hooks = new FileOpenHooks
+        {
+            DirectoryLocationOf = anchor =>
+            {
+                asked.Add(anchor);
+                return "location of " + anchor;
+            },
+        };
+        var resolver = Create(new FileReferenceOptions { BaseDirectory = directory.Path, FileAccess = policy }, hooks);
+
+        // Act
+        resolver.Resolve("a.txt");
+
+        // Assert
+        Assert.Equal([upperAnchor, lowerAnchor], asked);
+        var snapshot = Assert.Single(policy.Requests).Snapshot;
+        Assert.NotNull(snapshot);
+        Assert.Equal(2, snapshot.AnchorLocations.Count);
+        Assert.Equal("location of " + upperAnchor, snapshot.AnchorLocations[upperAnchor]);
+        Assert.Equal("location of " + lowerAnchor, snapshot.AnchorLocations[lowerAnchor]);
+    }
+
+    /// <summary>
     ///     Validates what the policy is asked (base directory - the host-chosen directory the lookup started from -
     ///     requested and real path) and that a denial is reported with the reason, the hint, the policy name and the
     ///     paths, without a host directory in its message.
@@ -506,7 +596,7 @@ public class FileReferenceResolverTests
         var request = Assert.Single(policy.Requests);
         Assert.Equal(Path.GetFullPath(directory.Combine("base")), request.BaseDirectory);
         Assert.Equal(Path.GetFullPath(directory.Combine("x.txt")), request.RequestedPath);
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Path), "x.txt"), request.RealPath));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Path), "x.txt"), request.RealPath));
 
         // Assert: the denial carries the facts, and its message names the policy but no host directory
         Assert.Null(file);

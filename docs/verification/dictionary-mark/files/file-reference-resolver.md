@@ -102,6 +102,22 @@ chunk past the byte limit. This scenario is tested by `FileReferenceResolver_Rea
 a file and a missing file once, returns the same instance for the same file, and does not read a file again after it
 changed. This scenario is tested by `FileReferenceResolver_Resolve_SameFileTwice_IsOpenedOnceAndReturnsTheSameInstance`.
 
+**FileReferenceResolver_Resolve_SpellingsDifferingOnlyInCase_AreSeparateCacheEntries**: Validates on every platform that
+`a.txt` and `A.txt` are separate cache entries: each spelling reaches the opener once, the second never reuses the
+outcome of the first, and the first is still answered from the cache. This scenario is tested by
+`FileReferenceResolver_Resolve_SpellingsDifferingOnlyInCase_AreSeparateCacheEntries`.
+
+**FileReferenceResolver_Resolve_FilesDifferingOnlyInCase_AreReadSeparatelyWhereTheFolderIsCaseSensitive**: Validates
+under `no-symlinks` that `Allowed/a.txt` and `allowed/a.txt` are each read with their own bytes. Skips where the
+temporary folder is observed to be case-insensitive (the two files cannot both exist there); no file-system setting is
+changed. This scenario is tested by
+`FileReferenceResolver_Resolve_FilesDifferingOnlyInCase_AreReadSeparatelyWhereTheFolderIsCaseSensitive`.
+
+**FileReferenceResolver_Resolve_AnchorsDifferingOnlyInCase_AreCapturedSeparately**: Validates on every platform, through
+the folder-location seam, that two trusted folders that differ only in letter case are each asked for their own
+location before the open and reach the policy with their own location. This scenario is tested by
+`FileReferenceResolver_Resolve_AnchorsDifferingOnlyInCase_AreCapturedSeparately`.
+
 **FileReferenceResolver_Resolve_PolicyDenial_IsAccessDeniedWithFactsAndNothingRead**: Validates what the policy is asked
 (base directory - the host-chosen directory the lookup started from - requested and real path) and that a denial is
 reported with the reason, the hint, the policy name and the paths, without a host directory in its message. This

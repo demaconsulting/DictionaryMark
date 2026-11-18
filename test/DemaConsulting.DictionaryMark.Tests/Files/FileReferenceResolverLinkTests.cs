@@ -75,7 +75,7 @@ public class FileReferenceResolverLinkTests
         // Assert: the key is the path as written, the real path is the target
         Assert.Equal("outside", Text(file));
         Assert.Equal(Path.GetFullPath(Path.Combine(root, "escape", "x.txt")), file!.Key);
-        Assert.True(RealPath.PathsEqual(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "x.txt"), file.RealPath!));
+        Assert.True(FileTestSupport.SamePath(Path.Join(FileTestSupport.Canonical(directory.Combine("outside")), "x.txt"), file.RealPath!));
     }
 
     /// <summary>

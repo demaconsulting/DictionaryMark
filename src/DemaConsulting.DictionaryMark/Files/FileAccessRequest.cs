@@ -73,6 +73,7 @@ internal sealed record FileAccessRequest
 /// </param>
 /// <param name="AnchorLocations">
 ///     The real location of each trusted folder a policy asked for (<see cref="FileAccessPolicy.AnchorsOf"/>), keyed
-///     by the folder as written; <see langword="null"/> where it could not be determined.
+///     by the folder as written and compared exactly (<see cref="RealPath.KeyComparer"/>); <see langword="null"/> where
+///     it could not be determined.
 /// </param>
 internal sealed record PreOpenSnapshot(string LongRequestedPath, IReadOnlyDictionary<string, string?> AnchorLocations);

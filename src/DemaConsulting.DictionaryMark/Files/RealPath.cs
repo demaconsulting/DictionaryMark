@@ -70,40 +70,162 @@ internal static partial class RealPath
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
     /// <summary>
-    ///     Gets the comparison under which two full paths name the same file on this platform: case-insensitive on
-    ///     Windows and macOS (their default file systems), ordinal elsewhere.
+    ///     Gets the comparer of every cache or set keyed by a path: ordinal on every platform.
     /// </summary>
-    internal static StringComparison PathComparison { get; } =
+    /// <remarks>
+    ///     Whether a folder is case-sensitive cannot be told reliably on any platform, so two paths that differ only in
+    ///     letter case may name two different files (<c>.../Allowed/a.txt</c> and <c>.../allowed/a.txt</c> on a
+    ///     case-sensitive folder) and must never share a cache entry: one would reuse the other's bytes or the other's
+    ///     captured folder location. On a case-insensitive folder the only cost is an extra entry for another spelling
+    ///     of the same file, which is judged on its own.
+    /// </remarks>
+    internal static StringComparer KeyComparer { get; } = StringComparer.Ordinal;
+
+    /// <summary>
+    ///     Gets the comparison of the as-written pre-filter (<see cref="IsUnder(string, string)"/>) on this platform:
+    ///     case-insensitive on Windows and macOS (their default file systems), ordinal elsewhere.
+    /// </summary>
+    /// <remarks>
+    ///     Private so it cannot spread: it serves only the pre-filter that keeps a file clearly outside every root from
+    ///     being opened. It never decides (the real path is compared exactly, see <see cref="IsUnderExactly"/>) and it
+    ///     never keys a cache (see <see cref="KeyComparer"/>).
+    /// </remarks>
+    private static StringComparison PathComparison { get; } =
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     /// <summary>
-    ///     Gets the comparer that matches <see cref="PathComparison"/>.
+    ///     Determines whether two real paths are the same, comparing them exactly (ordinal) on every platform.
     /// </summary>
-    internal static StringComparer PathComparer { get; } =
-        PathComparison == StringComparison.OrdinalIgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-
-    /// <summary>
-    ///     Determines whether two full paths name the same location under the platform comparison.
-    /// </summary>
-    /// <param name="left">A full path.</param>
-    /// <param name="right">Another full path.</param>
+    /// <remarks>
+    ///     Both paths must already be in the letter case stored on disk (see <see cref="GetExactPathName"/>); trailing
+    ///     separators do not matter, a Windows drive letter is compared case-insensitively (<c>c:</c> is <c>C:</c>),
+    ///     and on macOS both are compared in Unicode composed form. Pure text; thread-safe.
+    /// </remarks>
+    /// <param name="left">A full path in stored case.</param>
+    /// <param name="right">Another full path in stored case.</param>
     /// <returns><see langword="true"/> when they are the same.</returns>
-    internal static bool PathsEqual(string left, string right) =>
-        string.Equals(Normalize(TrimEnd(left)), Normalize(TrimEnd(right)), PathComparison);
+    internal static bool PathsEqualExactly(string left, string right) => AreEqual(left, right, StringComparison.Ordinal);
 
     /// <summary>
-    ///     Determines whether a full path is a root folder or lies below it; the boundary is a directory separator, so
-    ///     a sibling whose name merely starts with the root's name is not below it.
+    ///     Determines whether a full path as written is a root folder or lies below it under the as-written pre-filter
+    ///     comparison (case-insensitive on Windows and macOS, ordinal elsewhere); the boundary is a directory separator,
+    ///     so a sibling whose name merely starts with the root's name is not below it.
     /// </summary>
+    /// <remarks>
+    ///     A pre-filter only, and the one place the platform's default case rule is used: a path it accepts is still
+    ///     judged by its real path with <see cref="IsUnderExactly"/>, so being loose here cannot widen a policy.
+    /// </remarks>
     /// <param name="path">The full path.</param>
     /// <param name="root">The full path of the folder.</param>
     /// <returns><see langword="true"/> when <paramref name="path"/> is <paramref name="root"/> or below it.</returns>
-    internal static bool IsUnder(string path, string root)
+    internal static bool IsUnder(string path, string root) => IsUnder(path, root, PathComparison);
+
+    /// <summary>
+    ///     Determines whether a real path is a root folder or lies below it, comparing exactly (ordinal) on every
+    ///     platform; the boundary is a directory separator, so a sibling whose name merely starts with the root's name
+    ///     is not below it.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         Why it exists: whether a folder is case-sensitive cannot be told reliably (a Windows folder, a macOS
+    ///         volume and a Linux folder can each be either), so a case-insensitive containment check would treat
+    ///         <c>C:\work\ALLOWED\x</c> as inside the root <c>C:\work\allowed</c> on a case-sensitive folder, where
+    ///         they are different folders. Comparing exactly is correct on both kinds of folder once both paths are in
+    ///         the letter case stored on disk.
+    ///     </para>
+    ///     <para>
+    ///         Both paths must already be in stored case (see <see cref="GetExactPathName"/>); trailing separators do
+    ///         not matter, a Windows drive letter is compared case-insensitively (a drive letter names the same drive
+    ///         in either case), and on macOS both are compared in Unicode composed form. Pure text; thread-safe.
+    ///     </para>
+    /// </remarks>
+    /// <param name="path">The full real path, in stored case.</param>
+    /// <param name="root">The full real path of the folder, in stored case.</param>
+    /// <returns><see langword="true"/> when <paramref name="path"/> is <paramref name="root"/> or below it.</returns>
+    internal static bool IsUnderExactly(string path, string root) => IsUnder(path, root, StringComparison.Ordinal);
+
+    /// <summary>
+    ///     Gets the spelling of a path in the letter case stored on disk, so that real paths can be compared exactly.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         <b>Why it exists.</b> Real paths are compared exactly (<see cref="IsUnderExactly"/>), because a folder may
+    ///         be case-sensitive on any platform. On a case-insensitive folder the same entry can be spelled in many
+    ///         letter cases (a root given as <c>c:\Work\docs</c> for the folder <c>C:\work\Docs</c>), so each spelling is
+    ///         first brought to the one the file system stores.
+    ///     </para>
+    ///     <para>
+    ///         <b>Algorithm.</b> The path is made full, then each component is looked up in its parent, from the root
+    ///         down: the parent is listed for the name ignoring case. An entry whose name equals the name exactly wins
+    ///         (on a case-sensitive folder several entries can differ only in case, and a name with <c>*</c> or
+    ///         <c>?</c> can match other entries as a pattern). Otherwise, a single entry equal to the name ignoring case
+    ///         is used when the name as written also exists, which is how a case-insensitive folder resolves it; on a
+    ///         case-sensitive folder the name as written does not exist and is kept. A missing component, and everything
+    ///         below a missing folder, keeps its name as written, with the existing part of the path still normalized.
+    ///         Only a drive letter of a root is changed (upper case); <c>/</c> and UNC roots (server and share names)
+    ///         are kept as written.
+    ///     </para>
+    ///     <para>
+    ///         The result differs from the full path only in letter case, so comparing two results exactly is never
+    ///         looser than comparing the inputs ignoring case. Links are not resolved (each component is listed in its
+    ///         parent by name). A parent that may not be listed (access denied) yields no entries, so the name below it is
+    ///         kept as written.
+    ///     </para>
+    ///     <para>
+    ///         <b>Side effects.</b> Reads the file system: lists the entries of each existing parent folder that match
+    ///         the name, and asks whether a name exists. Nothing is created or changed. Stateless and thread-safe; the
+    ///         answer reflects the file system at the time of the call.
+    ///     </para>
+    /// </remarks>
+    /// <param name="pathName">A path, relative (taken from the current directory) or full. Must not be null or empty.</param>
+    /// <returns>The full path, in stored case for every component that exists.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="pathName"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="pathName"/> is empty or not a valid path.</exception>
+    /// <exception cref="IOException">
+    ///     Thrown when a folder cannot be listed for a reason other than denied access (for example it vanished during
+    ///     the call, or the path is too long).
+    /// </exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access is refused in a way the listing cannot skip.</exception>
+    internal static string GetExactPathName(string pathName)
     {
-        var normalizedPath = Normalize(path);
-        var trimmedRoot = Normalize(TrimEnd(root));
-        return string.Equals(TrimEnd(normalizedPath), trimmedRoot, PathComparison)
-            || normalizedPath.StartsWith(trimmedRoot.TrimEnd(Separators) + Path.DirectorySeparatorChar, PathComparison);
+        var full = Path.GetFullPath(pathName);
+        var info = new DirectoryInfo(full);
+
+        // Root: normalize a drive letter only ("c:\" -> "C:\"); leave "/" and UNC roots as they are
+        if (info.Parent is null)
+        {
+            return full.Length >= 2 && full[1] == ':' ? char.ToUpperInvariant(full[0]) + full[1..] : full;
+        }
+
+        var parent = GetExactPathName(info.Parent.FullName);
+        var name = info.Name;
+
+        // A missing entry keeps its name as written, with the existing part of the path still normalized
+        if (!Directory.Exists(parent))
+        {
+            return Path.Combine(parent, name);
+        }
+
+        // List the parent ignoring case; more than one match means a case-sensitive folder,
+        // or wildcard characters in the name, so the exact-case entry wins
+        var options = new EnumerationOptions
+        {
+            MatchCasing = MatchCasing.CaseInsensitive,
+            MatchType = MatchType.Simple,
+            IgnoreInaccessible = true,
+            AttributesToSkip = 0,
+        };
+        var matches = new DirectoryInfo(parent).GetFileSystemInfos(name, options)
+            .Where(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var exact = matches.Find(e => string.Equals(e.Name, name, StringComparison.Ordinal));
+
+        // A single match in another case is the same entry only when the name as written exists too (a case-insensitive
+        // folder); on a case-sensitive folder the name as written is missing and keeps its spelling
+        var stored = exact?.Name
+            ?? (matches.Count == 1 && Path.Exists(Path.Combine(parent, name)) ? matches[0].Name : name);
+
+        return Path.Combine(parent, stored);
     }
 
     /// <summary>
@@ -204,15 +326,27 @@ internal static partial class RealPath
     }
 
     /// <summary>
-    ///     Gets the deepest folder that two full paths share, comparing whole components.
+    ///     Gets the deepest folder that two full paths share, comparing whole components exactly (ordinal) on every
+    ///     platform.
     /// </summary>
+    /// <remarks>
+    ///     The result is trusted by <c>no-symlinks</c> (a link in it is not looked for), so it must never be a folder
+    ///     the second path does not name: on a case-sensitive folder <c>/work/allowed</c> is not <c>/work/Allowed</c>.
+    ///     On a case-insensitive folder a component spelled in another case only makes the shared folder shallower, so
+    ///     more of the path is checked, never less. A Windows drive letter is the one part compared case-insensitively,
+    ///     because <c>c:\</c> and <c>C:\</c> always name the same drive; the result keeps the root as spelled in
+    ///     <paramref name="first"/>.
+    /// </remarks>
     /// <param name="first">A full path.</param>
     /// <param name="second">Another full path.</param>
     /// <returns>The shared folder, or <see langword="null"/> when the paths are on different roots (Windows drives).</returns>
     internal static string? CommonAncestor(string first, string second)
     {
+        // The roots must be the same, comparing exactly except for the letter case of a Windows drive letter
         var root = Path.GetPathRoot(first);
-        if (string.IsNullOrEmpty(root) || !string.Equals(root, Path.GetPathRoot(second), PathComparison))
+        if (string.IsNullOrEmpty(root)
+            || Path.GetPathRoot(second) is not { } secondRoot
+            || !string.Equals(UpperDriveLetter(root), UpperDriveLetter(secondRoot), StringComparison.Ordinal))
         {
             return null;
         }
@@ -221,7 +355,7 @@ internal static partial class RealPath
         var secondParts = second[root.Length..].Split(Separators, StringSplitOptions.RemoveEmptyEntries);
         var count = 0;
         while (count < firstParts.Length && count < secondParts.Length
-            && string.Equals(firstParts[count], secondParts[count], PathComparison))
+            && string.Equals(firstParts[count], secondParts[count], StringComparison.Ordinal))
         {
             count++;
         }
@@ -346,6 +480,33 @@ internal static partial class RealPath
     private static bool? IsRegularMode(int? mode) => mode is { } value ? (value & UnixTypeMask) == UnixRegularFile : null;
 
     /// <summary>
+    ///     Determines whether two full paths are the same under a comparison, ignoring trailing separators and (on
+    ///     macOS) the Unicode form.
+    /// </summary>
+    /// <param name="left">A full path.</param>
+    /// <param name="right">Another full path.</param>
+    /// <param name="comparison">The comparison of the text.</param>
+    /// <returns><see langword="true"/> when they are the same.</returns>
+    private static bool AreEqual(string left, string right, StringComparison comparison) =>
+        string.Equals(Normalize(UpperDriveLetter(TrimEnd(left))), Normalize(UpperDriveLetter(TrimEnd(right))), comparison);
+
+    /// <summary>
+    ///     Determines whether a full path is a root folder or lies below it under a comparison; the boundary is a
+    ///     directory separator.
+    /// </summary>
+    /// <param name="path">The full path.</param>
+    /// <param name="root">The full path of the folder.</param>
+    /// <param name="comparison">The comparison of the text.</param>
+    /// <returns><see langword="true"/> when <paramref name="path"/> is <paramref name="root"/> or below it.</returns>
+    private static bool IsUnder(string path, string root, StringComparison comparison)
+    {
+        var normalizedPath = Normalize(UpperDriveLetter(path));
+        var trimmedRoot = Normalize(UpperDriveLetter(TrimEnd(root)));
+        return string.Equals(TrimEnd(normalizedPath), trimmedRoot, comparison)
+            || normalizedPath.StartsWith(trimmedRoot.TrimEnd(Separators) + Path.DirectorySeparatorChar, comparison);
+    }
+
+    /// <summary>
     ///     Removes trailing directory separators, keeping a root such as <c>/</c> or <c>C:\</c> intact.
     /// </summary>
     /// <param name="path">The path.</param>
@@ -356,6 +517,22 @@ internal static partial class RealPath
         var trimmed = path.TrimEnd(Separators);
         return root is not null && trimmed.Length < root.Length ? root : trimmed;
     }
+
+    /// <summary>
+    ///     Brings a leading Windows drive letter (<c>c:</c>) to upper case; elsewhere, or for a path without one,
+    ///     returns it unchanged.
+    /// </summary>
+    /// <remarks>
+    ///     Exact path comparisons keep every component's letter case, because a folder may be case-sensitive, but a
+    ///     drive letter is always case-insensitive: <c>c:\</c> and <c>C:\</c> name the same drive. Upper-casing it on
+    ///     both sides before an ordinal comparison makes only the drive letter case-insensitive. Pure text; thread-safe.
+    /// </remarks>
+    /// <param name="path">The path.</param>
+    /// <returns>The path with its drive letter in upper case.</returns>
+    private static string UpperDriveLetter(string path) =>
+        OperatingSystem.IsWindows() && path.Length >= 2 && path[1] == ':' && char.IsAsciiLetterLower(path[0])
+            ? string.Concat(char.ToUpperInvariant(path[0]).ToString(), path.AsSpan(1))
+            : path;
 
     /// <summary>
     ///     Brings a path into the composed Unicode form on macOS, whose file systems may hand back decomposed names;

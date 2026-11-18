@@ -27,8 +27,9 @@ sections:
                 title: >-
                   The FileAccessPolicy class shall provide a policy named "roots" that allows a file only when both
                   the path as written and the real path lie inside one of the given folders (the folder itself
-                  included, a sibling that merely shares a name prefix excluded, compared under the platform's case
-                  rule and in each folder's written and real spelling), that refuses a path as written outside every
+                  included, a sibling that merely shares a name prefix excluded, the path as written compared under the
+                  platform's case rule and in each folder's written and real spelling, the real path compared exactly
+                  in the letter case stored on disk), that refuses a path as written outside every
                   folder before the file is opened, that compares the real path only with each folder's real location
                   captured when the policy is created (a folder that does not exist then allows no file), that explains
                   a denial with a reason and a hint, and that rejects a missing, empty or invalid folder, and on Windows
@@ -37,7 +38,9 @@ sections:
                 justification: |
                   A build server confines configuration files to chosen folders; a link that stays inside is fine,
                   one that leads out is not, and a path outside the folders is never even opened. Looking a folder up
-                  again later would let a folder renamed and replaced by a link widen the policy.
+                  again later would let a folder renamed and replaced by a link widen the policy. A folder whose name
+                  differs from an allowed folder only in letter case is a different folder on a case-sensitive file
+                  system, which cannot be detected reliably, so the real path is compared exactly.
                 tests:
                   - FileAccessPolicy_UnderRoots_RealPathInsideOrEqualToARoot_IsAllowed
                   - FileAccessPolicy_UnderRoots_SiblingWithSharedPrefix_IsDenied
@@ -45,22 +48,26 @@ sections:
                   - FileAccessPolicy_UnderRoots_RootCreatedAfterThePolicy_AllowsNothing
                   - FileAccessPolicy_UnderRoots_WrittenPathOutsideEveryRoot_IsDeniedByThePreCheck
                   - FileAccessPolicy_UnderRoots_InvalidRoots_Throw
-                  - FileAccessPolicy_UnderRoots_PlatformCaseRule_IsApplied
+                  - FileAccessPolicy_UnderRoots_RealPathInOtherCase_IsMatchedByItsStoredCase
 
               - id: DictionaryMark-FileAccessPolicy-NoSymlinks
                 title: >-
                   The FileAccessPolicy class shall provide a policy named "no-symlinks" that allows a file only when
                   its real path equals the path as written below the deepest folder shared by that path and the
                   request's base directory (the trusted, host-chosen folder the lookup started from), trusting that
-                  folder and everything above it, and comparing a path written with short (8.3) names in its long
-                  spelling.
+                  folder and everything above it, comparing both exactly in the letter case stored on disk (except a
+                  Windows drive letter, which names the same drive in either case), and comparing a path written with
+                  short (8.3) names in its long spelling.
                 justification: |
                   Some hosts refuse links altogether; folders the host chose (and their links, such as the macOS
-                  temporary folder) are trusted, and a short spelling is not a link.
+                  temporary folder) are trusted, and a short spelling is not a link. A path written in another letter
+                  case on a case-insensitive file system is not a link either.
                 tests:
                   - FileAccessPolicy_NoSymlinks_RealPathMatchesTheWrittenPath_IsAllowed
                   - FileAccessPolicy_NoSymlinks_RealPathDiffersBelowTheAnchor_IsDenied
                   - FileAccessPolicy_NoSymlinks_LinkAboveTheAnchor_IsTrusted
+                  - FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase
+                  - "windows@FileAccessPolicy_NoSymlinks_DriveLetterInOtherCase_AnchorIsTheBaseDirectory"
                   - "windows@FileAccessPolicy_NoSymlinks_ShortNameSpelling_IsAllowed"
 
               - id: DictionaryMark-FileAccessPolicy-Combine

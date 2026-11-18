@@ -206,24 +206,82 @@ public class FileAccessPolicyTests
     }
 
     /// <summary>
-    ///     Validates that paths are compared under the platform rule: case-insensitive on Windows and macOS, exact on
-    ///     Linux.
+    ///     Validates that a real path spelled in another letter case is brought to the case stored on disk before it is
+    ///     compared exactly with the root: where the temporary folder is observed to be case-insensitive it names the
+    ///     same folder and is allowed; where it is observed to be case-sensitive it names a folder that does not exist,
+    ///     which is not the root, and is denied by the real-path check although the path as written is inside.
     /// </summary>
     [Fact]
-    public void FileAccessPolicy_UnderRoots_PlatformCaseRule_IsApplied()
+    public void FileAccessPolicy_UnderRoots_RealPathInOtherCase_IsMatchedByItsStoredCase()
     {
-        // Arrange: the written and real paths spell the root in upper case
+        // Arrange: the path as written is inside the root; the real path spells the root in upper case
         using var directory = new FileTestDirectory();
         var root = Directory.CreateDirectory(directory.Combine("root")).FullName;
         var policy = FileAccessPolicy.UnderRoots(root);
-        var upper = Path.Combine(root.ToUpperInvariant(), "A.TXT");
-        var expected = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
+        var written = Path.Combine(root, "a.txt");
+        var upperRoot = FileTestSupport.Canonical(root).ToUpperInvariant();
+        var upperRealPath = Path.Join(upperRoot, "A.TXT");
+        var sameFolder = Directory.Exists(upperRoot);
 
         // Act
-        var decision = policy.Check(Request(root, upper, Path.Join(FileTestSupport.Canonical(root).ToUpperInvariant(), "A.TXT")));
+        var decision = policy.Check(Request(root, written, upperRealPath));
+
+        // Assert
+        Assert.Equal(sameFolder, decision.IsAllowed);
+        if (!sameFolder)
+        {
+            Assert.Equal("its real path is outside the allowed roots", decision.Reason);
+        }
+    }
+
+    /// <summary>
+    ///     Validates that the no-symlinks policy brings the written path below the anchor to the letter case stored on
+    ///     disk before it compares it exactly with the real path: a file written in another case is allowed where the
+    ///     folder is observed to be case-insensitive and denied where it is observed to be case-sensitive, because that
+    ///     spelling names no file there.
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_NoSymlinks_WrittenPathInOtherCase_IsMatchedByItsStoredCase()
+    {
+        // Arrange: the file is stored as Sub/a.txt and written as SUB/A.TXT; the real path is the stored one
+        using var directory = new FileTestDirectory();
+        var baseDirectory = Directory.CreateDirectory(directory.Combine("base")).FullName;
+        File.WriteAllText(Path.Combine(Directory.CreateDirectory(Path.Combine(baseDirectory, "Sub")).FullName, "a.txt"), "a");
+        var written = Path.Combine(baseDirectory, "SUB", "A.TXT");
+        var expected = File.Exists(written);
+
+        // Act
+        var decision = FileAccessPolicy.NoSymlinks.Check(Request(
+            baseDirectory, written, Path.Join(FileTestSupport.Canonical(baseDirectory), "Sub", "a.txt")));
 
         // Assert
         Assert.Equal(expected, decision.IsAllowed);
+    }
+
+    /// <summary>
+    ///     Validates on Windows that the anchor of the no-symlinks policy is the base directory when the written path
+    ///     spells the drive letter in another case, because <c>c:</c> and <c>C:</c> name the same drive; it does not
+    ///     fall back to the drive root, while a folder that differs only in letter case is still not trusted (pure
+    ///     text, no disk).
+    /// </summary>
+    [Fact]
+    public void FileAccessPolicy_NoSymlinks_DriveLetterInOtherCase_AnchorIsTheBaseDirectory()
+    {
+        // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip(FileTestSupport.WindowsOnly);
+        }
+
+        // Act
+        var lowerWritten = FileAccessPolicy.NoSymlinks.AnchorsOf(@"c:\work\base\a.txt", @"C:\work\base").ToList();
+        var lowerBase = FileAccessPolicy.NoSymlinks.AnchorsOf(@"C:\work\base\a.txt", @"c:\work\base").ToList();
+        var otherFolderCase = FileAccessPolicy.NoSymlinks.AnchorsOf(@"c:\work\Base\a.txt", @"C:\work\base").ToList();
+
+        // Assert: the anchor keeps the written path's spelling of the drive letter
+        Assert.Equal([@"c:\work\base"], lowerWritten);
+        Assert.Equal([@"C:\work\base"], lowerBase);
+        Assert.Equal([@"c:\work"], otherFolderCase);
     }
 
     /// <summary>

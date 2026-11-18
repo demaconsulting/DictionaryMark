@@ -421,10 +421,13 @@ Known limits:
   in advance.
 - The real location of each allowed folder is captured when the run starts; a folder that does not exist then allows
   nothing, even if a table creates it.
-- Paths are compared case-insensitively on Windows and macOS; on a case-sensitive volume, a sibling folder whose name
-  differs from an allowed folder only in letter case counts as inside it.
 - An existing output that cannot be opened for reading (for example a write-only file) is refused, and an output that
   does not exist yet, written with short (8.3) names, is refused under `no-symlinks`.
+
+Letter case: whether a file is inside an allowed folder is decided by the letter case stored on disk. An
+`--allow-root` folder (or a path in the configuration file) written in another letter case works where the file system
+ignores case, as it does by default on Windows and macOS; on a case-sensitive folder, a folder whose name differs from
+an allowed folder only in letter case is a different folder and stays outside.
 
 ## Silent Mode
 

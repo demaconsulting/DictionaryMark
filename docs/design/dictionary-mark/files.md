@@ -41,9 +41,13 @@ contact the share before the check refuses the file; Windows evaluates local-to-
 `fsutil behavior set SymlinkEvaluation`. Junctions cannot target a share, and creating a symbolic link needs a
 privilege or Developer Mode.
 
-Known limit: paths are compared case-insensitively on Windows and macOS (their default file systems). On a
-case-sensitive volume or directory of those systems, a sibling folder whose name differs from a root only in letter
-case counts as inside that root.
+Letter case: a path as written is compared case-insensitively on Windows and macOS only as a pre-filter before the
+open. The real path decides: it and each root (or the expected path of `no-symlinks`) are brought to the letter case
+stored on disk and compared exactly on every platform, so a sibling folder whose name differs from a root only in
+letter case is outside that root on a case-sensitive folder, and a root named in another letter case on a
+case-insensitive folder still contains its files. Every cache keyed by a path (the resolver's outcomes and captured
+folder locations) compares exactly on every platform, so two paths that differ only in letter case never share an
+entry. No case sensitivity is detected.
 
 ### Interfaces
 

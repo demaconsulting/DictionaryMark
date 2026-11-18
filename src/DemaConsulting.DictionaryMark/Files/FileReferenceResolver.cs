@@ -73,14 +73,18 @@ internal sealed partial class FileReferenceResolver
     /// <summary>The test seams around the open, or <see langword="null"/>.</summary>
     private readonly FileOpenHooks? _hooks;
 
-    /// <summary>The outcome of each key that was looked up; <see langword="null"/> remembers a key that does not exist.</summary>
-    private readonly Dictionary<string, Outcome?> _outcomes;
+    /// <summary>
+    ///     The outcome of each key that was looked up; <see langword="null"/> remembers a key that does not exist. Keyed
+    ///     exactly (<see cref="RealPath.KeyComparer"/>), so paths that differ only in letter case never share an entry.
+    /// </summary>
+    private readonly Dictionary<string, Outcome?> _outcomes = new(RealPath.KeyComparer);
 
     /// <summary>
     ///     The real location of each trusted folder a policy compares against, captured the first time it is needed and
-    ///     before any file below it is opened; <see langword="null"/> where it could not be determined.
+    ///     before any file below it is opened; <see langword="null"/> where it could not be determined. Keyed exactly
+    ///     (<see cref="RealPath.KeyComparer"/>), so folders that differ only in letter case never share a location.
     /// </summary>
-    private readonly Dictionary<string, string?> _folderLocations = new(RealPath.PathComparer);
+    private readonly Dictionary<string, string?> _folderLocations = new(RealPath.KeyComparer);
 
     /// <summary>
     ///     Initializes a resolver for one operation.
@@ -110,7 +114,6 @@ internal sealed partial class FileReferenceResolver
         _options = options;
         _policy = options.FileAccess;
         _hooks = hooks;
-        _outcomes = new Dictionary<string, Outcome?>(RealPath.PathComparer);
     }
 
     /// <summary>
@@ -312,7 +315,7 @@ internal sealed partial class FileReferenceResolver
             return null;
         }
 
-        var anchors = new Dictionary<string, string?>(RealPath.PathComparer);
+        var anchors = new Dictionary<string, string?>(RealPath.KeyComparer);
         foreach (var anchor in _policy.AnchorsOf(candidate.Key, candidate.Origin))
         {
             if (!_folderLocations.TryGetValue(anchor, out var location))

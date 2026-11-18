@@ -81,7 +81,9 @@ internal abstract partial class FileAccessPolicy
     ///     directory of the request (the host-chosen base directory the lookup started from); it and every
     ///     folder above it are trusted (the host chose them).
     ///     Below it, the real path of the opened file must equal the path as written, so a link anywhere below that
-    ///     folder - a directory or the file itself - is denied, whatever its target. A hard link cannot be told apart
+    ///     folder - a directory or the file itself - is denied, whatever its target. Both are brought to the letter case
+    ///     stored on disk and then compared exactly, so a path written in another letter case on a case-insensitive
+    ///     folder still matches. A hard link cannot be told apart
     ///     from the file itself and is not denied. When <see cref="FileReferenceResolver"/> asks, the real location of
     ///     the starting folder is the one it captured before opening the file (once per resolver), never resolved by
     ///     name after the open, so a starting folder renamed and replaced by a link in between is denied. Compose it
@@ -109,7 +111,10 @@ internal abstract partial class FileAccessPolicy
     ///     A root is a folder chosen by the host; it and everything above it are trusted, so a root that is itself a
     ///     link is fine. A file reached through a link is allowed when the link stays inside a root. The path as written
     ///     is checked before the file is opened, so a file outside every root is never opened (no existence oracle and
-    ///     no device outside the roots is touched); the real path is checked after the open. Relative roots are made
+    ///     no device outside the roots is touched); the real path is checked after the open. The path as written is
+    ///     compared case-insensitively on Windows and macOS, which only pre-filters; the real path decides, compared
+    ///     exactly after it and each root are brought to the letter case stored on disk, because whether a folder is
+    ///     case-sensitive cannot be told reliably. Relative roots are made
     ///     full against the current directory now, and the real location of each root is captured <b>now</b>, when the
     ///     policy is created, and never looked up again: the real path of a file is compared only with that captured
     ///     location, so a root renamed and replaced by a link later cannot widen the policy. Create the roots before the

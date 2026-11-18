@@ -7,7 +7,8 @@ adapted from CanvasNet's `RealPath` unit and comprises five internal source file
 `DemaConsulting.DictionaryMark.Files` namespace:
 
 - `RealPath.cs` - `RealPath` (internal static partial class): the dispatch per operating system, the open, the handle
-  facts (`HandleFacts`), the real location of a folder, short-name expansion, and the path comparison rules
+  facts (`HandleFacts`), the real location of a folder, short-name expansion, the path comparison rules, and the
+  stored-case spelling of a path (`GetExactPathName`)
 - `RealPath.Windows.cs` - the Windows facts of an open handle, and whether a path is a network location
 - `RealPath.Unix.cs` - the Linux facts of an open handle
 - `NativeMethods.cs` - `NativeMethods` (internal static class): the private `DllImport` declarations and the wrappers
@@ -24,16 +25,20 @@ system. It also opens files without blocking on Linux and macOS and tells a regu
 a named pipe, which .NET cannot do for an open handle either.
 
 The unit's behavior is specified by the `DictionaryMark-RealPath-*` requirements (`FinalPath`, `Unavailable`,
-`RegularFile`, `NonBlockingOpen`, `CanonicalDirectory`, `NetworkLocation`, and `Comparison`) in
+`RegularFile`, `NonBlockingOpen`, `CanonicalDirectory`, `NetworkLocation`, `Comparison`, and `ExactCase`) in
 `docs/reqstream/dictionary-mark/files/real-path.yaml`.
 
 #### Data Model
 
 **`HandleFacts`** (readonly record struct): `IsRegularFile` (`bool?`) and `FinalPath` (`string?`); `null` means the
-platform cannot tell. **`PathComparison`** / **`PathComparer`**: `OrdinalIgnoreCase` on Windows and macOS, `Ordinal`
-elsewhere. On a case-sensitive volume or directory of Windows or macOS this comparison is a known limit (see
-*FileAccessPolicy Design*). The unit is stateless except for one cached flag in `NativeMethods` that remembers
-whether the C library exports `fstat`.
+platform cannot tell. **`KeyComparer`**: the comparer of every cache or set keyed by a path in the subsystem (the
+resolver's outcome and folder-location caches and the anchor locations of a pre-open snapshot) - `Ordinal` on every
+platform, so paths that differ only in letter case are never one entry. **`PathComparison`** (private): the comparison
+of the as-written pre-filter `IsUnder` only - `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` elsewhere; it never
+decides and never keys a cache. Real paths are always compared `Ordinal`, after both sides are brought to the letter
+case stored on disk (`GetExactPathName`), because whether a folder is case-sensitive cannot be told reliably (a Windows
+folder, a macOS volume and a Linux folder can each be either). The unit is stateless except for one cached flag in
+`NativeMethods` that remembers whether the C library exports `fstat`.
 
 #### Key Methods
 
@@ -89,8 +94,29 @@ Per system:
 - **Other systems**: `File.OpenHandle` (blocking) and unknown facts; a restrictive policy then fails closed.
 - `NativeMethods.WithDescriptor` is the one place that reads the raw descriptor of a handle (for the C calls and the
   `/proc` link), inside `DangerousAddRef`/`DangerousRelease`, so the descriptor cannot be closed and reused meanwhile.
-- `IsUnder(path, root)`, `PathsEqual`, and `CommonAncestor` implement the comparison rules: the separator is the
-  boundary, trailing separators do not matter, and components are compared whole under `PathComparison`.
+- `IsUnder(path, root)` implements the as-written pre-filter: the separator is the boundary, trailing separators do
+  not matter, and components are compared whole under `PathComparison`. `CommonAncestor` finds the deepest folder two
+  paths share by whole components compared `Ordinal` on every platform, because `no-symlinks` trusts that folder: a
+  component that differs only in letter case is not shared (on a case-insensitive folder this only makes the shared
+  folder shallower, so more of the path is checked). `IsUnderExactly(path, root)` and `PathsEqualExactly` apply the
+  same rules to real paths with an `Ordinal` comparison on every platform (in Unicode composed form on macOS); both
+  arguments must already be in stored case. In these three exact comparisons a Windows drive letter is upper-cased on
+  both sides first (`UpperDriveLetter`), because `c:` and `C:` always name the same drive; every component after the
+  root stays exact.
+- `GetExactPathName(path)` - a .NET-only helper (no native call) that spells a path in the letter case stored on disk.
+  The path is made full (`Path.GetFullPath`); a root keeps its spelling except a drive letter, which is upper-cased
+  (`c:\` to `C:\`), so `/` and UNC roots (server and share names) are kept as written. Each other component is
+  resolved recursively from the root down: when its parent folder does not exist, the name is kept as written (with
+  the existing part above still normalized); otherwise the parent is listed for the name with
+  `EnumerationOptions { MatchCasing = CaseInsensitive, MatchType = Simple, IgnoreInaccessible = true,
+  AttributesToSkip = 0 }`, and the entries are filtered to those equal to the name ignoring case (dropping wildcard
+  and short-name matches). An entry equal to the name exactly wins (several entries differing only in case means a
+  case-sensitive folder). A single entry in another case is used only when the name as written also exists
+  (`Path.Exists`), which is how a case-insensitive folder resolves it; on a case-sensitive folder that spelling is a
+  missing entry and is kept as written, so a missing folder is never mapped onto an existing folder whose name
+  differs only in case. The result differs from the full path only in letter case, so comparing two results exactly
+  is never looser than comparing the inputs ignoring case. Links are not resolved. It reads the file system by name,
+  but it changes nothing and its answer only affects letter case.
 
 **Imports**: `kernel32.dll` with `DefaultDllImportSearchPaths(System32)` and explicit `CharSet.Unicode`; `libc` (the
 runtime maps it to the C library on Linux and to `/usr/lib/libc.dylib`, which re-exports `libSystem`, on macOS) with
@@ -103,7 +129,9 @@ Strings for the C library are passed as NUL-terminated UTF-8 byte arrays; no uns
 `TryGetCanonicalDirectory`, and `ExpandShortNames` never throw for a platform failure: a failing or missing native call
 (`IOException`, `UnauthorizedAccessException`, `ExternalException`, `DllNotFoundException`,
 `EntryPointNotFoundException`) yields unknown facts or no location, and the caller decides (fail closed for a
-restrictive policy).
+restrictive policy). `GetExactPathName` throws `ArgumentException` for an invalid path and lets an `IOException` or
+`UnauthorizedAccessException` of the listing propagate (a parent that may not be listed yields no entries, so its
+names are kept); a policy that calls it is denied by the resolver when it throws (fail closed).
 
 #### Dependencies
 
@@ -114,5 +142,5 @@ restrictive policy).
 #### Callers
 
 `FileReferenceResolver` (open and handle facts, and the real location of the deepest existing folder of an output) and
-`FileAccessPolicy` (comparison, real folder locations, short names). The tests reach the unit through the assembly's
-`InternalsVisibleTo` grant to the test project.
+`FileAccessPolicy` (comparison, stored-case spelling, real folder locations, short names). The tests reach the unit
+through the assembly's `InternalsVisibleTo` grant to the test project.

@@ -212,6 +212,16 @@ internal static class FileTestSupport
         Assert.NotNull(canonical);
         return canonical;
     }
+
+    /// <summary>
+    ///     Determines whether two full paths name the same location the way the policies compare real paths: both are
+    ///     brought to the letter case stored on disk and then compared exactly, so no case sensitivity is assumed.
+    /// </summary>
+    /// <param name="expected">The expected full path.</param>
+    /// <param name="actual">The actual full path.</param>
+    /// <returns><see langword="true"/> when they are the same.</returns>
+    public static bool SamePath(string expected, string actual) =>
+        RealPath.PathsEqualExactly(RealPath.GetExactPathName(expected), RealPath.GetExactPathName(actual));
 }
 
 /// <summary>
@@ -244,5 +254,34 @@ internal sealed class RecordingPolicy(Func<FileAccessRequest, FileAccessDecision
     {
         _requests.Add(request);
         return answer(request);
+    }
+}
+
+/// <summary>
+///     A policy that names fixed trusted folders (anchors) to capture before the open, allows every file, and records
+///     the requests it is asked about, so a test can see which folder locations the resolver captured.
+/// </summary>
+/// <param name="anchors">The full paths of the anchors, in order.</param>
+internal sealed class AnchoredPolicy(IReadOnlyList<string> anchors) : FileAccessPolicy
+{
+    /// <summary>The requests, in order.</summary>
+    private readonly List<FileAccessRequest> _requests = [];
+
+    /// <summary>
+    ///     Gets the requests the policy was asked about, in order.
+    /// </summary>
+    public IReadOnlyList<FileAccessRequest> Requests => _requests;
+
+    /// <inheritdoc/>
+    public override string Name => "anchored";
+
+    /// <inheritdoc/>
+    internal override IEnumerable<string> AnchorsOf(string requestedPath, string baseDirectory) => anchors;
+
+    /// <inheritdoc/>
+    public override FileAccessDecision Check(FileAccessRequest request)
+    {
+        _requests.Add(request);
+        return FileAccessDecision.Allow;
     }
 }

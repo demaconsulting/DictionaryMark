@@ -251,7 +251,9 @@ This scenario is tested by `DictionaryMark_Config_NonexistentRoot_JobFailsThroug
 `file-access-denied` and writes nothing; `--file-access no-symlinks` must deny an input reached through a directory
 link; `--file-access roots` alone must allow the working directory and the configuration file's folder; every glob match
 must be judged (a match outside the folder fails its table); a literal input must be judged before it is looked up (a
-missing file outside the folder is denied, while a missing file inside it is not found); the default mode must still
+missing file outside the folder is denied, while a missing file inside it is not found); an `--allow-root` folder named
+in another letter case than the folder on disk must still allow the tables inside it where the temporary folder is
+observed to be case-insensitive (skipped where it is observed to be case-sensitive); the default mode must still
 refuse never-list paths, and
 refuse a network input pattern before anything is listed; a denied table must fail alone with exit code 1; command-line
 paths must never be judged; the configuration `root` key must never widen the allowed folders; and every mistake in the
@@ -265,5 +267,6 @@ options must be a usage error reported before any input is read. This scenario i
 `DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitCodeIsOne`,
 `DictionaryMark_FileAccess_RootsWithoutAllowRoot_AllowsWorkingAndConfigFolders`,
 `DictionaryMark_FileAccess_GlobMatchOutsideRoots_IsDeniedNotSkipped`,
-`DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup` and
+`DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup`,
+`DictionaryMark_FileAccess_AllowRootInOtherCase_AllowsConfigJobsInside` and
 `DictionaryMark_FileAccess_ConfigRootKey_DoesNotWidenAllowedFolders`.
