@@ -136,3 +136,14 @@ sections:
                   confirmed on each deployment platform.
                 tests:
                   - Validation_Run_WithSilentContext_ConfigTablesTestPasses
+
+              - id: DictionaryMark-Validation-FileAccessRoots
+                title: >-
+                  The Validation unit shall confirm that the roots file-access mode denies a configuration-file
+                  output outside the allowed folder, writing nothing for that job, while a job inside the folder
+                  still runs, in the deployment environment.
+                justification: |
+                  Path and real-path handling differ between operating systems, so file-access confinement must be
+                  confirmed on each deployment platform.
+                tests:
+                  - Validation_Run_WithSilentContext_FileAccessRootsTestPasses

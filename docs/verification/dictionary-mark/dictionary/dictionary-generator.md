@@ -128,3 +128,28 @@ its label. This scenario is tested by `DictionaryGenerator_Generate_ConflictsDet
 **DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput**: Verifies that `--column-widths 25,75`
 reaches the generated table separator. This scenario is tested by
 `DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput`.
+
+**DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied**: A configuration
+input `../shared/a.yaml` outside the only allowed folder must fail the job with
+`Error: table job 1 ('a.md'): file-access-denied: '../shared/a.yaml': the path as written is outside the
+allowed folders (--file-access roots)` and write nothing. This scenario is tested by
+`DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied`.
+
+**DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped**: A job whose glob matches a file
+outside the allowed folder, next to an allowed literal input, must fail with the outside file named
+rather than skip it, and write nothing. This scenario is tested by
+`DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped`.
+
+**DictionaryGenerator_GenerateJob_CommandLineInputOutsideFolders_Read** and
+**DictionaryGenerator_GenerateJob_CommandLineOutputOutsideFolders_Written**: A command-line input and
+output outside the only allowed folder are read and written, because command-line paths are trusted.
+These scenarios are tested by the tests of the same names.
+
+**DictionaryGenerator_GenerateJob_ConfigOutputOutsideFolders_WritesNothing**: A configuration output in a
+missing folder outside the allowed folder must be denied, leaving the folder uncreated. This scenario is
+tested by `DictionaryGenerator_GenerateJob_ConfigOutputOutsideFolders_WritesNothing`.
+
+**DictionaryGenerator_Generate_DeniedJob_OtherJobsRunWithLabeledError**: In the default mode, a job with
+a URL input must be reported with its label and the `file-access-denied` message, the summary must count
+it, and the next job must still write its output. This scenario is tested by
+`DictionaryGenerator_Generate_DeniedJob_OtherJobsRunWithLabeledError`.

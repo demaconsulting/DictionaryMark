@@ -320,13 +320,119 @@ The base directory for a relative path is chosen as follows:
 | :--- | :--- | :--- | :--- |
 | Configuration table job (`input`, `output`) | `--root` | `root` key | Configuration file directory |
 | Command line (`--input`, `--output`) | `--root` | `root` key | Working directory |
-| `--config`, `--log`, `--results` | Not affected | Not affected | Working directory |
+| `--config`, `--log`, `--results`, `--allow-root` | Not affected | Not affected | Working directory |
 
 - A relative `--root` is resolved against the working directory; a relative `root` key is resolved
   against the configuration file's directory. Both support `${VAR}` and `..`.
 - Absolute input and output paths ignore the root.
 - The root must be an existing directory and must not contain wildcards. `--root` may be given only
   once and must not be empty. The `root` key is checked even when `--root` overrides it.
+- A root only sets the base directory: it never grants file access (see *File Access*).
+
+## File Access
+
+A configuration file may come from someone you do not trust, for example a pull request that a CI
+pipeline builds. The `--file-access <mode>` option decides which files the paths written in a
+configuration file may read and write.
+
+### Modes
+
+- **`any`** (the default): every regular local file may be used, as in earlier versions: a relative
+  path, a path with `..`, an absolute path, and a symbolic link or junction.
+- **`roots`**: only a file inside an allowed folder. Both the path as written (after `${VAR}`
+  expansion, the base directory and `..`) and the real path of the opened file must be inside an
+  allowed folder. A symbolic link or junction that leads out of the folders is therefore denied, and so
+  is a path outside the folders that links back in.
+- **`no-symlinks`**: a path may not pass through a symbolic link or junction below the configuration
+  file's folder. That folder and the folders above it are trusted, so a linked home or temporary folder
+  does not count.
+- **`roots,no-symlinks`**: both rules.
+
+The mode may be written in any letter case (`Roots`, `ROOTS,no-symlinks`). Any other value, or the
+option given more than once, is an error that lists the modes:
+
+```text
+Error: 'strict' is not a value of --file-access: use any (the default), roots, no-symlinks, or roots,no-symlinks
+```
+
+### Allowed Folders
+
+`--allow-root <dir>` names a folder that configuration-file paths may use.
+
+- It may be repeated, and it implies `--file-access roots`.
+- It replaces the default folders.
+- A relative folder is taken from the working directory, never from `--root`. `${VAR}` and `..` are
+  supported.
+- A folder that does not exist is an error.
+- With `--file-access any` or `--file-access no-symlinks` it is an error that names the conflict. To
+  confine paths and refuse links, write `--file-access roots,no-symlinks --allow-root <dir>`.
+
+Without `--allow-root`, `roots` allows the working directory and the configuration file's folder.
+
+### Which Paths Are Judged
+
+- **Judged**: every input pattern, every file a pattern matches, and every output path of a
+  configuration file. Each matched file is judged on its own, and a denied match fails the job; it is
+  never silently skipped.
+- **Trusted**: the paths given on the command line are never judged: `--config`, `--input` and the
+  files it matches, `--output`, `--log` and `--results`. You chose them when you ran the tool.
+- **Root**: `--root` and the configuration `root` key only set the base directory of relative paths.
+  They never grant access: a path under a root outside the allowed folders is denied.
+
+### Never Accessed
+
+In every mode, including `any`, a configuration-file path is never read or written when it is:
+
+- a URL or URI (`http:`, `https:` and other schemes);
+- a `file:` URI with a host;
+- a UNC or network path (`\\server\share`, `//server/share`, a mapped network drive);
+- a device path (`\\.\`, `\\?\`, a Windows reserved name such as `NUL` or `COM1`, `/dev/...`);
+- an alternate data stream (any `:` other than the drive of a Windows path);
+- anything that is not a regular file (a folder, a named pipe, a device).
+
+A `root` key that names such a path is an error when the configuration file is loaded.
+
+On Windows, a path that passes through a symbolic link or junction whose target is a network location
+is also denied, at any folder of the path and through a chain of links. The links are read without
+being followed, so the share is never contacted.
+
+### Real Paths
+
+The modes other than `any` judge the real path of every opened file. Where the system cannot tell it
+(for example Linux without `/proc`), the file is denied, never used unchecked.
+
+### Writes
+
+Under `roots` the following must all be inside an allowed folder:
+
+- the output;
+- the deepest existing folder above it, and every folder the tool creates for it;
+- the real path of the opened output.
+
+An existing output is opened without truncation, and its real path is checked before its content is
+replaced. `no-symlinks` applies to outputs too. A denied job writes nothing, not even a folder.
+
+### Denials
+
+A denied path fails only its job. The error has the code `file-access-denied`, the path as written, the
+real path when one is known, and a reason that names the mode. The other jobs still run, and the exit
+code is non-zero:
+
+```text
+Error: table job 1 ('link/terms.yaml'): file-access-denied: 'link/terms.yaml' (real path '/home/ci/secrets/terms.yaml'): its real path is outside the allowed folders, so it leads out through a symbolic link or junction (--file-access roots)
+Error: 1 of 2 table jobs failed.
+```
+
+### Limits
+
+- `roots` confines a configuration file to its folders, but the file can still overwrite any file
+  inside them.
+- A hard link cannot be detected: it is a second name of the same file.
+- A folder that another process swaps for a link while the tool creates it can leave an empty file at
+  the swapped location, but no content is written there.
+- On Windows, a glob wildcard (`*`, `**`) that reaches a link to a network share while matching may
+  list the share. The folders before the first wildcard are checked first, and a matched file on the
+  share is never read.
 
 ## Silent Mode
 
@@ -358,6 +464,13 @@ differing fields and both files:
 
 ```text
 Error: Conflict: term 'API' differs in definition between C:\a\one.yaml and C:\a\two.yaml.
+```
+
+A configuration-file path that the file-access mode denies fails its job with the code
+`file-access-denied` (see *File Access*):
+
+```text
+Error: table job 2 ('../out.md'): file-access-denied: '../out.md': the path as written is outside the allowed folders (--file-access roots)
 ```
 
 This behavior enables automated scripts and CI/CD pipelines to detect and surface misconfiguration
@@ -401,6 +514,7 @@ The self-validation suite runs the following tests:
 | `DictionaryMark_DeprecatedTable` | A deprecated-terms table is generated with `--kind deprecated` |
 | `DictionaryMark_ColumnWidths` | `--column-widths` sizes the table separator in proportion to the weights |
 | `DictionaryMark_ConfigTables` | A `--config` file generates every table job, with config-relative `..` paths |
+| `DictionaryMark_FileAccessRoots` | `--file-access roots` denies a config output outside the allowed folder |
 
 ### Heading Depth
 
@@ -443,6 +557,8 @@ The following command-line options are supported:
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths, for example `25,75` |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file (once only) |
 | `--root <dir>` | Base directory for relative input and output paths (once only) |
+| `--file-access <mode>` | Config file path access mode (default: `any`) |
+| `--allow-root <dir>` | Allowed folder for config file paths (repeatable) |
 
 # Examples
 
@@ -481,6 +597,14 @@ dictionarymark --silent --config docs/glossary/dictionarymark.yaml --log glossar
 ```bash
 dictionarymark --root /path/to/repo --input "docs/glossary/*.yaml" --format table \
   --column-widths 25,75 --output docs/generated/glossary.md
+```
+
+## Example 7: Confine a Configuration File in CI
+
+A CI job that builds a pull request confines the configuration file's paths to the `docs` folder:
+
+```bash
+dictionarymark --config docs/glossary/dictionarymark.yaml --file-access roots --allow-root docs
 ```
 
 # Continuous Compliance

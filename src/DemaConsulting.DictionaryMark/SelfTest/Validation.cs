@@ -72,6 +72,7 @@ internal static partial class Validation
         RunDeprecatedTableTest(context, testResults);
         RunColumnWidthsTest(context, testResults);
         RunConfigTablesTest(context, testResults);
+        RunFileAccessRootsTest(context, testResults);
 
         // Calculate totals
         var totalTests = testResults.Results.Count;
@@ -731,6 +732,71 @@ internal static partial class Validation
                 test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
                 test.ErrorMessage = $"Program exited with code {exitCode} or output files not created";
                 context.WriteError($"✗ {TestName} - Failed: Exit code {exitCode}");
+            }
+        }
+        // Generic catch is justified here as this is a test framework - any exception should be
+        // recorded as a test failure to ensure robust test execution and reporting.
+        catch (Exception ex)
+        {
+            HandleTestException(test, context, TestName, ex);
+        }
+
+        FinalizeTestResult(test, startTime, testResults);
+    }
+
+    /// <summary>
+    ///     Runs a test that <c>--file-access roots</c> with <c>--allow-root</c> denies a config file output outside
+    ///     the allowed folder, writing nothing for that job (not even its folder), while a job inside the folder
+    ///     still runs and the run exits with a non-zero code.
+    /// </summary>
+    /// <param name="context">The context for output.</param>
+    /// <param name="testResults">The test results collection.</param>
+    private static void RunFileAccessRootsTest(Context context, DemaConsulting.TestResults.TestResults testResults)
+    {
+        const string TestName = "DictionaryMark_FileAccessRoots";
+        var startTime = DateTime.UtcNow;
+        var test = CreateTestResult(TestName);
+
+        try
+        {
+            using var tempDir = new TemporaryDirectory(Path.GetTempPath());
+            var configFolder = Path.Combine(tempDir.DirectoryPath, "config");
+            var configFile = tempDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+            var insideFile = Path.Combine(configFolder, "inside.md");
+            var outsideFolder = Path.Combine(tempDir.DirectoryPath, "out");
+            var outsideFile = Path.Combine(outsideFolder, "denied.md");
+            File.WriteAllText(tempDir.GetFilePath(Path.Combine("config", "terms.yaml")), $"Alpha: First letter{Environment.NewLine}");
+
+            // The first job writes outside the allowed folder; the second writes inside it
+            var nl = Environment.NewLine;
+            File.WriteAllText(
+                configFile,
+                $"tables:{nl}" +
+                $"  - input: terms.yaml{nl}    output: ../out/denied.md{nl}" +
+                $"  - input: terms.yaml{nl}    output: inside.md{nl}");
+
+            var args = new[] { SilentArg, "--config", configFile, "--file-access", "roots", "--allow-root", configFolder };
+            int exitCode;
+            using (var testContext = Context.Create(args))
+            {
+                Program.Run(testContext);
+                exitCode = testContext.ExitCode;
+            }
+
+            // The denied job wrote nothing; the allowed job wrote its output
+            var deniedNothingWritten = !File.Exists(outsideFile) && !Directory.Exists(outsideFolder);
+            var allowedWritten = File.Exists(insideFile) && File.ReadAllText(insideFile).Contains("Alpha");
+            if (exitCode == 1 && deniedNothingWritten && allowedWritten)
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Passed;
+                context.WriteLine($"✓ {TestName} - Passed");
+            }
+            else
+            {
+                test.Outcome = DemaConsulting.TestResults.TestOutcome.Failed;
+                test.ErrorMessage =
+                    $"Exit code {exitCode}, denied output absent: {deniedNothingWritten}, allowed output written: {allowedWritten}";
+                context.WriteError($"✗ {TestName} - Failed: {test.ErrorMessage}");
             }
         }
         // Generic catch is justified here as this is a test framework - any exception should be

@@ -1215,4 +1215,179 @@ public class ContextTests
             Directory.Delete(configDirectory, recursive: true);
         }
     }
+
+    /// <summary>Test that the file-access mode defaults to any, with no allowed folders.</summary>
+    [Fact]
+    public void Context_Create_NoFileAccess_DefaultsToAny()
+    {
+        // Act
+        using var context = Context.Create([]);
+
+        // Assert
+        Assert.Equal(FileAccessMode.None, context.FileAccess.Mode);
+        Assert.Equal("any", context.FileAccess.ModeName);
+        Assert.Empty(context.FileAccess.AllowedFolders);
+    }
+
+    /// <summary>Test that every --file-access mode is accepted in any letter case.</summary>
+    /// <param name="text">The option value.</param>
+    /// <param name="expected">The expected mode name.</param>
+    [Theory]
+    [InlineData("ANY", "any")]
+    [InlineData("Roots", "roots")]
+    [InlineData("No-Symlinks", "no-symlinks")]
+    [InlineData("ROOTS,no-symlinks", "roots,no-symlinks")]
+    public void Context_Create_FileAccessEachMode_Parsed(string text, string expected)
+    {
+        // Act
+        using var context = Context.Create(["--file-access", text]);
+
+        // Assert
+        Assert.Equal(expected, context.FileAccess.ModeName);
+    }
+
+    /// <summary>Test that an invalid --file-access value is a usage error listing the modes.</summary>
+    [Fact]
+    public void Context_Create_FileAccessInvalid_ThrowsListingModes()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--file-access", "everything"]));
+        Assert.Equal(
+            "'everything' is not a value of --file-access: use any (the default), roots, no-symlinks, or roots,no-symlinks",
+            ex.Message);
+    }
+
+    /// <summary>Test that --file-access given twice is a usage error.</summary>
+    [Fact]
+    public void Context_Create_FileAccessTwice_Throws()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => Context.Create(["--file-access", "roots", "--file-access", "roots"]));
+        Assert.Contains("--file-access can only be specified once", ex.Message);
+    }
+
+    /// <summary>Test that --allow-root implies roots and replaces the default folders.</summary>
+    [Fact]
+    public void Context_Create_AllowRoot_ImpliesRootsAndReplacesDefaults()
+    {
+        // Arrange: two folders, neither of them the working directory
+        using var tmpDir = new TemporaryDirectory();
+        var first = CreateDirectory(tmpDir, "first");
+        var second = CreateDirectory(tmpDir, "second");
+
+        // Act
+        using var context = Context.Create(["--allow-root", first, "--allow-root", second]);
+
+        // Assert: exactly the named folders, in roots mode
+        Assert.Equal(FileAccessMode.Roots, context.FileAccess.Mode);
+        Assert.Equal([first, second], context.FileAccess.AllowedFolders);
+    }
+
+    /// <summary>Test that a relative --allow-root resolves against the working directory, never against --root.</summary>
+    [Fact]
+    public void Context_Create_AllowRootRelative_ResolvedAgainstWorkingDirectoryNotRoot()
+    {
+        // Arrange: a uniquely named folder under the working directory, and a root that also contains one
+        using var tmpDir = new TemporaryDirectory();
+        var name = "allow-" + Guid.NewGuid().ToString("N");
+        var root = CreateDirectory(tmpDir, "root");
+        Directory.CreateDirectory(Path.Combine(root, name));
+        var full = Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, name)).FullName;
+        try
+        {
+            // Act: name the folder through a path that climbs out of a sub-folder
+            using var context = Context.Create(["--root", root, "--allow-root", $"sub/../{name}"]);
+
+            // Assert: the working-directory folder is allowed
+            Assert.Equal([full], context.FileAccess.AllowedFolders);
+        }
+        finally
+        {
+            Directory.Delete(full, recursive: true);
+        }
+    }
+
+    /// <summary>Test that ${VAR} references in --allow-root are expanded.</summary>
+    [Fact]
+    public void Context_Create_AllowRootEnvironmentVariable_Expanded()
+    {
+        // Arrange: a variable naming an existing folder
+        using var tmpDir = new TemporaryDirectory();
+        var docs = CreateDirectory(tmpDir, "docs");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            using var context = Context.Create(["--allow-root", "${" + VariableName + "}/docs"]);
+
+            // Assert
+            Assert.Equal([docs], context.FileAccess.AllowedFolders);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that an --allow-root folder that does not exist is a usage error.</summary>
+    [Fact]
+    public void Context_Create_AllowRootMissing_Throws()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var missing = Path.Combine(tmpDir.DirectoryPath, "missing");
+
+        // Act / Assert: the error names the folder and the option
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--allow-root", missing]));
+        Assert.Equal($"Directory '{missing}' specified by --allow-root option '{missing}' does not exist.", ex.Message);
+    }
+
+    /// <summary>Test that --allow-root with --file-access any is a usage error naming the conflict.</summary>
+    [Fact]
+    public void Context_Create_AllowRootWithAny_ThrowsNamingConflict()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(
+            () => Context.Create(["--file-access", "any", "--allow-root", Environment.CurrentDirectory]));
+        Assert.StartsWith("The options --file-access any and --allow-root cannot be used together", ex.Message);
+    }
+
+    /// <summary>Test that --allow-root with --file-access no-symlinks is a usage error naming the conflict.</summary>
+    [Fact]
+    public void Context_Create_AllowRootWithNoSymlinks_ThrowsNamingConflict()
+    {
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(
+            () => Context.Create(["--allow-root", Environment.CurrentDirectory, "--file-access", "No-Symlinks"]));
+        Assert.StartsWith("The options --file-access no-symlinks and --allow-root cannot be used together", ex.Message);
+        Assert.Contains("--file-access roots,no-symlinks", ex.Message);
+    }
+
+    /// <summary>Test that roots without --allow-root allows the working directory and the config file's folder.</summary>
+    [Fact]
+    public void Context_Create_RootsWithConfig_AllowsWorkingAndConfigFolders()
+    {
+        // Arrange: a config file outside the working directory
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, OneTableConfig);
+
+        // Act
+        using var context = Context.Create(["--file-access", "roots", "--config", path]);
+
+        // Assert: the default folders, with the config folder as the trusted base
+        Assert.Equal([Environment.CurrentDirectory, Path.GetDirectoryName(path)!], context.FileAccess.AllowedFolders);
+        Assert.Equal(Path.GetDirectoryName(path), context.FileAccess.TrustedBase);
+    }
+
+    /// <summary>Test that roots without --allow-root and without --config allows only the working directory.</summary>
+    [Fact]
+    public void Context_Create_RootsWithoutConfig_AllowsWorkingDirectory()
+    {
+        // Act
+        using var context = Context.Create(["--file-access", "roots"]);
+
+        // Assert
+        Assert.Equal([Environment.CurrentDirectory], context.FileAccess.AllowedFolders);
+        Assert.Null(context.FileAccess.TrustedBase);
+    }
 }

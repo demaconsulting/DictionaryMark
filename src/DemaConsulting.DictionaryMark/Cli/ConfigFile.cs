@@ -98,7 +98,8 @@ internal sealed class ConfigFile
     ///     <c>term-header</c>, <c>def-header</c> or <c>definition-header</c>, <c>kind</c>,
     ///     <c>use-header</c>, <c>where-header</c>, <c>column-widths</c>), <c>root</c> and
     ///     <c>tables</c>. The <c>root</c> value is resolved relative to the file's directory, with
-    ///     <c>${VAR}</c> expansion and <c>..</c> normalization, and must name an existing directory.
+    ///     <c>${VAR}</c> expansion and <c>..</c> normalization, must not be on the file-access
+    ///     never-accessed list, and must name an existing directory.
     ///     Performs file-system I/O; stateless and thread-safe.
     /// </remarks>
     /// <param name="path">Path of the configuration file; normally already a full path. Must not be null.</param>
@@ -495,13 +496,20 @@ internal sealed class ConfigFile
     /// <summary>
     ///     Resolves the <c>root</c> value relative to the configuration file's directory.
     /// </summary>
+    /// <remarks>
+    ///     The <c>root</c> value only sets the base directory of relative paths; it never grants file access. It is
+    ///     still configuration content, so after <c>${VAR}</c> expansion it is checked against the file-access
+    ///     never-accessed list (URLs, UNC and network paths, device paths, alternate data streams) before its
+    ///     existence is checked, so that a configuration file cannot make the tool probe a network share or a
+    ///     device.
+    /// </remarks>
     /// <param name="rawRoot">The root value as written.</param>
     /// <param name="fullPath">The full path of the configuration file.</param>
     /// <param name="prefix">The error-message prefix naming the file.</param>
     /// <returns>The full path of the existing root directory.</returns>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the root is malformed, cannot be resolved or does not exist; the message starts
-    ///     with <paramref name="prefix"/>.
+    ///     Thrown when the root is on the never-accessed list (the message contains <c>file-access-denied</c>), or
+    ///     is malformed, cannot be resolved or does not exist; the message starts with <paramref name="prefix"/>.
     /// </exception>
     private static string ResolveRoot(string rawRoot, string fullPath, string prefix)
     {
@@ -509,6 +517,14 @@ internal sealed class ConfigFile
         // overlong path, missing directory) as InvalidOperationException; add the file's context
         try
         {
+            // The never-accessed list is checked on the expanded text, before the file system is touched
+            var expanded = PathResolver.ExpandEnvironmentVariables(rawRoot, RootKeyDescription);
+            var reason = FileAccessPolicy.DescribeNeverAccessed(expanded);
+            if (reason != null)
+            {
+                throw new InvalidOperationException($"{FileAccessDeniedException.ErrorCode}: root '{rawRoot}': {reason}");
+            }
+
             var configDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
             return PathResolver.ResolveExistingDirectory(rawRoot, configDirectory, RootKeyDescription);
         }

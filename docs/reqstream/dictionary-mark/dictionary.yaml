@@ -100,3 +100,20 @@ sections:
               - DictionaryMark-DictionaryGenerator-JobPaths
             tests:
               - DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput
+
+          - id: DictionaryMark-Dictionary-FileAccess
+            title: >-
+              The Dictionary subsystem shall read every input and write every output of a configuration-file job
+              through the file-access policy, fail only that job with a file-access-denied error when a path is
+              denied, and write nothing for it.
+            justification: |
+              The subsystem performs all file I/O of the jobs, so it is where the policy must be applied to every
+              configuration-file path without exception.
+            children:
+              - DictionaryMark-DictionaryGenerator-JudgedReads
+              - DictionaryMark-DictionaryGenerator-JudgedWrites
+              - DictionaryMark-DictionaryGenerator-FileAccessErrors
+              - DictionaryMark-YamlLoader-TextInput
+            tests:
+              - DictionarySubsystem_FileAccess_DeniedInput_FailsOnlyThatJob
+              - DictionarySubsystem_FileAccess_DeniedOutput_WritesNothing

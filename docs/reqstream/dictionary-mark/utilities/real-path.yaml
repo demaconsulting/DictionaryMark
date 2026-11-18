@@ -1,0 +1,99 @@
+---
+# DictionaryMark RealPath unit requirements
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        sections:
+          - title: RealPath Requirements
+            requirements:
+              - id: DictionaryMark-RealPath-FinalPath
+                title: >-
+                  The RealPath unit shall report the real path of an open file, with symbolic links, junctions and
+                  system folder links resolved, on Windows, Linux and macOS.
+                justification: |
+                  Access decisions must be made on the file that was actually opened, not on its name.
+                tests:
+                  - windows@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
+                  - ubuntu@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
+                  - macos@RealPath_Inspect_PlainFile_ReportsRealPathAndRegular
+                  - windows@RealPath_Inspect_FileThroughDirectoryLink_ReportsTarget
+                  - ubuntu@RealPath_Inspect_FileThroughDirectoryLink_ReportsTarget
+                  - macos@RealPath_Inspect_FileThroughDirectoryLink_ReportsTarget
+                  - macos@RealPath_Inspect_TempFile_ReportsPrivateLocation
+
+              - id: DictionaryMark-RealPath-RegularFile
+                title: >-
+                  The RealPath unit shall report whether an open handle is a regular file, and shall open a named
+                  pipe for reading without blocking.
+                justification: |
+                  Devices and pipes must be recognized from the handle, and opening one must never hang the run.
+                tests:
+                  - ubuntu@RealPath_Inspect_DevNull_IsNotRegular
+                  - macos@RealPath_Inspect_DevNull_IsNotRegular
+                  - ubuntu@RealPath_OpenForRead_Fifo_DoesNotBlockAndIsNotRegular
+                  - macos@RealPath_OpenForRead_Fifo_DoesNotBlockAndIsNotRegular
+                  - windows@RealPath_Inspect_NulDevice_IsNotRegular
+
+              - id: DictionaryMark-RealPath-CanonicalDirectory
+                title: >-
+                  The RealPath unit shall report the real location of an existing folder by name, and report none
+                  for a folder that does not exist.
+                justification: |
+                  Allowed folders, trusted anchors and output folders are compared by their real locations.
+                tests:
+                  - windows@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
+                  - ubuntu@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
+                  - macos@RealPath_TryGetCanonicalDirectory_LinkedDirectory_ReturnsTarget
+                  - RealPath_TryGetCanonicalDirectory_MissingDirectory_ReturnsNull
+
+              - id: DictionaryMark-RealPath-NoTruncateOpen
+                title: >-
+                  The RealPath unit shall open an existing file for writing without changing its content, and
+                  create a new file only when no entry, including a link, has its name.
+                justification: |
+                  The real path of an output must be checked before its content changes, and a link planted at the
+                  output name must not make the tool create a file elsewhere.
+                tests:
+                  - RealPath_TryOpenExistingForWrite_ExistingFile_KeepsContent
+                  - RealPath_CreateNewForWrite_ExistingEntry_Throws
+
+              - id: DictionaryMark-RealPath-Comparison
+                title: >-
+                  The RealPath unit shall compare paths with the platform's case rule, treat a folder boundary as a
+                  whole component, and find the deepest folder two paths share.
+                justification: |
+                  Confinement decisions depend on exact, platform-correct path comparisons.
+                tests:
+                  - RealPath_IsUnder_BoundaryIsSeparator
+                  - RealPath_PathsEqual_PlatformCaseRule
+                  - RealPath_CommonAncestor_ReturnsDeepestSharedFolder
+                  - RealPath_ExpandShortNames_PathWithoutShortName_Unchanged
+
+              - id: DictionaryMark-RealPath-Classification
+                title: >-
+                  The RealPath unit shall classify UNC and mapped-drive paths as network locations on Windows,
+                  recognize every Windows reserved device name, and recognize symbolic links and junctions.
+                justification: |
+                  The never-accessed list and the output checks depend on these classifications.
+                tests:
+                  - windows@RealPath_IsNetworkLocation_UncAndLocal_Classified
+                  - RealPath_IsWindowsDeviceName_ReservedSpellings
+                  - windows@RealPath_IsLink_SymlinkOrJunction_True
+                  - ubuntu@RealPath_IsLink_SymlinkOrJunction_True
+                  - macos@RealPath_IsLink_SymlinkOrJunction_True
+
+              - id: DictionaryMark-RealPath-LinkTargetWalk
+                title: >-
+                  On Windows, the RealPath unit shall find, without following any link, a symbolic link or
+                  junction at any component of a path (including a chain of links and a relative target) whose
+                  target is a network location, and shall stop after 63 links.
+                justification: |
+                  The file-access policy must deny such a path before the open contacts the share. Reading each
+                  link's own target, never a component through an unchecked link, keeps the walk off the network,
+                  and Windows does not open a path that needs more than 63 links.
+                tests:
+                  - windows@RealPath_FindNetworkLinkTarget_IntermediateLinkToShare_ReturnsNetworkPath
+                  - windows@RealPath_FindNetworkLinkTarget_LocalLinksAndLoop_ReturnsNull
+                  - windows@RealPath_FindNetworkLinkTarget_RealLocalLink_ReturnsNull

@@ -186,6 +186,28 @@ public class TableJobTests
         Assert.Throws<ArgumentException>(() => TableJob.Create(1, [], "out.md", BaseDirectory, []));
     }
 
+    /// <summary>Test that the paths of a config-file job are judged by the file-access policy.</summary>
+    [Fact]
+    public void TableJob_Create_ConfigJob_PathsJudged()
+    {
+        // Act: create a job from a config-file table
+        var job = TableJob.Create(1, ["a.yaml"], "out.md", BaseDirectory, []);
+
+        // Assert
+        Assert.True(job.ArePathsJudged);
+    }
+
+    /// <summary>Test that the paths of the command-line job are trusted and never judged.</summary>
+    [Fact]
+    public void TableJob_Create_CommandLineJob_PathsTrusted()
+    {
+        // Act: create the command-line job
+        var job = TableJob.Create(null, ["a.yaml"], "out.md", BaseDirectory, []);
+
+        // Assert
+        Assert.False(job.ArePathsJudged);
+    }
+
     /// <summary>Test that the non-null members of the higher layer win in a merge.</summary>
     [Fact]
     public void FormattingSettings_Over_NonNullWins()

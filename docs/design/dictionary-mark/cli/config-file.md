@@ -73,7 +73,11 @@ Algorithm:
 4. `ReadTables` requires a non-empty `YamlSequenceNode`; `ReadTable` requires each item to be a
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
-5. When `root` was given, resolve it with
+5. When `root` was given, expand its `${VAR}` references and check the expanded text with
+   `FileAccessPolicy.DescribeNeverAccessed`. A URL or URI, a UNC or network path, a device path or a
+   colon (alternate data stream) is rejected before the file system is touched, because checking
+   that the directory exists would contact the network host or device. The `root` key only sets the
+   base directory and never grants file access. Then resolve it with
    `PathResolver.ResolveExistingDirectory(root, BaseDirectory, "root key")`. This expands
    `${VAR}`, roots the value at the file's directory, normalizes `..`, rejects wildcards, and
    requires the directory to exist. The root is validated even when `--root` will override it, so
@@ -104,6 +108,9 @@ the key. Examples:
   `Config file '...': Directory '...' specified by root key 'docs' does not exist.` This includes a
   malformed or overlong root (for example a null character), which `PathResolver` reports as
   `Config file '...': Invalid root key '{root}': {reason}`.
+- A `root` key on the file-access never-accessed list is reported as
+  `Config file '...': file-access-denied: root '{root}': {reason}`, for example
+  `... root '//server/share': it is a UNC or network path, which is never accessed`.
 - A configuration file path that `Path.GetFullPath` rejects is reported as
   `Config file '{path}': invalid path: {reason}`, and a path-validation exception while reading
   the file is reported as `cannot be read: {reason}`.
@@ -115,6 +122,7 @@ File-system and YAML parser exceptions are wrapped, so callers only handle
 
 - **FormattingSettings** — supporting Cli type; the defaults and job layers.
 - **PathResolver** — Utilities unit; resolves the `root` key.
+- **FileAccessPolicy** — Utilities unit; its never-accessed text check is applied to the `root` key.
 - **YamlDotNet** — OTS library; `YamlStream`, `YamlMappingNode`, `YamlSequenceNode`,
   `YamlScalarNode` and `YamlException`.
 

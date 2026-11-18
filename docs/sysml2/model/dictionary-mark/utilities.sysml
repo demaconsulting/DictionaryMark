@@ -15,5 +15,7 @@ package DictionaryMark {
         part pathResolver : PathResolver;
         part pathHelpers : PathHelpers;
         part temporaryDirectory : TemporaryDirectory;
+        part fileAccessPolicy : FileAccessPolicy;
+        part realPath : RealPath;
     }
 }

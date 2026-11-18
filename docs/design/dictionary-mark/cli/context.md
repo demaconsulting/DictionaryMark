@@ -83,6 +83,10 @@ command line; options not given are `null`. Highest-precedence formatting layer.
 **Jobs**: `IReadOnlyList<TableJob>` — The generation jobs: one per configuration table, or one
 command-line job when `--input` was given, or none.
 
+**FileAccess**: `FileAccessPolicy` — The file-access policy built from `--file-access` and
+`--allow-root`; `FileAccessPolicy.Any` (mode any, no folders) when neither was given. Judges every
+path of the configuration jobs.
+
 **UsesConfigTables**: `bool` — `true` when `Jobs` come from the configuration file's `tables`.
 
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
@@ -92,14 +96,26 @@ command-line job when `--input` was given, or none.
 **Create**: Factory method. The steps are, in order:
 
 1. Delegate to the private `ArgumentParser` helper to parse `args`. Formatting options are
-   recorded only when given, as the command-line `FormattingSettings` layer. A second `--config`
-   or `--root` throws `ArgumentException`; so does an empty or whitespace `--root` value.
+   recorded only when given, as the command-line `FormattingSettings` layer. A second `--config`,
+   `--root` or `--file-access` throws `ArgumentException`; so does an empty or whitespace `--root`
+   or `--allow-root` value. After the last argument the parser settles the file-access mode
+   (private `ResolveFileAccessMode`): the `--file-access` value parsed with
+   `FileAccessPolicy.ParseMode` (which lists the modes when the value is invalid), or `roots` when
+   only `--allow-root` was given, or `any`. `--allow-root` with `--file-access any` or
+   `no-symlinks` throws `ArgumentException` naming the conflict and the spelling to use instead.
 2. If `--root` was given, resolve it with `PathResolver.ResolveExistingDirectory` against the
    working directory (description `--root option`).
 3. If `--config` was given, resolve it with `PathResolver.ResolvePath` against the working
    directory (never the root) and load it with `ConfigFile.Load`.
 4. Select the effective root: `--root`, else the configuration file's `RootDirectory`.
-5. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
+5. Build the file-access policy (private `BuildFileAccessPolicy`). Mode any needs no folders and
+   returns `FileAccessPolicy.Any` without touching the file system. Otherwise the allowed folders
+   are the `--allow-root` values, each resolved with `PathResolver.ResolveExistingDirectory`
+   against the working directory, never the root (description `--allow-root option`), or else the
+   working directory and the configuration file's folder. The policy is created with
+   `FileAccessPolicy.Create(mode, folders, configFolder)`; the configuration file's folder is the
+   trusted base of `no-symlinks`.
+6. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
    `--output` throws `ArgumentException` naming the file; otherwise each table becomes
    `TableJob.Create(index, inputs, output, base, [command line, job, config defaults])`. A
    column-width error from `TableJob.Create` is re-thrown with the `Config file '{path}': `
@@ -108,7 +124,7 @@ command-line job when `--input` was given, or none.
    The base directory comes from the private `SelectBaseDirectory(root, originDefault)`, which
    returns the root when set and otherwise the origin default (the configuration file's
    directory for table jobs, the working directory for the command-line job).
-6. Open the log file if `--log` was supplied.
+7. Open the log file if `--log` was supplied.
 
 - *Parameters*: `string[] args` — command-line arguments to parse.
 - *Returns*: `Context` — a fully initialized instance.
@@ -117,9 +133,11 @@ command-line job when `--input` was given, or none.
   job has been created and validated; log file is open if `--log` was specified.
 
 Throws `ArgumentException` when an argument is unknown, invalid, repeated or missing its value,
-when `--input`/`--output` is combined with configuration tables, or when a column-width count does
-not match the table. Throws `InvalidOperationException` when the root directory is invalid or
-missing, the `--root` or `--config` path is malformed (reported by `PathResolver` as
+when the `--file-access` value is not a mode, when `--allow-root` is combined with
+`--file-access any` or `no-symlinks`, when `--input`/`--output` is combined with configuration
+tables, or when a column-width count does not match the table. Throws `InvalidOperationException`
+when the root directory or an `--allow-root` folder is invalid or missing, the `--root` or `--config`
+path is malformed (reported by `PathResolver` as
 `Invalid --root option '...': ...` or `Invalid config file path '...': ...`), the configuration
 file is invalid, or the log file cannot be opened.
 
@@ -165,7 +183,9 @@ The following flags are accepted by `Create`: `--version` (`-v`) → `Version`; 
 `FileOrder`); `--kind <terms|deprecated>` → `Kind` (invalid value throws `ArgumentException`);
 `--use-header <text>` → `UseHeader`; `--where-header <text>` → `WhereHeader`;
 `--column-widths <w1,w2[,w3]>` → `ColumnWidths`; `--config <file>` → `ConfigFilePath` (once
-only); `--root <dir>` → `RootDirectory` (once only, non-empty).
+only); `--root <dir>` → `RootDirectory` (once only, non-empty); `--file-access <mode>` →
+`FileAccess.Mode` (once only; `any`, `roots`, `no-symlinks` or `roots,no-symlinks` in any letter
+case); `--allow-root <dir>` → `FileAccess.AllowedFolders` (repeatable, non-empty; implies `roots`).
 
 - Construction errors: `Create` throws `ArgumentException` when an argument is unrecognized,
   invalid, repeated or missing its required value, when `--input`/`--output` is combined with
@@ -185,7 +205,9 @@ only); `--root <dir>` → `RootDirectory` (once only, non-empty).
 - **ConfigFile** — Cli unit; loads the configuration file given by `--config`.
 - **TableJob** and **FormattingSettings** — Cli unit and supporting type; the generation jobs and
   the formatting precedence layers.
-- **PathResolver** — Utilities unit; resolves `--config` and `--root`.
+- **PathResolver** — Utilities unit; resolves `--config`, `--root` and `--allow-root`.
+- **FileAccessPolicy** — Utilities unit; parses the `--file-access` mode and holds the allowed
+  folders.
 
 #### Callers
 

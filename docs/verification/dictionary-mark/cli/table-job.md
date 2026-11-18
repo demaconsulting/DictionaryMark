@@ -62,3 +62,7 @@ This scenario is tested by `TableJob_Create_NoInputs_Throws`.
 **FormattingSettings_Over_NonNullWins**: Merging must take the higher layer's non-null members and
 fill the rest from the lower layer, leaving members unset by both as `null`. This scenario is
 tested by `FormattingSettings_Over_NonNullWins`.
+
+**TableJob_Create_ConfigJob_PathsJudged** and **TableJob_Create_CommandLineJob_PathsTrusted**: A job with
+an index (from a configuration file) must have judged paths, and the command-line job (no index) trusted
+paths. These scenarios are tested by the tests of the same names.

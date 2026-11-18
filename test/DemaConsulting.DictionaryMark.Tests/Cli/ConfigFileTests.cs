@@ -503,6 +503,26 @@ public class ConfigFileTests
         Assert.Equal($"Config file '{path}': key 'root' must be a non-empty string", ex.Message);
     }
 
+    /// <summary>Test that a root value on the file-access never-accessed list is denied before it is probed.</summary>
+    /// <param name="value">The root value as written (a YAML single-quoted scalar).</param>
+    /// <param name="reason">A fragment of the expected reason.</param>
+    [Theory]
+    [InlineData("//server/share", "it is a UNC or network path")]
+    [InlineData(@"\\server\share", "it is a UNC or network path")]
+    [InlineData("http://example.com/docs", "it is a URL or URI")]
+    [InlineData(@"\\.\pipe\x", "it is a device path")]
+    [InlineData("docs:stream", "it names an alternate data stream")]
+    public void ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied(string value, string reason)
+    {
+        // Arrange: a root that names a never-accessed location
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, $"root: '{value}'\n" + MinimalTables);
+
+        // Act / Assert: the error names the file, the code, the root and the reason
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path));
+        Assert.StartsWith($"Config file '{path}': file-access-denied: root '{value}': {reason}", ex.Message);
+    }
+
     /// <summary>Test that the root key inside a job is rejected.</summary>
     [Fact]
     public void ConfigFile_Load_RootInTableJob_ThrowsNamingJob()

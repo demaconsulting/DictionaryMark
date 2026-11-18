@@ -28,6 +28,10 @@ command-line job, so its error messages stay unchanged.
 
 **Options**: `MarkdownOptions` — Effective formatting options of the job.
 
+**ArePathsJudged**: `bool` — `true` for configuration jobs (those with an `Index`), whose input and
+output paths come from a configuration file the user may not trust and are judged by the
+file-access policy; `false` for the command-line job, whose paths the user chose and are trusted.
+
 #### Key Methods
 
 **Create**: Creates a job by merging formatting layers and validating the result.
@@ -72,4 +76,4 @@ Algorithm:
 
 - **Context.Create** — creates every job.
 - **DictionaryGenerator.GenerateJob** — reads `InputPatterns`, `OutputFile`, `BaseDirectory`,
-  `Label` and `Options` to run the job.
+  `Label`, `ArePathsJudged` and `Options` to run the job.

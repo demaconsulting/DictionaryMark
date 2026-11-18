@@ -115,3 +115,35 @@ sections:
                   Column widths are part of a job's formatting and must reach the formatter unchanged.
                 tests:
                   - DictionaryGenerator_Generate_ColumnWidths_AppliedToOutput
+
+              - id: DictionaryMark-DictionaryGenerator-JudgedReads
+                title: >-
+                  The DictionaryGenerator unit shall judge every input pattern of a configuration-file job before
+                  matching and read every matched file through the file-access policy, failing the job (never
+                  skipping the file) when one is denied, while reading the command-line job's files directly.
+                justification: |
+                  Silently skipping a denied file would produce an incomplete glossary without warning.
+                tests:
+                  - DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied
+                  - DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped
+                  - DictionaryGenerator_GenerateJob_CommandLineInputOutsideFolders_Read
+
+              - id: DictionaryMark-DictionaryGenerator-JudgedWrites
+                title: >-
+                  The DictionaryGenerator unit shall write the output of a configuration-file job through the
+                  file-access policy, writing nothing when it is denied, while writing the command-line job's output
+                  directly.
+                justification: |
+                  Configuration-file outputs must be confined; command-line outputs are chosen by the user.
+                tests:
+                  - DictionaryGenerator_GenerateJob_ConfigOutputOutsideFolders_WritesNothing
+                  - DictionaryGenerator_GenerateJob_CommandLineOutputOutsideFolders_Written
+
+              - id: DictionaryMark-DictionaryGenerator-FileAccessErrors
+                title: >-
+                  The DictionaryGenerator unit shall report a file-access denial with the job label followed by the
+                  file-access-denied message, count the job as failed, and continue with the remaining jobs.
+                justification: |
+                  A denial is reported like every other job failure, so a run diagnoses every job at once.
+                tests:
+                  - DictionaryGenerator_Generate_DeniedJob_OtherJobsRunWithLabeledError

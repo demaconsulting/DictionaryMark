@@ -53,3 +53,13 @@ sections:
                   unchanged.
                 tests:
                   - TableJob_Create_Label_NamesIndexAndOutput
+
+              - id: DictionaryMark-TableJob-PathTrust
+                title: >-
+                  The TableJob unit shall mark the paths of every configuration-file job as judged by the
+                  file-access policy and the paths of the command-line job as trusted.
+                justification: |
+                  Only paths written in a configuration file come from content the user may not trust.
+                tests:
+                  - TableJob_Create_ConfigJob_PathsJudged
+                  - TableJob_Create_CommandLineJob_PathsTrusted

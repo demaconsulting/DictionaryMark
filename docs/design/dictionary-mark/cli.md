@@ -8,11 +8,14 @@ The Cli subsystem handles command-line argument parsing, configuration files, ge
 program output for DictionaryMark. It contains three units and one supporting data type:
 
 - `Context` encapsulates all argument-parsing logic, selects the root (base) directory, builds the
-  generation jobs, and owns both output channels (console and log file).
+  file-access policy from `--file-access` and `--allow-root`, builds the generation jobs, and owns
+  both output channels (console and log file).
 - `ConfigFile` loads and validates the YAML configuration file named by `--config`: formatting
-  defaults, the optional `root` key, and optional table jobs.
-- `TableJob` is one resolved generation job: input patterns, output path, base directory, and the
-  effective Markdown options after the formatting precedence is applied.
+  defaults, the optional `root` key (checked against the file-access never-accessed list), and
+  optional table jobs.
+- `TableJob` is one resolved generation job: input patterns, output path, base directory, whether
+  its paths are judged by the file-access policy, and the effective Markdown options after the
+  formatting precedence is applied.
 - `FormattingSettings` is a supporting value type: one precedence layer of formatting settings in
   which every member is optional.
 
@@ -32,14 +35,16 @@ instance and the `TableJob` instances it exposes.
   `Help`, `Silent`, `Validate`; option properties `InputPatterns`, `OutputFile`, `Format`,
   `SortBy`, `SectionHeading`, `TermHeader`, `DefinitionHeader`, `HeadingDepth`, `ResultsFile`,
   `Kind`, `UseHeader`, `WhereHeader`, `TermHeaderSpecified`, `ColumnWidths`, `ConfigFilePath`,
-  `RootDirectory`, `CommandLineFormatting`; the generation jobs `Jobs` and the flag
-  `UsesConfigTables`; output methods `WriteLine(string)` and `WriteError(string)`; derived
-  property `ExitCode` (0 or 1).
+  `RootDirectory`, `CommandLineFormatting`; the file-access policy `FileAccess`; the generation jobs
+  `Jobs` and the flag `UsesConfigTables`; output methods `WriteLine(string)` and `WriteError(string)`;
+  derived property `ExitCode` (0 or 1).
 - *Constraints*: `Context` implements `IDisposable`; callers must dispose to release the log file
-  `StreamWriter`. Throws `ArgumentException` for unknown flags, invalid option values, repeated
-  `--config` or `--root`, `--input`/`--output` combined with configuration tables, and a
-  column-width count that does not match the table. Throws `InvalidOperationException` for an
-  invalid or missing root directory, an invalid configuration file, and an unopenable log file.
+  `StreamWriter`. Throws `ArgumentException` for unknown flags, invalid option values (including a
+  `--file-access` value that is not a mode), repeated `--config`, `--root` or `--file-access`,
+  `--allow-root` combined with `--file-access any` or `no-symlinks`, `--input`/`--output` combined
+  with configuration tables, and a column-width count that does not match the table. Throws
+  `InvalidOperationException` for an invalid or missing root directory or `--allow-root` folder, an
+  invalid configuration file, and an unopenable log file.
 
 **TableJob**: One generation job, consumed by the Dictionary subsystem.
 
@@ -47,7 +52,7 @@ instance and the `TableJob` instances it exposes.
 - *Role*: Provider — `DictionaryGenerator` runs each job
 - *Contract*: `InputPatterns` (as written), `OutputFile` (as written, or `null` for stdout),
   `BaseDirectory` (for relative inputs and output), `Label` (`table job {n} ('{output}')` or
-  `null`), `Options` (`MarkdownOptions`).
+  `null`), `ArePathsJudged` (`true` for configuration jobs), `Options` (`MarkdownOptions`).
 - *Constraints*: Immutable.
 
 **OutputFormat**, **SortOrder**, **InputKind** and **MarkdownOptions**: Types from the Dictionary
@@ -64,9 +69,18 @@ subsystem.
 **PathResolver**: Path resolution from the Utilities subsystem.
 
 - *Type*: In-process .NET API
-- *Role*: Consumer — `Context` resolves `--config` and `--root`; `ConfigFile` resolves `root`
+- *Role*: Consumer — `Context` resolves `--config`, `--root` and `--allow-root`; `ConfigFile`
+  resolves `root`
 - *Contract*: `ResolvePath` and `ResolveExistingDirectory` (see *PathResolver Design*)
 - *Constraints*: N/A
+
+**FileAccessPolicy**: File-access confinement from the Utilities subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `Context` parses the mode and creates the policy; `ConfigFile` checks the `root`
+  key with `DescribeNeverAccessed`
+- *Contract*: `ParseMode`, `Create` and `DescribeNeverAccessed` (see *FileAccessPolicy Design*)
+- *Constraints*: The policy is built once per run and is immutable.
 
 ### Design
 
@@ -74,18 +88,25 @@ subsystem.
 factory delegates to the private nested `ArgumentParser`, which processes `args` sequentially:
 each recognized flag sets a property; unrecognized flags and invalid values throw
 `ArgumentException`. Formatting options are recorded only when they are given, as the
-command-line `FormattingSettings` layer. `Context.Create` then:
+command-line `FormattingSettings` layer. After the last argument the parser settles the file-access
+mode: the `--file-access` value, or `roots` when only `--allow-root` is given, or `any`; `--allow-root`
+with `any` or `no-symlinks` is rejected. `Context.Create` then:
 
 1. Resolves `--root` against the working directory (it must exist).
 2. Resolves `--config` against the working directory (never the root) and loads it with
    `ConfigFile.Load`, which also resolves the file's `root` key against the file's directory.
 3. Selects the effective root: `--root`, else the configuration `root`, else none.
-4. Builds the jobs. With configuration tables, one `TableJob` per table, with formatting layers
+4. Builds the file-access policy. Under `roots` the allowed folders are the `--allow-root` folders,
+   resolved against the working directory (never the root), or else the working directory and the
+   configuration file's folder. The configuration file's folder is the trusted base of `no-symlinks`.
+   Neither `--root` nor the `root` key adds an allowed folder.
+5. Builds the jobs. With configuration tables, one `TableJob` per table, with formatting layers
    command line, job, configuration defaults, and base directory root, else the configuration
    file's directory; `--input` and `--output` are rejected. Without tables, when `--input` was
    given, one command-line `TableJob` with layers command line and configuration defaults, and
-   base directory root, else the working directory.
-5. Opens the log file if `--log` was specified.
+   base directory root, else the working directory. Configuration jobs have judged paths; the
+   command-line job has trusted paths.
+6. Opens the log file if `--log` was specified.
 
 The formatting precedence is therefore applied in one place, `TableJob.Create`:
 
@@ -102,7 +123,7 @@ The base directory for relative input patterns and output paths follows this pre
 | :--- | :--- | :--- | :--- |
 | Configuration table job `input` / `output` | `--root` | config `root` | configuration file directory |
 | Command-line `--input` / `--output` | `--root` | config `root` | working directory |
-| `--config`, `--log`, `--results` | not rooted | not rooted | working directory |
+| `--config`, `--log`, `--results`, `--allow-root` | not rooted | not rooted | working directory |
 
 Configuration validation and root validation are fail-fast: they stop the run before any job runs.
 

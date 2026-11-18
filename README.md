@@ -43,6 +43,8 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - ⚙️ **Configuration File** - Keep formatting options and several table jobs in a YAML file beside the
   dictionaries
 - 📂 **Root Directory** - Resolve relative input and output paths against a chosen base directory
+- 🔒 **File Access Confinement** - Confine the files a configuration file may read and write, judged by their
+  real paths (`--file-access`, `--allow-root`)
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
 
@@ -135,6 +137,8 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths (e.g. `25,75`) |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file |
 | `--root <dir>` | Base directory for relative input and output paths |
+| `--file-access <mode>` | Config path access: `any` (default), `roots`, `no-symlinks`, `roots,no-symlinks` |
+| `--allow-root <dir>` | Folder that config file paths may use (repeatable; implies `roots`) |
 
 Missing parent directories of output files are created. Input patterns may use `..` segments before
 the first wildcard (for example `../shared/*.yaml`), and input and output paths may contain `${VAR}`
@@ -350,7 +354,60 @@ tables:
 The base directory is `--root` if given, else the configuration `root`, else the configuration file's
 directory (for paths from the file) or the working directory (for command-line paths). Absolute paths
 ignore the root, and `--config`, `--log` and `--results` are never resolved against it. The root must
-exist; `${VAR}` and `..` are supported.
+exist; `${VAR}` and `..` are supported. A root only sets the base directory: it never grants file access
+(see *File Access* below).
+
+### File Access
+
+A configuration file may come from someone you do not trust, for example a pull request built by CI.
+`--file-access <mode>` decides which files the paths written in a configuration file may read and write:
+
+- **`any`** (the default): every regular local file, as in earlier versions.
+- **`roots`**: only files inside an allowed folder. Both the path as written (after `${VAR}`, the base
+  directory and `..`) and the real path of the opened file must be inside, so a symbolic link or
+  junction that leads out is denied, and so is a path outside that links back in.
+- **`no-symlinks`**: a path may not pass through a symbolic link or junction below the configuration
+  file's folder; that folder and the folders above it are trusted.
+- **`roots,no-symlinks`**: both rules.
+
+The mode may be written in any letter case; anything else, or the option given twice, is an error that
+lists the modes.
+
+`--allow-root <dir>` names an allowed folder; it is repeatable, implies `roots`, and replaces the default
+folders. A relative folder is taken from the working directory (never from `--root`), `${VAR}` and `..`
+are supported, and a folder that does not exist is an error. With `--file-access any` or `no-symlinks` it
+is an error that names the conflict. Without `--allow-root`, `roots` allows the working directory and the
+configuration file's folder.
+
+- **Judged paths**: every input pattern, every file a pattern matches, and every output of a
+  configuration file.
+- **Trusted paths**: the paths on the command line (`--config`, `--input` and its matches, `--output`,
+  `--log` and `--results`) are never judged.
+- **Never accessed**, in every mode: a URL or URI (`http:`, `https:` and other schemes, and a `file:`
+  URI with a host), a UNC or network path, a device path (`\\.\`, `\\?\`, `NUL`, `/dev/...`), an
+  alternate data stream (any `:` other than a Windows drive), and anything that is not a regular file
+  (a folder, pipe or device). A `root:` key naming such a path is an error.
+- **Real path unavailable**: a mode other than `any` needs the real path of every opened file; where the
+  system cannot tell it, the file is denied, never used unchecked.
+- **Writes**: under `roots` an output, every folder it creates, and the real path of the opened output
+  must be inside an allowed folder. An existing output is never truncated before its real path is
+  checked, and a denied job writes nothing, not even a folder.
+- **Errors**: a denied path fails only its job with an error of the form
+  `Error: <job>: file-access-denied: '<path as written>' (real path '<real path>'): <reason>`, where the
+  real-path part appears only when it is known and the reason names the mode. The other jobs still run, and
+  the exit code is non-zero; the user guide shows complete examples.
+
+For example, a CI job that builds a pull request can confine its configuration file to `docs`:
+
+```bash
+dictionarymark --config docs/glossary/dictionarymark.yaml --file-access roots --allow-root docs
+```
+
+Limits: `roots` confines a configuration file to its folders, but it can still overwrite any file inside
+them. A hard link cannot be detected, because it is a second name of the same file. On Windows, a path
+through a symbolic link or junction to a network share is denied before the share is contacted, but a glob
+wildcard (`*`, `**`) that reaches such a link while matching may list the share; a matched file there is
+never read.
 
 ### Conflicts
 
@@ -420,6 +477,8 @@ the results of each self-test. Each test proves a specific capability:
 - **`DictionaryMark_ColumnWidths`** - `--column-widths` sizes the table separator in proportion to the weights
 - **`DictionaryMark_ConfigTables`** - A `--config` file generates every table job, with config-relative
   `..` paths and missing output directories created
+- **`DictionaryMark_FileAccessRoots`** - `--file-access roots` denies a config file output outside the
+  allowed folder and writes nothing for that job, while a job inside the folder still runs
 
 Results can be saved to a file:
 

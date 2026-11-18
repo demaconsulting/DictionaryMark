@@ -40,12 +40,13 @@ diagram or the prose below.
 The diagram below complements the structure view by showing how data flows at run time:
 `Program` dispatches the parsed command line, and the Dictionary subsystem loads the YAML files,
 checks for conflicts, and formats the Markdown output. An optional YAML configuration file, read by
-the Cli subsystem, can supply formatting defaults, a root directory and several table jobs.
+the Cli subsystem, can supply formatting defaults, a root directory and several table jobs; every path it
+names is judged by the file-access policy of the Utilities subsystem.
 
 ![DictionaryMark architecture: the dictionarymark command drives Program, which uses the Cli, SelfTest,
 Utilities and Dictionary subsystems to turn YAML dictionary files, and an optional YAML configuration file of
 table jobs, into one or more Markdown bullet lists or tables written to files or stdout, with an optional
-log file](architecture.svg)
+log file; the Utilities FileAccessPolicy confines the paths a configuration file may use](architecture.svg)
 
 ## Folder Layout
 

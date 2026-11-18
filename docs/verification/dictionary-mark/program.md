@@ -83,4 +83,5 @@ table jobs dispatch to dictionary generation.
 This scenario is tested by `Program_Run_WithConfigTables_InvokesDictionaryGeneration`.
 
 The help scenario `Program_Run_WithHelpFlag_DisplaysUsageInformation` also asserts that the usage
-text lists `--config <file>`, `--column-widths <w1,w2[,w3]>` and `--root <dir>`.
+text lists `--config <file>`, `--column-widths <w1,w2[,w3]>`, `--root <dir>`, `--file-access <mode>`
+(with the modes any, roots, no-symlinks and roots,no-symlinks) and `--allow-root <dir>`.

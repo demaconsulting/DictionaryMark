@@ -1208,4 +1208,525 @@ public class IntegrationTests
         Assert.Equal(1, exitCode);
         Assert.Contains($"Config file '{config}': table job 1: key 'root' is only allowed at the top level", output);
     }
+
+    /// <summary>A dictionary used by the file-access tests.</summary>
+    private const string Terms = "Alpha: First letter\n";
+
+    /// <summary>Test that every --file-access mode is accepted in any letter case.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ModeLetterCase_Accepted()
+    {
+        // Arrange: a config whose job stays inside its folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act / Assert: each spelling runs successfully
+        foreach (var mode in new[] { "ANY", "Roots", "No-Symlinks", "ROOTS,no-symlinks" })
+        {
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", mode);
+            Assert.True(exitCode == 0, $"Mode '{mode}' failed: {output}");
+        }
+    }
+
+    /// <summary>Test that an invalid --file-access value is a usage error listing the modes.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_InvalidMode_ReturnsErrorListingModes()
+    {
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--file-access", "strict");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: 'strict' is not a value of --file-access: use any (the default), roots, no-symlinks, or roots,no-symlinks",
+            output);
+    }
+
+    /// <summary>Test that --file-access given more than once is an error.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_RepeatedOption_ReturnsError()
+    {
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--file-access", "roots", "--file-access", "any");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--file-access can only be specified once", output);
+    }
+
+    /// <summary>Test that the default mode any keeps using config paths outside every folder, as before.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AnyMode_ConfigPathsOutsideFoldersUsed()
+    {
+        // Arrange: a config that reads and writes beside its own folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../shared/*.yaml\n    output: ../out/terms.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "out/terms.md")));
+    }
+
+    /// <summary>Test that --allow-root replaces the default folders (working directory and config folder).</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AllowRoot_ReplacesDefaultFolders()
+    {
+        // Arrange: a working directory holding the config, and a different allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "work/terms.yaml", Terms);
+        WriteFile(tmpDir, "work/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+        Directory.CreateDirectory(PathIn(tmpDir, "other"));
+
+        // Act
+        var exitCode = Runner.RunInDirectory(
+            out var output, PathIn(tmpDir, "work"), "dotnet", _dllPath, "--config", "dictionarymark.yaml", "--allow-root", "../other");
+
+        // Assert: the defaults no longer apply, so the job is denied
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'terms.yaml': the path as written is outside the allowed folders (--file-access roots)", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "work/out.md")));
+    }
+
+    /// <summary>Test that a relative --allow-root resolves against the working directory, not --root.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AllowRootRelative_ResolvedAgainstWorkingDirectory()
+    {
+        // Arrange: work/docs holds the config and dictionary; --root names work/elsewhere, which also has a docs folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "work/docs/terms.yaml", Terms);
+        WriteFile(tmpDir, "work/docs/dictionarymark.yaml", "tables:\n  - input: ../docs/terms.yaml\n    output: ../docs/out.md\n");
+        Directory.CreateDirectory(PathIn(tmpDir, "work/elsewhere/docs"));
+
+        // Act: --root is the base for the job paths, but not for --allow-root (work/elsewhere/docs would deny the job)
+        var exitCode = Runner.RunInDirectory(
+            out var output, PathIn(tmpDir, "work"), "dotnet", _dllPath,
+            "--config", "docs/dictionarymark.yaml", "--root", "elsewhere", "--allow-root", "docs");
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "work/docs/out.md")));
+    }
+
+    /// <summary>Test that an --allow-root folder that does not exist is an error.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AllowRootMissing_ReturnsError()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var missing = PathIn(tmpDir, "missing");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--allow-root", missing);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: Directory '{missing}' specified by --allow-root option '{missing}' does not exist.", output);
+    }
+
+    /// <summary>Test that --allow-root with --file-access any or no-symlinks is an error naming the conflict.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AllowRootWithAnyOrNoSymlinks_ReturnsConflictError()
+    {
+        // Act
+        var anyExit = Runner.Run(out var anyOutput, "dotnet", _dllPath, "--file-access", "any", "--allow-root", ".");
+        var noSymlinksExit = Runner.Run(out var noSymlinksOutput, "dotnet", _dllPath, "--allow-root", ".", "--file-access", "no-symlinks");
+
+        // Assert
+        Assert.Equal(1, anyExit);
+        Assert.Contains("The options --file-access any and --allow-root cannot be used together", anyOutput);
+        Assert.Equal(1, noSymlinksExit);
+        Assert.Contains("The options --file-access no-symlinks and --allow-root cannot be used together", noSymlinksOutput);
+    }
+
+    /// <summary>Test that roots without --allow-root allows the working directory and the config folder.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_RootsDefaultFolders_WorkingAndConfigFoldersAllowed()
+    {
+        // Arrange: the input is in the working directory, the output in the config folder (two separate folders)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "work/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../work/terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.RunInDirectory(out var output, PathIn(tmpDir, "work"), "dotnet", _dllPath, "--config", config, "--file-access", "roots");
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that roots without --allow-root denies a folder that is neither default folder.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_RootsDefaultFolders_OtherFolderDenied()
+    {
+        // Arrange: the input is in a third folder
+        using var tmpDir = new TemporaryDirectory();
+        Directory.CreateDirectory(PathIn(tmpDir, "work"));
+        WriteFile(tmpDir, "other/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../other/terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.RunInDirectory(out var output, PathIn(tmpDir, "work"), "dotnet", _dllPath, "--config", config, "--file-access", "roots");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('out.md'): file-access-denied: '../other/terms.yaml':", output);
+    }
+
+    /// <summary>Test that command-line --config, --input, --output, --log and --results are never judged.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_CommandLinePathsOutsideFolders_NotJudged()
+    {
+        // Arrange: every command-line path is outside the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "outside/terms.yaml", Terms);
+        var allowed = Directory.CreateDirectory(PathIn(tmpDir, "allowed")).FullName;
+        var output = PathIn(tmpDir, "outside/terms.md");
+        var log = PathIn(tmpDir, "outside/run.log");
+        var results = PathIn(tmpDir, "outside/results.trx");
+
+        // Act
+        var generateExit = Runner.Run(
+            out var generateOutput, "dotnet", _dllPath,
+            "--input", input, "--output", output, "--log", log, "--file-access", "roots", "--allow-root", allowed);
+        var validateExit = Runner.Run(
+            out var validateOutput, "dotnet", _dllPath, "--validate", "--results", results, "--allow-root", allowed);
+
+        // Assert
+        Assert.True(generateExit == 0, generateOutput);
+        Assert.Contains("Alpha", File.ReadAllText(output));
+        Assert.True(File.Exists(log));
+        Assert.True(validateExit == 0, validateOutput);
+        Assert.True(File.Exists(results));
+    }
+
+    /// <summary>Test that a config input outside the allowed folders is denied.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigInputOutsideFolders_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../shared/*.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert: the matched file is denied by its path; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"file-access-denied: '{PathIn(tmpDir, "shared/terms.yaml")}': the path as written is outside the allowed folders", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that '..' segments cannot escape the allowed folders.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ParentSegmentEscape_Denied()
+    {
+        // Arrange: a path that dips into the allowed folder and climbs out of it
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "secret.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: sub/../../secret.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'sub/../../secret.yaml': the path as written is outside the allowed folders", output);
+    }
+
+    /// <summary>Test that a ${VAR} reference cannot escape the allowed folders.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_EnvironmentVariableEscape_Denied()
+    {
+        // Arrange: a variable naming a folder outside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "outside/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: terms.yaml\n    output: ${" + VariableName + "}/out.md\n");
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        Environment.SetEnvironmentVariable(VariableName, PathIn(tmpDir, "outside"));
+        try
+        {
+            // Act
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+            // Assert: the expanded output is outside, so the job is denied and nothing is written
+            Assert.Equal(1, exitCode);
+            Assert.Contains("file-access-denied: '${" + VariableName + "}/out.md': the path as written is outside the allowed folders", output);
+            Assert.False(File.Exists(PathIn(tmpDir, "outside/out.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>Test that the config root key only sets the base folder and never widens access.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_RootKeyDoesNotWiden_Denied()
+    {
+        // Arrange: root names a folder outside the allowed folder, where the input lives
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "outside/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "root: ../outside\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots", "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'terms.yaml': the path as written is outside the allowed folders", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "outside/out.md")));
+    }
+
+    /// <summary>Test that an input reached through a folder link leading out is denied by its real path.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_InputLinkLeadingOut_Denied()
+    {
+        // Arrange: config/link -> outside
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "outside/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: link/terms.yaml\n    output: out.md\n");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "config/link"), PathIn(tmpDir, "outside"));
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'link/terms.yaml' (real path '", output);
+        Assert.Contains("its real path is outside the allowed folders, so it leads out through a symbolic link or junction (--file-access roots)", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that a config whose inputs and outputs stay inside the allowed folders generates normally.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_InsideFolders_Generated()
+    {
+        // Arrange: inputs in a sibling folder that is also allowed, output in a new sub-folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: ../shared/*.yaml\n    output: gen/out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath,
+            "--config", config, "--file-access", "roots,no-symlinks",
+            "--allow-root", PathIn(tmpDir, "config"), "--allow-root", PathIn(tmpDir, "shared"));
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "config/gen/out.md")));
+    }
+
+    /// <summary>Test that no-symlinks denies an input through a link below the config folder.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied()
+    {
+        // Arrange: config/link -> config/real (a link that stays inside the folder is still a link)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/real/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: link/terms.yaml\n    output: out.md\n");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "config/link"), PathIn(tmpDir, "config/real"));
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "no-symlinks");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("its real path differs from the path as written, so the path passes through a symbolic link or junction (--file-access no-symlinks)", output);
+    }
+
+    /// <summary>Test that no-symlinks trusts links in the config folder's path and above it.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed()
+    {
+        // Arrange: linked -> real, and the config is named through the link
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "real/config/terms.yaml", Terms);
+        WriteFile(tmpDir, "real/config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "linked"), PathIn(tmpDir, "real"));
+
+        // Act
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath, "--config", PathIn(tmpDir, "linked/config/dictionarymark.yaml"), "--file-access", "no-symlinks");
+
+        // Assert
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("Alpha", File.ReadAllText(PathIn(tmpDir, "real/config/out.md")));
+    }
+
+    /// <summary>Test that an output outside the allowed folders is denied and nothing, not even a folder, is written.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_OutputOutsideFolders_DeniedNothingWritten()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: ../out/new/terms.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots", "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/new/terms.md'): file-access-denied: '../out/new/terms.md':", output);
+        Assert.False(Directory.Exists(PathIn(tmpDir, "out")));
+    }
+
+    /// <summary>Test that an output whose folder is a link leading out is denied and nothing is written there.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_OutputThroughLinkedFolder_Denied()
+    {
+        // Arrange: config/gen -> outside
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        Directory.CreateDirectory(PathIn(tmpDir, "outside"));
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: gen/sub/terms.md\n");
+        LinkSupport.CreateDirectoryLinkOrSkip(PathIn(tmpDir, "config/gen"), PathIn(tmpDir, "outside"));
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("leads out of the allowed folders through a symbolic link or junction (--file-access roots)", output);
+        Assert.False(Directory.Exists(PathIn(tmpDir, "outside/sub")));
+    }
+
+    /// <summary>Test that an existing output that is a symbolic link leading out is denied and its target is unchanged.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_OutputExistingSymlinkLeadingOut_Denied()
+    {
+        // Arrange: config/out.md -> outside/target.md (skipped where file links cannot be created)
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var target = WriteFile(tmpDir, "outside/target.md", "original");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+        LinkSupport.CreateFileLinkOrSkip(PathIn(tmpDir, "config/out.md"), target);
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("its real path is outside the allowed folders", output);
+        Assert.Equal("original", File.ReadAllText(target));
+    }
+
+    /// <summary>Test that a URL input is never accessed, in the default mode.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_UrlInput_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: https://example.com/terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'https://example.com/terms.yaml': it is a URL or URI, which is never accessed", output);
+    }
+
+    /// <summary>Test that a UNC input is never accessed, in the default mode.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_UncInput_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: //server/share/terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: '//server/share/terms.yaml': it is a UNC or network path, which is never accessed", output);
+    }
+
+    /// <summary>Test that a device output (NUL on Windows, /dev/null elsewhere) is never written.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_DeviceOutput_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var device = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", $"tables:\n  - input: terms.yaml\n    output: {device}\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"file-access-denied: '{device}': it is a device path, which is never accessed", output);
+    }
+
+    /// <summary>Test that an alternate data stream output is never written.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md:hidden\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert: denied, and the host file was not created either
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'out.md:hidden': it names an alternate data stream", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+    }
+
+    /// <summary>Test that a folder at the output path is never written.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_DirectoryAsOutput_Denied()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        Directory.CreateDirectory(PathIn(tmpDir, "config/out.md"));
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "tables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: 'out.md': it is not a regular file", output);
+    }
+
+    /// <summary>Test that a denied job fails alone: the other jobs run and the exit code is non-zero.</summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitNonZero()
+    {
+        // Arrange: job 2 writes outside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "config/terms.yaml", Terms);
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: terms.yaml\n    output: a.md\n  - input: terms.yaml\n    output: ../b.md\n" +
+            "  - input: terms.yaml\n    output: c.md\n");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.True(File.Exists(PathIn(tmpDir, "config/a.md")));
+        Assert.True(File.Exists(PathIn(tmpDir, "config/c.md")));
+        Assert.False(File.Exists(PathIn(tmpDir, "b.md")));
+        Assert.Contains("Error: table job 2 ('../b.md'): file-access-denied: '../b.md':", output);
+        Assert.Contains("Error: 1 of 3 table jobs failed.", output);
+    }
 }

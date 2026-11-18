@@ -102,3 +102,9 @@ deployment environment. This scenario is tested by
 reports `DictionaryMark_ConfigTables` as passed, confirming configuration table jobs with
 config-relative `..` paths and output directory creation work in the deployment environment. This
 scenario is tested by `Validation_Run_WithSilentContext_ConfigTablesTestPasses`.
+
+**Validation_Run_WithSilentContext_FileAccessRootsTestPasses**: Runs `Validation.Run` and verifies the
+log reports `DictionaryMark_FileAccessRoots` as passed, confirming that `--file-access roots` denies a
+configuration output outside the allowed folder, writing nothing, while an inside job still runs, in the
+deployment environment. This scenario is tested by
+`Validation_Run_WithSilentContext_FileAccessRootsTestPasses`.

@@ -35,6 +35,8 @@ Local items:
     - **PathResolver**: path resolution against a root, with `..` and `${VAR}` support.
     - **PathHelpers**: safe path combination utilities.
     - **TemporaryDirectory**: disposable temporary directory helper.
+    - **FileAccessPolicy**: file-access confinement of configuration-file paths.
+    - **RealPath**: platform-specific real path and file type of open files.
 
 OTS items:
 

@@ -223,6 +223,43 @@ public class YamlDictionaryLoaderTests
         }
     }
 
+    /// <summary>Test that YAML text already read from a file is parsed with the file named as the source.</summary>
+    [Fact]
+    public void YamlDictionaryLoader_LoadText_ValidContent_AttributesSource()
+    {
+        // Arrange: text and the full path of the file it came from
+        var source = Path.GetFullPath("terms.yaml");
+
+        // Act
+        var entries = YamlDictionaryLoader.LoadText("API: Application Programming Interface\nCLI: Command Line\n", source);
+
+        // Assert: entries in document order, each attributed to the source
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("API", entries[0].Term);
+        Assert.Equal("Command Line", entries[1].Definition);
+        Assert.All(entries, entry => Assert.Equal(source, entry.Source));
+    }
+
+    /// <summary>Test that deprecated-term YAML text is parsed with the same rules as a file.</summary>
+    [Fact]
+    public void YamlDictionaryLoader_LoadDeprecatedText_ValidContent_ReturnsEntries()
+    {
+        // Arrange
+        var source = Path.GetFullPath("old.yaml");
+
+        // Act
+        var entries = YamlDictionaryLoader.LoadDeprecatedText("bench mode: { use: Test Mode, where: Manual }\n", source);
+        var invalid = Assert.Throws<InvalidOperationException>(
+            () => YamlDictionaryLoader.LoadDeprecatedText("bench mode: { where: Manual }\n", source));
+
+        // Assert: the entry is read, and an invalid entry is reported naming the source
+        var entry = Assert.Single(entries);
+        Assert.Equal("bench mode", entry.Term);
+        Assert.Equal("Test Mode", entry.Use);
+        Assert.Equal(source, entry.Source);
+        Assert.Contains(source, invalid.Message);
+    }
+
     /// <summary>Test that a plain string value loads with default metadata.</summary>
     [Fact]
     public void YamlDictionaryLoader_Load_PlainString_HasDefaultMetadata()

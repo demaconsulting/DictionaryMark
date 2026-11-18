@@ -105,3 +105,8 @@ rejected with `key 'root' must be a non-empty string`. This scenario is tested b
 
 **ConfigFile_Load_NoRoot_RootDirectoryIsNull**: Without a `root` key, `RootDirectory` is `null`.
 This scenario is tested by `ConfigFile_Load_NoRoot_RootDirectoryIsNull`.
+
+**ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied**: A `root` key naming
+`//server/share`, `\\server\share`, an `http:` URL, `\\.\pipe\x` or `docs:stream` is rejected with
+`Config file '{path}': file-access-denied: root '{value}': {reason}` before the directory is probed.
+This scenario is tested by `ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied`.

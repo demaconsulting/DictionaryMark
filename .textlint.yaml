@@ -75,6 +75,16 @@ words:
   - venv
   - yamldotnet
   - yamlfix
+  # Native operating-system calls, flags and device names used by the real-path unit and its tests
+  - CLOEXEC
+  - CONIN
+  - CONOUT
+  - fcntl
+  - fxstat
+  - libc
+  - mkfifo
+  - mklink
+  - pidfdinfo
 
 # Exclude common build artifacts, dependencies, and vendored third-party code
 ignorePaths:

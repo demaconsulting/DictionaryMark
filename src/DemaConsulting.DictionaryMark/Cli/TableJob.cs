@@ -67,6 +67,17 @@ internal sealed class TableJob
     public MarkdownOptions Options { get; }
 
     /// <summary>
+    ///     Gets a value indicating whether the job's input and output paths are judged by the file-access policy.
+    /// </summary>
+    /// <remarks>
+    ///     Paths written in a configuration file (jobs with an <see cref="Index"/>) are judged by the
+    ///     <c>--file-access</c> mode and the never-accessed list, because a configuration file may come from
+    ///     someone the user does not trust. Paths given on the command line (the command-line job) are chosen by
+    ///     the user running the tool and are never judged.
+    /// </remarks>
+    public bool ArePathsJudged => Index.HasValue;
+
+    /// <summary>
     ///     Private constructor - use <see cref="Create"/> instead.
     /// </summary>
     /// <param name="index">The 1-based job index, or null for the command-line job.</param>

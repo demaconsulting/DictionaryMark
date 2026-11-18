@@ -33,18 +33,27 @@ N/A - static class with no instance state.
 - *Preconditions*: Arguments are non-null.
 - *Postconditions*: Output written to file or stdout, or an error reported and no output written.
 
-Processing steps: (1) Resolve input file paths — call `GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
-return early on `ArgumentException`, `InvalidOperationException`, `IOException`, `UnauthorizedAccessException` or empty
-result. (2) Load entries — call
+Processing steps: (1) Resolve input file paths — for a configuration job (`job.ArePathsJudged`), first judge every
+pattern with `context.FileAccess.CheckPattern(pattern, expanded, rooted)` (private `CheckPatterns`, which expands and
+roots each pattern with `PathResolver` and remembers the pattern as written for each literal pattern's full path);
+then call `GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`;
+return early on `FileAccessDeniedException`, `ArgumentException`, `InvalidOperationException`, `IOException`,
+`UnauthorizedAccessException` or empty result. (2) Load entries — for a configuration job, read each file with
+`context.FileAccess.ReadAllText(written, file)` and parse the text with `YamlDictionaryLoader.LoadText` (or
+`LoadDeprecatedText`); for the command-line job, call
 `YamlDictionaryLoader.Load` (or `LoadDeprecated` when `job.Options.Kind` is deprecated) for each input file; return
-early on `IOException`, `UnauthorizedAccessException`, `YamlException` or `InvalidOperationException`. (3) Detect
+early on `FileAccessDeniedException`, `IOException`, `UnauthorizedAccessException`, `YamlException` or
+`InvalidOperationException`. A denied file fails the job; it is never skipped. (3) Detect
 conflicts — call
 `ConflictDetector.Detect(approved, deprecated)` for this job's files; if any conflicts found, report each and return.
 (4) Format output — call `MarkdownFormatter.Format` or `FormatDeprecated` with `job.Options` (already merged by
 `TableJob`, including the `Not used` deprecated term header and the column widths) using only entries from the primary
 input files. (5) Write output — if `job.OutputFile` is set, resolve it with
-`PathResolver.ResolvePath(job.OutputFile, job.BaseDirectory, "output path")`, create missing parent directories with
-`Directory.CreateDirectory`, and write via `File.WriteAllText`; otherwise write via `context.WriteLine`. The base
+`PathResolver.ResolvePath(job.OutputFile, job.BaseDirectory, "output path")`. A configuration job writes with
+`context.FileAccess.WriteAllText(job.OutputFile, fullPath, output)`, which judges the output and creates missing parent
+folders only when it is allowed; the command-line job creates missing parent directories with
+`Directory.CreateDirectory` and writes via `File.WriteAllText`. Without an output file the result is written via
+`context.WriteLine`. The base
 directory may be a root directory, the configuration file's directory, or the working directory; the generator does
 not distinguish them.
 
@@ -89,6 +98,11 @@ Error cases:
   normalizes cleanly can still be rejected on write, for example a wildcard in a Windows file name.
   Reports `"Error: Failed to write output file '{file}': {message}"` with the output path as
   written.
+- **File access denied** — `FileAccessDeniedException` from `FileAccessPolicy` while judging a
+  pattern, reading a file or writing the output of a configuration job; reports
+  `"Error: {message}"`, where the message is
+  `file-access-denied: '{written}' (real path '{real}'): {reason}` (the real-path part is left out when
+  no file was opened). Nothing is written for the job.
 
 For configuration jobs, every message above is prefixed with the job label, for example
 `"Error: table job 2 ('docs/deprecated.md'): Input pattern 'x/*.yaml' matched no files."`.
@@ -99,9 +113,11 @@ For configuration jobs, every message above is prefixed with the job label, for 
 - **TableJob** — CLI subsystem; one job's inputs, output, base directory, label and options.
 - **GlobMatcher** — Utilities subsystem; resolves glob patterns to concrete file paths.
 - **PathResolver** — Utilities subsystem; resolves the output path against the job's base
-  directory.
+  directory, and expands and roots each input pattern of a configuration job for the file-access check.
+- **FileAccessPolicy** — Utilities subsystem; judges, reads and writes every path of a configuration job
+  (through `context.FileAccess`).
 - **YamlDictionaryLoader** — Dictionary subsystem unit; loads approved-term and deprecated-term entries
-  from each YAML file.
+  from each YAML file, or from the text the file-access policy read.
 - **ConflictDetector** — Dictionary subsystem unit; detects term conflicts across loaded entries.
 - **MarkdownFormatter** — Dictionary subsystem unit; formats deduplicated entries as a Markdown
   string.

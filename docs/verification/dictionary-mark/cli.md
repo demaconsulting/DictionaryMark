@@ -142,3 +142,18 @@ This scenario is tested by `CliSubsystem_RootFlow_CommandLineRootOverridesConfig
 **CliSubsystem_RootFlow_MissingRoot_ExitsNonZero**: `Program.Main` is invoked with a `--root`
 that does not exist. Exit code must be 1 and stderr must name the directory and the option.
 This scenario is tested by `CliSubsystem_RootFlow_MissingRoot_ExitsNonZero`.
+
+**CliSubsystem_FileAccessFlow_AllowRootConflict_ExitsNonZero**: `Program.Main` is invoked with
+`--file-access any --allow-root <dir>`. Exit code must be 1 and stderr must name the conflict.
+This scenario is tested by `CliSubsystem_FileAccessFlow_AllowRootConflict_ExitsNonZero`.
+
+**CliSubsystem_FileAccessFlow_RootsConfig_DeniesOutsideJob**: A configuration file with one job writing
+outside its folder and one writing inside is run with `--file-access roots --allow-root <config folder>`.
+Exit code must be 1, the first job must be reported as `file-access-denied` and write nothing, and the
+second job must write its output, confirming that `Context` builds the policy that the jobs are judged by.
+This scenario is tested by `CliSubsystem_FileAccessFlow_RootsConfig_DeniesOutsideJob`.
+
+**CliSubsystem_FileAccessFlow_CommandLineJob_NotJudged**: An `--input`, `--output` and `--log` outside the
+only allowed folder are used under `--file-access roots,no-symlinks`, confirming that command-line paths
+are trusted.
+This scenario is tested by `CliSubsystem_FileAccessFlow_CommandLineJob_NotJudged`.

@@ -30,6 +30,8 @@ input-files:
   - docs/verification/dictionary-mark/utilities/path-resolver.md
   - docs/verification/dictionary-mark/utilities/path-helpers.md
   - docs/verification/dictionary-mark/utilities/temporary-directory.md
+  - docs/verification/dictionary-mark/utilities/file-access-policy.md
+  - docs/verification/dictionary-mark/utilities/real-path.md
   - docs/verification/dictionary-mark/test-helpers.md
   - docs/verification/ots.md
   - docs/verification/ots/buildmark.md

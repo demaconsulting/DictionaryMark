@@ -196,4 +196,55 @@ public class UtilitiesSubsystemTests
         Assert.Equal(Path.Combine(tmpDir.DirectoryPath, "b"), root);
         Assert.Equal([Path.GetFullPath(file)], inputs);
     }
+
+    /// <summary>
+    ///     Test that a roots policy confines reads and writes to the allowed folders.
+    /// </summary>
+    [Fact]
+    public void UtilitiesSubsystem_FileAccess_RootsConfinesReadsAndWrites()
+    {
+        // Arrange: an allowed folder and an outside folder, each with a dictionary
+        using var tmpDir = new TemporaryDirectory();
+        var allowed = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "allowed")).FullName;
+        var outside = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "outside")).FullName;
+        File.WriteAllText(Path.Combine(allowed, "a.yaml"), "Alpha: First\n");
+        File.WriteAllText(Path.Combine(outside, "b.yaml"), "Beta: Second\n");
+        var policy = FileAccessPolicy.Create(FileAccessMode.Roots, [allowed], allowed);
+
+        // Act: read and write inside and outside, resolving the paths with the path resolver
+        var insideRead = policy.ReadAllText("a.yaml", PathResolver.ResolvePath("a.yaml", allowed, "glossary path"));
+        var outsideRead = Record.Exception(
+            () => policy.ReadAllText("../outside/b.yaml", PathResolver.ResolvePath("../outside/b.yaml", allowed, "glossary path")));
+        policy.WriteAllText("out/a.md", PathResolver.ResolvePath("out/a.md", allowed, "output path"), "# A\n");
+        var outsideWrite = Record.Exception(
+            () => policy.WriteAllText("../outside/b.md", PathResolver.ResolvePath("../outside/b.md", allowed, "output path"), "# B\n"));
+
+        // Assert
+        Assert.Equal("Alpha: First\n", insideRead);
+        Assert.IsType<FileAccessDeniedException>(outsideRead);
+        Assert.Equal("# A\n", File.ReadAllText(Path.Combine(allowed, "out", "a.md")));
+        Assert.IsType<FileAccessDeniedException>(outsideWrite);
+        Assert.False(File.Exists(Path.Combine(outside, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that the never-accessed list applies under mode any.
+    /// </summary>
+    [Fact]
+    public void UtilitiesSubsystem_FileAccess_NeverAccessedInAnyMode()
+    {
+        // Arrange: a folder where an output file is expected
+        using var tmpDir = new TemporaryDirectory();
+        var folder = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "out.md")).FullName;
+
+        // Act
+        var network = Record.Exception(() => FileAccessPolicy.Any.ReadAllText("//server/share/a.yaml", "//server/share/a.yaml"));
+        var url = Record.Exception(() => FileAccessPolicy.Any.ReadAllText("http://example.com/a.yaml", "http://example.com/a.yaml"));
+        var directory = Record.Exception(() => FileAccessPolicy.Any.WriteAllText("out.md", folder, "x"));
+
+        // Assert
+        Assert.StartsWith("it is a UNC or network path", Assert.IsType<FileAccessDeniedException>(network).Reason);
+        Assert.StartsWith("it is a URL or URI", Assert.IsType<FileAccessDeniedException>(url).Reason);
+        Assert.StartsWith("it is not a regular file", Assert.IsType<FileAccessDeniedException>(directory).Reason);
+    }
 }

@@ -17,4 +17,7 @@ package DictionaryMark {
     dependency Context to ConfigFile;
     dependency Context to TableJob;
     dependency Context to PathResolver;
+
+    // Context builds the file-access policy from --file-access and --allow-root
+    dependency Context to FileAccessPolicy;
 }

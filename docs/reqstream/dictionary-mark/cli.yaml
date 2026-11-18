@@ -139,3 +139,22 @@ sections:
               - CliSubsystem_RootFlow_ConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_CommandLineRootOverridesConfigRoot_ResolvesTableJobs
               - CliSubsystem_RootFlow_MissingRoot_ExitsNonZero
+
+          - id: DictionaryMark-Cli-FileAccessOptions
+            title: >-
+              The CLI subsystem shall read the file-access mode and the allowed folders from the command line,
+              apply the default folders, reject invalid or conflicting values, and mark configuration-file jobs as
+              judged and the command-line job as trusted.
+            justification: |
+              The CLI subsystem owns run settings and the origin of every job, so it decides which paths the
+              file-access policy judges and with which folders.
+            children:
+              - DictionaryMark-Context-FileAccessOption
+              - DictionaryMark-Context-AllowRootOption
+              - DictionaryMark-Context-DefaultAllowedFolders
+              - DictionaryMark-ConfigFile-RootNeverAccessed
+              - DictionaryMark-TableJob-PathTrust
+            tests:
+              - CliSubsystem_FileAccessFlow_AllowRootConflict_ExitsNonZero
+              - CliSubsystem_FileAccessFlow_RootsConfig_DeniesOutsideJob
+              - CliSubsystem_FileAccessFlow_CommandLineJob_NotJudged

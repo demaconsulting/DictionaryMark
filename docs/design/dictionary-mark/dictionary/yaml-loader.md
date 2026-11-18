@@ -38,6 +38,20 @@ strings `true`/`false`. Unknown keys are errors.
 required non-empty `use` and an optional `where`; no definition. Returns
 `IReadOnlyList<DeprecatedEntry>`.
 
+**LoadText** and **LoadDeprecatedText**: Parse YAML text that the caller has already read, with
+exactly the same rules as `Load` and `LoadDeprecated`. `Load` and `LoadDeprecated` delegate to them
+after reading the file with `File.ReadAllText`.
+
+- *Parameters*: `string content` — the YAML text; `string source` — the full path of the file the
+  text came from, recorded as each entry's `Source` and named in error messages.
+- *Returns*: the same lists as `Load` and `LoadDeprecated`.
+- *Preconditions*: Arguments are non-null.
+- *Postconditions*: No I/O is performed.
+
+They exist because the file-access policy reads a configuration-file input from the handle it has
+verified; parsing that text, rather than opening the file again by name, keeps the decision and the
+read on the same file.
+
 #### Error Handling
 
 - `ArgumentNullException` — thrown when `filePath` is null; must be supplied by the caller.
@@ -59,5 +73,7 @@ them via `context.WriteError`, and returns without generating output.
 
 #### Callers
 
-- **DictionaryGenerator.Generate** — calls `YamlDictionaryLoader.Load(filePath)` once per resolved
-  input file; accumulates the returned lists for conflict detection.
+- **DictionaryGenerator.Generate** — calls `YamlDictionaryLoader.Load(filePath)` (or `LoadDeprecated`)
+  once per resolved input file of the command-line job, and `LoadText` (or `LoadDeprecatedText`) with the
+  text `FileAccessPolicy.ReadAllText` returned for each input file of a configuration job; accumulates
+  the returned lists for conflict detection.

@@ -4,7 +4,7 @@
 
 #### Purpose
 
-`Validation.Run` prints a system information header, executes ten fixed in-process self-tests,
+`Validation.Run` prints a system information header, executes eleven fixed in-process self-tests,
 prints a pass/fail summary, and optionally writes results to a TRX or JUnit XML file. Each test
 runs the real `Program` logic with temporary YAML input files and a log file to capture output.
 `Validation` is a static class with no instance state.
@@ -21,7 +21,7 @@ optionally writes a results file.
 - *Parameters*: `Context context` — provides output channels and the optional results file path.
 - *Returns*: `void`.
 - *Preconditions*: `context` is non-null.
-- *Postconditions*: All ten tests executed; summary printed; results file written if
+- *Postconditions*: All eleven tests executed; summary printed; results file written if
   `context.ResultsFile` is set; `context.WriteError` called for each failed test.
 
 Throws `ArgumentNullException` when `context` is null.
@@ -118,6 +118,19 @@ read `../shared/*.yaml` and `../shared/terms.yaml` and write `../out/table.md` a
 created beforehand. Runs `Program.Run` with `--config` and verifies both outputs exist with the
 table and bullet content. This exercises configuration loading, the formatting precedence,
 config-relative `..` path resolution and output directory creation on each deployment platform.
+
+- *Parameters*: `Context context`; `TestResults testResults`.
+- *Returns*: `void`.
+- *Preconditions*: None.
+- *Postconditions*: One `TestResult` added.
+
+**RunFileAccessRootsTest** *(private)* (`DictionaryMark_FileAccessRoots`): Writes a dictionary and a
+configuration file in `config/` with two jobs: the first writes `../out/denied.md`, outside the
+allowed folder; the second writes `inside.md`. Runs `Program.Run` with
+`--file-access roots --allow-root <config folder>` and passes when the exit code is 1, neither
+`out/denied.md` nor the `out/` folder exists, and `config/inside.md` holds the entry. This confirms
+the file-access confinement, which depends on the real-path support of the operating system, on each
+deployment platform.
 
 - *Parameters*: `Context context`; `TestResults testResults`.
 - *Returns*: `void`.

@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="970" height="748" viewBox="0 0 970 748" font-family="Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="970" height="778" viewBox="0 0 970 778" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
     </marker>
   </defs>
   <!-- Transparent canvas; a white rounded card keeps the diagram readable in light and dark themes -->
-  <rect x="14" y="16" width="945" height="716" rx="28" fill="#d5dce6"/>
-  <rect x="10" y="10" width="945" height="716" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="14" y="16" width="945" height="746" rx="28" fill="#d5dce6"/>
+  <rect x="10" y="10" width="945" height="746" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
 
   <g transform="translate(30,30)">
     <!-- Caller -->
@@ -14,10 +14,10 @@
     <text x="440" y="31" font-size="16" font-family="Consolas, monospace" font-weight="600" fill="#92400e" text-anchor="middle">dictionarymark</text>
     <text x="440" y="53" font-size="13" fill="#92400e" text-anchor="middle">command-line tool run by you or your documentation pipeline</text>
     <line x1="440" y1="74" x2="440" y2="118" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <text x="452" y="100" font-size="12" fill="#334155">--input, --config, --root, --format, --column-widths ...</text>
+    <text x="452" y="100" font-size="12" fill="#334155">--input, --config, --root, --file-access, --format ...</text>
 
     <!-- DictionaryMark frame -->
-    <rect x="180" y="122" width="520" height="550" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
+    <rect x="180" y="122" width="520" height="580" rx="14" fill="#f8fafc" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 5"/>
     <text x="196" y="148" font-size="14" font-weight="600" fill="#2563eb">DemaConsulting.DictionaryMark</text>
 
     <!-- Program -->
@@ -44,15 +44,15 @@
     </g>
 
     <!-- SelfTest -->
-    <rect x="200" y="356" width="232" height="128" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <rect x="200" y="356" width="232" height="158" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
     <text x="316" y="380" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">SelfTest</text>
     <rect x="214" y="392" width="204" height="26" rx="6" fill="#ffffff" stroke="#2563eb"/>
     <text x="316" y="410" font-size="12" font-family="Consolas, monospace" fill="#1e3a8a" text-anchor="middle">Validation</text>
-    <text x="316" y="444" font-size="12" fill="#1e40af" text-anchor="middle">Built-in qualification</text>
-    <text x="316" y="460" font-size="12" fill="#1e40af" text-anchor="middle">tests (--validate)</text>
+    <text x="316" y="459" font-size="12" fill="#1e40af" text-anchor="middle">Built-in qualification</text>
+    <text x="316" y="475" font-size="12" fill="#1e40af" text-anchor="middle">tests (--validate)</text>
 
     <!-- Utilities -->
-    <rect x="448" y="356" width="232" height="128" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <rect x="448" y="356" width="232" height="158" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
     <text x="564" y="380" font-size="15" font-weight="600" fill="#1e3a8a" text-anchor="middle">Utilities</text>
     <g font-size="12">
       <rect x="462" y="392" width="204" height="24" rx="6" fill="#ffffff" stroke="#2563eb"/>
@@ -64,28 +64,31 @@
       <rect x="462" y="452" width="204" height="24" rx="6" fill="#ffffff" stroke="#2563eb"/>
       <text x="557" y="469" font-family="Consolas, monospace" fill="#1e3a8a" text-anchor="end">PathHelpers</text>
       <text x="563" y="469" fill="#1e40af">safe paths</text>
+      <rect x="462" y="482" width="204" height="24" rx="6" fill="#ffffff" stroke="#2563eb"/>
+      <text x="470" y="499" font-family="Consolas, monospace" fill="#1e3a8a">FileAccessPolicy</text>
+      <text x="658" y="499" fill="#1e40af" text-anchor="end">--file-access</text>
     </g>
 
     <!-- Dictionary -->
-    <rect x="200" y="500" width="480" height="156" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
-    <text x="440" y="526" font-size="16" font-weight="600" fill="#4c1d95" text-anchor="middle">Dictionary</text>
-    <rect x="214" y="538" width="452" height="30" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="423" y="558" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="end">DictionaryGenerator</text>
-    <text x="429" y="558" font-size="12" fill="#5b21b6">runs the steps below in order</text>
-    <rect x="214" y="578" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="282" y="598" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">YamlDictionary</text>
-    <text x="282" y="613" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Loader</text>
-    <text x="282" y="633" font-size="12" fill="#5b21b6" text-anchor="middle">reads YAML</text>
-    <rect x="372" y="578" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="440" y="598" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Conflict</text>
-    <text x="440" y="613" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Detector</text>
-    <text x="440" y="633" font-size="12" fill="#5b21b6" text-anchor="middle">flags clashes</text>
-    <rect x="530" y="578" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
-    <text x="598" y="598" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Markdown</text>
-    <text x="598" y="613" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Formatter</text>
-    <text x="598" y="633" font-size="12" fill="#5b21b6" text-anchor="middle">list or table</text>
-    <line x1="350" y1="611" x2="368" y2="611" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <line x1="508" y1="611" x2="526" y2="611" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <rect x="200" y="530" width="480" height="156" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="440" y="556" font-size="16" font-weight="600" fill="#4c1d95" text-anchor="middle">Dictionary</text>
+    <rect x="214" y="568" width="452" height="30" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="423" y="588" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="end">DictionaryGenerator</text>
+    <text x="429" y="588" font-size="12" fill="#5b21b6">runs the steps below in order</text>
+    <rect x="214" y="608" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="282" y="628" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">YamlDictionary</text>
+    <text x="282" y="643" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Loader</text>
+    <text x="282" y="663" font-size="12" fill="#5b21b6" text-anchor="middle">reads YAML</text>
+    <rect x="372" y="608" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="440" y="628" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Conflict</text>
+    <text x="440" y="643" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Detector</text>
+    <text x="440" y="663" font-size="12" fill="#5b21b6" text-anchor="middle">flags clashes</text>
+    <rect x="530" y="608" width="136" height="66" rx="6" fill="#ffffff" stroke="#7c3aed"/>
+    <text x="598" y="628" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Markdown</text>
+    <text x="598" y="643" font-size="12" font-family="Consolas, monospace" fill="#4c1d95" text-anchor="middle">Formatter</text>
+    <text x="598" y="663" font-size="12" fill="#5b21b6" text-anchor="middle">list or table</text>
+    <line x1="350" y1="641" x2="368" y2="641" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <line x1="508" y1="641" x2="526" y2="641" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
 
     <!-- Inputs -->
     <text x="75" y="240" font-size="13" font-weight="600" fill="#475569" text-anchor="middle">Inputs</text>
@@ -94,11 +97,11 @@
     <text x="75" y="294" font-size="12" font-family="Consolas, monospace" fill="#475569" text-anchor="middle">dictionarymark.yaml</text>
     <text x="75" y="310" font-size="12" fill="#475569" text-anchor="middle">optional, table jobs</text>
     <line x1="154" y1="285" x2="210" y2="285" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <rect x="0" y="578" width="150" height="66" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-    <text x="75" y="601" font-size="15" font-weight="600" fill="#334155" text-anchor="middle">YAML files</text>
-    <text x="75" y="620" font-size="12" fill="#475569" text-anchor="middle">term dictionaries or</text>
-    <text x="75" y="636" font-size="12" fill="#475569" text-anchor="middle">deprecated terms</text>
-    <line x1="154" y1="611" x2="210" y2="611" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <rect x="0" y="608" width="150" height="66" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="75" y="631" font-size="15" font-weight="600" fill="#334155" text-anchor="middle">YAML files</text>
+    <text x="75" y="650" font-size="12" fill="#475569" text-anchor="middle">term dictionaries or</text>
+    <text x="75" y="666" font-size="12" fill="#475569" text-anchor="middle">deprecated terms</text>
+    <line x1="154" y1="641" x2="210" y2="641" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
 
     <!-- Outputs -->
     <text x="815" y="240" font-size="13" font-weight="600" fill="#475569" text-anchor="middle">Outputs</text>
@@ -107,17 +110,17 @@
     <text x="815" y="294" font-size="12" font-family="Consolas, monospace" fill="#475569" text-anchor="middle">--log</text>
     <text x="815" y="310" font-size="12" fill="#475569" text-anchor="middle">copy of console output</text>
     <line x1="684" y1="285" x2="726" y2="285" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
-    <rect x="730" y="470" width="170" height="186" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-    <text x="815" y="498" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Markdown</text>
+    <rect x="730" y="500" width="170" height="186" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="815" y="528" font-size="16" font-weight="600" fill="#166534" text-anchor="middle">Markdown</text>
     <g font-size="13" fill="#14532d" text-anchor="middle">
-      <rect x="745" y="512" width="140" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
-      <text x="815" y="532">Bullet list</text>
-      <rect x="745" y="550" width="140" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
-      <text x="815" y="570">Table</text>
+      <rect x="745" y="542" width="140" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
+      <text x="815" y="562">Bullet list</text>
+      <rect x="745" y="580" width="140" height="30" rx="5" fill="#ffffff" stroke="#16a34a"/>
+      <text x="815" y="600">Table</text>
     </g>
-    <text x="815" y="602" font-size="12" fill="#166534" text-anchor="middle">--output file or stdout,</text>
-    <text x="815" y="618" font-size="12" fill="#166534" text-anchor="middle">or one file per config job;</text>
-    <text x="815" y="634" font-size="12" fill="#166534" text-anchor="middle">missing folders created</text>
-    <line x1="666" y1="553" x2="726" y2="553" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="815" y="632" font-size="12" fill="#166534" text-anchor="middle">--output file or stdout,</text>
+    <text x="815" y="648" font-size="12" fill="#166534" text-anchor="middle">or one file per config job;</text>
+    <text x="815" y="664" font-size="12" fill="#166534" text-anchor="middle">missing folders created</text>
+    <line x1="666" y1="583" x2="726" y2="583" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
   </g>
 </svg>

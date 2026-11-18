@@ -71,3 +71,32 @@ sections:
             tests:
               - UtilitiesSubsystem_PathResolution_ParentSegments_ResolvesFiles
               - UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles
+
+          - id: DictionaryMark-Utilities-FileAccessConfinement
+            title: >-
+              The Utilities subsystem shall judge configuration-file paths by the never-accessed list and the
+              file-access mode, using the real path of each opened file, and shall read and write such files only
+              after they pass.
+            justification: |
+              Confinement must be applied the same way to every read and write, and the platform-specific real-path
+              code must be isolated in one place that can be reviewed and tested on each platform.
+            children:
+              - DictionaryMark-FileAccessPolicy-ModeParsing
+              - DictionaryMark-FileAccessPolicy-AnyMode
+              - DictionaryMark-FileAccessPolicy-NeverAccessed
+              - DictionaryMark-FileAccessPolicy-RootsWrittenPath
+              - DictionaryMark-FileAccessPolicy-RootsRealPath
+              - DictionaryMark-FileAccessPolicy-NoSymlinks
+              - DictionaryMark-FileAccessPolicy-RealPathUnavailable
+              - DictionaryMark-FileAccessPolicy-Writes
+              - DictionaryMark-FileAccessPolicy-DenialMessage
+              - DictionaryMark-RealPath-FinalPath
+              - DictionaryMark-RealPath-RegularFile
+              - DictionaryMark-RealPath-CanonicalDirectory
+              - DictionaryMark-RealPath-NoTruncateOpen
+              - DictionaryMark-RealPath-Comparison
+              - DictionaryMark-RealPath-Classification
+              - DictionaryMark-RealPath-LinkTargetWalk
+            tests:
+              - UtilitiesSubsystem_FileAccess_RootsConfinesReadsAndWrites
+              - UtilitiesSubsystem_FileAccess_NeverAccessedInAnyMode

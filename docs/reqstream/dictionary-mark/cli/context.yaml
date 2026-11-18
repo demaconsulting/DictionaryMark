@@ -201,3 +201,45 @@ sections:
                   - Context_Create_NoRoot_ConfigTablesUseConfigDirectory
                   - Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory
                   - Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot
+
+              - id: DictionaryMark-Context-FileAccessOption
+                title: >-
+                  The Context class shall accept --file-access with the value any, roots, no-symlinks or
+                  roots,no-symlinks in any letter case, default to any, and reject any other value or a repeated
+                  option with an error that lists the modes.
+                justification: |
+                  An exact, case-insensitive set of modes avoids silently running with weaker confinement than the
+                  user asked for.
+                tests:
+                  - Context_Create_NoFileAccess_DefaultsToAny
+                  - Context_Create_FileAccessEachMode_Parsed
+                  - Context_Create_FileAccessInvalid_ThrowsListingModes
+                  - Context_Create_FileAccessTwice_Throws
+
+              - id: DictionaryMark-Context-AllowRootOption
+                title: >-
+                  The Context class shall accept a repeatable --allow-root that implies the roots mode and replaces
+                  the default folders, resolving each folder against the working directory (never --root) with
+                  ${VAR} expansion and parent-directory normalization, and shall reject a missing folder or the
+                  option combined with --file-access any or no-symlinks with an error naming the conflict.
+                justification: |
+                  The allowed folders must be the ones the user named, wherever the configuration file sets its base
+                  directory, and contradictory options must not silently pick one meaning.
+                tests:
+                  - Context_Create_AllowRoot_ImpliesRootsAndReplacesDefaults
+                  - Context_Create_AllowRootRelative_ResolvedAgainstWorkingDirectoryNotRoot
+                  - Context_Create_AllowRootEnvironmentVariable_Expanded
+                  - Context_Create_AllowRootMissing_Throws
+                  - Context_Create_AllowRootWithAny_ThrowsNamingConflict
+                  - Context_Create_AllowRootWithNoSymlinks_ThrowsNamingConflict
+
+              - id: DictionaryMark-Context-DefaultAllowedFolders
+                title: >-
+                  Under the roots mode without --allow-root, the Context class shall allow the working directory
+                  and, when --config is given, the configuration file's folder, which is also the trusted folder of
+                  the no-symlinks mode.
+                justification: |
+                  Most configuration files only use files below the working directory or beside themselves.
+                tests:
+                  - Context_Create_RootsWithConfig_AllowsWorkingAndConfigFolders
+                  - Context_Create_RootsWithoutConfig_AllowsWorkingDirectory

@@ -23,6 +23,8 @@ includes:
   - docs/reqstream/dictionary-mark/utilities/path-resolver.yaml
   - docs/reqstream/dictionary-mark/utilities/path-helpers.yaml
   - docs/reqstream/dictionary-mark/utilities/temporary-directory.yaml
+  - docs/reqstream/dictionary-mark/utilities/file-access-policy.yaml
+  - docs/reqstream/dictionary-mark/utilities/real-path.yaml
   - docs/reqstream/dictionary-mark/platform-requirements.yaml
   - docs/reqstream/ots/xunit.yaml
   - docs/reqstream/ots/reqstream.yaml

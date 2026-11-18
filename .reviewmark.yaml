@@ -354,6 +354,36 @@ reviews:
       - "src/**/Utilities/TemporaryDirectory.cs"
       - "test/**/Utilities/TemporaryDirectoryTests.cs"
 
+  # DictionaryMark-Utilities-FileAccessPolicy Review (unit under a subsystem)
+  - id: DictionaryMark-Utilities-FileAccessPolicy
+    title: Review that DictionaryMark Utilities FileAccessPolicy Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/file-access-policy.yaml"
+      - "docs/design/dictionary-mark/utilities/file-access-policy.md"
+      - "docs/verification/dictionary-mark/utilities/file-access-policy.md"
+      - "src/**/Utilities/FileAccess*.cs"
+      - "test/**/Utilities/FileAccessPolicyTests.cs"
+
+  # DictionaryMark-Utilities-RealPath Review (unit under a subsystem)
+  - id: DictionaryMark-Utilities-RealPath
+    title: Review that DictionaryMark Utilities RealPath Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/utilities.md"
+      - "docs/reqstream/dictionary-mark/utilities.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/utilities/real-path.yaml"
+      - "docs/design/dictionary-mark/utilities/real-path.md"
+      - "docs/verification/dictionary-mark/utilities/real-path.md"
+      - "src/**/Utilities/RealPath*.cs"
+      - "test/**/Utilities/RealPathTests.cs"
+
   # OTS Items
   - id: OTS-BuildMark
     title: Review that BuildMark Provides Required Functionality

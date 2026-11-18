@@ -65,3 +65,13 @@ This scenario is tested by
 be zero, confirming per-job generation, path resolution against the job's base directory and output
 directory creation.
 This scenario is tested by `DictionarySubsystem_Generation_MultipleJobs_GeneratesEachOutput`.
+
+**DictionarySubsystem_FileAccess_DeniedInput_FailsOnlyThatJob**: A configuration file with one job that
+reads outside the allowed folder and one that reads inside is passed through `Context` (with
+`--allow-root`) to `DictionaryGenerator.Generate`. The exit code must be 1, the first job must write
+nothing, and the second job must write its output.
+This scenario is tested by `DictionarySubsystem_FileAccess_DeniedInput_FailsOnlyThatJob`.
+
+**DictionarySubsystem_FileAccess_DeniedOutput_WritesNothing**: A job whose output is in a missing folder
+outside the allowed folder must fail and leave the folder uncreated.
+This scenario is tested by `DictionarySubsystem_FileAccess_DeniedOutput_WritesNothing`.

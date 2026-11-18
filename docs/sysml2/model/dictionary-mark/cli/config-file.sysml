@@ -17,4 +17,7 @@ package DictionaryMark {
     dependency ConfigFile to FormattingSettings;
     dependency ConfigFile to OtsDependencies::YamlDotNet;
     dependency ConfigFile to PathResolver;
+
+    // ConfigFile checks the root key against the file-access never-accessed list before probing it
+    dependency ConfigFile to FileAccessPolicy;
 }

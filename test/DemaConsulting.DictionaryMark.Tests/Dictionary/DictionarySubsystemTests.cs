@@ -182,4 +182,50 @@ public class DictionarySubsystemTests
         Assert.Contains("| API |", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "table.md")));
         Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(tmpDir.DirectoryPath, "out", "bullets.md")));
     }
+
+    /// <summary>
+    ///     Test that a denied config input fails only its own job while the other jobs still generate.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_DeniedInput_FailsOnlyThatJob()
+    {
+        // Arrange: job 1 reads a file outside the allowed folder; job 2 reads one inside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "outside.yaml")), "Beta: Second\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../shared/outside.yaml\n    output: a.md\n  - input: terms.yaml\n    output: b.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+        using var context = Context.Create(["--silent", "--config", config, "--allow-root", configFolder]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert: the run fails, job 1 wrote nothing, job 2 wrote its output
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(File.Exists(Path.Combine(configFolder, "a.md")));
+        Assert.Contains("API", File.ReadAllText(Path.Combine(configFolder, "b.md")));
+    }
+
+    /// <summary>
+    ///     Test that a denied config output writes nothing, not even its folder.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_DeniedOutput_WritesNothing()
+    {
+        // Arrange: an output in a missing folder outside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config, "tables:\n  - input: terms.yaml\n    output: ../out/terms.md\n");
+        using var context = Context.Create(["--silent", "--config", config, "--file-access", "roots", "--allow-root", Path.GetDirectoryName(config)!]);
+
+        // Act
+        DictionaryGenerator.Generate(context);
+
+        // Assert
+        Assert.Equal(1, context.ExitCode);
+        Assert.False(Directory.Exists(Path.Combine(tmpDir.DirectoryPath, "out")));
+    }
 }

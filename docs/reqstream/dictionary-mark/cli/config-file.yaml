@@ -101,3 +101,14 @@ sections:
                   - ConfigFile_Load_RootInvalidValue_Throws
                   - ConfigFile_Load_RootInTableJob_ThrowsNamingJob
                   - ConfigFile_Load_NoRoot_RootDirectoryIsNull
+
+              - id: DictionaryMark-ConfigFile-RootNeverAccessed
+                title: >-
+                  The ConfigFile unit shall reject a root key that, after ${VAR} expansion, names a URL or URI, a
+                  UNC or network path, a device path or an alternate data stream, with an error containing
+                  file-access-denied, before the file system is touched.
+                justification: |
+                  The root key only sets a base directory and never grants access, but checking that it exists
+                  would still contact a network host or a device named by an untrusted configuration file.
+                tests:
+                  - ConfigFile_Load_RootNamingNeverAccessedPath_ThrowsFileAccessDenied

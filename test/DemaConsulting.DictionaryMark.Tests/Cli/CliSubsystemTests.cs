@@ -641,4 +641,64 @@ public class CliSubsystemTests
         Assert.Equal(1, exitCode);
         Assert.Contains($"Directory '{missing}' specified by --root option", error);
     }
+
+    /// <summary>
+    ///     Test that --allow-root with --file-access any exits non-zero with the conflict named.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_AllowRootConflict_ExitsNonZero()
+    {
+        // Act
+        var (exitCode, error) = RunMain("--file-access", "any", "--allow-root", Environment.CurrentDirectory);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: The options --file-access any and --allow-root cannot be used together", error);
+    }
+
+    /// <summary>
+    ///     Test that a roots config run denies the job whose output leaves the allowed folder and runs the other.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_RootsConfig_DeniesOutsideJob()
+    {
+        // Arrange: two jobs, one writing outside the config folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: terms.yaml\n    output: ../out.md\n  - input: terms.yaml\n    output: in.md\n");
+
+        // Act
+        var (exitCode, error) = RunMain("--config", config, "--file-access", "roots", "--allow-root", Path.GetDirectoryName(config)!);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out.md'): file-access-denied:", error);
+        Assert.False(File.Exists(Path.Combine(tmpDir.DirectoryPath, "out.md")));
+        Assert.True(File.Exists(Path.Combine(tmpDir.DirectoryPath, "config", "in.md")));
+    }
+
+    /// <summary>
+    ///     Test that command-line paths are not judged by the file-access mode.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_CommandLineJob_NotJudged()
+    {
+        // Arrange: an input, output and log outside the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("outside", "terms.yaml"));
+        File.WriteAllText(input, "API: Application Programming Interface\n");
+        var allowed = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "allowed")).FullName;
+        var output = Path.Combine(tmpDir.DirectoryPath, "outside", "terms.md");
+        var log = Path.Combine(tmpDir.DirectoryPath, "outside", "run.log");
+
+        // Act
+        var (exitCode, _) = RunMain(
+            "--input", input, "--output", output, "--log", log, "--file-access", "roots,no-symlinks", "--allow-root", allowed);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(output));
+        Assert.True(File.Exists(log));
+    }
 }

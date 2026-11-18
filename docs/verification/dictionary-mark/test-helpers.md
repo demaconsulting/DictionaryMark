@@ -16,6 +16,22 @@ and correctly asserts on process output or exit code implicitly proves that `Run
 process, drained both output streams without deadlock, and returned the exit code faithfully. No
 dedicated tests exist for `Runner` itself.
 
+The `LinkSupport` class in `test/DemaConsulting.DictionaryMark.Tests/Helpers/LinkSupport.cs` creates
+the symbolic links, junctions and named pipes that the file-access tests need:
+
+- `CreateDirectoryLinkOrSkip` creates a folder symbolic link. On Windows it falls back to a junction
+  (`cmd /c mklink /J`), which needs no privilege. When neither can be created, it skips the test with
+  `Assert.Skip` and the reason.
+- `CreateFileLinkOrSkip` creates a file symbolic link, or skips the test with the reason. A file link
+  needs a privilege on Windows (for example Developer Mode or an administrator account) and has no
+  fallback.
+- `CreateFifoOrSkip` creates a named pipe with `mkfifo` on Linux and macOS, and skips the test
+  elsewhere.
+
+Its correctness is demonstrated transitively by the link, junction and pipe tests in
+`FileAccessPolicyTests.cs`, `RealPathTests.cs` and `IntegrationTests.cs`. A link that was not created
+makes a test skip, never pass, because the helper either creates the link or calls `Assert.Skip`.
+
 ### Test Environment
 
 N/A - `TestHelpers` is test-only infrastructure.

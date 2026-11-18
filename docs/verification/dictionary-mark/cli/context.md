@@ -308,3 +308,29 @@ scenarios are tested by the tests of the same names.
 **Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot**: Verifies that a relative `--config`
 is resolved against the working directory even when `--root` names a different directory. This
 scenario is tested by `Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot`.
+
+**Context_Create_NoFileAccess_DefaultsToAny**, **Context_Create_FileAccessEachMode_Parsed**,
+**Context_Create_FileAccessInvalid_ThrowsListingModes** and **Context_Create_FileAccessTwice_Throws**:
+Verify that the file-access mode defaults to any with no folders, that every mode is accepted in any
+letter case, that an invalid value is rejected with the message listing the modes, and that a repeated
+`--file-access` is rejected. These scenarios are tested by the tests of the same names.
+
+**Context_Create_AllowRoot_ImpliesRootsAndReplacesDefaults**,
+**Context_Create_AllowRootRelative_ResolvedAgainstWorkingDirectoryNotRoot**,
+**Context_Create_AllowRootEnvironmentVariable_Expanded** and **Context_Create_AllowRootMissing_Throws**:
+Verify that two `--allow-root` options give roots with exactly those folders. A relative value climbing
+through `..` resolves under the working directory even with a `--root` that has a folder of the same
+name, and a `${VAR}` value is expanded. A missing folder gives the exact message naming the folder and
+the option. These scenarios are tested by the tests of the same names.
+
+**Context_Create_AllowRootWithAny_ThrowsNamingConflict** and
+**Context_Create_AllowRootWithNoSymlinks_ThrowsNamingConflict**: Verify that `--allow-root` with
+`--file-access any` or `No-Symlinks` (in either order) is rejected with a message naming the conflict
+and, for no-symlinks, the `roots,no-symlinks` spelling to use. These scenarios are tested by the tests of
+the same names.
+
+**Context_Create_RootsWithConfig_AllowsWorkingAndConfigFolders** and
+**Context_Create_RootsWithoutConfig_AllowsWorkingDirectory**: Verify the default folders of roots (the
+working directory, plus the configuration file's folder when `--config` is given) and that the
+configuration file's folder is the trusted base. These scenarios are tested by the tests of the same
+names.

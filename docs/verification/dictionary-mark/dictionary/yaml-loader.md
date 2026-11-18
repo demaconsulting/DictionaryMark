@@ -101,3 +101,8 @@ This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_ValidEntries_Ret
 
 **YamlDictionaryLoader_LoadDeprecated_Invalid_Throws**: A missing `use`, unknown key or non-object
 value is rejected. This scenario is tested by `YamlDictionaryLoader_LoadDeprecated_Invalid_Throws`.
+
+**YamlDictionaryLoader_LoadText_ValidContent_AttributesSource** and
+**YamlDictionaryLoader_LoadDeprecatedText_ValidContent_ReturnsEntries**: YAML text that was already read
+is parsed in document order with every entry's source set to the given file, and an invalid deprecated
+entry is reported naming that file. These scenarios are tested by the tests of the same names.

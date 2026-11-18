@@ -81,8 +81,11 @@ N/A - uses only .NET base class library path and environment APIs.
 
 - **GlobMatcher.Resolve** — `Combine` for every input pattern (description `glossary path`).
 - **DictionaryGenerator.GenerateJob** — `ResolvePath` for the output file (description
-  `output path`).
-- **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`.
-- **ConfigFile.Load** — `ResolveExistingDirectory` for the `root` key.
+  `output path`), and `ExpandEnvironmentVariables` and `Combine` for each input pattern of a
+  configuration job before the file-access check (description `glossary path`).
+- **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`
+  and each `--allow-root` (description `--allow-root option`).
+- **ConfigFile.Load** — `ExpandEnvironmentVariables` and `ResolveExistingDirectory` for the `root`
+  key.
 - **IsInvalidPathException** — used by `DictionaryGenerator` (input resolution, reading and
   writing) and `ConfigFile` (config path normalization and reading) in their exception filters.

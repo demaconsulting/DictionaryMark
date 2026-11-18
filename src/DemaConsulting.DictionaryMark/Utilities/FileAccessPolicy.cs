@@ -1,0 +1,889 @@
+// Copyright (c) DEMA Consulting
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Win32.SafeHandles;
+
+namespace DemaConsulting.DictionaryMark.Utilities;
+
+/// <summary>
+///     Decides which files named in a configuration file the tool may read and write, and performs those reads and
+///     writes on the verified handle.
+/// </summary>
+/// <remarks>
+///     <para>
+///         This unit is the single place where the <c>--file-access</c> mode is applied, so every configuration-file
+///         path is judged by the same rules. The rules follow the DEMA Consulting CanvasNet tool:
+///     </para>
+///     <list type="bullet">
+///         <item>
+///             In every mode, a URL or URI, a <c>file:</c> URI with a host, a UNC or network path, a device path, an
+///             alternate data stream (any colon other than the drive of an absolute Windows path) and anything that
+///             is not a regular file are never accessed. On Windows a path that passes through a symbolic link or
+///             junction whose target is a network location is denied before anything opens it.
+///         </item>
+///         <item>
+///             Under <see cref="FileAccessMode.Roots"/>, both the full path as written (after <c>${VAR}</c>
+///             expansion, rooting and <c>..</c> normalization) and the real path of the opened file must be inside an
+///             allowed folder.
+///         </item>
+///         <item>
+///             Under <see cref="FileAccessMode.NoSymlinks"/>, the real path must equal the path as written below the
+///             trusted anchor (the deepest folder the path shares with the configuration file's folder), so no
+///             symbolic link or junction lies below it; the anchor and the folders above it are trusted.
+///         </item>
+///         <item>
+///             In a mode other than <see cref="FileAccessMode.None"/>, a path whose real path cannot be determined is
+///             denied.
+///         </item>
+///     </list>
+///     <para>
+///         Decisions are made on the real path of the open handle, not on the name, so a link swapped in between a
+///         check and the open is still caught. A write never truncates before the handle is verified. Hard links
+///         cannot be detected. Instances are immutable and thread-safe; reads and writes perform file-system I/O.
+///     </para>
+/// </remarks>
+internal sealed partial class FileAccessPolicy
+{
+    /// <summary>The usage text that lists the valid modes.</summary>
+    private const string ModesHelp = "use any (the default), roots, no-symlinks, or roots,no-symlinks";
+
+    /// <summary>The reason for a URL or URI.</summary>
+    private const string UrlReason = "it is a URL or URI, which is never accessed";
+
+    /// <summary>The reason for a <c>file:</c> URI with a host.</summary>
+    private const string FileUriHostReason =
+        "it is a file: URI with a host, which names a network location and is never accessed";
+
+    /// <summary>The reason for a UNC or network path.</summary>
+    private const string NetworkReason = "it is a UNC or network path, which is never accessed";
+
+    /// <summary>The reason for a device path.</summary>
+    private const string DeviceReason = "it is a device path, which is never accessed";
+
+    /// <summary>The reason for a colon other than a Windows drive.</summary>
+    private const string ColonReason =
+        "it names an alternate data stream, a drive-relative path or a URI, which is never accessed";
+
+    /// <summary>The reason for anything that is not a regular file.</summary>
+    private const string NotRegularReason =
+        "it is not a regular file (a folder, device, pipe or other special file), which is never accessed";
+
+    /// <summary>The directory separators accepted when a path is split into components.</summary>
+    private static readonly char[] ComponentSeparators = ['/', '\\'];
+
+    /// <summary>The wildcard characters of a glob pattern.</summary>
+    private static readonly char[] Wildcards = ['*', '?'];
+
+    /// <summary>The UTF-8 encoding without a byte-order mark, matching <see cref="File.WriteAllText(string, string)"/>.</summary>
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
+    /// <summary>The allowed folders, with their real locations captured when the policy was created.</summary>
+    private readonly AllowedFolder[] _folders;
+
+    /// <summary>The function that reports the facts of an open handle (the platform, or a test double).</summary>
+    private readonly Func<SafeFileHandle, HandleFacts> _inspector;
+
+    /// <summary>
+    ///     The function that reads the immediate target of a symbolic link or junction without following it (the
+    ///     platform, or a test double).
+    /// </summary>
+    private readonly Func<string, string?> _linkReader;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="FileAccessPolicy"/> class.
+    /// </summary>
+    /// <param name="mode">The mode.</param>
+    /// <param name="folders">The allowed folders.</param>
+    /// <param name="trustedBase">The trusted base folder, or null.</param>
+    /// <param name="inspector">The handle inspector.</param>
+    /// <param name="linkReader">The link reader.</param>
+    private FileAccessPolicy(
+        FileAccessMode mode,
+        AllowedFolder[] folders,
+        string? trustedBase,
+        Func<SafeFileHandle, HandleFacts> inspector,
+        Func<string, string?> linkReader)
+    {
+        Mode = mode;
+        _folders = folders;
+        TrustedBase = trustedBase;
+        _inspector = inspector;
+        _linkReader = linkReader;
+        AllowedFolders = [.. folders.Select(folder => folder.Lexical)];
+    }
+
+    /// <summary>Gets the default policy: mode <c>any</c> with no allowed folders.</summary>
+    public static FileAccessPolicy Any { get; } = new(FileAccessMode.None, [], null, RealPath.Inspect, RealPath.ReadLinkTarget);
+
+    /// <summary>Gets the mode.</summary>
+    public FileAccessMode Mode { get; }
+
+    /// <summary>Gets the mode as written on the command line: any, roots, no-symlinks or roots,no-symlinks.</summary>
+    public string ModeName => NameOf(Mode);
+
+    /// <summary>Gets the full paths of the allowed folders, as resolved (used under <see cref="FileAccessMode.Roots"/>).</summary>
+    public IReadOnlyList<string> AllowedFolders { get; }
+
+    /// <summary>
+    ///     Gets the trusted base folder (the configuration file's folder), or null; it and every folder above it are
+    ///     trusted under <see cref="FileAccessMode.NoSymlinks"/>.
+    /// </summary>
+    public string? TrustedBase { get; }
+
+    /// <summary>
+    ///     Gets the name of a mode as written on the command line.
+    /// </summary>
+    /// <param name="mode">The mode.</param>
+    /// <returns><c>any</c>, <c>roots</c>, <c>no-symlinks</c> or <c>roots,no-symlinks</c>.</returns>
+    public static string NameOf(FileAccessMode mode) => mode switch
+    {
+        FileAccessMode.None => "any",
+        FileAccessMode.Roots => "roots",
+        FileAccessMode.NoSymlinks => "no-symlinks",
+        _ => "roots,no-symlinks",
+    };
+
+    /// <summary>
+    ///     Parses the value of the <c>--file-access</c> option.
+    /// </summary>
+    /// <remarks>
+    ///     The value is split at commas and each item is trimmed and compared in any letter case. <c>any</c> is
+    ///     valid only on its own; otherwise the items must be distinct and drawn from <c>roots</c> and
+    ///     <c>no-symlinks</c>, in either order.
+    /// </remarks>
+    /// <param name="text">The option value. Must not be null.</param>
+    /// <returns>The mode.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="text"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the value is not a valid mode; the message lists the modes.</exception>
+    public static FileAccessMode ParseMode(string text)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(text);
+
+        // Normalize the items: trimmed, lower case
+        var items = text.Split(',').Select(item => item.Trim().ToLowerInvariant()).ToArray();
+        if (items is ["any"])
+        {
+            return FileAccessMode.None;
+        }
+
+        // Combine distinct roots and no-symlinks items; anything else (including an empty item) is invalid
+        var mode = FileAccessMode.None;
+        foreach (var item in items)
+        {
+            var flag = item switch
+            {
+                "roots" => FileAccessMode.Roots,
+                "no-symlinks" => FileAccessMode.NoSymlinks,
+                _ => FileAccessMode.None,
+            };
+            if (flag == FileAccessMode.None || mode.HasFlag(flag))
+            {
+                throw new ArgumentException($"'{text}' is not a value of --file-access: {ModesHelp}");
+            }
+
+            mode |= flag;
+        }
+
+        return mode;
+    }
+
+    /// <summary>
+    ///     Creates a policy, capturing the real location of every allowed folder now.
+    /// </summary>
+    /// <remarks>
+    ///     The real locations are never looked up again, so a folder renamed and replaced by a link later cannot
+    ///     widen the policy. A folder whose real location cannot be determined allows no file under
+    ///     <see cref="FileAccessMode.Roots"/> (fail closed). Performs file-system I/O when the mode is not
+    ///     <see cref="FileAccessMode.None"/>.
+    /// </remarks>
+    /// <param name="mode">The mode.</param>
+    /// <param name="allowedFolders">The full paths of the allowed folders. Must not be null.</param>
+    /// <param name="trustedBase">The configuration file's folder, or null when there is none.</param>
+    /// <returns>The policy.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="allowedFolders"/> is null.</exception>
+    public static FileAccessPolicy Create(FileAccessMode mode, IReadOnlyList<string> allowedFolders, string? trustedBase) =>
+        Create(mode, allowedFolders, trustedBase, RealPath.Inspect);
+
+    /// <summary>
+    ///     Creates a policy with a given handle inspector and link reader, so tests can simulate a platform that
+    ///     cannot tell a fact, or links that lead to a network location.
+    /// </summary>
+    /// <param name="mode">The mode.</param>
+    /// <param name="allowedFolders">The full paths of the allowed folders. Must not be null.</param>
+    /// <param name="trustedBase">The configuration file's folder, or null when there is none.</param>
+    /// <param name="inspector">The function that reports the facts of an open handle. Must not be null.</param>
+    /// <param name="linkReader">
+    ///     The function that reads the immediate target of a link without following it, or null for
+    ///     <see cref="RealPath.ReadLinkTarget(string)"/>. It must not throw.
+    /// </param>
+    /// <returns>The policy.</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     Thrown when <paramref name="allowedFolders"/> or <paramref name="inspector"/> is null.
+    /// </exception>
+    internal static FileAccessPolicy Create(
+        FileAccessMode mode,
+        IReadOnlyList<string> allowedFolders,
+        string? trustedBase,
+        Func<SafeFileHandle, HandleFacts> inspector,
+        Func<string, string?>? linkReader = null)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(allowedFolders);
+        ArgumentNullException.ThrowIfNull(inspector);
+
+        // Capture each folder's full path and, in a restrictive mode, its real location
+        var folders = allowedFolders
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.Ordinal)
+            .Select(full => new AllowedFolder(full, mode == FileAccessMode.None ? null : RealPath.TryGetCanonicalDirectory(full)))
+            .ToArray();
+        var baseFolder = trustedBase == null ? null : Path.GetFullPath(trustedBase);
+        return new FileAccessPolicy(mode, folders, baseFolder, inspector, linkReader ?? RealPath.ReadLinkTarget);
+    }
+
+    /// <summary>
+    ///     Explains why a path text is on the never-accessed list, or returns null when it is not.
+    /// </summary>
+    /// <remarks>
+    ///     A pure text check, run before anything is touched, in every mode. Backslashes count as slashes. The rules,
+    ///     in order: a device path (<c>\\?\</c>, <c>\\.\</c>, <c>\??\</c>); a network path (<c>\\server</c>,
+    ///     <c>//server</c>); a URL (a scheme of two or more characters followed by <c>://</c>), where a
+    ///     <c>file:</c> URL with a host is a network location; any other colon except the drive of an absolute
+    ///     Windows path (an alternate data stream, a drive-relative path, another URI such as <c>urn:x</c>, or a
+    ///     drive on a system that has none);
+    ///     and a device name (a Windows reserved name in any component on Windows, a path under <c>/dev</c>
+    ///     elsewhere).
+    /// </remarks>
+    /// <param name="path">The path text. Must not be null.</param>
+    /// <returns>The reason, or null when the text may be accessed.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
+    public static string? DescribeNeverAccessed(string path)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(path);
+
+        // Device and network prefixes come first, so their reason names them rather than a colon
+        var text = path.Replace('\\', '/');
+        if (text.StartsWith("//?/", StringComparison.Ordinal) || text.StartsWith("//./", StringComparison.Ordinal)
+            || text.StartsWith("/??/", StringComparison.Ordinal))
+        {
+            return DeviceReason;
+        }
+
+        if (text.StartsWith("//", StringComparison.Ordinal))
+        {
+            return NetworkReason;
+        }
+
+        // A scheme followed by // names a URL; a file: URL with a host names a network location
+        var scheme = SchemeRegex().Match(text);
+        if (scheme.Success)
+        {
+            var hasHost = text.Length > scheme.Length && text[scheme.Length] != '/';
+            return scheme.Groups[1].Value.Equals("file", StringComparison.OrdinalIgnoreCase) && hasHost
+                ? FileUriHostReason
+                : UrlReason;
+        }
+
+        // The only colon a local path may carry is the drive of an absolute Windows path
+        var allowedColon = OperatingSystem.IsWindows() && HasDrive(text) ? 1 : -1;
+        if (text.IndexOf(':', allowedColon + 1) >= 0)
+        {
+            return ColonReason;
+        }
+
+        // Device names: reserved names on Windows, the /dev tree elsewhere
+        var isDevice = OperatingSystem.IsWindows()
+            ? RealPath.HasWindowsDeviceName(text)
+            : text == "/dev" || text.StartsWith("/dev/", StringComparison.Ordinal);
+        return isDevice ? DeviceReason : null;
+    }
+
+    /// <summary>
+    ///     Judges an input pattern of a configuration-file job before it is matched against the file system.
+    /// </summary>
+    /// <remarks>
+    ///     Matching touches the disk (existence checks and folder enumeration), so the never-accessed list is
+    ///     applied to the pattern text first. On Windows the literal part of the pattern (the folders before the
+    ///     first wildcard, or the whole of a literal pattern) is then walked for a symbolic link or junction to a
+    ///     network location, so matching never contacts a share through that part. Under
+    ///     <see cref="FileAccessMode.Roots"/> a literal (wildcard-free) pattern must also be inside an allowed folder
+    ///     as written. Every file a glob matches is judged again, individually, when it is read; a link below the
+    ///     first wildcard is reached by the matching itself and is not walked here.
+    /// </remarks>
+    /// <param name="writtenPattern">The pattern as written, used in the message. Must not be null.</param>
+    /// <param name="expandedPattern">The pattern after <c>${VAR}</c> expansion. Must not be null.</param>
+    /// <param name="rootedPattern">The expanded pattern rooted at the job's base folder. Must not be null.</param>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the literal part of the pattern is not a valid path.</exception>
+    /// <exception cref="FileAccessDeniedException">Thrown when the pattern is denied.</exception>
+    public void CheckPattern(string writtenPattern, string expandedPattern, string rootedPattern)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(writtenPattern);
+        ArgumentNullException.ThrowIfNull(expandedPattern);
+        ArgumentNullException.ThrowIfNull(rootedPattern);
+
+        // The never-accessed list applies to the expanded text and to the rooted path, in every mode
+        var reason = DescribeNeverAccessed(expandedPattern) ?? DescribeNeverAccessedFullPath(rootedPattern);
+        if (reason != null)
+        {
+            throw new FileAccessDeniedException(writtenPattern, null, reason);
+        }
+
+        // The literal part of the pattern must not pass through a link to a network location
+        var wildcard = rootedPattern.IndexOfAny(Wildcards);
+        var literalPart = wildcard < 0
+            ? rootedPattern
+            : rootedPattern[..(rootedPattern.LastIndexOfAny(ComponentSeparators, wildcard) + 1)];
+        if (literalPart.Length > 0)
+        {
+            CheckNetworkLink(writtenPattern, Path.GetFullPath(literalPart));
+        }
+
+        // A literal pattern names exactly one path, which must be inside an allowed folder as written
+        var isLiteral = wildcard < 0;
+        if (Mode.HasFlag(FileAccessMode.Roots) && isLiteral && !IsWrittenInside(Path.GetFullPath(rootedPattern)))
+        {
+            throw new FileAccessDeniedException(writtenPattern, null, RootsWrittenReason);
+        }
+    }
+
+    /// <summary>
+    ///     Reads a text file named in a configuration file, after judging it by the never-accessed list and the mode.
+    /// </summary>
+    /// <remarks>
+    ///     The checks run in order: the never-accessed list (on Windows including a symbolic link or junction at any
+    ///     folder of the path whose target is a network location) and, under <see cref="FileAccessMode.Roots"/>, the
+    ///     path as written, all before the file is opened; then the open (non-blocking on Linux and macOS); then the
+    ///     facts of the open handle: a regular file, not on a network, and in a restrictive mode a known real path
+    ///     that satisfies the mode. The content is read from the same handle that was judged, decoded as UTF-8 with
+    ///     byte-order-mark detection like <see cref="File.ReadAllText(string)"/>.
+    /// </remarks>
+    /// <param name="writtenPath">The path as written (or the matched file), used in the message. Must not be null.</param>
+    /// <param name="fullPath">The full, normalized path of the file. Must not be null.</param>
+    /// <returns>The file content.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="FileAccessDeniedException">Thrown when the file is denied.</exception>
+    /// <exception cref="IOException">Thrown when the file cannot be opened or read.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the system denies access to the file.</exception>
+    public string ReadAllText(string writtenPath, string fullPath)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(writtenPath);
+        ArgumentNullException.ThrowIfNull(fullPath);
+
+        // Judge the path before anything is opened
+        CheckBeforeOpen(writtenPath, fullPath);
+        var anchor = CaptureAnchor(writtenPath, fullPath);
+        if (Directory.Exists(fullPath))
+        {
+            throw new FileAccessDeniedException(writtenPath, null, NotRegularReason);
+        }
+
+        // Open the file, judge the handle, and read from the same handle
+        using var handle = RealPath.OpenForRead(fullPath);
+        CheckHandle(writtenPath, fullPath, handle, anchor);
+        using var stream = new FileStream(handle, FileAccess.Read, bufferSize: 1);
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    ///     Writes a text file named in a configuration file, after judging it by the never-accessed list and the
+    ///     mode, creating missing parent folders.
+    /// </summary>
+    /// <remarks>
+    ///     Nothing is created or written until the pre-checks pass: the never-accessed list, the path as written,
+    ///     the deepest existing parent folder (its real path, in a restrictive mode), and an existing output (its
+    ///     real path when it may be a link). In a restrictive mode the missing folders are then created one at a
+    ///     time, each verified by its real path. An existing output is opened without truncation and a missing one
+    ///     is created exclusively (which never follows a link at the output name); the handle is judged, and only
+    ///     then is the file truncated and written as UTF-8 without a byte-order mark, like
+    ///     <see cref="File.WriteAllText(string, string)"/>. A folder swapped by another process between its check
+    ///     and the exclusive create can leave an empty file at the swapped location, but no content is written.
+    /// </remarks>
+    /// <param name="writtenPath">The output path as written, used in the message. Must not be null.</param>
+    /// <param name="fullPath">The full, normalized path of the output. Must not be null.</param>
+    /// <param name="content">The text to write. Must not be null.</param>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="FileAccessDeniedException">Thrown when the output, or a folder it needs, is denied.</exception>
+    /// <exception cref="IOException">Thrown when a folder or the file cannot be created, opened or written.</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the system denies access.</exception>
+    public void WriteAllText(string writtenPath, string fullPath, string content)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(writtenPath);
+        ArgumentNullException.ThrowIfNull(fullPath);
+        ArgumentNullException.ThrowIfNull(content);
+
+        // Judge the path and its deepest existing parent folder before anything is created
+        CheckBeforeOpen(writtenPath, fullPath);
+        var anchor = CaptureAnchor(writtenPath, fullPath);
+        var parent = Path.GetDirectoryName(fullPath);
+        var missing = new List<string>();
+        var existing = parent;
+        while (existing != null && !Directory.Exists(existing) && !RealPath.IsLink(existing))
+        {
+            missing.Insert(0, existing);
+            existing = Path.GetDirectoryName(existing);
+        }
+
+        var canonicalParent = existing == null ? null : RealPath.TryGetCanonicalDirectory(existing);
+        CheckFolder(writtenPath, fullPath, existing ?? parent ?? fullPath, canonicalParent, anchor);
+
+        // Judge an existing output entry, which may be a link, before it is opened
+        var exists = CheckExistingOutput(writtenPath, fullPath, anchor);
+
+        // Create the missing folders, verifying each in a restrictive mode
+        CreateFolders(writtenPath, parent, missing, canonicalParent);
+
+        // Open without truncating (or create exclusively), judge the handle, then truncate and write
+        using var handle = exists
+            ? RealPath.TryOpenExistingForWrite(fullPath) ?? throw new FileAccessDeniedException(writtenPath, null, NotRegularReason)
+            : RealPath.CreateNewForWrite(fullPath);
+        CheckHandle(writtenPath, fullPath, handle, anchor);
+        RandomAccess.SetLength(handle, 0);
+        RandomAccess.Write(handle, Utf8NoBom.GetBytes(content), 0);
+    }
+
+    /// <summary>Gets the reason for a path written outside the allowed folders.</summary>
+    private string RootsWrittenReason =>
+        $"the path as written is outside the allowed folders (--file-access {ModeName})";
+
+    /// <summary>Gets the reason for a real path outside the allowed folders.</summary>
+    private string RootsRealReason =>
+        $"its real path is outside the allowed folders, so it leads out through a symbolic link or junction (--file-access {ModeName})";
+
+    /// <summary>Gets the reason for a real path that differs from the path as written.</summary>
+    private string NoSymlinksReason =>
+        $"its real path differs from the path as written, so the path passes through a symbolic link or junction (--file-access {ModeName})";
+
+    /// <summary>Gets the reason for a real path that cannot be determined.</summary>
+    private string RealPathUnknownReason =>
+        $"the real path of the opened file cannot be determined on this system, so --file-access {ModeName} cannot be applied";
+
+    /// <summary>
+    ///     Applies the never-accessed list to the path as written and to its full path, including a link on the path
+    ///     whose target is a network location, and, under <see cref="FileAccessMode.Roots"/>, requires the full path
+    ///     as written to be inside an allowed folder.
+    /// </summary>
+    /// <param name="writtenPath">The path as written.</param>
+    /// <param name="fullPath">The full path.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when the path is denied.</exception>
+    private void CheckBeforeOpen(string writtenPath, string fullPath)
+    {
+        // The never-accessed list, in every mode
+        var reason = DescribeNeverAccessed(writtenPath) ?? DescribeNeverAccessedFullPath(fullPath);
+        if (reason != null)
+        {
+            throw new FileAccessDeniedException(writtenPath, null, reason);
+        }
+
+        // A link anywhere on the path that leads to a network location, before anything contacts it
+        CheckNetworkLink(writtenPath, fullPath);
+
+        // The path as written must be inside an allowed folder
+        if (Mode.HasFlag(FileAccessMode.Roots) && !IsWrittenInside(fullPath))
+        {
+            throw new FileAccessDeniedException(writtenPath, null, RootsWrittenReason);
+        }
+    }
+
+    /// <summary>
+    ///     Captures, before the open, the trusted anchor of a path and its real location for the
+    ///     <see cref="FileAccessMode.NoSymlinks"/> rule.
+    /// </summary>
+    /// <remarks>
+    ///     The anchor is the deepest folder the path shares with the trusted base folder (or the root of the path
+    ///     when there is no trusted base). It and everything above it are trusted, so links there (for example
+    ///     macOS <c>/var</c>) do not count. Capturing before the open means an anchor replaced by a link afterwards
+    ///     leads the open elsewhere, and the real path then no longer matches.
+    /// </remarks>
+    /// <param name="writtenPath">The path as written.</param>
+    /// <param name="fullPath">The full path.</param>
+    /// <returns>The anchor snapshot, or null when the mode does not include no-symlinks.</returns>
+    /// <exception cref="FileAccessDeniedException">Thrown when the anchor's real location cannot be determined.</exception>
+    private AnchorSnapshot? CaptureAnchor(string writtenPath, string fullPath)
+    {
+        if (!Mode.HasFlag(FileAccessMode.NoSymlinks))
+        {
+            return null;
+        }
+
+        var anchor = (TrustedBase == null ? null : RealPath.CommonAncestor(fullPath, TrustedBase))
+            ?? Path.GetPathRoot(fullPath)
+            ?? fullPath;
+        var canonical = RealPath.TryGetCanonicalDirectory(anchor)
+            ?? throw new FileAccessDeniedException(writtenPath, null, FolderUnknownReason(anchor));
+        return new AnchorSnapshot(anchor, canonical);
+    }
+
+    /// <summary>
+    ///     Judges the deepest existing parent folder of an output.
+    /// </summary>
+    /// <param name="writtenPath">The output path as written.</param>
+    /// <param name="fullPath">The full output path.</param>
+    /// <param name="folder">The deepest existing parent folder (or the output path when no folder exists).</param>
+    /// <param name="canonicalFolder">The real location of the folder, or null when it is unknown.</param>
+    /// <param name="anchor">The no-symlinks anchor, or null.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when the folder is denied.</exception>
+    private void CheckFolder(string writtenPath, string fullPath, string folder, string? canonicalFolder, AnchorSnapshot? anchor)
+    {
+        // The real path the output would have, for the message
+        var realOutput = canonicalFolder == null ? null : Path.Join(canonicalFolder, Path.GetRelativePath(folder, fullPath));
+
+        // A folder on a network location is never accessed, in every mode
+        if (canonicalFolder != null && DescribeLocation(canonicalFolder) is { } location)
+        {
+            throw new FileAccessDeniedException(writtenPath, realOutput, location);
+        }
+
+        if (Mode == FileAccessMode.None)
+        {
+            return;
+        }
+
+        // A restrictive mode needs the real location of the folder
+        if (canonicalFolder == null)
+        {
+            throw new FileAccessDeniedException(writtenPath, null, FolderUnknownReason(folder));
+        }
+
+        if (Mode.HasFlag(FileAccessMode.Roots)
+            && (!IsWrittenInside(folder) || !Array.Exists(_folders, allowed => allowed.ContainsRealPath(canonicalFolder))))
+        {
+            throw new FileAccessDeniedException(
+                writtenPath,
+                realOutput,
+                $"its folder '{folder}' leads out of the allowed folders through a symbolic link or junction (--file-access {ModeName})");
+        }
+
+        if (anchor is { } snapshot && !MatchesWithoutLinks(snapshot, folder, canonicalFolder))
+        {
+            throw new FileAccessDeniedException(
+                writtenPath,
+                realOutput,
+                $"its folder '{folder}' passes through a symbolic link or junction (--file-access {ModeName})");
+        }
+    }
+
+    /// <summary>
+    ///     Judges an existing output entry before it is opened.
+    /// </summary>
+    /// <remarks>
+    ///     A folder is never written. A link whose target does not exist is denied in a restrictive mode (its real
+    ///     path cannot be checked); in mode any the exclusive create then fails because the name is taken. In a
+    ///     restrictive mode an existing output is judged by its real location, which follows any link, so a link
+    ///     leading out is denied before the file is opened; the open handle is judged again afterwards.
+    /// </remarks>
+    /// <param name="writtenPath">The output path as written.</param>
+    /// <param name="fullPath">The full output path.</param>
+    /// <param name="anchor">The no-symlinks anchor, or null.</param>
+    /// <returns>True when a file (or a link to one) exists at the output path.</returns>
+    /// <exception cref="FileAccessDeniedException">Thrown when the existing entry is denied.</exception>
+    private bool CheckExistingOutput(string writtenPath, string fullPath, AnchorSnapshot? anchor)
+    {
+        if (Directory.Exists(fullPath))
+        {
+            throw new FileAccessDeniedException(writtenPath, null, NotRegularReason);
+        }
+
+        var exists = File.Exists(fullPath);
+        if (Mode == FileAccessMode.None)
+        {
+            return exists;
+        }
+
+        if (!exists && RealPath.IsLink(fullPath))
+        {
+            throw new FileAccessDeniedException(
+                writtenPath,
+                null,
+                $"it is a symbolic link whose target does not exist, so its real path cannot be checked (--file-access {ModeName})");
+        }
+
+        if (exists)
+        {
+            CheckRealPath(writtenPath, fullPath, RealPath.TryGetCanonicalDirectory(fullPath), anchor);
+        }
+
+        return exists;
+    }
+
+    /// <summary>
+    ///     Creates the missing parent folders of an output.
+    /// </summary>
+    /// <remarks>
+    ///     In mode any the folders are created in one call. In a restrictive mode they are created one level at a
+    ///     time, and each new folder's real location must be its parent's real location followed by its name, which
+    ///     catches a folder swapped for a link while it was created.
+    /// </remarks>
+    /// <param name="writtenPath">The output path as written.</param>
+    /// <param name="parent">The output's parent folder.</param>
+    /// <param name="missing">The missing folders, outermost first.</param>
+    /// <param name="canonicalParent">The real location of the deepest existing parent folder.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when a created folder is not where it should be.</exception>
+    /// <exception cref="IOException">Thrown when a folder cannot be created.</exception>
+    private void CreateFolders(string writtenPath, string? parent, List<string> missing, string? canonicalParent)
+    {
+        if (missing.Count == 0 || parent == null)
+        {
+            return;
+        }
+
+        if (Mode == FileAccessMode.None || canonicalParent == null)
+        {
+            Directory.CreateDirectory(parent);
+            return;
+        }
+
+        var canonical = canonicalParent;
+        foreach (var folder in missing)
+        {
+            Directory.CreateDirectory(folder);
+            var created = RealPath.TryGetCanonicalDirectory(folder);
+            if (created == null || !RealPath.PathsEqual(created, Path.Join(canonical, Path.GetFileName(folder))))
+            {
+                throw new FileAccessDeniedException(
+                    writtenPath,
+                    created,
+                    $"the folder '{folder}' changed while it was created, so --file-access {ModeName} cannot be applied");
+            }
+
+            canonical = created;
+        }
+    }
+
+    /// <summary>
+    ///     Judges the facts of an open handle.
+    /// </summary>
+    /// <param name="writtenPath">The path as written.</param>
+    /// <param name="fullPath">The full path that was opened.</param>
+    /// <param name="handle">The open handle.</param>
+    /// <param name="anchor">The no-symlinks anchor, or null.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when the handle is denied.</exception>
+    private void CheckHandle(string writtenPath, string fullPath, SafeFileHandle handle, AnchorSnapshot? anchor)
+    {
+        var facts = _inspector(handle);
+        if (facts.IsRegularFile != true)
+        {
+            throw new FileAccessDeniedException(writtenPath, facts.FinalPath, NotRegularReason);
+        }
+
+        CheckRealPath(writtenPath, fullPath, facts.FinalPath, anchor);
+    }
+
+    /// <summary>
+    ///     Judges a real path: never on a network or device location, and in a restrictive mode known and
+    ///     satisfying the mode.
+    /// </summary>
+    /// <param name="writtenPath">The path as written.</param>
+    /// <param name="fullPath">The full path as written.</param>
+    /// <param name="realPath">The real path, or null when it is unknown.</param>
+    /// <param name="anchor">The no-symlinks anchor, or null.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when the real path is denied.</exception>
+    private void CheckRealPath(string writtenPath, string fullPath, string? realPath, AnchorSnapshot? anchor)
+    {
+        if (realPath != null && DescribeLocation(realPath) is { } location)
+        {
+            throw new FileAccessDeniedException(writtenPath, realPath, location);
+        }
+
+        if (Mode == FileAccessMode.None)
+        {
+            return;
+        }
+
+        var real = realPath ?? throw new FileAccessDeniedException(writtenPath, null, RealPathUnknownReason);
+        if (Mode.HasFlag(FileAccessMode.Roots) && !Array.Exists(_folders, folder => folder.ContainsRealPath(real)))
+        {
+            throw new FileAccessDeniedException(writtenPath, real, RootsRealReason);
+        }
+
+        if (anchor is { } snapshot && !MatchesWithoutLinks(snapshot, fullPath, real))
+        {
+            throw new FileAccessDeniedException(writtenPath, real, NoSymlinksReason);
+        }
+    }
+
+    /// <summary>
+    ///     Determines whether a full path as written lies inside an allowed folder, in the folder's given or real
+    ///     spelling, also comparing the long spelling of a path written with short (8.3) Windows names.
+    /// </summary>
+    /// <param name="fullPath">The full path.</param>
+    /// <returns>True when the path is inside an allowed folder.</returns>
+    private bool IsWrittenInside(string fullPath)
+    {
+        if (Array.Exists(_folders, folder => folder.ContainsWrittenPath(fullPath)))
+        {
+            return true;
+        }
+
+        var expanded = RealPath.ExpandShortNames(fullPath);
+        return !string.Equals(expanded, fullPath, StringComparison.Ordinal)
+            && Array.Exists(_folders, folder => folder.ContainsWrittenPath(expanded));
+    }
+
+    /// <summary>
+    ///     Gets the reason for a folder whose real location cannot be determined.
+    /// </summary>
+    /// <param name="folder">The folder.</param>
+    /// <returns>The reason.</returns>
+    private string FolderUnknownReason(string folder) =>
+        $"the real path of the folder '{folder}' cannot be determined, so --file-access {ModeName} cannot be applied";
+
+    /// <summary>
+    ///     Determines whether the real path of a file is the real location of the anchor followed by the path as
+    ///     written below it, so no link lies below the anchor.
+    /// </summary>
+    /// <remarks>
+    ///     A path written with short (8.3) Windows names is compared in its long spelling too. The expansion keeps
+    ///     one component per component, so the part below the anchor is the same number of trailing components of
+    ///     the long spelling; a link still shows up as a different real path.
+    /// </remarks>
+    /// <param name="anchor">The anchor snapshot.</param>
+    /// <param name="fullPath">The full path as written.</param>
+    /// <param name="realPath">The real path.</param>
+    /// <returns>True when no link lies below the anchor.</returns>
+    private static bool MatchesWithoutLinks(AnchorSnapshot anchor, string fullPath, string realPath)
+    {
+        var relative = Path.GetRelativePath(anchor.Anchor, fullPath);
+        if (RealPath.PathsEqual(Expected(anchor.Canonical, relative), realPath))
+        {
+            return true;
+        }
+
+        var longPath = RealPath.ExpandShortNames(fullPath);
+        if (relative == "." || string.Equals(longPath, fullPath, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var count = relative.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
+        var longParts = longPath.Split(ComponentSeparators, StringSplitOptions.RemoveEmptyEntries);
+        return longParts.Length >= count
+            && RealPath.PathsEqual(
+                Expected(anchor.Canonical, string.Join(Path.DirectorySeparatorChar, longParts[^count..])),
+                realPath);
+    }
+
+    /// <summary>
+    ///     Computes the real path a file must have when no link lies below the anchor.
+    /// </summary>
+    /// <param name="canonicalAnchor">The real location of the anchor.</param>
+    /// <param name="relative">The path below the anchor (<c>.</c> for the anchor itself).</param>
+    /// <returns>The expected real path.</returns>
+    private static string Expected(string canonicalAnchor, string relative) =>
+        relative == "." ? canonicalAnchor : Path.Join(canonicalAnchor, relative);
+
+    /// <summary>
+    ///     Applies the never-accessed list to a full path: the text rules and a mapped network drive.
+    /// </summary>
+    /// <param name="fullPath">The full path.</param>
+    /// <returns>The reason, or null.</returns>
+    private static string? DescribeNeverAccessedFullPath(string fullPath) =>
+        DescribeNeverAccessed(fullPath) ?? (RealPath.IsNetworkLocation(fullPath) ? NetworkReason : null);
+
+    /// <summary>
+    ///     Classifies a real path reported by the system as a network or device location.
+    /// </summary>
+    /// <param name="realPath">The real path.</param>
+    /// <returns>The reason, or null for an ordinary local path.</returns>
+    private static string? DescribeLocation(string realPath)
+    {
+        if (RealPath.IsNetworkLocation(realPath))
+        {
+            return NetworkReason;
+        }
+
+        var isDevice = OperatingSystem.IsWindows()
+            ? RealPath.IsWindowsDeviceNamespace(realPath)
+            : realPath.StartsWith("/dev/", StringComparison.Ordinal);
+        return isDevice ? DeviceReason : null;
+    }
+
+    /// <summary>
+    ///     Denies, on Windows, a path that passes through a symbolic link or junction whose target is a network
+    ///     location, before anything opens, tests or enumerates the path.
+    /// </summary>
+    /// <remarks>
+    ///     Every component of the path is checked, not only the last, and a chain of links is followed by reading
+    ///     each link's target without opening through it (see
+    ///     <see cref="RealPath.FindNetworkLinkTarget(string, Func{string, string?})"/>), so the share is never
+    ///     contacted. Anything denied here would also be denied by the real path after the open; the check only
+    ///     moves the denial before any network contact. Does nothing on other systems.
+    /// </remarks>
+    /// <param name="writtenPath">The path or pattern as written, used in the message.</param>
+    /// <param name="fullPath">The full path to walk.</param>
+    /// <exception cref="FileAccessDeniedException">Thrown when a link on the path leads to a network location.</exception>
+    private void CheckNetworkLink(string writtenPath, string fullPath)
+    {
+        if (RealPath.FindNetworkLinkTarget(fullPath, _linkReader) is { } networkPath)
+        {
+            throw new FileAccessDeniedException(writtenPath, networkPath, NetworkReason);
+        }
+    }
+
+    /// <summary>
+    ///     Determines whether a text starts with a drive and a separator (<c>C:/</c>).
+    /// </summary>
+    /// <param name="text">The text, with forward slashes.</param>
+    /// <returns>True when it does.</returns>
+    private static bool HasDrive(string text) =>
+        text.Length >= 3 && char.IsAsciiLetter(text[0]) && text[1] == ':' && text[2] == '/';
+
+    /// <summary>Matches a URL scheme and its authority marker: a letter, at least one more scheme character, then <c>://</c>.</summary>
+    [GeneratedRegex("^([A-Za-z][A-Za-z0-9+.-]+)://")]
+    private static partial Regex SchemeRegex();
+
+    /// <summary>
+    ///     The trusted anchor of a path and its real location, captured before the open.
+    /// </summary>
+    /// <param name="Anchor">The anchor folder as written.</param>
+    /// <param name="Canonical">The real location of the anchor.</param>
+    private readonly record struct AnchorSnapshot(string Anchor, string Canonical);
+
+    /// <summary>
+    ///     One allowed folder: its full path as given, and its real location captured when the policy was created.
+    /// </summary>
+    /// <param name="Lexical">The full path as given.</param>
+    /// <param name="Canonical">The real location, or null when it could not be determined (it then allows nothing).</param>
+    private sealed record AllowedFolder(string Lexical, string? Canonical)
+    {
+        /// <summary>
+        ///     Determines whether a path as written lies inside the folder, in its given or its real spelling.
+        /// </summary>
+        /// <param name="path">The full path.</param>
+        /// <returns>True when it is inside.</returns>
+        public bool ContainsWrittenPath(string path) =>
+            RealPath.IsUnder(path, Lexical) || (Canonical is { } canonical && RealPath.IsUnder(path, canonical));
+
+        /// <summary>
+        ///     Determines whether a real path lies inside the real location captured when the policy was created.
+        /// </summary>
+        /// <param name="path">The real path.</param>
+        /// <returns>True when it is inside.</returns>
+        public bool ContainsRealPath(string path) => Canonical is { } canonical && RealPath.IsUnder(path, canonical);
+    }
+}

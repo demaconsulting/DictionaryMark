@@ -72,8 +72,37 @@ internal static partial class YamlDictionaryLoader
         // Validate input
         ArgumentNullException.ThrowIfNull(filePath);
 
+        // Read the whole file (letting I/O errors propagate), then parse the text
         var source = Path.GetFullPath(filePath);
-        var mapping = ReadRootMapping(filePath, source);
+        return LoadText(File.ReadAllText(filePath), source);
+    }
+
+    /// <summary>
+    ///     Loads approved-term entries from YAML text that was already read from a file.
+    /// </summary>
+    /// <remarks>
+    ///     Exists so that a caller which reads the file itself (the file-access policy, which reads from the
+    ///     handle it has verified) applies exactly the same parsing and validation rules as <see cref="Load"/>.
+    ///     Performs no I/O. Stateless and thread-safe.
+    /// </remarks>
+    /// <param name="content">The YAML text. Must not be null.</param>
+    /// <param name="source">
+    ///     The full path of the file the text came from, recorded as <see cref="DictionaryEntry.Source"/> and
+    ///     named in error messages. Must not be null.
+    /// </param>
+    /// <returns>Ordered list of entries in document order; empty when the text has no entries.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="YamlException">Thrown when the text is not syntactically valid YAML.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
+    /// </exception>
+    public static IReadOnlyList<DictionaryEntry> LoadText(string content, string source)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(source);
+
+        var mapping = ParseRootMapping(content, source);
         if (mapping == null)
         {
             return [];
@@ -118,8 +147,37 @@ internal static partial class YamlDictionaryLoader
         // Validate input
         ArgumentNullException.ThrowIfNull(filePath);
 
+        // Read the whole file (letting I/O errors propagate), then parse the text
         var source = Path.GetFullPath(filePath);
-        var mapping = ReadRootMapping(filePath, source);
+        return LoadDeprecatedText(File.ReadAllText(filePath), source);
+    }
+
+    /// <summary>
+    ///     Loads deprecated-term entries from YAML text that was already read from a file.
+    /// </summary>
+    /// <remarks>
+    ///     Exists so that a caller which reads the file itself (the file-access policy, which reads from the
+    ///     handle it has verified) applies exactly the same parsing and validation rules as
+    ///     <see cref="LoadDeprecated"/>. Performs no I/O. Stateless and thread-safe.
+    /// </remarks>
+    /// <param name="content">The YAML text. Must not be null.</param>
+    /// <param name="source">
+    ///     The full path of the file the text came from, recorded as <see cref="DeprecatedEntry.Source"/> and
+    ///     named in error messages. Must not be null.
+    /// </param>
+    /// <returns>Ordered list of entries in document order; empty when the text has no entries.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+    /// <exception cref="YamlException">Thrown when the text is not syntactically valid YAML.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the YAML structure or any entry is invalid; the message names the term and file.
+    /// </exception>
+    public static IReadOnlyList<DeprecatedEntry> LoadDeprecatedText(string content, string source)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(source);
+
+        var mapping = ParseRootMapping(content, source);
         if (mapping == null)
         {
             return [];
@@ -143,13 +201,13 @@ internal static partial class YamlDictionaryLoader
     }
 
     /// <summary>
-    ///     Reads a file and returns its root mapping node, or null for an empty file.
+    ///     Parses YAML text and returns its root mapping node, or null for an empty document.
     /// </summary>
-    private static YamlMappingNode? ReadRootMapping(string filePath, string source)
+    /// <param name="content">The YAML text.</param>
+    /// <param name="source">The full path of the file the text came from, for error messages.</param>
+    /// <returns>The root mapping, or null when the text has no entries.</returns>
+    private static YamlMappingNode? ParseRootMapping(string content, string source)
     {
-        // Read file content (let IOException propagate)
-        var content = File.ReadAllText(filePath);
-
         var yaml = new YamlStream();
         using var reader = new StringReader(content);
         yaml.Load(reader);

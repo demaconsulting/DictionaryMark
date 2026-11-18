@@ -571,4 +571,123 @@ public class DictionaryGeneratorTests
         Assert.Equal(0, exitCode);
         Assert.Contains($"| :{new string('-', 25)} | :{new string('-', 75)} |", output);
     }
+
+    /// <summary>Test that a config input written outside the allowed folders fails the job with file-access-denied.</summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_ConfigInputOutsideFolders_ReportsFileAccessDenied()
+    {
+        // Arrange: a shared dictionary beside the config folder, which is the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "a.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/a.yaml\n    output: a.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", configFolder);
+
+        // Assert: the error names the job, the code, the path as written and the reason; nothing is written
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): file-access-denied: '../shared/a.yaml': the path as written is outside the allowed folders (--file-access roots)",
+            err);
+        Assert.False(File.Exists(Path.Combine(configFolder, "a.md")));
+    }
+
+    /// <summary>Test that a glob match outside the allowed folders fails the job instead of being skipped.</summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_DeniedGlobMatch_FailsJobNotSkipped()
+    {
+        // Arrange: one match inside the allowed folder and one outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        var outside = tmpDir.GetFilePath(Path.Combine("shared", "b.yaml"));
+        File.WriteAllText(outside, "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: [a.yaml, ../shared/*.yaml]\n    output: out.md\n");
+        var configFolder = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--file-access", "roots", "--allow-root", configFolder);
+
+        // Assert: the outside match is reported by its full path and the job writes nothing
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Error: table job 1 ('out.md'): file-access-denied: '{outside}':", err);
+        Assert.False(File.Exists(Path.Combine(configFolder, "out.md")));
+    }
+
+    /// <summary>Test that a command-line input outside the allowed folders is read (command-line paths are trusted).</summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_CommandLineInputOutsideFolders_Read()
+    {
+        // Arrange: an input outside the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("outside", "a.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var allowed = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "allowed")).FullName;
+
+        // Act
+        var (output, _, exitCode) = Run("--input", input, "--allow-root", allowed);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Alpha", output);
+    }
+
+    /// <summary>Test that a config output outside the allowed folders is denied and nothing is written.</summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_ConfigOutputOutsideFolders_WritesNothing()
+    {
+        // Arrange: an output in a missing folder beside the config folder
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: a.yaml\n    output: ../out/a.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", Path.GetDirectoryName(config)!);
+
+        // Assert: denied, and neither the file nor its folder exists
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: table job 1 ('../out/a.md'): file-access-denied: '../out/a.md':", err);
+        Assert.False(Directory.Exists(Path.Combine(tmpDir.DirectoryPath, "out")));
+    }
+
+    /// <summary>Test that a command-line output outside the allowed folders is written (command-line paths are trusted).</summary>
+    [Fact]
+    public void DictionaryGenerator_GenerateJob_CommandLineOutputOutsideFolders_Written()
+    {
+        // Arrange
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath("a.yaml");
+        File.WriteAllText(input, "Alpha: First\n");
+        var allowed = Directory.CreateDirectory(Path.Combine(tmpDir.DirectoryPath, "allowed")).FullName;
+        var output = Path.Combine(tmpDir.DirectoryPath, "outside", "a.md");
+
+        // Act
+        var (_, _, exitCode) = Run("--input", input, "--output", output, "--file-access", "roots", "--allow-root", allowed);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Alpha", File.ReadAllText(output));
+    }
+
+    /// <summary>Test that a denied job fails alone: the other jobs run and the summary counts it.</summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_DeniedJob_OtherJobsRunWithLabeledError()
+    {
+        // Arrange: job 1 is denied (URL input), job 2 is valid
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir,
+            "tables:\n  - input: https://example.com/a.yaml\n    output: a.md\n  - input: b.yaml\n    output: b.md\n");
+
+        // Act: the default mode any still applies the never-accessed list
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('a.md'): file-access-denied: 'https://example.com/a.yaml': it is a URL or URI, which is never accessed",
+            err);
+        Assert.Contains("Error: 1 of 2 table jobs failed.", err);
+        Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
+    }
 }

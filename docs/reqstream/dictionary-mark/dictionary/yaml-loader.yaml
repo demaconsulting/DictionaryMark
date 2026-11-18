@@ -111,3 +111,14 @@ sections:
                   - DictionaryEntry_Constructor_TermAndDefinition_HasDefaultMetadata
                   - DictionaryEntry_Constructor_FullMetadata_SetsProperties
                   - DictionaryEntry_Constructor_NullDefinition_ThrowsArgumentNullException
+
+              - id: DictionaryMark-YamlLoader-TextInput
+                title: >-
+                  The YamlDictionaryLoader unit shall parse approved-term and deprecated-term YAML text that was
+                  already read, with the same rules as a file and with the given file named as the source.
+                justification: |
+                  The file-access policy reads a configuration-file input from the handle it verified, so the
+                  loader must accept that text rather than opening the file again by name.
+                tests:
+                  - YamlDictionaryLoader_LoadText_ValidContent_AttributesSource
+                  - YamlDictionaryLoader_LoadDeprecatedText_ValidContent_ReturnsEntries

@@ -26,9 +26,10 @@ conflicts, and renders Markdown output.
 **SelfTest Subsystem** contains `Validation`, which runs in-process self-tests when the user
 invokes the tool with `--validate`.
 
-**Utilities Subsystem** contains `GlobMatcher`, `PathResolver`, `PathHelpers`, and
-`TemporaryDirectory`, providing shared file-matching, path-resolution and path-safety services
-consumed by the Cli, Dictionary and SelfTest subsystems.
+**Utilities Subsystem** contains `GlobMatcher`, `PathResolver`, `PathHelpers`, `TemporaryDirectory`,
+`FileAccessPolicy` and `RealPath`, providing shared file-matching, path-resolution, path-safety and
+file-access confinement services consumed by the Cli, Dictionary and SelfTest subsystems. `RealPath` holds
+all platform-specific (native) code of the tool.
 
 ## External Interfaces
 
@@ -51,6 +52,8 @@ selection, output formatting, and operational mode.
   column header), `--where-header <text>` (deprecated-table "where used" column header),
   `--column-widths <w1,w2[,w3]>` (relative table column widths), `--config <file>` (configuration
   file), `--root <dir>` (base directory for relative input and output paths),
+  `--file-access <any|roots|no-symlinks|roots,no-symlinks>` (file-access mode for configuration-file
+  paths), `--allow-root <dir>` (allowed folder, repeatable; implies roots),
   and `--results`/`--result <file>` (results file). Returns exit code 0 on
   success, 1 on error.
 - *Constraints*: Relative input patterns and output paths are resolved against the root
@@ -58,7 +61,9 @@ selection, output formatting, and operational mode.
   `..` segments are supported before the first wildcard. Missing output directories are created.
   All file I/O uses UTF-8 encoding without BOM. Input errors are strict: a missing file, an empty
   glob match, an undefined `${VAR}` reference, an entry without a definition, or an invalid
-  `--kind` value is reported as an error and produces no output.
+  `--kind` value is reported as an error and produces no output. A configuration-file path that the
+  file-access policy denies is reported with the error code `file-access-denied`, the path as written,
+  its real path when known and a reason naming the mode; it fails only its job.
 
 **Configuration File**: A YAML file that supplies formatting defaults, an optional root
 directory, and optional table jobs.
@@ -72,7 +77,8 @@ directory, and optional table jobs.
   *ConfigFile Design* for the full schema.
 - *Constraints*: Unknown or misplaced keys are errors. Relative paths in the file resolve against
   the root directory when one is given, and otherwise against the file's directory. When the file
-  defines tables, `--input` and `--output` are rejected.
+  defines tables, `--input` and `--output` are rejected. Every input and output path of the file is
+  judged by the file-access policy; the `root` key only sets the base directory and never grants access.
 
 ## Dependencies
 
@@ -88,10 +94,21 @@ directory, and optional table jobs.
 N/A — DictionaryMark is a development tool with no patient-safety or safety-critical risk
 classification. No software-item segregation is required by the applicable risk framework.
 
-The one security boundary in the system is path-traversal prevention: caller-supplied file paths
-are validated by `PathHelpers.SafePathCombine` before any file-system operation combines a base
-directory with an untrusted relative path. This boundary is enforced entirely within the Utilities
-subsystem.
+The system has two security boundaries, both enforced entirely within the Utilities subsystem:
+
+- **Path-traversal prevention**: caller-supplied file paths are validated by
+  `PathHelpers.SafePathCombine` before any file-system operation combines a base directory with an
+  untrusted relative path.
+- **File-access confinement**: a configuration file may come from someone the user does not trust, for
+  example a pull request built by CI. `FileAccessPolicy` judges every input and output path the file names
+  before it is used:
+  - the never-accessed list (URLs, UNC and network paths, device paths, alternate data streams, anything
+    that is not a regular file) applies in every mode;
+  - `--file-access roots` confines the paths to the allowed folders, and `no-symlinks` refuses symbolic
+    links and junctions, both judged by the real path of the opened file.
+
+  Paths given on the command line are trusted and never judged. Reads and writes happen on the handle that
+  was judged, and an output is never truncated before it is verified.
 
 ## Data Flow
 
@@ -104,14 +121,19 @@ subsystem.
 2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
    `context.HeadingDepth` controls the Markdown heading level of the validation report header.
 3. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
-4. `GlobMatcher.Resolve` resolves the job's input patterns against its base directory.
-5. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list.
+4. For a configuration job, `FileAccessPolicy.CheckPattern` first judges each input pattern. Then
+   `GlobMatcher.Resolve` resolves the job's input patterns against its base directory.
+5. `YamlDictionaryLoader` parses each resolved YAML file into a `DictionaryEntry` list. A configuration
+   job reads each file through `FileAccessPolicy.ReadAllText`, which judges the file by its real path; a
+   denied file fails the job.
 6. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
    `context.WriteError` and halts output generation for that job.
 7. `MarkdownFormatter.Format` renders the validated entries as a Markdown string, sizing table
    columns by the job's column widths when given.
 8. The formatted Markdown is written to the job's output file (resolved against its base
-   directory, creating missing parent directories), or to stdout if no output file was specified.
+   directory, creating missing parent directories), or to stdout if no output file was specified. A
+   configuration job writes through `FileAccessPolicy.WriteAllText`, which writes nothing when the output
+   or a folder it needs is denied.
 9. Errors of configuration jobs are prefixed with `table job {n} ('{output}')`; when any
    configuration job failed, a summary `{failed} of {total} table jobs failed` is reported.
 
@@ -121,12 +143,18 @@ Base directory for relative input patterns and output paths:
 | :--- | :--- | :--- | :--- |
 | Configuration table job `input` / `output` | `--root` | config `root` | configuration file directory |
 | Command-line `--input` / `--output` | `--root` | config `root` | working directory |
-| `--config`, `--log`, `--results` | not rooted | not rooted | working directory |
+| `--config`, `--log`, `--results`, `--allow-root` | not rooted | not rooted | working directory |
 
 ## Design Constraints
 
-- **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS); no
-  platform-specific APIs are used in core logic.
+- **Platform**: runs on any OS supported by the .NET SDK (Windows, Linux, macOS). Platform-specific APIs
+  are used only in `RealPath`, which reports the real path of an open file (Windows
+  `GetFinalPathNameByHandleW`, Linux `/proc/self/fd`, macOS `proc_pidfdinfo`). Where a platform cannot
+  tell the real path, the restrictive file-access modes deny the file.
+- **File-access limits**: a hard link cannot be detected, because it is a second name of the same file.
+  Under `roots` a configuration file can still overwrite any file inside the allowed folders. A folder
+  swapped by another process during a write can leave an empty file at the swapped location, but no
+  content is written there.
 - **Target frameworks**: net10.0, net11.0 (`RollForward=LatestMajor`); distributed as a .NET global
   tool (`PackAsTool`).
 - **Input size**: no enforced limit on the number of YAML files or entries.

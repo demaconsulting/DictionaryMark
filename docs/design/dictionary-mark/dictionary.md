@@ -72,6 +72,16 @@ everything from resolving input file paths through formatting the final Markdown
 - *Constraints*: Throws `ArgumentException` on empty patterns and `InvalidOperationException` when a
   pattern matches nothing, a literal path does not exist, or a variable is undefined.
 
+**FileAccessPolicy**: File-access confinement from the Utilities subsystem.
+
+- *Type*: In-process .NET API
+- *Role*: Consumer — `DictionaryGenerator` judges every input pattern, reads every input and writes
+  the output of a configuration job through `context.FileAccess`
+- *Contract*: `CheckPattern`, `ReadAllText` and `WriteAllText` (see *FileAccessPolicy Design*); a
+  denial throws `FileAccessDeniedException`.
+- *Constraints*: Used only for configuration jobs (`TableJob.ArePathsJudged`); command-line paths are
+  trusted.
+
 **YamlDotNet**: OTS YAML parsing library.
 
 - *Type*: In-process .NET public API (NuGet package)
@@ -85,12 +95,16 @@ everything from resolving input file paths through formatting the final Markdown
 `DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
 job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. Call `GlobMatcher.Resolve` for the job's input patterns and base directory
+1. For a configuration job, judge each input pattern with `FileAccessPolicy.CheckPattern`. Call
+   `GlobMatcher.Resolve` for the job's input patterns and base directory
    (strict: `${VAR}` expansion, every pattern must match, literal paths must exist); return early
-   on `ArgumentException` or `InvalidOperationException`, or when no files are found.
+   on a file-access denial, `ArgumentException` or `InvalidOperationException`, or when no files are
+   found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
-   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
-   `InvalidOperationException`.
+   `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`). A configuration job reads
+   each file through `FileAccessPolicy.ReadAllText`, which judges it by its real path, and parses the
+   text with `LoadText` or `LoadDeprecatedText`. Return early on a file-access denial, `IOException` or
+   `InvalidOperationException`; a denied file is never skipped.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
    job; report each conflict and return early if any are found. Different jobs may use different or
    overlapping dictionaries.
@@ -101,7 +115,8 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 5. Write the string to the job's output file — resolved against the job's base directory with
    `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
-   report the error and return.
+   report the error and return. A configuration job writes through `FileAccessPolicy.WriteAllText`,
+   which writes nothing, not even a folder, when the output is denied.
 
 Every job error is written through `context.WriteError`, prefixed with the job label
 (`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration

@@ -587,3 +587,169 @@ sections:
           - DictionaryMark_Root_SpecifiedTwice_ReturnsError
           - DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile
           - DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob
+
+      - id: DictionaryMark-System-FileAccess-Modes
+        title: >-
+          The tool shall accept a file-access mode of any, roots, no-symlinks or roots,no-symlinks in any letter
+          case, use any (the behavior without the option) by default, and reject any other value or a repeated
+          option with an error that lists the modes and a non-zero exit code.
+        justification: |
+          A configuration file may come from someone the user does not trust, for example in a pull request run
+          by a CI pipeline. A mode lets the user decide how far the paths written in such a file may reach, while
+          the default keeps existing runs unchanged.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+        tests:
+          - DictionaryMark_FileAccess_ModeLetterCase_Accepted
+          - DictionaryMark_FileAccess_InvalidMode_ReturnsErrorListingModes
+          - DictionaryMark_FileAccess_RepeatedOption_ReturnsError
+          - DictionaryMark_FileAccess_AnyMode_ConfigPathsOutsideFoldersUsed
+
+      - id: DictionaryMark-System-FileAccess-AllowRoot
+        title: >-
+          The tool shall accept a repeatable allowed-folder option that implies the roots mode and replaces the
+          default folders, resolving a relative folder from the working directory (never from the root option)
+          with ${VAR} references and parent-directory segments, and shall reject a folder that does not exist,
+          or the option combined with the any or no-symlinks mode, with an error naming the problem.
+        justification: |
+          A CI pipeline must be able to name exactly the folders a configuration file may use, independent of
+          the base directory it sets for its relative paths.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+          - DictionaryMark-Utilities-FileAccessConfinement
+        tests:
+          - DictionaryMark_FileAccess_AllowRoot_ReplacesDefaultFolders
+          - DictionaryMark_FileAccess_AllowRootRelative_ResolvedAgainstWorkingDirectory
+          - DictionaryMark_FileAccess_AllowRootMissing_ReturnsError
+          - DictionaryMark_FileAccess_AllowRootWithAnyOrNoSymlinks_ReturnsConflictError
+
+      - id: DictionaryMark-System-FileAccess-DefaultFolders
+        title: >-
+          Under the roots mode without an allowed-folder option, the tool shall allow the working directory and
+          the configuration file's folder.
+        justification: |
+          The common case, a configuration file that only uses files below the working directory or beside
+          itself, then needs no extra option.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+        tests:
+          - DictionaryMark_FileAccess_RootsDefaultFolders_WorkingAndConfigFoldersAllowed
+          - DictionaryMark_FileAccess_RootsDefaultFolders_OtherFolderDenied
+
+      - id: DictionaryMark-System-FileAccess-JudgedPaths
+        title: >-
+          The tool shall judge every input pattern, every file a pattern matches and every output path written
+          in a configuration file, and shall never judge the paths given on the command line (the configuration
+          file, input patterns and their matches, output, log and results files).
+        justification: |
+          The user who runs the tool chooses the command-line paths and trusts them; only the paths written in
+          the configuration file come from content that may not be trusted.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessOptions
+          - DictionaryMark-Dictionary-FileAccess
+        tests:
+          - DictionaryMark_FileAccess_CommandLinePathsOutsideFolders_NotJudged
+          - DictionaryMark_FileAccess_ConfigInputOutsideFolders_Denied
+
+      - id: DictionaryMark-System-FileAccess-Roots
+        title: >-
+          Under the roots mode, the tool shall use a judged path only when both the path as written (after
+          ${VAR} expansion, base-directory resolution and parent-directory normalization) and the real path of
+          the opened file are inside an allowed folder, shall deny a path whose real path cannot be determined,
+          and shall never widen access because of the root option or the root key.
+        justification: |
+          Checking only the written path would let a symbolic link or junction lead out of the allowed folders;
+          checking only the real path would let a path outside the folders link back in. The root settings only
+          set a base directory, so a configuration file cannot grant itself access by naming a root.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Utilities-FileAccessConfinement
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Cli-FileAccessOptions
+        tests:
+          - DictionaryMark_FileAccess_ParentSegmentEscape_Denied
+          - DictionaryMark_FileAccess_EnvironmentVariableEscape_Denied
+          - DictionaryMark_FileAccess_RootKeyDoesNotWiden_Denied
+          - windows@DictionaryMark_FileAccess_InputLinkLeadingOut_Denied
+          - ubuntu@DictionaryMark_FileAccess_InputLinkLeadingOut_Denied
+          - macos@DictionaryMark_FileAccess_InputLinkLeadingOut_Denied
+          - DictionaryMark_FileAccess_InsideFolders_Generated
+
+      - id: DictionaryMark-System-FileAccess-NoSymlinks
+        title: >-
+          Under the no-symlinks mode, the tool shall deny a judged path that passes through a symbolic link or
+          junction below the configuration file's folder, trusting that folder and the folders above it.
+        justification: |
+          A link planted inside a repository can redirect a configuration file to any file on the machine;
+          links above the configuration file's folder (for example a linked home or temporary folder) are part of
+          the machine's setup and are trusted.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Utilities-FileAccessConfinement
+        tests:
+          - windows@DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied
+          - ubuntu@DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied
+          - macos@DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied
+          - windows@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
+          - ubuntu@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
+          - macos@DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed
+
+      - id: DictionaryMark-System-FileAccess-Writes
+        title: >-
+          Under the roots mode, the tool shall write a configuration-file output only when the output, every
+          folder it creates and the real path of the opened output are inside an allowed folder, shall apply the
+          no-symlinks mode to outputs, shall never truncate an output before its real path is verified, and shall
+          write nothing, not even a folder, for a denied job.
+        justification: |
+          Writing is more dangerous than reading: an output that leads out of the allowed folders could
+          overwrite any file the user can write, so every step of the write is checked before any change is made.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Utilities-FileAccessConfinement
+        tests:
+          - DictionaryMark_FileAccess_OutputOutsideFolders_DeniedNothingWritten
+          - windows@DictionaryMark_FileAccess_OutputThroughLinkedFolder_Denied
+          - ubuntu@DictionaryMark_FileAccess_OutputThroughLinkedFolder_Denied
+          - macos@DictionaryMark_FileAccess_OutputThroughLinkedFolder_Denied
+          - ubuntu@DictionaryMark_FileAccess_OutputExistingSymlinkLeadingOut_Denied
+          - macos@DictionaryMark_FileAccess_OutputExistingSymlinkLeadingOut_Denied
+
+      - id: DictionaryMark-System-FileAccess-NeverAccessed
+        title: >-
+          In every file-access mode, the tool shall never read or write a configuration-file path that is a URL
+          or URI, a UNC or network path, a device path, an alternate data stream, or anything that is not a
+          regular file.
+        justification: |
+          These locations can leak credentials to a network host, block the run, or reach hidden data, and no
+          dictionary or Markdown output is ever stored in them.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Utilities-FileAccessConfinement
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Cli-FileAccessOptions
+        tests:
+          - DictionaryMark_FileAccess_UrlInput_Denied
+          - DictionaryMark_FileAccess_UncInput_Denied
+          - DictionaryMark_FileAccess_DeviceOutput_Denied
+          - windows@DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied
+          - DictionaryMark_FileAccess_DirectoryAsOutput_Denied
+
+      - id: DictionaryMark-System-FileAccess-Errors
+        title: >-
+          The tool shall report each denied path with the error code file-access-denied, the path as written, its
+          real path when known and a reason that names the mode, shall fail only the job that uses the path while
+          the other jobs still run, and shall exit with a non-zero code.
+        justification: |
+          A clear, searchable error code lets a CI log show why a job was refused, and failing only the affected
+          job keeps the same per-job error reporting as every other job failure.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Program-ExitCode
+        tests:
+          - DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitNonZero

@@ -1,0 +1,149 @@
+---
+# DictionaryMark FileAccessPolicy unit requirements
+
+sections:
+  - title: DictionaryMark Requirements
+    sections:
+      - title: Utilities Requirements
+        sections:
+          - title: FileAccessPolicy Requirements
+            requirements:
+              - id: DictionaryMark-FileAccessPolicy-ModeParsing
+                title: >-
+                  The FileAccessPolicy unit shall parse any, roots, no-symlinks and roots,no-symlinks (in either
+                  order, in any letter case, with spaces around the items) and reject every other value, including
+                  a repeated or empty item, with a message that lists the modes.
+                justification: |
+                  A typing error must never select a weaker mode than the user intended.
+                tests:
+                  - FileAccessPolicy_ParseMode_ValidValues_Parsed
+                  - FileAccessPolicy_ParseMode_InvalidValues_ThrowsListingModes
+
+              - id: DictionaryMark-FileAccessPolicy-AnyMode
+                title: >-
+                  Under the any mode, the FileAccessPolicy unit shall read and write every regular local file that
+                  is not on the never-accessed list, creating missing output folders.
+                justification: |
+                  The default mode must keep the behavior of earlier versions for ordinary paths.
+                tests:
+                  - FileAccessPolicy_ReadAllText_AnyModeOutsideFolders_ReturnsContent
+                  - FileAccessPolicy_WriteAllText_AnyMode_CreatesFoldersAndWrites
+
+              - id: DictionaryMark-FileAccessPolicy-NeverAccessed
+                title: >-
+                  In every mode, the FileAccessPolicy unit shall deny a URL or URI, a file: URI with a host, a UNC
+                  or network path, a device path (including Windows reserved device names and paths under /dev),
+                  an alternate data stream or drive-relative path, and anything that is not a regular file, without
+                  blocking on a named pipe, and on Windows a path or literal pattern prefix that passes through a
+                  symbolic link or junction to a network location, before it is opened or matched.
+                justification: |
+                  These locations can leak credentials, hang the run or reach hidden data.
+                tests:
+                  - FileAccessPolicy_DescribeNeverAccessed_HostileText_ReturnsReason
+                  - FileAccessPolicy_DescribeNeverAccessed_OrdinaryPaths_ReturnsNull
+                  - FileAccessPolicy_ReadAllText_Directory_Denied
+                  - FileAccessPolicy_WriteAllText_ExistingDirectory_Denied
+                  - FileAccessPolicy_ReadAllText_NotRegularHandle_Denied
+                  - windows@FileAccessPolicy_ReadAllText_WindowsDeviceName_Denied
+                  - ubuntu@FileAccessPolicy_ReadAllText_DevNull_Denied
+                  - macos@FileAccessPolicy_ReadAllText_DevNull_Denied
+                  - ubuntu@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
+                  - macos@FileAccessPolicy_ReadAllText_Fifo_DeniedWithoutBlocking
+                  - windows@FileAccessPolicy_ReadAllText_IntermediateLinkToShare_DeniedBeforeOpen
+                  - windows@FileAccessPolicy_WriteAllText_IntermediateLinkToShare_DeniedNothingCreated
+                  - windows@FileAccessPolicy_CheckPattern_PrefixLinkToShare_DeniedBeforeMatching
+
+              - id: DictionaryMark-FileAccessPolicy-RootsWrittenPath
+                title: >-
+                  Under the roots mode, the FileAccessPolicy unit shall deny, before opening it, a path whose full
+                  path as written is not inside an allowed folder, using whole path components so a sibling folder
+                  with a shared name prefix is outside.
+                justification: |
+                  A path that climbs out with parent-directory segments or a variable must be refused without
+                  touching the file it names.
+                tests:
+                  - FileAccessPolicy_ReadAllText_InsideFolder_ReturnsContent
+                  - FileAccessPolicy_ReadAllText_WrittenPathOutside_DeniedBeforeOpen
+                  - FileAccessPolicy_ReadAllText_SiblingWithSharedPrefix_Denied
+                  - FileAccessPolicy_CheckPattern_LiteralOutside_Denied
+                  - FileAccessPolicy_CheckPattern_GlobAndUrlPatterns_JudgedByText
+
+              - id: DictionaryMark-FileAccessPolicy-RootsRealPath
+                title: >-
+                  Under the roots mode, the FileAccessPolicy unit shall deny a file whose real path is outside the
+                  real location of every allowed folder, and a file whose path as written is outside even when it
+                  links back in, while allowing a link that stays inside.
+                justification: |
+                  Both the written and the real path must be inside, or a link could lead out or a path outside
+                  could link in.
+                tests:
+                  - windows@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
+                  - ubuntu@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
+                  - macos@FileAccessPolicy_ReadAllText_DirectoryLinkLeadingOut_Denied
+                  - windows@FileAccessPolicy_ReadAllText_OutsidePathLinkingBackIn_Denied
+                  - ubuntu@FileAccessPolicy_ReadAllText_OutsidePathLinkingBackIn_Denied
+                  - macos@FileAccessPolicy_ReadAllText_OutsidePathLinkingBackIn_Denied
+                  - windows@FileAccessPolicy_ReadAllText_DirectoryLinkStayingInside_Allowed
+                  - ubuntu@FileAccessPolicy_ReadAllText_DirectoryLinkStayingInside_Allowed
+                  - macos@FileAccessPolicy_ReadAllText_DirectoryLinkStayingInside_Allowed
+
+              - id: DictionaryMark-FileAccessPolicy-NoSymlinks
+                title: >-
+                  Under the no-symlinks mode, the FileAccessPolicy unit shall deny a file whose real path differs
+                  from the real location of its trusted anchor (the deepest folder it shares with the trusted base
+                  folder) followed by the path as written below it, trusting links in the anchor and above it.
+                justification: |
+                  Comparing the real path with the expected path detects any symbolic link or junction below the
+                  anchor without walking each component by name, which would race with changes.
+                tests:
+                  - windows@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
+                  - ubuntu@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
+                  - macos@FileAccessPolicy_ReadAllText_NoSymlinksLinkBelowTrustedBase_Denied
+                  - windows@FileAccessPolicy_ReadAllText_NoSymlinksLinkAboveTrustedBase_Allowed
+                  - ubuntu@FileAccessPolicy_ReadAllText_NoSymlinksLinkAboveTrustedBase_Allowed
+                  - macos@FileAccessPolicy_ReadAllText_NoSymlinksLinkAboveTrustedBase_Allowed
+                  - ubuntu@FileAccessPolicy_ReadAllText_NoSymlinksFileSymlink_Denied
+                  - macos@FileAccessPolicy_ReadAllText_NoSymlinksFileSymlink_Denied
+
+              - id: DictionaryMark-FileAccessPolicy-RealPathUnavailable
+                title: >-
+                  Under the roots and no-symlinks modes, the FileAccessPolicy unit shall deny a file whose real path
+                  the platform cannot determine, and under the any mode shall still read it.
+                justification: |
+                  A restrictive mode that cannot be applied must fail closed rather than read the file unchecked.
+                tests:
+                  - FileAccessPolicy_ReadAllText_RealPathUnknown_DeniedUnderRestrictiveModes
+                  - FileAccessPolicy_ReadAllText_RealPathUnknown_AllowedUnderAny
+
+              - id: DictionaryMark-FileAccessPolicy-Writes
+                title: >-
+                  The FileAccessPolicy unit shall write an output only after its path, its deepest existing parent
+                  folder, every folder it creates and the real path of the opened output pass the mode; shall open
+                  an existing output without truncating it and replace its content only after verification; and
+                  shall write nothing, not even a folder, when the output is denied.
+                justification: |
+                  A write that leads out of the allowed folders could overwrite any file the user can write, so
+                  every step is checked before any change is made.
+                tests:
+                  - FileAccessPolicy_WriteAllText_OutputOutside_DeniedNothingWritten
+                  - FileAccessPolicy_WriteAllText_MissingFoldersInside_Created
+                  - FileAccessPolicy_WriteAllText_ExistingOutput_ReplacedContent
+                  - FileAccessPolicy_WriteAllText_NotRegularHandle_ContentUnchanged
+                  - windows@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
+                  - ubuntu@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
+                  - macos@FileAccessPolicy_WriteAllText_ParentFolderLinkLeadingOut_DeniedNoFolderCreated
+                  - ubuntu@FileAccessPolicy_WriteAllText_ExistingOutputSymlinkLeadingOut_DeniedTargetUnchanged
+                  - macos@FileAccessPolicy_WriteAllText_ExistingOutputSymlinkLeadingOut_DeniedTargetUnchanged
+                  - windows@FileAccessPolicy_WriteAllText_NoSymlinksLinkedFolder_Denied
+                  - ubuntu@FileAccessPolicy_WriteAllText_NoSymlinksLinkedFolder_Denied
+                  - macos@FileAccessPolicy_WriteAllText_NoSymlinksLinkedFolder_Denied
+
+              - id: DictionaryMark-FileAccessPolicy-DenialMessage
+                title: >-
+                  The FileAccessPolicy unit shall report a denial as file-access-denied followed by the path as
+                  written, the real path when it is known, and the reason.
+                justification: |
+                  A fixed error code and both paths let a user see what was refused and where the path really led.
+                tests:
+                  - FileAccessDeniedException_Message_ContainsCodePathsAndReason
+                  - FileAccessDeniedException_Message_UnknownRealPath_OmitsRealPart

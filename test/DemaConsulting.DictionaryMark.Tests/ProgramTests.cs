@@ -85,6 +85,9 @@ public class ProgramTests
             Assert.Contains("--config <file>", output);
             Assert.Contains("--column-widths <w1,w2[,w3]>", output);
             Assert.Contains("--root <dir>", output);
+            Assert.Contains("--file-access <mode>", output);
+            Assert.Contains("any (default), roots, no-symlinks or roots,no-symlinks", output);
+            Assert.Contains("--allow-root <dir>", output);
             Assert.Equal(0, context.ExitCode);
         }
         finally

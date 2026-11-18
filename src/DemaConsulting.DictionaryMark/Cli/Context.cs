@@ -132,6 +132,12 @@ internal sealed class Context : IDisposable
     public IReadOnlyList<TableJob> Jobs { get; private init; } = [];
 
     /// <summary>
+    ///     Gets the file-access policy (--file-access and --allow-root) that judges every input and output
+    ///     path written in a config file; the default is mode any.
+    /// </summary>
+    public FileAccessPolicy FileAccess { get; private init; } = FileAccessPolicy.Any;
+
+    /// <summary>
     ///     Gets a value indicating whether the jobs come from the <c>tables</c> of a config file.
     /// </summary>
     public bool UsesConfigTables { get; private init; }
@@ -155,23 +161,28 @@ internal sealed class Context : IDisposable
     ///     Uses the factory pattern to keep the constructor private, preventing partial initialization. Parsing is
     ///     delegated to the inner <c>ArgumentParser</c> helper so that validation and default-setting logic are
     ///     isolated from the immutable <c>Context</c> properties. This separation means <c>Context</c> is always
-    ///     fully initialized or never created. The steps are, in order: parse the arguments; resolve --root
+    ///     fully initialized or never created. The steps are, in order: parse the arguments (including the
+    ///     --file-access mode and its conflicts with --allow-root); resolve --root
     ///     against the working directory; resolve --config against the working directory (never the root) and
-    ///     load it, which also resolves its <c>root</c> key; reject --input/--output when the config defines
+    ///     load it, which also resolves its <c>root</c> key; build the file-access policy, whose allowed folders
+    ///     are the --allow-root folders (resolved against the working directory, never the root) or else the
+    ///     working directory and the config file's folder; reject --input/--output when the config defines
     ///     tables; build the jobs with the base directory --root, else config <c>root</c>, else the path's origin
     ///     default; and finally open the log file. Every validation failure stops the run before any job runs.
-    ///     Performs file-system I/O (root existence, config file, log file). Stateless after construction;
-    ///     thread-safe for concurrent reads.
+    ///     Performs file-system I/O (root existence, config file, allowed folders, log file). Stateless after
+    ///     construction; thread-safe for concurrent reads.
     /// </remarks>
     /// <param name="args">Command-line arguments. Must not be null.</param>
     /// <returns>A fully initialized <see cref="Context"/> with all parsed properties set.</returns>
     /// <exception cref="ArgumentException">
     ///     Thrown when arguments are invalid, an option is repeated, --input or --output is combined with a
-    ///     config file that defines tables, or the column-width count does not match the table shape.
+    ///     config file that defines tables, the column-width count does not match the table shape, the
+    ///     --file-access value is not a mode, or --allow-root is combined with --file-access any or no-symlinks.
     /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the root directory or config file path is malformed, invalid or missing, the config file is
-    ///     missing or invalid, or the specified log file cannot be opened.
+    ///     missing or invalid, an --allow-root folder is malformed or missing, or the specified log file cannot be
+    ///     opened.
     /// </exception>
     public static Context Create(string[] args)
     {
@@ -200,6 +211,9 @@ internal sealed class Context : IDisposable
         var commandLine = parser.Formatting;
         var effective = commandLine.Over(config?.Defaults ?? FormattingSettings.Empty);
 
+        // Build the file-access policy that judges the config file's paths
+        var fileAccess = BuildFileAccessPolicy(parser, configPath);
+
         // Build the generation jobs
         var jobs = BuildJobs(parser, config, rootDirectory);
 
@@ -226,6 +240,7 @@ internal sealed class Context : IDisposable
             RootDirectory = rootDirectory,
             CommandLineFormatting = commandLine,
             Jobs = jobs,
+            FileAccess = fileAccess,
             UsesConfigTables = config is { Tables.Count: > 0 }
         };
 
@@ -239,6 +254,50 @@ internal sealed class Context : IDisposable
         }
 
         return result;
+    }
+
+    /// <summary>
+    ///     Builds the file-access policy from --file-access and --allow-root.
+    /// </summary>
+    /// <remarks>
+    ///     The mode is the --file-access value, or roots when only --allow-root is given, or any. Under roots the
+    ///     allowed folders are the --allow-root folders, each resolved against the working directory (never the
+    ///     root directory) with <c>${VAR}</c> expansion and <c>..</c> normalization and required to exist; without
+    ///     --allow-root they are the working directory and the config file's folder. The config file's folder is
+    ///     the trusted base of the no-symlinks rule. Neither --root nor the config <c>root</c> key adds an allowed
+    ///     folder: they only set the base directory of relative paths.
+    /// </remarks>
+    /// <param name="parser">The parsed arguments.</param>
+    /// <param name="configPath">The full path of the config file, or null.</param>
+    /// <returns>The policy.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an --allow-root folder is malformed or missing.</exception>
+    private static FileAccessPolicy BuildFileAccessPolicy(ArgumentParser parser, string? configPath)
+    {
+        // The default needs no folders and no file-system access
+        var mode = parser.FileAccessMode;
+        if (mode == FileAccessMode.None)
+        {
+            return FileAccessPolicy.Any;
+        }
+
+        // The allowed folders: --allow-root replaces the defaults
+        var configFolder = configPath == null ? null : Path.GetDirectoryName(configPath);
+        var folders = new List<string>();
+        if (parser.AllowRoots.Count > 0)
+        {
+            folders.AddRange(parser.AllowRoots.Select(folder =>
+                PathResolver.ResolveExistingDirectory(folder, Environment.CurrentDirectory, "--allow-root option")));
+        }
+        else
+        {
+            folders.Add(Environment.CurrentDirectory);
+            if (configFolder != null)
+            {
+                folders.Add(configFolder);
+            }
+        }
+
+        return FileAccessPolicy.Create(mode, folders, configFolder);
     }
 
     /// <summary>
@@ -396,6 +455,18 @@ internal sealed class Context : IDisposable
         /// <summary>Gets the root directory as written, or null when --root was not given.</summary>
         public string? RootDirectory { get; private set; }
 
+        /// <summary>Gets the --file-access value as written, or null when it was not given.</summary>
+        public string? FileAccessText { get; private set; }
+
+        /// <summary>Gets the --allow-root folders as written, in the order given.</summary>
+        public List<string> AllowRoots { get; } = [];
+
+        /// <summary>
+        ///     Gets the effective file-access mode: the --file-access value, or roots when only --allow-root was
+        ///     given, or any.
+        /// </summary>
+        public FileAccessMode FileAccessMode { get; private set; } = FileAccessMode.None;
+
         /// <summary>
         ///     Gets the formatting options that were given explicitly; members not given remain null so that
         ///     lower-precedence layers (config file, built-in defaults) can supply them.
@@ -404,9 +475,14 @@ internal sealed class Context : IDisposable
 
         /// <summary>
         ///     Iterates over the argument list, dispatching each token to <see cref="ParseArgument"/> so that
-        ///     recognized flags set their corresponding properties and unknown flags throw immediately.
+        ///     recognized flags set their corresponding properties and unknown flags throw immediately, then
+        ///     settles the file-access mode.
         /// </summary>
         /// <param name="args">Command-line arguments. Must not be null.</param>
+        /// <exception cref="ArgumentException">
+        ///     Thrown when an argument is invalid, or --allow-root is combined with --file-access any or
+        ///     no-symlinks.
+        /// </exception>
         public void ParseArguments(string[] args)
         {
             // Validate input
@@ -418,6 +494,45 @@ internal sealed class Context : IDisposable
                 var arg = args[i++];
                 i = ParseArgument(arg, args, i);
             }
+
+            ResolveFileAccessMode();
+        }
+
+        /// <summary>
+        ///     Settles the file-access mode from --file-access and --allow-root, rejecting a combination that
+        ///     contradicts itself.
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        ///     Thrown when --allow-root is combined with a mode that does not confine paths to folders; the message
+        ///     names the conflict.
+        /// </exception>
+        private void ResolveFileAccessMode()
+        {
+            // An explicit mode wins; --allow-root alone implies roots
+            var mode = FileAccessText != null ? FileAccessPolicy.ParseMode(FileAccessText) : FileAccessMode.None;
+            if (AllowRoots.Count == 0)
+            {
+                FileAccessMode = mode;
+                return;
+            }
+
+            if (FileAccessText == null)
+            {
+                FileAccessMode = FileAccessMode.Roots;
+                return;
+            }
+
+            // --allow-root names the folders of roots, so a mode without roots contradicts it
+            FileAccessMode = mode switch
+            {
+                FileAccessMode.None => throw new ArgumentException(
+                    "The options --file-access any and --allow-root cannot be used together: --allow-root confines " +
+                    "config file paths to the folders it names; drop --file-access any, or write --file-access roots"),
+                FileAccessMode.NoSymlinks => throw new ArgumentException(
+                    "The options --file-access no-symlinks and --allow-root cannot be used together: to confine " +
+                    "config file paths to the folders and refuse links, write --file-access roots,no-symlinks with --allow-root"),
+                _ => mode,
+            };
         }
 
         /// <summary>
@@ -483,6 +598,20 @@ internal sealed class Context : IDisposable
                     RootDirectory = ParseRootArgument(arg, args, index);
                     return index + 1;
 
+                case "--file-access":
+                    if (FileAccessText != null)
+                    {
+                        throw new ArgumentException("--file-access can only be specified once", nameof(args));
+                    }
+
+                    FileAccessText = GetRequiredStringArgument(
+                        arg, args, index, "a mode (any, roots, no-symlinks, or roots,no-symlinks)");
+                    return index + 1;
+
+                case "--allow-root":
+                    AllowRoots.Add(ParseAllowRootArgument(arg, args, index));
+                    return index + 1;
+
                 default:
                     return ParseFormattingArgument(arg, args, index);
             }
@@ -507,6 +636,25 @@ internal sealed class Context : IDisposable
             if (string.IsNullOrWhiteSpace(value))
             {
                 throw new ArgumentException("--root requires a non-empty directory path", nameof(args));
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        ///     Parses the value of one --allow-root option, which must be a non-empty folder path.
+        /// </summary>
+        /// <param name="arg">Argument name</param>
+        /// <param name="args">All arguments</param>
+        /// <param name="index">Index of the value</param>
+        /// <returns>The folder as written.</returns>
+        /// <exception cref="ArgumentException">Thrown when the value is missing or empty.</exception>
+        private static string ParseAllowRootArgument(string arg, string[] args, int index)
+        {
+            var value = GetRequiredStringArgument(arg, args, index, "a directory path");
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new ArgumentException("--allow-root requires a non-empty directory path", nameof(args));
             }
 
             return value;

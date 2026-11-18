@@ -24,11 +24,17 @@ temporary files.
   `Environment.CurrentDirectory` and deletes it on disposal (see
   *DictionaryMark Test Helpers Verification Design*).
 - **External dependencies**: None — the tool is self-contained.
+- **Links and pipes**: file-access tests create folder links with the `LinkSupport` helper, falling
+  back to a junction on Windows when symbolic links need a privilege the account does not hold. A test
+  that needs a file symbolic link is skipped, with a reason, on such a machine; its requirement takes
+  evidence only from Linux and macOS runs.
 
 ## Acceptance Criteria
 
 - All integration tests pass with zero failures.
-- No tests may be skipped or marked as expected failures.
+- No tests may be skipped or marked as expected failures, except a file-access test skipped with a
+  reason because the machine cannot create a file symbolic link; such a test must pass on the
+  platforms named by its requirement's source filter.
 - The `DictionaryMark_ValidateFlag_Provided_RunsValidation` test must report zero failures in
   the embedded self-validation output.
 - File-based tests must use `TemporaryDirectory` to ensure all temporary files are cleaned up
@@ -238,3 +244,71 @@ an error and exit code 1.
 This scenario is tested by `DictionaryMark_Root_MissingDirectory_ReturnsError`,
 `DictionaryMark_Root_SpecifiedTwice_ReturnsError`, `DictionaryMark_Config_MissingRoot_ReturnsErrorNamingFile`
 and `DictionaryMark_Config_RootInTableJob_ReturnsErrorNamingJob`.
+
+**FileAccessModes**: Every `--file-access` mode is accepted in any letter case. An invalid value is an
+error that lists the modes, and so is a repeated option. Mode any (the default) keeps using
+configuration paths outside every folder, as before. These scenarios are tested by
+`DictionaryMark_FileAccess_ModeLetterCase_Accepted`, `DictionaryMark_FileAccess_InvalidMode_ReturnsErrorListingModes`,
+`DictionaryMark_FileAccess_RepeatedOption_ReturnsError` and
+`DictionaryMark_FileAccess_AnyMode_ConfigPathsOutsideFoldersUsed`.
+
+**FileAccessAllowRoot**: `--allow-root` replaces the default folders, so a configuration in the working
+directory is denied when only another folder is allowed. A relative `--allow-root` is resolved from the
+working directory even with a `--root` that also has a folder of that name. A missing folder is an error,
+and so is `--allow-root` with `--file-access any` or `no-symlinks`. These scenarios are tested by
+`DictionaryMark_FileAccess_AllowRoot_ReplacesDefaultFolders`,
+`DictionaryMark_FileAccess_AllowRootRelative_ResolvedAgainstWorkingDirectory`,
+`DictionaryMark_FileAccess_AllowRootMissing_ReturnsError` and
+`DictionaryMark_FileAccess_AllowRootWithAnyOrNoSymlinks_ReturnsConflictError`.
+
+**FileAccessDefaultFolders**: Under roots without `--allow-root`, an input in the working directory and
+an output in the configuration folder (two separate folders) are allowed, and an input in a third folder
+is denied. These scenarios are tested by
+`DictionaryMark_FileAccess_RootsDefaultFolders_WorkingAndConfigFoldersAllowed` and
+`DictionaryMark_FileAccess_RootsDefaultFolders_OtherFolderDenied`.
+
+**FileAccessJudgedPaths**: Command-line `--input`, `--output`, `--log` and `--results` outside the
+allowed folder are used, while a configuration input outside is denied by its matched path. These
+scenarios are tested by `DictionaryMark_FileAccess_CommandLinePathsOutsideFolders_NotJudged` and
+`DictionaryMark_FileAccess_ConfigInputOutsideFolders_Denied`.
+
+**FileAccessRoots**: Under roots these escapes are denied:
+
+- a `..` escape;
+- a `${VAR}` escape of the output;
+- a `root` key naming an outside folder;
+- a folder link inside the configuration folder that leads out (judged by its real path, which the
+  message names).
+
+Inputs and outputs inside the allowed folders still generate. These scenarios are tested by
+`DictionaryMark_FileAccess_ParentSegmentEscape_Denied`, `DictionaryMark_FileAccess_EnvironmentVariableEscape_Denied`,
+`DictionaryMark_FileAccess_RootKeyDoesNotWiden_Denied`, `DictionaryMark_FileAccess_InputLinkLeadingOut_Denied` and
+`DictionaryMark_FileAccess_InsideFolders_Generated`.
+
+**FileAccessNoSymlinks**: Under no-symlinks an input through a folder link below the configuration
+folder is denied, even when the link stays inside, while a configuration file reached through a link
+above its folder generates. These scenarios are tested by
+`DictionaryMark_FileAccess_NoSymlinksInputThroughLink_Denied` and
+`DictionaryMark_FileAccess_NoSymlinksLinkAboveConfigFolder_Allowed`.
+
+**FileAccessWrites**: An output outside the allowed folders is denied, and its missing folder is not
+created. An output whose folder is a link leading out is denied, and no folder is created behind it. An
+existing output that is a file symbolic link leading out is denied, and its target keeps its content.
+These scenarios are tested by `DictionaryMark_FileAccess_OutputOutsideFolders_DeniedNothingWritten`,
+`DictionaryMark_FileAccess_OutputThroughLinkedFolder_Denied` and
+`DictionaryMark_FileAccess_OutputExistingSymlinkLeadingOut_Denied`.
+
+**FileAccessNeverAccessed**: In the default mode the never-accessed list still applies:
+
+- a URL input and a UNC input are denied;
+- a device output (`NUL` on Windows, `/dev/null` elsewhere) is denied;
+- an alternate-data-stream output is denied, and the host file is not created;
+- a folder at the output path is denied.
+
+These scenarios are tested by `DictionaryMark_FileAccess_UrlInput_Denied`,
+`DictionaryMark_FileAccess_UncInput_Denied`, `DictionaryMark_FileAccess_DeviceOutput_Denied`,
+`DictionaryMark_FileAccess_AlternateDataStreamOutput_Denied` and `DictionaryMark_FileAccess_DirectoryAsOutput_Denied`.
+
+**FileAccessErrors**: A denied job is reported as `Error: table job 2 ('../b.md'): file-access-denied:
+'../b.md': ...`, the other jobs write their outputs, the summary counts the failure, and the exit code is
+non-zero. This scenario is tested by `DictionaryMark_FileAccess_DeniedJob_OtherJobsRunAndExitNonZero`.

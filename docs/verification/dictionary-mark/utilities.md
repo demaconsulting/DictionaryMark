@@ -3,9 +3,10 @@
 ### Verification Approach
 
 The Utilities subsystem is verified through integration tests in `UtilitiesSubsystemTests.cs`
-that exercise `GlobMatcher` and `PathHelpers` together, using real file-system fixtures created
-via `TemporaryDirectory`. Individual units are additionally covered by unit-level tests in
-`GlobMatcherTests.cs`, `PathHelpersTests.cs`, and `TemporaryDirectoryTests.cs`. No mocking is
+that exercise `GlobMatcher`, `PathHelpers`, `PathResolver` and `FileAccessPolicy` (with `RealPath`)
+together, using real file-system fixtures created via `TemporaryDirectory`. Individual units are
+additionally covered by unit-level tests in `GlobMatcherTests.cs`, `PathHelpersTests.cs`,
+`TemporaryDirectoryTests.cs`, `FileAccessPolicyTests.cs` and `RealPathTests.cs`. No mocking is
 applied at the subsystem boundary; all units execute their real logic against the actual file
 system and the `Microsoft.Extensions.FileSystemGlobbing` library.
 
@@ -72,3 +73,14 @@ This scenario is tested by `UtilitiesSubsystem_PathResolution_ParentSegments_Res
 root directory with `..` serves as the base for globs that also contain `..`.
 This scenario is tested by
 `UtilitiesSubsystem_PathResolution_RootDirectoryWithParentSegments_ResolvesFiles`.
+
+**UtilitiesSubsystem_FileAccess_RootsConfinesReadsAndWrites**: A roots policy whose only allowed folder
+is `allowed` reads and writes paths resolved there by `PathResolver`. A `../outside/...` read and
+write are denied with `FileAccessDeniedException`, and nothing is written outside, confirming that the
+path resolver and the file-access policy work together on resolved paths.
+This scenario is tested by `UtilitiesSubsystem_FileAccess_RootsConfinesReadsAndWrites`.
+
+**UtilitiesSubsystem_FileAccess_NeverAccessedInAnyMode**: Under mode any, a UNC path and a URL are
+denied for reading and a folder is denied as an output, confirming the never-accessed list applies in
+the default mode.
+This scenario is tested by `UtilitiesSubsystem_FileAccess_NeverAccessedInAnyMode`.
