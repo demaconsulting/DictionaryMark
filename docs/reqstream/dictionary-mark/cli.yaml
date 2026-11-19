@@ -160,3 +160,41 @@ sections:
             tests:
               - CliSubsystem_FileAccessFlow_AllowRoot_ConfinesConfigTableJobs
               - CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero
+
+          - id: DictionaryMark-Cli-FileAccessConfigRoot
+            title: >-
+              The CLI subsystem shall identify the command-line job whose relative input patterns and output path
+              the configuration file's root key relocates - no root option is given, the file has a root key and the
+              file defines no tables - shall hand that job the root's text before normalization, and shall leave
+              every other command-line job, and the config, log and results options, trusted.
+            justification: |
+              The CLI subsystem decides where relative paths resolve; it must tell the generation pipeline which
+              paths an untrusted configuration file moved, so that exactly those are judged by the file-access policy
+              and the paths the person running the tool chose stay trusted.
+            tags: [security]
+            children:
+              - DictionaryMark-Context-ConfigRootTrust
+              - DictionaryMark-TableJob-JudgedPaths
+            tests:
+              - CliSubsystem_FileAccessFlow_ConfigRootRelocatedCommandLinePaths_AreJudged
+              - CliSubsystem_FileAccessFlow_RootFlagOrAbsolutePaths_StayTrustedUnderConfigRoot
+
+          - id: DictionaryMark-Cli-FileAccessConfigEnvironment
+            title: >-
+              The CLI subsystem shall, when a file-access mode other than any is in effect (including the roots mode
+              that --allow-root implies), refuse a ${VAR} reference in the root key, an input pattern or an output
+              path of the configuration file before it is expanded, so that the run stops with an error that names
+              the file, the job and the key and reveals nothing about any variable, shall expand such references as
+              before in the default and any modes, and shall expand ${VAR} in the paths named on the command line in
+              every mode.
+            justification: |
+              The CLI subsystem owns the run settings and decides how the configuration file is loaded; it must not
+              let untrusted configuration content read the process environment once the person running the tool has
+              asked for a restrictive mode, while the command line, which that person typed, stays fully usable.
+            tags: [security]
+            children:
+              - DictionaryMark-Context-ConfigEnvironmentMode
+              - DictionaryMark-ConfigFile-EnvironmentReferences
+            tests:
+              - CliSubsystem_RestrictiveModeConfigEnvironment_RefusedAndNothingCreated
+              - CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore

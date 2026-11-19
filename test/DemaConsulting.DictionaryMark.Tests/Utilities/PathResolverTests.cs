@@ -113,6 +113,55 @@ public class PathResolverTests
         Assert.Equal($"Environment variable '{VariableName}' referenced by output path '{path}' is not defined.", ex.Message);
     }
 
+    /// <summary>
+    ///     Test that every form of reference that the expansion would replace is detected, and that text the
+    ///     expansion leaves alone is not.
+    /// </summary>
+    [Theory]
+    [InlineData("a/${X}/b", true)]
+    [InlineData("${X}", true)]
+    [InlineData("${_a1}", true)]
+    [InlineData("$X", false)]
+    [InlineData("%X%", false)]
+    [InlineData("${}", false)]
+    [InlineData("${1a}", false)]
+    [InlineData("$", false)]
+    [InlineData("{X}", false)]
+    [InlineData("", false)]
+    public void PathResolver_ContainsEnvironmentReference_Text_DetectsOnlyExpandedForm(string path, bool expected)
+    {
+        // Act
+        var result = PathResolver.ContainsEnvironmentReference(path);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    /// <summary>Test that a null path is rejected.</summary>
+    [Fact]
+    public void PathResolver_ContainsEnvironmentReference_NullPath_ThrowsArgumentNullException()
+    {
+        // Act / Assert
+        Assert.Throws<ArgumentNullException>(() => PathResolver.ContainsEnvironmentReference(null!));
+    }
+
+    /// <summary>
+    ///     Test that detection never reads the environment: a reference to an undefined variable is detected without
+    ///     an error, so it cannot reveal whether the variable is defined.
+    /// </summary>
+    [Fact]
+    public void PathResolver_ContainsEnvironmentReference_UndefinedVariable_DetectedWithoutError()
+    {
+        // Arrange: make sure the variable is undefined
+        Environment.SetEnvironmentVariable(VariableName, null);
+
+        // Act
+        var result = PathResolver.ContainsEnvironmentReference("${" + VariableName + "}/file.md");
+
+        // Assert: detected, and no exception about the undefined variable
+        Assert.True(result);
+    }
+
     /// <summary>Test that Combine roots a glob pattern without normalizing it.</summary>
     [Fact]
     public void PathResolver_Combine_GlobPattern_NotNormalized()

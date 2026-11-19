@@ -309,6 +309,44 @@ scenarios are tested by the tests of the same names.
 is resolved against the working directory even when `--root` names a different directory. This
 scenario is tested by `Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot`.
 
+**Context_Create_ConfigRootWithoutTables_CommandLineJobPathsAreJudged**: Verifies that with `--config` naming a file
+with a `root` key and no tables, and no `--root`, the command-line job is marked so that its relative paths are judged
+and its absolute paths are not. This scenario is tested by
+`Context_Create_ConfigRootWithoutTables_CommandLineJobPathsAreJudged`.
+
+**Context_Create_ConfigRootAndRootFlag_CommandLineJobStaysTrusted**: Verifies that `--root` keeps the command-line job
+trusted even when the file has a `root` key. This scenario is tested by
+`Context_Create_ConfigRootAndRootFlag_CommandLineJobStaysTrusted`.
+
+**Context_Create_ConfigWithoutRoot_CommandLineJobStaysTrusted**: Verifies that the command-line job is trusted when the
+configuration file has no `root` key and when there is no configuration file. This scenario is tested by
+`Context_Create_ConfigWithoutRoot_CommandLineJobStaysTrusted`.
+
+**Context_Create_ConfigRoot_CommandLineJobKeepsRootTextBeforeNormalization**: Verifies that the command-line job gets
+the root's text with its `..` segments kept, while its base directory is normalized. This scenario is tested by
+`Context_Create_ConfigRoot_CommandLineJobKeepsRootTextBeforeNormalization`.
+
+**Context_Create_RestrictiveModeWithEnvironmentOutput_ThrowsWithoutLeak**,
+**Context_Create_RestrictiveModeWithEnvironmentInput_ThrowsWithoutLeak** and
+**Context_Create_RestrictiveModeWithEnvironmentRoot_ThrowsWhetherDefinedOrNot**: Verifies, for each of `--file-access
+roots`, `no-symlinks`, `roots,no-symlinks` and `--allow-root .` (implied roots), that a `${VAR}` reference in the
+configuration's table output, table input or `root` makes `Context.Create` throw `InvalidOperationException` that names
+the file, the job and the key and contains neither the value of the (defined) variable nor its name; the output case
+also checks that nothing was created, and the root case that the message is identical when the variable is defined
+and when it is not, and never says that it is not defined. These scenarios are tested by the tests of the same names.
+
+**Context_Create_RootsWithEnvironmentRootAndCommandLinePaths_Throws**: Verifies that the root refusal also stops a run
+with a command-line `--input` and `--output` that the key would relocate, and one with `--root` (the file is checked
+regardless). This scenario is tested by `Context_Create_RootsWithEnvironmentRootAndCommandLinePaths_Throws`.
+
+**Context_Create_AnyModeWithEnvironmentConfigPaths_Expands**: Verifies that with no file-access option, and with
+`--file-access any`, the `root` reference is expanded and the job keeps its `${VAR}` paths for expansion when it runs.
+This scenario is tested by `Context_Create_AnyModeWithEnvironmentConfigPaths_Expands`.
+
+**Context_Create_RootsWithCommandLineEnvironmentPaths_StillExpanded**: Verifies that under `--file-access roots`
+`${VAR}` in `--config` and `--root` is still expanded and `--input` and `--output` are accepted. This scenario is
+tested by `Context_Create_RootsWithCommandLineEnvironmentPaths_StillExpanded`.
+
 **Context_ReadFileAccess_WithoutOptions_IsAllowAll**: Test that without either option the policy is the default, which
 allows every file. This scenario is tested by `Context_ReadFileAccess_WithoutOptions_IsAllowAll`.
 

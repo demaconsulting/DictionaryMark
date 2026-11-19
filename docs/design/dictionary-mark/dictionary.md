@@ -65,8 +65,8 @@ everything from resolving input file paths through formatting the final Markdown
 **GlobMatcher.Resolve**: Strict file pattern resolution from the Utilities subsystem.
 
 - *Type*: In-process .NET public API
-- *Role*: Consumer — `DictionaryGenerator` calls this to resolve every pattern of the command-line job and the
-  wildcard patterns of a configuration-table job to file paths
+- *Role*: Consumer — `DictionaryGenerator` calls this to resolve every trusted pattern and the judged wildcard patterns
+  to file paths
 - *Contract*: `Resolve(IEnumerable<string> patterns, string baseDirectory)` returns a sorted,
   deduplicated list of absolute file paths after expanding `${VAR}` references and rooting relative
   patterns at the base directory.
@@ -76,8 +76,8 @@ everything from resolving input file paths through formatting the final Markdown
 **FileReferenceResolver**: The file-access engine from the Files subsystem.
 
 - *Type*: In-process .NET API
-- *Role*: Consumer — `DictionaryGenerator` reads the input files of a configuration-table job and checks its output
-  path through one resolver per job
+- *Role*: Consumer — `DictionaryGenerator` reads the judged input files (of a configuration-table job, or moved by the
+  configuration `root` key) and checks the judged output path through one resolver per job
 - *Contract*: `Resolve(path)` returns the approved bytes or `null`; `CheckOutputPath(path)` returns when the output
   may be written; both throw `FileReferenceException` (see *FileReferenceResolver Design*)
 - *Constraints*: The resolver's base directory is the configuration file's folder; `context.FileAccess` is its policy.
@@ -95,17 +95,19 @@ everything from resolving input file paths through formatting the final Markdown
 `DictionaryGenerator.Generate` runs every job in `context.Jobs` in order, continuing after a failed
 job, and drives the pipeline of each job (`GenerateJob`) in five steps:
 
-1. Resolve the job's input patterns against its base directory. The command-line job calls
-   `GlobMatcher.Resolve` for every pattern (strict: `${VAR}` expansion, every pattern must match,
-   literal paths must exist). A configuration-table job's patterns are untrusted content: a literal
+1. Resolve the job's input patterns against its base directory. A trusted pattern (every pattern of a command-line
+   job, except the relative ones a configuration `root` key moves) goes to
+   `GlobMatcher.Resolve` (strict: `${VAR}` expansion, every pattern must match,
+   literal paths must exist). A judged pattern (a configuration-table pattern, or a relative command-line pattern moved
+   by the configuration `root` key) is untrusted content: a literal
    pattern (no wildcard after `${VAR}` expansion) is only expanded, rooted and normalized as text and
    is never looked up, because its file is read through the resolver in step 2, which applies the
    policy before it looks for the file; only its wildcard patterns go to `GlobMatcher.Resolve`. Return
    early on `ArgumentException` or `InvalidOperationException`, or when no files are found.
 2. Load each resolved file: input files as the selected kind (`job.Options.Kind`, approved terms via
    `YamlDictionaryLoader.Load` or deprecated terms via `LoadDeprecated`); return early on `IOException` or
-   `InvalidOperationException`. For a configuration-table job each literal input and each match is first read
-   through the job's `FileReferenceResolver` (every file is judged by the file-access policy; a refused match fails
+   `InvalidOperationException`. Each judged literal input and each judged match is first read
+   through the job's `FileReferenceResolver` (every such file is judged by the file-access policy; a refused match fails
    the job, it is never skipped; a literal input that does not exist is reported as not found) and the loader parses
    the bytes the resolver returned.
 3. Call `ConflictDetector.Detect(approved, deprecated)` to apply the shared conflict rule within the
@@ -116,16 +118,26 @@ job, and drives the pipeline of each job (`GenerateJob`) in five steps:
    produce the Markdown string. When `job.Options.ColumnWidths` is set, table separators are sized
    in proportion to the widths.
 5. Write the string to the job's output file — rooted at the job's base directory as text and checked, before
-   normalization, with `CheckOutputPath` for a configuration-table job before anything is created, then normalized
+   normalization, with `CheckOutputPath` for a judged output (a configuration-table output, or a relative command-line
+   output moved by the configuration `root` key) before anything is created, then normalized
    with `PathResolver.ResolvePath`, creating missing parent directories — or to stdout (via
    `context.WriteLine`); on `IOException` or `UnauthorizedAccessException` during file write,
    report the error and return.
 
-Every job error is written through `context.WriteError`, prefixed with the job label
-(`table job {n} ('{output}')`) for configuration jobs. When the jobs come from configuration
-tables and any failed, a final `Error: {failed} of {total} table jobs failed.` is reported. A file-access refusal
-of a policy reads `file-access-denied: {message} Allow the file in the file-access policy, or reference a file it
-allows.`; any other refusal of a judged path (a never-list path, a non-regular file, an input over 16 MiB) reads
+Every job error is written through `context.WriteError`, prefixed with the job label (`table job {n} ('{output}')`) for
+configuration jobs. A judged path is named in its messages as written, never by its absolute path: a literal input as
+the pattern was written, a glob match relative to the job's base directory with `/` separators (in full when the pattern
+itself is absolute), an output as written, and a never-list pattern as written rather than expanded and rooted.
+`ResolveInputs` therefore returns a map from each judged file's full path to the text shown for it (the first judged
+pattern that reaches a file wins; each judged glob is resolved on its own so its matches can be attributed),
+`DescribeRefusal` rebuilds a `FileReferenceException` around the written text (keeping the kind, the rule and the policy
+name) so the wording and the `file-access-denied` keyword are unchanged, and a private `Redact` replaces the full path
+of a judged file in the YAML-loader, conflict and input/output exception messages (longest path first). Text that names
+other paths (for example a missing parent folder in an operating-system message) is not rewritten. Trusted command-line
+paths never reach this code and keep their full paths. When the jobs come from configuration tables and any failed, a
+final `Error: {failed} of {total} table jobs failed.` is reported. A file-access refusal of a policy reads
+`file-access-denied: {message} Allow the file in the file-access policy, or reference a file it allows.`; any other
+refusal of a judged path (a never-list path, a non-regular file, an input over 16 MiB) reads
 `Failed to read file '{file}': {message}` or `Failed to write output file '{file}': {message}`.
 
 #### Column widths

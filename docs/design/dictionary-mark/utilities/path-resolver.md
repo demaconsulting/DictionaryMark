@@ -27,6 +27,21 @@ N/A - static class with no instance state.
   other text is unchanged. Expansion happens once; a value containing `${...}` is not expanded
   again.
 
+**ContainsEnvironmentReference**: Reports whether a path contains a `${NAME}` reference.
+
+- *Parameters*: `string path`.
+- *Returns*: `bool` — `true` when the text contains at least one reference of the form
+  `ExpandEnvironmentVariables` would expand.
+- *Preconditions*: `path` is not null.
+- *Postconditions*: The environment was not read, so the answer is the same whether or not the variable is
+  defined. It uses the same compiled regular expression as `ExpandEnvironmentVariables`, so what counts as a
+  reference can never diverge between detection and expansion. `$NAME`, `%NAME%`, `${}`, `${1a}` and a bare `$`
+  are not references.
+
+The unit exists so that a caller that must not let untrusted text read the environment (`ConfigFile` under a
+restrictive file-access mode) can refuse a reference without expanding it, and without the undefined-variable error
+that would reveal whether the variable is set.
+
 **Combine**: Expands `path` and roots it at `baseDirectory` without normalizing it.
 
 - *Parameters*: `string path`; `string baseDirectory`; `string description`.
@@ -95,6 +110,7 @@ N/A - uses only .NET base class library path and environment APIs.
   `output path`), and `Combine` for the input patterns of a configuration-table job (description
   `glossary path`).
 - **Context.Create** — `ResolvePath` for `--config` and `ResolveExistingDirectory` for `--root`.
-- **ConfigFile.Load** — `ResolveDirectory` for the `root` key.
+- **ConfigFile.Load** — `ResolveDirectory` for the `root` key, and `ContainsEnvironmentReference` for the root,
+  input and output text when environment references are not allowed.
 - **IsInvalidPathException** — used by `DictionaryGenerator` (input resolution, reading and
   writing) and `ConfigFile` (config path normalization and reading) in their exception filters.

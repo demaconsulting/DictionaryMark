@@ -28,7 +28,9 @@ namespace DemaConsulting.DictionaryMark.Cli;
 /// </summary>
 /// <remarks>
 ///     A run without a configuration file has a single command-line job. A configuration file
-///     with <c>tables</c> produces one job per table. This class is the single place where the
+///     with <c>tables</c> produces one job per table. A configuration-table job is judged by the
+///     file-access policy; a command-line job is trusted, except for a relative path that the
+///     configuration file's <c>root</c> key relocates (see <see cref="IsJudged"/>). This class is the single place where the
 ///     formatting precedence (command line, then job, then configuration defaults, then built-in
 ///     defaults) is applied and where the column-width count is checked against the effective
 ///     table shape, so every job is validated the same way regardless of where it came from.
@@ -79,6 +81,26 @@ internal sealed class TableJob
     public MarkdownOptions Options { get; }
 
     /// <summary>
+    ///     Gets a value indicating whether the base directory is the configuration file's <c>root</c> key, so a
+    ///     relative path this job names is moved by that key and is therefore untrusted content.
+    /// </summary>
+    /// <remarks>
+    ///     Only the command-line job can have this set: it is set when no <c>--root</c> option is given and the
+    ///     configuration file has a <c>root</c> key. A configuration-table job is always judged through
+    ///     <see cref="Index"/>.
+    /// </remarks>
+    public bool RelativePathsJudged { get; }
+
+    /// <summary>
+    ///     Gets a value indicating whether the file-access policy judges at least one path of this job.
+    /// </summary>
+    /// <remarks>
+    ///     True for a configuration-table job and for a command-line job whose relative paths a configuration
+    ///     <c>root</c> key moves; false for every other command-line job, which is trusted.
+    /// </remarks>
+    public bool HasJudgedPaths => Index != null || RelativePathsJudged;
+
+    /// <summary>
     ///     Private constructor - use <see cref="Create"/> instead.
     /// </summary>
     /// <param name="index">The 1-based job index, or null for the command-line job.</param>
@@ -88,6 +110,7 @@ internal sealed class TableJob
     /// <param name="baseDirectoryText">The base directory as text before normalization.</param>
     /// <param name="label">The error-message label, or null.</param>
     /// <param name="options">The effective formatting options.</param>
+    /// <param name="relativePathsJudged">Whether relative paths are untrusted because the base is the config root key.</param>
     private TableJob(
         int? index,
         IReadOnlyList<string> inputPatterns,
@@ -95,7 +118,8 @@ internal sealed class TableJob
         string baseDirectory,
         string baseDirectoryText,
         string? label,
-        MarkdownOptions options)
+        MarkdownOptions options,
+        bool relativePathsJudged)
     {
         Index = index;
         InputPatterns = inputPatterns;
@@ -104,6 +128,28 @@ internal sealed class TableJob
         BaseDirectoryText = baseDirectoryText;
         Label = label;
         Options = options;
+        RelativePathsJudged = relativePathsJudged;
+    }
+
+    /// <summary>
+    ///     Tells whether the file-access policy judges a path this job names.
+    /// </summary>
+    /// <remarks>
+    ///     A configuration-table job judges every path. A command-line job whose base directory is the configuration
+    ///     file's <c>root</c> key judges only a path that key moves: a rooted path ignores the base directory (it is
+    ///     combined as is), so only a path that is not rooted after expansion is relocated and untrusted. Every other
+    ///     command-line job judges nothing. Pure and thread-safe.
+    /// </remarks>
+    /// <param name="expandedPath">
+    ///     An input pattern or output path after <c>${VAR}</c> expansion and before it is rooted at the base
+    ///     directory. Must not be null.
+    /// </param>
+    /// <returns>True when the path is judged by the file-access policy; false when it is trusted.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="expandedPath"/> is null.</exception>
+    public bool IsJudged(string expandedPath)
+    {
+        ArgumentNullException.ThrowIfNull(expandedPath);
+        return Index != null || (RelativePathsJudged && !Path.IsPathRooted(expandedPath));
     }
 
     /// <summary>
@@ -132,6 +178,11 @@ internal sealed class TableJob
     ///     The base directory as text before normalization, or null when it is <paramref name="baseDirectory"/>
     ///     itself.
     /// </param>
+    /// <param name="baseIsConfigRoot">
+    ///     True when <paramref name="baseDirectory"/> is the configuration file's <c>root</c> key (no <c>--root</c>
+    ///     option was given), which makes the relative paths of a command-line job untrusted; see
+    ///     <see cref="RelativePathsJudged"/>.
+    /// </param>
     /// <returns>The validated job.</returns>
     /// <exception cref="ArgumentNullException">Thrown when a required argument is null.</exception>
     /// <exception cref="ArgumentException">
@@ -144,7 +195,8 @@ internal sealed class TableJob
         string? outputFile,
         string baseDirectory,
         IReadOnlyList<FormattingSettings?> layers,
-        string? baseDirectoryText = null)
+        string? baseDirectoryText = null,
+        bool baseIsConfigRoot = false)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(inputPatterns);
@@ -190,7 +242,7 @@ internal sealed class TableJob
             ColumnWidths = widths
         };
 
-        return new TableJob(index, [.. inputPatterns], outputFile, baseDirectory, baseDirectoryText ?? baseDirectory, label, options);
+        return new TableJob(index, [.. inputPatterns], outputFile, baseDirectory, baseDirectoryText ?? baseDirectory, label, options, baseIsConfigRoot);
     }
 
     /// <summary>

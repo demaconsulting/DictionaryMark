@@ -125,7 +125,8 @@ sections:
                   not found, shall parse the bytes the resolver returned, shall fail the job at the first refused match
                   (never skipping it) with a file-access-denied error naming the file and the policy when the policy
                   denies it or cannot be applied, or with a read error for any other refusal (including a file larger
-                  than 16 MiB), and shall read the inputs of the command-line job by name without judging them.
+                  than 16 MiB), and shall read the inputs of the command-line job by name without judging them, except
+                  as required by DictionaryMark-DictionaryGenerator-FileAccessConfigRoot.
                 justification: |
                   Every match of a glob is a file the configuration file chose; skipping a denied match would silently
                   produce a partial dictionary, and the policy must see the file that is actually parsed. Looking a
@@ -166,7 +167,8 @@ sections:
                   would be listed (and again with its relative segments collapsed), against the file-access
                   resolver's path-text refusals before any folder is listed, shall fail only that job with an error
                   naming the pattern and the broken rule when a pattern is refused, and shall not check the input
-                  patterns of the command-line job.
+                  patterns of the command-line job, except as required by
+                  DictionaryMark-DictionaryGenerator-FileAccessConfigRoot.
                 justification: |
                   A pattern such as //host/share/*.yaml would contact the host while it is listed, before any match
                   reaches the resolver; refusing it first means no connection is made and no credentials can leak.
@@ -177,3 +179,57 @@ sections:
                   - DictionaryGenerator_Generate_ConfigNetworkRootRelativeInput_RefusedBeforeNormalization
                   - "windows@DictionaryGenerator_Generate_ConfigDeviceNamePatternOnWindows_RefusedBeforeListing"
                   - DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged
+
+              - id: DictionaryMark-DictionaryGenerator-FileAccessConfigRoot
+                title: >-
+                  The DictionaryGenerator shall judge each relative input pattern and the relative output path of a
+                  command-line job whose base directory is the configuration file's root key exactly as it judges those
+                  of a configuration-file table job - each literal input handed to the job's file-access resolver
+                  before any lookup, every glob match read through it, each pattern checked against the never list
+                  before any folder is listed, and the output checked before anything is created - shall fail the job
+                  with a file-access-denied error and write nothing when the policy denies a path, and shall keep
+                  reading absolute inputs and writing an absolute output of the same job by name without judging them.
+                justification: |
+                  A relative path that the root key of an untrusted configuration file moved is untrusted content, while
+                  an absolute path names what the person running the tool chose; judging each path by whether the root
+                  key moved it closes the redirection without restricting the trusted paths, even in one job that mixes
+                  both.
+                tags: [security]
+                tests:
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedInputOutsideRoots_FileAccessDenied
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedLiteralInputOutsideRoots_DeniedWithoutLookup
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedGlobMatchOutsideRoots_IsDeniedNotSkipped
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedOutputOutsideRoots_DeniedAndNothingCreated
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedPathsInsideRoots_AreGenerated
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedAbsolutePaths_StayTrusted
+                  - DictionaryGenerator_Generate_RootFlagWithConfigRoot_PathsStayTrusted
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedNetworkRoot_RefusedBeforeNormalization
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedInputThroughLinkUnderNoSymlinks_FileAccessDenied
+                  - DictionaryGenerator_Generate_ConfigRootRelocatedInputUnderAny_IsRead
+
+              - id: DictionaryMark-DictionaryGenerator-WrittenPathMessages
+                title: >-
+                  The DictionaryGenerator shall show a judged path - an input or output of a configuration-file table
+                  job, or a relative path of a command-line job that the configuration file's root key relocates - in
+                  its messages as written: a literal input as the pattern was written, a glob match relative to the
+                  job's base directory with / separators (in full when the pattern itself is absolute), an output as it
+                  was written, and a pattern refused by a never-list rule as written rather than expanded and rooted;
+                  shall replace the full path of a judged file in YAML, conflict and write-failure messages by that
+                  text; shall keep the file-access-denied keyword, the hint and the table job label; and shall keep the
+                  full path in the messages of a trusted path.
+                justification: |
+                  A judged path comes from untrusted content whose author may read the messages. Showing it as written
+                  tells the author which entry failed and nothing about the directories of the machine that ran the tool.
+                tags: [security]
+                tests:
+                  - DictionaryGenerator_Generate_ConfigInputOutsideRoots_MessageShowsWrittenPath
+                  - DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_MessageShowsMatchRelativeToBase
+                  - DictionaryGenerator_Generate_ConfigOutputOutsideRoots_MessageShowsWrittenPath
+                  - DictionaryGenerator_Generate_ConfigNetworkRootPattern_MessageShowsWrittenPattern
+                  - DictionaryGenerator_Generate_RootRelocatedCommandLineInputDenied_MessageShowsWrittenPath
+                  - DictionaryGenerator_Generate_ConfigInputsConflict_MessageShowsWrittenPaths
+                  - DictionaryGenerator_Generate_ConfigOutputWriteFailure_MessageShowsWrittenPath
+                  - DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound
+                  - DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob
+                  - DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError
+                  - DictionaryGenerator_Generate_TrustedAbsoluteInputMissing_MessageKeepsFullPath

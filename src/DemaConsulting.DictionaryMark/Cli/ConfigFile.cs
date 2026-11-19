@@ -43,6 +43,16 @@ internal sealed class ConfigFile
     /// <summary>Description of the root key used in path-resolution error messages.</summary>
     private const string RootKeyDescription = "root key";
 
+    /// <summary>
+    ///     Tail of the message for a path key that uses a <c>${VAR}</c> reference while that is not allowed. It
+    ///     never contains a variable name or value, so the same text is produced whether or not the variable is
+    ///     defined.
+    /// </summary>
+    private const string EnvironmentReferenceRefusal =
+        "must not contain environment variable references such as '${NAME}' while a restrictive file-access mode " +
+        "is in effect (--file-access roots or no-symlinks, or --allow-root); write the path literally or run " +
+        "with --file-access any";
+
     /// <summary>Command-line-only options that may not appear as configuration keys.</summary>
     private static readonly string[] CommandLineOnlyKeys = ["log", "results", "validate", "silent", "version", "help"];
 
@@ -116,19 +126,27 @@ internal sealed class ConfigFile
     ///     <c>tables</c>. The <c>root</c> value is untrusted content whose only role is the base that relative
     ///     job paths are combined with: it is resolved as text relative to the file's directory, with
     ///     <c>${VAR}</c> expansion and <c>..</c> normalization, and is never probed, so a folder that does not
-    ///     exist (or a network location) is left to the file-access resolver when the jobs run. Reads the
-    ///     configuration file itself; stateless and thread-safe.
+    ///     exist (or a network location) is left to the file-access resolver when the jobs run. When
+    ///     <paramref name="allowEnvironmentVariables"/> is false (a restrictive file-access mode), a <c>${VAR}</c>
+    ///     reference in <c>root</c>, a table <c>input</c> or a table <c>output</c> is refused before anything is
+    ///     expanded: the file's content is untrusted, and expanding it would let a configuration read the process
+    ///     environment. Reads the configuration file itself; stateless and thread-safe.
     /// </remarks>
     /// <param name="path">Path of the configuration file; normally already a full path. Must not be null.</param>
+    /// <param name="allowEnvironmentVariables">
+    ///     True (the default) when <c>${VAR}</c> references in the file's paths may be expanded; false to refuse
+    ///     them. The only production caller always passes the value explicitly.
+    /// </param>
     /// <returns>The validated configuration.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
     ///     Thrown when the path is malformed, the file is missing or unreadable, is not valid YAML, is empty, does not have a
     ///     mapping root, or contains an unknown, disallowed, missing or invalid key (including a malformed root, one with
-    ///     an undefined variable or one with wildcard characters); the message names the file, the key, and the job when
-    ///     the problem is inside one.
+    ///     an undefined variable or one with wildcard characters), or when <paramref name="allowEnvironmentVariables"/>
+    ///     is false and a path key contains a <c>${VAR}</c> reference; the message names the file, the key, and the
+    ///     job when the problem is inside one.
     /// </exception>
-    public static ConfigFile Load(string path)
+    public static ConfigFile Load(string path, bool allowEnvironmentVariables = true)
     {
         // Validate input
         ArgumentNullException.ThrowIfNull(path);
@@ -181,10 +199,53 @@ internal sealed class ConfigFile
             }
         }
 
+        // Under a restrictive mode refuse ${VAR} in every path key before anything is expanded; checking first
+        // matters because resolving the root would otherwise report an undefined variable, revealing whether it is set
+        if (!allowEnvironmentVariables)
+        {
+            RejectEnvironmentReferences(rawRoot, tables, prefix);
+        }
+
         // Resolve and validate the root directory relative to the configuration file
         (string Directory, string Text)? rootPaths = rawRoot != null ? ResolveRoot(rawRoot, fullPath, prefix) : null;
 
         return new ConfigFile(fullPath, rootPaths, defaults, tables);
+    }
+
+    /// <summary>
+    ///     Refuses any <c>${VAR}</c> reference in the root and in the table input and output paths.
+    /// </summary>
+    /// <remarks>
+    ///     Runs in file order (root, then each table's inputs, then its output) and stops at the first hit, like
+    ///     every other validation here. The message names the file, the job and the key but never the variable
+    ///     name, its value or whether it is defined, and does not echo the offending text.
+    /// </remarks>
+    /// <param name="rawRoot">The top-level <c>root</c> as written, or null.</param>
+    /// <param name="tables">The table jobs.</param>
+    /// <param name="prefix">The error-message prefix naming the file.</param>
+    /// <exception cref="InvalidOperationException">Thrown when a path key contains a <c>${VAR}</c> reference.</exception>
+    private static void RejectEnvironmentReferences(string? rawRoot, IReadOnlyList<ConfigTable> tables, string prefix)
+    {
+        // The top-level root
+        if (rawRoot != null && PathResolver.ContainsEnvironmentReference(rawRoot))
+        {
+            throw new InvalidOperationException($"{prefix}key 'root' {EnvironmentReferenceRefusal}");
+        }
+
+        // Each table's inputs, then its output
+        foreach (var table in tables)
+        {
+            var jobPrefix = $"{prefix}table job {table.Index}: ";
+            if (table.Inputs.Any(PathResolver.ContainsEnvironmentReference))
+            {
+                throw new InvalidOperationException($"{jobPrefix}key 'input' {EnvironmentReferenceRefusal}");
+            }
+
+            if (PathResolver.ContainsEnvironmentReference(table.Output))
+            {
+                throw new InvalidOperationException($"{jobPrefix}key 'output' {EnvironmentReferenceRefusal}");
+            }
+        }
     }
 
     /// <summary>

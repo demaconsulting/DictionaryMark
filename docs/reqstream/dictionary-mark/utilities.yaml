@@ -64,6 +64,7 @@ sections:
             children:
               - DictionaryMark-PathResolver-ResolvePath
               - DictionaryMark-PathResolver-EnvironmentVariables
+              - DictionaryMark-PathResolver-EnvironmentReferenceDetection
               - DictionaryMark-PathResolver-GlobCombine
               - DictionaryMark-PathResolver-NullValidation
               - DictionaryMark-PathResolver-ExistingDirectory

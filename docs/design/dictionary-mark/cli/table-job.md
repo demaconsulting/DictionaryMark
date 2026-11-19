@@ -14,7 +14,7 @@ column-width count is checked against the effective table shape. Instances are i
 #### Data Model
 
 **Index**: `int?` — 1-based position of the job in the configuration file; `null` for the
-command-line job.
+command-line job. A non-null index identifies a configuration-table job, which is always judged.
 
 **InputPatterns**: `IReadOnlyList<string>` — Input patterns exactly as written; at least one.
 
@@ -29,6 +29,13 @@ base is the configuration file's `root` key. The file-access resolver's text rul
 job's paths rooted at this text, because normalization can hide a network path (on Linux and macOS
 a leading `//` collapses to `/`).
 
+**RelativePathsJudged**: `bool` — `true` when the base directory is the configuration file's `root`
+key (no `--root` was given), so a relative path the job names is moved by that untrusted key; set
+only for the command-line job.
+
+**HasJudgedPaths**: `bool` — `Index != null || RelativePathsJudged`: the file-access policy judges at
+least one path of the job, so the generator creates a resolver for it.
+
 **Label**: `string?` — `table job {index} ('{output}')` for configuration jobs; `null` for the
 command-line job, so its error messages stay unchanged.
 
@@ -41,7 +48,8 @@ command-line job, so its error messages stay unchanged.
 - *Parameters*: `int? index`; `IReadOnlyList<string> inputPatterns`; `string? outputFile`;
   `string baseDirectory`; `IReadOnlyList<FormattingSettings?> layers` — highest precedence first,
   `null` elements skipped; `string? baseDirectoryText` — optional, the base directory as text before
-  normalization (`null` means `baseDirectory`).
+  normalization (`null` means `baseDirectory`); `bool baseIsConfigRoot` — optional, `true` when the
+  base directory is the configuration file's `root` key (sets `RelativePathsJudged`).
 - *Returns*: `TableJob`.
 - *Preconditions*: `inputPatterns`, `baseDirectory` and `layers` are not null; `inputPatterns` is
   not empty.
@@ -61,9 +69,19 @@ Algorithm:
    dropped (set to `null`) without checking their count.
 4. Build the `MarkdownOptions` and the label.
 
+**IsJudged**: Tells whether the file-access policy judges a path the job names.
+
+- *Parameters*: `string expandedPath` — an input pattern or output path after `${VAR}` expansion and
+  before it is rooted at the base directory.
+- *Returns*: `true` for every path of a configuration-table job (`Index != null`); for a job with
+  `RelativePathsJudged`, `true` only when the path is not rooted (`!Path.IsPathRooted`), because a
+  rooted path ignores the base directory (`Path.Combine` keeps it as is) and so is not moved by the
+  `root` key; `false` otherwise.
+- *Preconditions*: `expandedPath` is not null.
+
 #### Error Handling
 
-- `ArgumentNullException` — a required argument is null.
+- `ArgumentNullException` — a required argument is null (also `IsJudged`).
 - `ArgumentException` — `inputPatterns` is empty, or the column-width count does not match:
   `{label}: Column widths for terms tables require exactly 2 values, but 3 were given.` (the label
   prefix is omitted for the command-line job). `Context.Create` adds the configuration file prefix
@@ -79,4 +97,5 @@ Algorithm:
 
 - **Context.Create** — creates every job.
 - **DictionaryGenerator.GenerateJob** — reads `InputPatterns`, `OutputFile`, `BaseDirectory`,
-  `BaseDirectoryText`, `Label` and `Options` to run the job.
+  `BaseDirectoryText`, `Label` and `Options` to run the job, and `HasJudgedPaths` and `IsJudged` to
+  decide which paths go through the file-access resolver.

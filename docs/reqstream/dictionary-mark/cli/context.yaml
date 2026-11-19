@@ -202,6 +202,45 @@ sections:
                   - Context_Create_NoRoot_CommandLineJobUsesWorkingDirectory
                   - Context_Create_RootFlag_ConfigPathNotResolvedAgainstRoot
 
+              - id: DictionaryMark-Context-ConfigRootTrust
+                title: >-
+                  The Context class shall mark the command-line job as one whose relative paths the configuration
+                  file's root key relocates only when no --root option is given and the configuration file has a root
+                  key, and shall give that job the root's text before normalization as its base directory text, so
+                  that the file-access resolver's text rules see a root key such as //host/share as written; with a
+                  --root option, without a root key and without a configuration file the command-line job shall not
+                  be marked.
+                justification: |
+                  Only a path that an untrusted configuration file moved needs the file-access check; marking exactly
+                  those jobs keeps the paths the person running the tool chose trusted, and the unnormalized root text
+                  keeps a network root from being collapsed into a local path before it is refused.
+                tags: [security]
+                tests:
+                  - Context_Create_ConfigRootWithoutTables_CommandLineJobPathsAreJudged
+                  - Context_Create_ConfigRootAndRootFlag_CommandLineJobStaysTrusted
+                  - Context_Create_ConfigWithoutRoot_CommandLineJobStaysTrusted
+                  - Context_Create_ConfigRoot_CommandLineJobKeepsRootTextBeforeNormalization
+
+              - id: DictionaryMark-Context-ConfigEnvironmentMode
+                title: >-
+                  The Context class shall load the configuration file with ${VAR} references in its root, input and
+                  output paths refused exactly when the file-access policy it built is not the allow-all policy - that
+                  is, for the roots, no-symlinks and roots,no-symlinks modes and for --allow-root, which implies roots -
+                  and allowed when no file-access option is given or the mode is any, and shall expand ${VAR} in the
+                  --config, --root, --input and --output paths in every mode.
+                justification: |
+                  Only the configuration file's content is untrusted; deciding the mode in one place, from the policy
+                  that is actually built, keeps every spelling of a restrictive mode (including the one implied by
+                  --allow-root) covered, and keeps the paths the person running the tool typed working.
+                tags: [security]
+                tests:
+                  - Context_Create_RestrictiveModeWithEnvironmentOutput_ThrowsWithoutLeak
+                  - Context_Create_RestrictiveModeWithEnvironmentInput_ThrowsWithoutLeak
+                  - Context_Create_RestrictiveModeWithEnvironmentRoot_ThrowsWhetherDefinedOrNot
+                  - Context_Create_RootsWithEnvironmentRootAndCommandLinePaths_Throws
+                  - Context_Create_AnyModeWithEnvironmentConfigPaths_Expands
+                  - Context_Create_RootsWithCommandLineEnvironmentPaths_StillExpanded
+
               - id: DictionaryMark-Context-FileAccessOptions
                 title: >-
                   The Context class shall parse the --file-access option (keeping the value of its last occurrence)

@@ -405,6 +405,76 @@ public class CliSubsystemTests
         Assert.Contains("## CLI Depth", logContent);
     }
 
+    /// <summary>
+    ///     Test that the CLI subsystem refuses a ${VAR} reference in any path of a config file under every
+    ///     restrictive file-access spelling: the run exits 1 with an error naming the key, the variable's value is not
+    ///     revealed, and nothing is created.
+    /// </summary>
+    [Theory]
+    [InlineData("--file-access", "roots")]
+    [InlineData("--file-access", "no-symlinks")]
+    [InlineData("--file-access", "roots,no-symlinks")]
+    [InlineData("--allow-root", ".")]
+    public void CliSubsystem_RestrictiveModeConfigEnvironment_RefusedAndNothingCreated(string option, string value)
+    {
+        // Arrange: a config whose output is named by a defined variable holding a secret-looking name
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: ${" + EnvironmentVariableName + "}.md\n");
+        Environment.SetEnvironmentVariable(EnvironmentVariableName, secret);
+        try
+        {
+            // Act
+            var (exitCode, error) = RunMain("--config", config, option, value);
+
+            // Assert: refused with the key named, the secret not revealed, and no file created for it
+            Assert.Equal(1, exitCode);
+            Assert.Contains("key 'output' must not contain environment variable references", error);
+            Assert.DoesNotContain(secret, error);
+            Assert.Empty(Directory.GetFiles(tmpDir.DirectoryPath, secret + "*", SearchOption.AllDirectories));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(EnvironmentVariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that the CLI subsystem still expands ${VAR} in a config file's paths when no restrictive file-access
+    ///     mode is in effect, so the default behavior is unchanged.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore()
+    {
+        // Arrange: a config whose output folder comes from a variable
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: ${" + EnvironmentVariableName + "}/terms.md\n");
+        var outDir = tmpDir.GetFilePath("expanded");
+        Environment.SetEnvironmentVariable(EnvironmentVariableName, outDir);
+        try
+        {
+            // Act: default mode, then the explicit any mode
+            var (defaultExit, defaultError) = RunMain("--config", config);
+            var (anyExit, anyError) = RunMain("--config", config, "--file-access", "any");
+
+            // Assert: the variable was expanded and the output written both times
+            Assert.Equal(0, defaultExit);
+            Assert.Equal(0, anyExit);
+            Assert.Empty(defaultError);
+            Assert.Empty(anyError);
+            Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(outDir, "terms.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(EnvironmentVariableName, null);
+        }
+    }
+
+    /// <summary>Name of the environment variable used by the file-access tests of this class.</summary>
+    private const string EnvironmentVariableName = "DICTIONARYMARK_CLI_SUBSYSTEM_TEST";
+
     /// <summary>Runs Program.Main with captured console output and returns the exit code and stderr.</summary>
     /// <param name="args">The command-line arguments.</param>
     /// <returns>The exit code and the captured standard error.</returns>
@@ -711,5 +781,66 @@ public class CliSubsystemTests
         Assert.Equal(1, conflictExit);
         Assert.Contains("The options --file-access any and --allow-root cannot be used together.", conflictError);
         Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(config)!, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that the CLI flow judges the relative command-line paths that a config root key relocates: an input and
+    ///     an output moved outside the allowed folder exit non-zero with file-access-denied and write nothing.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_ConfigRootRelocatedCommandLinePaths_AreJudged()
+    {
+        // Arrange: the config (no tables) has a root key naming a folder outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var inside = tmpDir.GetFilePath(Path.Combine("config", "terms.yaml"));
+        File.WriteAllText(inside, "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "secret.yaml")), "Secret: Hidden\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (inputExit, inputError) = RunMain(
+            "--config", config, "--allow-root", root, "--input", "secret.yaml", "--output", inside + ".md");
+        var (outputExit, outputError) = RunMain(
+            "--config", config, "--allow-root", root, "--input", inside, "--output", "result.md");
+
+        // Assert: both are denied and nothing is written
+        Assert.Equal(1, inputExit);
+        Assert.Contains("file-access-denied:", inputError);
+        Assert.Equal(1, outputExit);
+        Assert.Contains("file-access-denied:", outputError);
+        Assert.False(File.Exists(inside + ".md"));
+        Assert.False(File.Exists(tmpDir.GetFilePath(Path.Combine("other", "result.md"))));
+    }
+
+    /// <summary>
+    ///     Test that --root, and absolute paths, keep the command-line paths trusted under a config root key.
+    /// </summary>
+    [Fact]
+    public void CliSubsystem_FileAccessFlow_RootFlagOrAbsolutePaths_StayTrustedUnderConfigRoot()
+    {
+        // Arrange: the config folder is the only allowed root; all dictionaries and outputs lie outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("cli-root", "terms.yaml")), "API: Application Programming Interface\n");
+        var absoluteInput = tmpDir.GetFilePath(Path.Combine("outside", "terms.yaml"));
+        File.WriteAllText(absoluteInput, "CI: Continuous Integration\n");
+        var absoluteOutput = tmpDir.GetFilePath(Path.Combine("outside", "absolute.md"));
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (rootExit, rootError) = RunMain(
+            "--config", config, "--allow-root", root, "--root", tmpDir.GetFilePath("cli-root"),
+            "--input", "terms.yaml", "--output", "relative.md");
+        var (absoluteExit, absoluteError) = RunMain(
+            "--config", config, "--allow-root", root, "--input", absoluteInput, "--output", absoluteOutput);
+
+        // Assert: both runs succeed and write their outputs
+        Assert.Equal(0, rootExit);
+        Assert.Equal(string.Empty, rootError);
+        Assert.True(File.Exists(tmpDir.GetFilePath(Path.Combine("cli-root", "relative.md"))));
+        Assert.Equal(0, absoluteExit);
+        Assert.Equal(string.Empty, absoluteError);
+        Assert.True(File.Exists(absoluteOutput));
     }
 }

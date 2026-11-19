@@ -93,13 +93,19 @@ command-line `FormattingSettings` layer. `Context.Create` then:
    `--file-access` and `--allow-root` (`Context.FileAccess.cs`, see *Context Design*), so a mistake there is
    reported before any input is read, and then loads the configuration file with `ConfigFile.Load`, which also
    resolves the file's `root` key against the file's directory as text only: the key is untrusted content and is
-   never probed, so a `root` that does not exist is left to the file-access resolver when the jobs run.
+   never probed, so a `root` that does not exist is left to the file-access resolver when the jobs run. The load is
+   told to refuse `${VAR}` references in the file's `root`, `input` and `output` whenever the policy is not the
+   allow-all policy (any mode but `any`, including the mode `--allow-root` implies), because the file's content is
+   untrusted and must not read the process environment; command-line paths are expanded in every mode.
 3. Selects the effective root: `--root`, else the configuration `root`, else none.
 4. Builds the jobs. With configuration tables, one `TableJob` per table, with formatting layers
    command line, job, configuration defaults, and base directory root, else the configuration
    file's directory; `--input` and `--output` are rejected. Without tables, when `--input` was
    given, one command-line `TableJob` with layers command line and configuration defaults, and
-   base directory root, else the working directory.
+   base directory root, else the working directory; when no `--root` was given and the configuration
+   file has a `root` key, the job is marked so that its relative paths are judged by the file-access
+   policy (they are untrusted content moved by that key), and every other command-line job stays
+   trusted.
 5. Opens the log file if `--log` was specified.
 
 The formatting precedence is therefore applied in one place, `TableJob.Create`:

@@ -61,11 +61,14 @@ job paths built on this text.
 
 **Load**: Loads and validates a configuration file.
 
-- *Parameters*: `string path` — path of the configuration file (normally already a full path).
+- *Parameters*: `string path` — path of the configuration file (normally already a full path);
+  `bool allowEnvironmentVariables` — optional, default `true`; `false` refuses `${VAR}` references in the root,
+  input and output paths. The only production caller, `Context.Create`, always passes it explicitly.
 - *Returns*: `ConfigFile` — the validated configuration.
 - *Preconditions*: `path` is not null.
 - *Postconditions*: Every key has been validated; `RootDirectory`, when set, is a normalized full
-  path that has not been checked on disk.
+  path that has not been checked on disk. When `allowEnvironmentVariables` is `false`, no `${VAR}` reference
+  was expanded and none is present in the root, the inputs or the outputs.
 
 Algorithm:
 
@@ -78,7 +81,17 @@ Algorithm:
 4. `ReadTables` requires a non-empty `YamlSequenceNode`; `ReadTable` requires each item to be a
    mapping, reads `input` (string or sequence), `output` and formatting keys, rejects `root` and
    unknown keys, and requires `input` and `output`.
-5. When `root` was given, resolve it with
+5. When `allowEnvironmentVariables` is `false`, refuse `${VAR}` references before anything is expanded:
+   `RejectEnvironmentReferences` checks, in file order, the `root` key, then for each table its inputs (in order)
+   and its output, with `PathResolver.ContainsEnvironmentReference`, and throws at the first hit. The check
+   runs before step 6 because resolving the root would otherwise throw
+   `Environment variable 'X' ... is not defined`, which would let the file learn whether a variable is set. The
+   file's content is untrusted, so expanding a reference in it would let it read the process environment (for
+   example a secret) and leak it through a created file name or a message. The caller decides: `Context.Create`
+   passes `false` whenever a file-access mode other than `any` is in effect. The check is a rule of the path text,
+   like an unknown key, so the whole file is refused rather than only one job; this also fails closed, because a
+   hostile file runs none of its jobs.
+6. When `root` was given, resolve it with
    `PathResolver.ResolveDirectory(root, BaseDirectory, "root key")`. This expands `${VAR}`,
    roots the value at the file's directory, normalizes `..` and rejects wildcards, as text only.
    The expanded and rooted text before normalization is kept as `RootText`
@@ -115,6 +128,12 @@ the key. Examples:
   malformed or overlong root (for example a null character), which `PathResolver` reports as
   `Config file '...': Invalid root key '{root}': {reason}`. A root that does not exist is not an
   error of the file.
+- A `${VAR}` reference in a path key while environment references are not allowed:
+  `key 'root' must not contain environment variable references such as '${NAME}' while a restrictive file-access
+  mode is in effect (--file-access roots or no-symlinks, or --allow-root); write the path literally or run with
+  --file-access any`, and the same text after `table job {n}: ` for `key 'input'` and `key 'output'`. The message
+  never contains a variable name or value and does not echo the offending text, so it is identical whether the
+  variable is defined or not.
 - A configuration file path that `Path.GetFullPath` rejects is reported as
   `Config file '{path}': invalid path: {reason}`, and a path-validation exception while reading
   the file is reported as `cannot be read: {reason}`.
@@ -125,10 +144,11 @@ File-system and YAML parser exceptions are wrapped, so callers only handle
 #### Dependencies
 
 - **FormattingSettings** — supporting Cli type; the defaults and job layers.
-- **PathResolver** — Utilities unit; resolves the `root` key.
+- **PathResolver** — Utilities unit; resolves the `root` key and detects `${VAR}` references.
 - **YamlDotNet** — OTS library; `YamlStream`, `YamlMappingNode`, `YamlSequenceNode`,
   `YamlScalarNode` and `YamlException`.
 
 #### Callers
 
-- **Context.Create** — loads the file named by `--config`.
+- **Context.Create** — loads the file named by `--config`, with `${VAR}` references refused in its paths under a
+  restrictive file-access mode.

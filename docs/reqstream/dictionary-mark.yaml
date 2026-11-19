@@ -439,11 +439,14 @@ sections:
 
       - id: DictionaryMark-System-ConfigFile-EnvironmentVariables
         title: >-
-          The tool shall expand ${VAR} environment-variable references in the configuration file path and in the
-          input patterns and output paths of table jobs.
+          The tool shall expand ${VAR} environment-variable references in the configuration file path and, in the
+          default and any file-access modes, in the root key and in the input patterns and output paths of table
+          jobs.
         justification: |
           Environment variables let the same configuration file locate shared dictionaries and output folders
-          that differ between machines and CI agents.
+          that differ between machines and CI agents. A restrictive file-access mode refuses them in the
+          configuration file's paths (see DictionaryMark-System-FileAccess-ConfigEnvironmentRefused) because the
+          file's content is not trusted.
         tags: [system]
         children:
           - DictionaryMark-Utilities-PathResolution
@@ -543,7 +546,8 @@ sections:
         title: >-
           The tool shall use the configuration file's top-level root key as the base directory for every relative
           input pattern and output path, resolving the key relative to the configuration file's directory with
-          ${VAR} references and parent-directory segments as text only, without accessing the file system, so
+          ${VAR} references (in the default and any file-access modes) and parent-directory segments as text only,
+          without accessing the file system, so
           that a root key naming a folder that does not exist or a network location fails only the table jobs
           whose inputs and outputs the file-access checks then refuse or do not find.
         justification: |
@@ -737,14 +741,100 @@ sections:
       - id: DictionaryMark-System-FileAccess-CommandLineTrusted
         title: >-
           The tool shall never judge the paths named on the command line (the config, input, output, log and
-          results options) by the file-access mode, and shall never let the configuration file's root key widen
-          the allowed folders.
+          results options) by the file-access mode, except a relative input pattern or output path that the
+          configuration file's root key relocates (see DictionaryMark-System-FileAccess-ConfigRootRelocated), shall
+          keep trusted every absolute path, every path when the root option is given, every path when the
+          configuration file has no root key, and the config, log and results options, and shall never let the
+          configuration file's root key widen the allowed folders.
         justification: |
           The person running the tool chose the command-line paths on purpose; only what an untrusted
-          configuration file names needs to be judged, and that file must not be able to move its own boundary.
+          configuration file names, or moves, needs to be judged, and that file must not be able to move its own
+          boundary.
         tags: [system]
         children:
           - DictionaryMark-Dictionary-FileAccess
+          - DictionaryMark-Cli-FileAccessConfigRoot
         tests:
           - DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged
           - DictionaryMark_FileAccess_ConfigRootKey_DoesNotWidenAllowedFolders
+          - DictionaryMark_FileAccess_CommandLineRootOrAbsolutePaths_StayTrustedUnderConfigRoot
+
+      - id: DictionaryMark-System-FileAccess-ConfigRootRelocated
+        title: >-
+          The tool shall judge by the file-access mode, exactly like the inputs and outputs of configuration-file
+          tables (each literal input and every glob match by the file that was opened, within the 16 MiB limit, each
+          input pattern checked against the never list before any folder is listed, and the output checked before
+          anything is created), every relative input pattern and output path named on the command line that the
+          configuration file's root key relocates - that is, when no root option is given, the file has a root key and
+          the file defines no tables - shall report a refusal as a file-access-denied error with a non-zero exit code
+          and write nothing, and shall allow in the roots mode only the allow-root folders or, without them, the
+          working directory and the folder of the configuration file.
+        justification: |
+          The content of a configuration file is not trusted. Without this requirement its root key could redirect the
+          trusted relative command-line paths out of the folders the person running the tool confined the run to,
+          reading or writing files the file-access mode is meant to keep out. A person who wants a command-line path
+          kept outside the check can give an absolute path or the root option.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessConfigRoot
+          - DictionaryMark-Dictionary-FileAccessConfigRoot
+        tests:
+          - DictionaryMark_FileAccess_ConfigRootRelocatedInput_IsDenied
+          - DictionaryMark_FileAccess_ConfigRootRelocatedOutput_IsDenied
+          - DictionaryMark_FileAccess_ConfigRootRelocatedPathsInsideRoots_AreGenerated
+
+      - id: DictionaryMark-System-FileAccess-ConfigEnvironmentRefused
+        title: >-
+          The tool shall, whenever a file-access mode other than any is in effect (roots, no-symlinks,
+          roots,no-symlinks, or the roots mode that the allow-root option implies), refuse a ${VAR}
+          environment-variable reference in the root key, in an input pattern or in the output path of a
+          configuration file with an error that names the configuration file, the table job and the key, that
+          reveals neither the name nor the value of any variable nor whether it is defined, and that stops the run
+          before any input is read or any output or folder is created, and shall expand such references exactly as
+          before in the default mode and in the any mode.
+        justification: |
+          The content of a configuration file is not trusted, for example when it comes from a pull request built by
+          CI. A ${VAR} reference in one of its paths would let it read the process environment, such as a secret in
+          an environment variable, and exfiltrate it through the name of a file it creates or through an error
+          message. Refusing the reference in the restrictive modes, which the person running the tool chose to
+          protect the run, closes that channel; the any mode keeps its documented behavior for configurations that
+          are trusted.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessConfigEnvironment
+        tests:
+          - DictionaryMark_FileAccess_ConfigOutputEnvironmentVariableAsProcess_RefusedWithoutLeak
+          - DictionaryMark_FileAccess_ConfigInputEnvironmentVariableAsProcess_RefusedWithoutLeak
+          - DictionaryMark_FileAccess_ConfigRootEnvironmentVariableAsProcess_RefusedForTablesAndRelocatedCommandLine
+          - DictionaryMark_FileAccess_ConfigEnvironmentVariablesAsProcess_AnyModeStillExpands
+
+      - id: DictionaryMark-System-FileAccess-CommandLineEnvironmentExpanded
+        title: >-
+          The tool shall expand ${VAR} environment-variable references in the paths named on the command line (the
+          config, root, input, output, log and results options) in every file-access mode, including the
+          restrictive modes.
+        justification: |
+          The command line is typed by the person running the tool, who can already read their own environment, so
+          expanding it exposes nothing; only the untrusted configuration file content is refused.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Cli-FileAccessConfigEnvironment
+        tests:
+          - DictionaryMark_FileAccess_CommandLineEnvironmentVariablesAsProcess_StillExpandedUnderRoots
+
+      - id: DictionaryMark-System-FileAccess-WrittenPathMessages
+        title: >-
+          The tool shall name a path that a configuration file supplies, or that the configuration file's root key
+          relocates, in every denied, not-found, unreadable, invalid-YAML, conflict and write-failure message as it
+          was written (a glob match relative to the table's base directory), never as an absolute path on the host,
+          while keeping the file-access-denied keyword and the job label, and shall keep showing the full path of a
+          path named on the command line.
+        justification: |
+          The messages, which CI can publish to the author of an untrusted configuration file, must not tell that
+          author where the checkout, the working directory or the temporary folders of the runner are. The
+          author already knows the path they wrote, so showing it reveals nothing and still lets them find the entry.
+        tags: [system, security]
+        children:
+          - DictionaryMark-Dictionary-FileAccessWrittenPaths
+        tests:
+          - DictionaryMark_FileAccess_DeniedAndMissingConfigPathsAsProcess_ShowNoHostPath

@@ -50,6 +50,21 @@ sections:
                 tests:
                   - PathResolver_ResolvePath_NullArguments_Throw
 
+              - id: DictionaryMark-PathResolver-EnvironmentReferenceDetection
+                title: >-
+                  The PathResolver unit shall report whether a path contains a ${VAR} reference of exactly the form it
+                  would expand, without reading the environment, so that the answer is the same whether or not the
+                  variable is defined, and shall reject a null path.
+                justification: |
+                  A caller that must refuse a reference rather than expand it needs to recognize it without expanding it,
+                  with the same definition of a reference as the expansion, and without learning whether the variable is
+                  defined.
+                tags: [security]
+                tests:
+                  - PathResolver_ContainsEnvironmentReference_Text_DetectsOnlyExpandedForm
+                  - PathResolver_ContainsEnvironmentReference_UndefinedVariable_DetectedWithoutError
+                  - PathResolver_ContainsEnvironmentReference_NullPath_ThrowsArgumentNullException
+
               - id: DictionaryMark-PathResolver-ExistingDirectory
                 title: >-
                   The PathResolver unit shall resolve a directory path against a base directory and return its

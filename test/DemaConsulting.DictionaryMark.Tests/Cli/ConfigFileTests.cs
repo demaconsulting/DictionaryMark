@@ -448,6 +448,130 @@ public class ConfigFileTests
     }
 
     /// <summary>
+    ///     Test that when environment references are not allowed, a root reference is refused with an error that
+    ///     names the file and the key and is identical whether the variable is defined or not, so the refusal never
+    ///     reveals the variable's name, value or whether it is defined.
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_EnvironmentReferencesNotAllowed_RootReference_ThrowsNamingFileAndKeyWithoutLeak()
+    {
+        // Arrange: one config that references the variable, loaded once with it defined and once without
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: ${" + VariableName + "}/docs\n");
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+
+        // Act: load with the variable defined, then undefined
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        string defined;
+        try
+        {
+            defined = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path, allowEnvironmentVariables: false)).Message;
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+
+        var undefined = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path, allowEnvironmentVariables: false)).Message;
+
+        // Assert: the message names the file and key, leaks nothing, and does not depend on the definition
+        Assert.StartsWith($"Config file '{path}': key 'root' must not contain environment variable references", defined);
+        Assert.Equal(defined, undefined);
+        Assert.DoesNotContain(secret, defined);
+        Assert.DoesNotContain(VariableName, defined);
+        Assert.DoesNotContain("is not defined", undefined);
+    }
+
+    /// <summary>
+    ///     Test that when environment references are not allowed, a table input reference (as a string or in a
+    ///     sequence) is refused with an error naming the file, the job and the key.
+    /// </summary>
+    [Theory]
+    [InlineData("tables:\n  - input: a.yaml\n    output: a.md\n  - input: ${DICTIONARYMARK_CONFIG_TEST}/a.yaml\n    output: b.md\n")]
+    [InlineData("tables:\n  - input: a.yaml\n    output: a.md\n  - input: [b.yaml, '${DICTIONARYMARK_CONFIG_TEST}/*.yaml']\n    output: b.md\n")]
+    public void ConfigFile_Load_EnvironmentReferencesNotAllowed_InputReference_ThrowsNamingJobAndKey(string content)
+    {
+        // Arrange: the second table job references a variable in its input
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, content);
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path, allowEnvironmentVariables: false));
+
+        // Assert: the error names the file, job 2 and the input key, and not the variable
+        Assert.StartsWith($"Config file '{path}': table job 2: key 'input' must not contain environment variable references", ex.Message);
+        Assert.DoesNotContain(VariableName, ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that when environment references are not allowed, a table output reference is refused with an error
+    ///     naming the file, the job and the key, even when the variable is undefined.
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_EnvironmentReferencesNotAllowed_OutputReference_ThrowsNamingJobAndKey()
+    {
+        // Arrange: the second table job references an undefined variable in its output
+        using var tmpDir = new TemporaryDirectory();
+        Environment.SetEnvironmentVariable(VariableName, null);
+        var path = WriteConfig(tmpDir,
+            "tables:\n  - input: a.yaml\n    output: a.md\n  - input: b.yaml\n    output: ${" + VariableName + "}.md\n");
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => ConfigFile.Load(path, allowEnvironmentVariables: false));
+
+        // Assert: refused (not reported as an undefined variable), naming the file, job and key
+        Assert.StartsWith($"Config file '{path}': table job 2: key 'output' must not contain environment variable references", ex.Message);
+        Assert.DoesNotContain(VariableName, ex.Message);
+        Assert.DoesNotContain("is not defined", ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that when environment references are not allowed, a config that writes its paths literally still
+    ///     loads, including text that merely looks like another variable syntax.
+    /// </summary>
+    [Fact]
+    public void ConfigFile_Load_EnvironmentReferencesNotAllowed_NoReferences_Loads()
+    {
+        // Arrange: literal paths, with $NAME and %NAME% text that is never expanded
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir,
+            "root: docs\ntables:\n  - input: [a.yaml, '$NAME/b.yaml']\n    output: '%NAME%.md'\n");
+
+        // Act
+        var config = ConfigFile.Load(path, allowEnvironmentVariables: false);
+
+        // Assert: loaded as written
+        Assert.Single(config.Tables);
+        Assert.Equal(["a.yaml", "$NAME/b.yaml"], config.Tables[0].Inputs);
+        Assert.Equal("%NAME%.md", config.Tables[0].Output);
+        Assert.EndsWith("docs", config.RootDirectory);
+    }
+
+    /// <summary>Test that when environment references are allowed explicitly, they are expanded in the root.</summary>
+    [Fact]
+    public void ConfigFile_Load_EnvironmentReferencesAllowed_RootReferenceExpanded()
+    {
+        // Arrange: a root that references a defined variable
+        using var tmpDir = new TemporaryDirectory();
+        using var rootDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: ${" + VariableName + "}\ntables:\n  - input: ${" + VariableName + "}/a.yaml\n    output: a.md\n");
+        Environment.SetEnvironmentVariable(VariableName, rootDir.DirectoryPath);
+        try
+        {
+            // Act
+            var config = ConfigFile.Load(path, allowEnvironmentVariables: true);
+
+            // Assert: the root is expanded and the job keeps its input as written
+            Assert.Equal(Path.GetFullPath(rootDir.DirectoryPath), config.RootDirectory);
+            Assert.Equal("${" + VariableName + "}/a.yaml", config.Tables[0].Inputs[0]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
     ///     Test that a root naming a folder that does not exist is accepted as text: the key is never probed, so its
     ///     full path is returned and the jobs that use it are judged when they run.
     /// </summary>

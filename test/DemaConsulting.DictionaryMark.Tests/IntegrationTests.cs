@@ -1195,7 +1195,8 @@ public class IntegrationTests
 
         // Assert: the job reports its input as not found; the load did not reject the root; nothing was created
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Error: table job 1 ('out.md'): Input file '{input}' was not found.", output);
+        Assert.Contains("Error: table job 1 ('out.md'): Input file 'terms.yaml' was not found.", output);
+        Assert.DoesNotContain(input, output);
         Assert.DoesNotContain("does not exist", output);
         Assert.False(Directory.Exists(PathIn(tmpDir, "missing")));
     }
@@ -1419,7 +1420,10 @@ public class IntegrationTests
         Assert.True(File.Exists(PathIn(tmpDir, "config/terms.md")));
     }
 
-    /// <summary>Test that inputs and outputs named on the command line are never judged by the file-access policy.</summary>
+    /// <summary>
+    ///     Test that inputs and outputs named on the command line are not judged by the file-access policy when no
+    ///     config root key relocates them.
+    /// </summary>
     [Fact]
     public void DictionaryMark_FileAccess_CommandLinePaths_AreNotJudged()
     {
@@ -1538,9 +1542,219 @@ public class IntegrationTests
         // Assert: the outside input is denied without revealing whether it exists; the inside one is not found
         Assert.Equal(1, exitCode);
         Assert.Contains("Error: table job 1 ('outside.md'): file-access-denied:", output);
-        Assert.DoesNotContain($"Input file '{PathIn(tmpDir, "other/missing.yaml")}' was not found", output);
-        Assert.Contains($"Error: table job 2 ('inside.md'): Input file '{PathIn(tmpDir, "config/missing.yaml")}' was not found.", output);
+        Assert.DoesNotContain("Input file '../other/missing.yaml' was not found", output);
+        Assert.Contains("Error: table job 2 ('inside.md'): Input file 'missing.yaml' was not found.", output);
+        Assert.DoesNotContain(PathIn(tmpDir, "config/missing.yaml"), output);
         Assert.Contains("Error: 2 of 2 table jobs failed.", output);
+    }
+
+    /// <summary>
+    ///     Test that, under a restrictive file-access mode, a ${VAR} reference in a config table output is refused as
+    ///     a process: exit code 1, an error naming the file, job and key, no variable value in the output, and
+    ///     nothing created.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigOutputEnvironmentVariableAsProcess_RefusedWithoutLeak()
+    {
+        // Arrange: a config whose output is named by a variable holding a secret-looking value
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        WriteFile(tmpDir, "config/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: terms.yaml\n    output: ${" + VariableName + "}.md\n");
+        var log = PathIn(tmpDir, "run.log");
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        try
+        {
+            // Act
+            var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--file-access", "roots", "--log", log);
+
+            // Assert: refused naming file, job and key; the secret appears nowhere and no file was created for it
+            Assert.Equal(1, exitCode);
+            Assert.Contains($"Config file '{config}': table job 1: key 'output' must not contain environment variable references", output);
+            Assert.DoesNotContain(secret, output);
+            Assert.DoesNotContain(VariableName, output);
+            Assert.Empty(Directory.GetFiles(tmpDir.DirectoryPath, secret + "*", SearchOption.AllDirectories));
+            Assert.True(!File.Exists(log) || !File.ReadAllText(log).Contains(secret));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that, under a restrictive file-access mode, a ${VAR} reference in a config table input is refused as a
+    ///     process with the same message whether the variable is defined or not, so the refusal reveals neither the
+    ///     value nor whether the variable is set.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigInputEnvironmentVariableAsProcess_RefusedWithoutLeak()
+    {
+        // Arrange: a config whose input references a variable
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: ${" + VariableName + "}/*.yaml\n    output: out.md\n");
+
+        // Act: run once with the variable defined, once without
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        int definedExit;
+        string defined;
+        try
+        {
+            definedExit = Runner.Run(out defined, "dotnet", _dllPath, "--config", config, "--file-access", "no-symlinks");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+
+        var undefinedExit = Runner.Run(out var undefined, "dotnet", _dllPath, "--config", config, "--file-access", "no-symlinks");
+
+        // Assert: the same refusal both times, naming file, job and key, with no value and no "not defined" oracle
+        Assert.Equal(1, definedExit);
+        Assert.Equal(1, undefinedExit);
+        Assert.Contains($"Config file '{config}': table job 1: key 'input' must not contain environment variable references", defined);
+        Assert.Equal(defined, undefined);
+        Assert.DoesNotContain(secret, defined);
+        Assert.DoesNotContain("is not defined", undefined);
+    }
+
+    /// <summary>
+    ///     Test that --allow-root (which implies the roots mode) refuses a ${VAR} reference in the config root key, for
+    ///     config tables and for a command-line --input and --output that the root key would relocate, as a process.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigRootEnvironmentVariableAsProcess_RefusedForTablesAndRelocatedCommandLine()
+    {
+        // Arrange: one config with tables and one without, both with a root that references a variable
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var withTables = WriteFile(tmpDir, "config/tables.yaml",
+            "root: ${" + VariableName + "}\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+        var noTables = WriteFile(tmpDir, "config/plain.yaml", "root: ${" + VariableName + "}\n");
+        var allowed = PathIn(tmpDir, "config");
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        try
+        {
+            // Act
+            var tablesExit = Runner.Run(out var tablesOutput, "dotnet", _dllPath, "--config", withTables, "--allow-root", allowed);
+            var relocatedExit = Runner.Run(
+                out var relocatedOutput, "dotnet", _dllPath, "--config", noTables, "--allow-root", allowed, "--input", "terms.yaml", "--output", "out.md");
+
+            // Assert: both are refused naming the root key; nothing leaked or created
+            Assert.Equal(1, tablesExit);
+            Assert.Equal(1, relocatedExit);
+            Assert.Contains($"Config file '{withTables}': key 'root' must not contain environment variable references", tablesOutput);
+            Assert.Contains($"Config file '{noTables}': key 'root' must not contain environment variable references", relocatedOutput);
+            Assert.DoesNotContain(secret, tablesOutput);
+            Assert.DoesNotContain(secret, relocatedOutput);
+            Assert.False(File.Exists(PathIn(tmpDir, "config/out.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that with no file-access option, and with --file-access any, ${VAR} references in a config file's
+    ///     paths are expanded as a process exactly as before.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DictionaryMark_FileAccess_ConfigEnvironmentVariablesAsProcess_AnyModeStillExpands(bool explicitAny)
+    {
+        // Arrange: a config whose input and output folders come from a variable
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "shared/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml",
+            "tables:\n  - input: ${" + VariableName + "}/shared/*.yaml\n    output: ${" + VariableName + "}/out/terms.md\n");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            var exitCode = explicitAny
+                ? Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config, "--file-access", "any")
+                : Runner.Run(out _, "dotnet", _dllPath, "--silent", "--config", config);
+
+            // Assert: the variable was expanded for both paths
+            Assert.Equal(0, exitCode);
+            Assert.Contains("- **API**:", File.ReadAllText(PathIn(tmpDir, "out/terms.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that command-line paths still expand ${VAR} under the roots mode as a process: only the untrusted
+    ///     config file content is refused.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_CommandLineEnvironmentVariablesAsProcess_StillExpandedUnderRoots()
+    {
+        // Arrange: a variable naming the folder used by --root and --output
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "terms.yaml", "API: Application Programming Interface\n");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            var exitCode = Runner.Run(
+                out _, "dotnet", _dllPath, "--silent", "--file-access", "roots", "--root", "${" + VariableName + "}",
+                "--input", "terms.yaml", "--output", "${" + VariableName + "}/out.md");
+
+            // Assert: the command-line variables were expanded and the output written
+            Assert.Equal(0, exitCode);
+            Assert.Contains("- **API**:", File.ReadAllText(PathIn(tmpDir, "out.md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that the messages for denied and missing config paths show the paths as written and reveal no host
+    ///     directory (neither the temporary folder nor the working directory) on stderr or in the log file.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_DeniedAndMissingConfigPathsAsProcess_ShowNoHostPath()
+    {
+        // Arrange: tables whose input, glob match, missing input and output are denied or missing
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "other/more.yaml", "CLI: Command Line Interface\n");
+        WriteFile(tmpDir, "config/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(
+            tmpDir,
+            "config/dictionarymark.yaml",
+            "tables:\n  - input: ../other/more.yaml\n    output: a.md\n"
+            + "  - input: ../other/*.yaml\n    output: b.md\n"
+            + "  - input: missing.yaml\n    output: c.md\n"
+            + "  - input: terms.yaml\n    output: ../out/d.md\n");
+        var log = PathIn(tmpDir, "run.log");
+
+        // Act
+        var exitCode = Runner.Run(out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"), "--log", log);
+
+        // Assert: each message names the path as written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("table job 1 ('a.md'): file-access-denied: The file '../other/more.yaml' was denied", output);
+        Assert.Contains("table job 2 ('b.md'): file-access-denied: The file '../other/more.yaml' was denied", output);
+        Assert.Contains("table job 3 ('c.md'): Input file 'missing.yaml' was not found.", output);
+        Assert.Contains("table job 4 ('../out/d.md'): file-access-denied: The file '../out/d.md' was denied", output);
+
+        // Assert: no host directory is revealed on the console or in the log
+        var logText = File.ReadAllText(log);
+        foreach (var text in new[] { output, logText })
+        {
+            Assert.DoesNotContain(tmpDir.DirectoryPath, text);
+            Assert.DoesNotContain(Environment.CurrentDirectory, text);
+        }
     }
 
     /// <summary>
@@ -1562,5 +1776,104 @@ public class IntegrationTests
         Assert.Equal(1, exitCode);
         Assert.Contains("file-access-denied:", output);
         Assert.False(File.Exists(PathIn(tmpDir, "other/out.md")));
+    }
+
+    /// <summary>
+    ///     Test that a relative command-line input that the config root key moves outside the allowed folder is denied,
+    ///     so the root key cannot be used to read a file the file-access policy keeps out.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigRootRelocatedInput_IsDenied()
+    {
+        // Arrange: the config (no tables) has a root key naming a folder outside the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "other/secret.yaml", "Secret: Hidden\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "root: ../other\n");
+
+        // Act
+        var exitCode = Runner.Run(
+            out var output, "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"), "--input", "secret.yaml");
+
+        // Assert: denied, and the content was not read
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: file-access-denied:", output);
+        Assert.DoesNotContain("Hidden", output);
+    }
+
+    /// <summary>
+    ///     Test that a relative command-line output that the config root key moves outside the allowed folder is denied
+    ///     and nothing is written.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigRootRelocatedOutput_IsDenied()
+    {
+        // Arrange: the input is absolute and trusted; the root key moves the output outside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        var input = WriteFile(tmpDir, "config/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "root: ../out\n");
+
+        // Act
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "config"),
+            "--input", input, "--output", "result.md");
+
+        // Assert: denied before anything is written, not even the folder
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: file-access-denied:", output);
+        Assert.False(File.Exists(PathIn(tmpDir, "out/result.md")));
+        Assert.False(Directory.Exists(PathIn(tmpDir, "out")));
+    }
+
+    /// <summary>
+    ///     Test that relocated command-line paths inside the allowed folders are generated.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_ConfigRootRelocatedPathsInsideRoots_AreGenerated()
+    {
+        // Arrange: the root key names a folder inside the allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "work/other/terms.yaml", "API: Application Programming Interface\n");
+        var config = WriteFile(tmpDir, "work/config/dictionarymark.yaml", "root: ../other\n");
+
+        // Act
+        var exitCode = Runner.Run(
+            out _,
+            "dotnet", _dllPath, "--config", config, "--allow-root", PathIn(tmpDir, "work"),
+            "--input", "terms.yaml", "--output", "out.md");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "work/other/out.md")));
+    }
+
+    /// <summary>
+    ///     Test that --root and absolute paths keep the command-line paths trusted when the config has a root key.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_FileAccess_CommandLineRootOrAbsolutePaths_StayTrustedUnderConfigRoot()
+    {
+        // Arrange: every dictionary and output lies outside the only allowed folder
+        using var tmpDir = new TemporaryDirectory();
+        WriteFile(tmpDir, "cli-root/terms.yaml", "API: Application Programming Interface\n");
+        var absoluteInput = WriteFile(tmpDir, "outside/terms.yaml", "CI: Continuous Integration\n");
+        var absoluteOutput = PathIn(tmpDir, "outside/absolute.md");
+        var config = WriteFile(tmpDir, "config/dictionarymark.yaml", "root: ../other\n");
+        var allowed = PathIn(tmpDir, "config");
+
+        // Act
+        var rootExit = Runner.Run(
+            out _,
+            "dotnet", _dllPath, "--config", config, "--allow-root", allowed, "--root", PathIn(tmpDir, "cli-root"),
+            "--input", "terms.yaml", "--output", "relative.md");
+        var absoluteExit = Runner.Run(
+            out _,
+            "dotnet", _dllPath, "--config", config, "--allow-root", allowed, "--input", absoluteInput, "--output", absoluteOutput);
+
+        // Assert
+        Assert.Equal(0, rootExit);
+        Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "cli-root/relative.md")));
+        Assert.Equal(0, absoluteExit);
+        Assert.Contains("CI", File.ReadAllText(absoluteOutput));
     }
 }
