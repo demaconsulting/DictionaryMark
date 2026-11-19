@@ -86,7 +86,8 @@ command-line job when `--input` was given, or none.
 **UsesConfigTables**: `bool` — `true` when `Jobs` come from the configuration file's `tables`.
 
 **FileAccess**: `FileAccessPolicy` — The file-access policy that judges the inputs and outputs of
-configuration-table jobs, built from `--file-access` and `--allow-root`; default
+configuration-table jobs and the relative command-line paths a configuration `root` key moves, built
+from `--file-access` and `--allow-root`; default
 `FileAccessPolicy.AllowAll`. One policy per run, shared by every job.
 
 **ExitCode**: `int` — Computed property: returns `1` if `_hasErrors` is `true`, otherwise `0`.
@@ -105,8 +106,16 @@ configuration-table jobs, built from `--file-access` and `--allow-root`; default
 4. Build the file-access policy with `ReadFileAccess` (see below), with the configuration file as
    the only input whose folder joins the default roots. A mistake is reported here, before the
    configuration file or any input is read.
-5. If `--config` was given, load it with `ConfigFile.Load`, which resolves its `root` key as text
-   only (see *ConfigFile Design*).
+5. If `--config` was given, load it with
+   `ConfigFile.Load(path, allowEnvironmentVariables: ReferenceEquals(fileAccess, FileAccessPolicy.AllowAll))`. The
+   configuration file's content is untrusted, so `${VAR}` references in its `root`, `input` and `output` are
+   refused (see *ConfigFile Design*) whenever a file-access mode other than `any` is in effect. `ReadFileAccess`
+   returns exactly the `AllowAll` instance for no options and for `--file-access any`, and a different policy for
+   `roots`, `no-symlinks`, `roots,no-symlinks` and `--allow-root` (which implies `roots`), so this is the precise
+   test for "anything other than `any`", with no second parse of the mode. The paths typed on the command line
+   (`--config`, `--root`, `--input`, `--output`, `--log`, `--results`) are trusted and are expanded in every mode;
+   only the file is checked. The file is checked even when `--root` is given. The load also resolves its `root`
+   key as text only.
 6. Select the effective root: `--root`, else the configuration file's `RootDirectory`; and its text
    before normalization: `--root`, else the configuration file's `RootText`.
 7. Build the jobs (private `BuildJobs`). When the configuration file has tables, `--input` or
@@ -115,7 +124,11 @@ configuration-table jobs, built from `--file-access` and `--allow-root`; default
    where `baseText` is the root's text (or the configuration file's directory) chosen the same way. A
    column-width error from `TableJob.Create` is re-thrown with the `Config file '{path}': `
    prefix. Without tables, when `--input` was given, one command-line job
-   `TableJob.Create(null, inputs, output, base, [command line, config defaults])` is created.
+   `TableJob.Create(null, inputs, output, base, [command line, config defaults], baseText, rootFromConfig)`
+   is created, where `baseText` is the root's text (or the working directory) and `rootFromConfig`
+   is `true` when no `--root` was given and the configuration file has a `root` key; the job's
+   relative paths are then judged by the file-access policy (see *TableJob Design*), whereas with
+   `--root`, without a `root` key or without a configuration file the job stays trusted.
    The base directory comes from the private `SelectBaseDirectory(root, originDefault)`, which
    returns the root when set and otherwise the origin default (the configuration file's
    directory for table jobs, the working directory for the command-line job).

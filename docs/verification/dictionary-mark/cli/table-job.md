@@ -56,6 +56,17 @@ options unchanged. This scenario is tested by
 `table job 3 ('docs/out.md')` and keep its index and inputs; the command-line job must have no
 label or index. This scenario is tested by `TableJob_Create_Label_NamesIndexAndOutput`.
 
+**TableJob_IsJudged_ConfigTableJob_JudgesEveryPath**: A configuration-table job must judge a relative and an absolute
+path. This scenario is tested by `TableJob_IsJudged_ConfigTableJob_JudgesEveryPath`.
+
+**TableJob_IsJudged_CommandLineJobUnderConfigRoot_JudgesRelativePathsOnly**: A command-line job whose base directory is
+the configuration file's `root` key must judge a relative path and must not judge an absolute path. This scenario is
+tested by `TableJob_IsJudged_CommandLineJobUnderConfigRoot_JudgesRelativePathsOnly`.
+
+**TableJob_IsJudged_CommandLineJobWithoutConfigRoot_JudgesNothing**: A command-line job whose base directory is not the
+configuration file's `root` key must judge no path and report no judged paths. This scenario is tested by
+`TableJob_IsJudged_CommandLineJobWithoutConfigRoot_JudgesNothing`.
+
 **TableJob_Create_NoInputs_Throws**: An empty input list must be rejected (defensive contract).
 This scenario is tested by `TableJob_Create_NoInputs_Throws`.
 

@@ -111,3 +111,23 @@ rejected with `key 'root' must be a non-empty string`. This scenario is tested b
 
 **ConfigFile_Load_NoRoot_RootDirectoryIsNull**: Without a `root` key, `RootDirectory` is `null`.
 This scenario is tested by `ConfigFile_Load_NoRoot_RootDirectoryIsNull`.
+
+**ConfigFile_Load_EnvironmentReferencesNotAllowed_RootReference_ThrowsNamingFileAndKeyWithoutLeak**: With
+`allowEnvironmentVariables: false`, `root: ${VAR}/docs` is refused with `key 'root' must not contain environment
+variable references` after the file prefix; the message is identical when the variable is defined (with a distinctive
+value) and when it is undefined, contains neither the value nor the name, and is not the resolver's "is not defined"
+message (the check runs before the root is resolved). This scenario is tested by
+`ConfigFile_Load_EnvironmentReferencesNotAllowed_RootReference_ThrowsNamingFileAndKeyWithoutLeak`.
+
+**ConfigFile_Load_EnvironmentReferencesNotAllowed_InputReference_ThrowsNamingJobAndKey** and
+**ConfigFile_Load_EnvironmentReferencesNotAllowed_OutputReference_ThrowsNamingJobAndKey**: A reference in a string
+`input`, in a sequence `input`, and in an `output` (of an undefined variable) of the second job is refused naming
+`table job 2` and the key, without the variable name. These scenarios are tested by the tests of the same names.
+
+**ConfigFile_Load_EnvironmentReferencesNotAllowed_NoReferences_Loads**: With references not allowed, literal paths load
+as written, including `$NAME/b.yaml` and `%NAME%.md`, which are not references. This scenario is tested by
+`ConfigFile_Load_EnvironmentReferencesNotAllowed_NoReferences_Loads`.
+
+**ConfigFile_Load_EnvironmentReferencesAllowed_RootReferenceExpanded**: With `allowEnvironmentVariables: true`, a
+`root` reference is expanded and a job input keeps its reference as written. This scenario is tested by
+`ConfigFile_Load_EnvironmentReferencesAllowed_RootReferenceExpanded`.

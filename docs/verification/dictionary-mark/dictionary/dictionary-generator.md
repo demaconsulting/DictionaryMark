@@ -97,7 +97,8 @@ own job and the second job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_WildcardOutputFileNameOnWindows_ContinuesWithLaterJob`.
 
 **DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob**: Verifies that when the first job
-reads a syntactically malformed YAML file, the job is reported as invalid YAML naming the file, writes
+reads a syntactically malformed YAML file, the job is reported as invalid YAML naming the file as written
+(`Invalid YAML in file 'a.yaml':`, never its full path), writes
 no output, the exit code is 1, and the second job still writes its output. This scenario is tested by
 `DictionaryGenerator_Generate_MalformedYaml_ContinuesWithLaterJob`.
 
@@ -141,7 +142,8 @@ its existence is never probed. This scenario is tested by
 
 **DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound**: Test that a literal config input
 inside the allowed roots that does not exist (in a folder that does not exist either) fails its job with
-`Input file '{full path}' was not found.`, the resolver's outcome, and writes no output. This scenario is tested by
+`Input file 'sub/missing.yaml' was not found.` (the path as written, not the full path), the resolver's outcome, and
+writes no output. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound`.
 
 **DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_IsDeniedNotSkipped**: Test that a glob whose matches lie both
@@ -175,15 +177,98 @@ joined with the output as text before normalization. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigNetworkRootRelativeOutput_RefusedBeforeNormalization`.
 
 **DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError**: Test that a config input longer than the 16 MiB
-size limit is an ordinary read error. This scenario is tested by
+size limit is an ordinary read error, `Failed to read file 'big.yaml': The file 'big.yaml' is larger than the allowed
+size.`, naming the file as written and not by its full path. This scenario is tested by
 `DictionaryGenerator_Generate_ConfigInputOverSizeLimit_ReadError`.
+
+**DictionaryGenerator_Generate_ConfigInputOutsideRoots_MessageShowsWrittenPath**: Test that the denial of
+`../shared/terms.yaml` reads exactly `file-access-denied: The file '../shared/terms.yaml' was denied by the file-access
+policy 'roots'.` after the job label, and that neither the temporary folder nor `Path.GetTempPath()` appears. This
+scenario is tested by `DictionaryGenerator_Generate_ConfigInputOutsideRoots_MessageShowsWrittenPath`.
+
+**DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_MessageShowsMatchRelativeToBase**: Test that the denied
+match of `../*/terms-*.yaml` is shown as `../other/terms-b.yaml`, relative to the base directory, with no host path.
+This scenario is tested by `DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_MessageShowsMatchRelativeToBase`.
+
+**DictionaryGenerator_Generate_ConfigOutputOutsideRoots_MessageShowsWrittenPath**: Test that the denial of the output
+`../out/terms.md` shows it as written, with no host path, and that its folder is not created. This scenario is tested
+by `DictionaryGenerator_Generate_ConfigOutputOutsideRoots_MessageShowsWrittenPath`.
+
+**DictionaryGenerator_Generate_ConfigNetworkRootPattern_MessageShowsWrittenPattern**: Test that a relative input under
+a `root` naming `//dictionarymark-test.invalid/share` is refused as
+`Failed to resolve input pattern 'terms.yaml': The path 'terms.yaml' is not allowed: network paths are not permitted.`,
+without the host name (the pattern as written, not the root joined with it). This scenario is tested by
+`DictionaryGenerator_Generate_ConfigNetworkRootPattern_MessageShowsWrittenPattern`.
+
+**DictionaryGenerator_Generate_RootRelocatedCommandLineInputDenied_MessageShowsWrittenPath**: Test that a command-line
+`--input terms.yaml` that the configuration `root` key moves outside the allowed roots is denied as
+`Error: file-access-denied: The file 'terms.yaml' was denied by the file-access policy 'roots'.` (no job label) with
+no host path. This scenario is tested by
+`DictionaryGenerator_Generate_RootRelocatedCommandLineInputDenied_MessageShowsWrittenPath`.
+
+**DictionaryGenerator_Generate_ConfigInputsConflict_MessageShowsWrittenPaths**: Test that a conflict between two config
+inputs names them as `a.yaml and b.yaml`, not by full path. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigInputsConflict_MessageShowsWrittenPaths`.
+
+**DictionaryGenerator_Generate_ConfigOutputWriteFailure_MessageShowsWrittenPath**: Test that when the write of a config
+output fails because the output path names an existing folder, the message starts
+`Failed to write output file 'out.md':` and contains no host path (the operating system's quotation of the full path is
+redacted). This scenario is tested by `DictionaryGenerator_Generate_ConfigOutputWriteFailure_MessageShowsWrittenPath`.
+
+**DictionaryGenerator_Generate_TrustedAbsoluteInputMissing_MessageKeepsFullPath**: Test that a missing absolute
+command-line input is still reported with its full path. This scenario is tested by
+`DictionaryGenerator_Generate_TrustedAbsoluteInputMissing_MessageKeepsFullPath`.
 
 **DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne**: Test that a denied job fails only itself: the
 other jobs run and the exit code is 1. This scenario is tested by
 `DictionaryGenerator_Generate_DeniedJob_OtherJobsRunAndExitCodeIsOne`.
 
-**DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged**: Test that the command-line job is never judged by the
-file-access policy. This scenario is tested by `DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged`.
+**DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged**: Test that a command-line job whose paths no configuration
+`root` key relocates (here absolute paths, with `--allow-root` naming another folder) is not judged by the file-access
+policy. This scenario is tested by `DictionaryGenerator_Generate_CommandLineJob_IsNeverJudged`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedInputOutsideRoots_FileAccessDenied**: Test that a relative
+`--input` that the configuration `root` key moves outside the allowed folder is denied with `Error: file-access-denied:`
+and its content is not read. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedInputOutsideRoots_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedLiteralInputOutsideRoots_DeniedWithoutLookup**: Test that a relocated
+literal input outside the allowed folder that does not exist is denied, not reported as not found. This scenario is
+tested by `DictionaryGenerator_Generate_ConfigRootRelocatedLiteralInputOutsideRoots_DeniedWithoutLookup`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedGlobMatchOutsideRoots_IsDeniedNotSkipped**: Test that a relocated glob
+with one match inside and one outside the allowed folder is denied and produces no output. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedGlobMatchOutsideRoots_IsDeniedNotSkipped`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedOutputOutsideRoots_DeniedAndNothingCreated**: Test that a relative
+`--output` that the `root` key moves outside the allowed folder is denied and no file or folder is created. This
+scenario is tested by `DictionaryGenerator_Generate_ConfigRootRelocatedOutputOutsideRoots_DeniedAndNothingCreated`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedPathsInsideRoots_AreGenerated**: Test that relocated input and output
+inside the allowed folder are generated. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedPathsInsideRoots_AreGenerated`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedAbsolutePaths_StayTrusted**: Test that absolute inputs and output
+outside the allowed folder stay trusted under a `root` key, also in one job with an allowed relocated relative input.
+This scenario is tested by `DictionaryGenerator_Generate_ConfigRootRelocatedAbsolutePaths_StayTrusted`.
+
+**DictionaryGenerator_Generate_RootFlagWithConfigRoot_PathsStayTrusted**: Test that `--root` keeps relative command-line
+paths trusted even when the configuration file has a `root` key. This scenario is tested by
+`DictionaryGenerator_Generate_RootFlagWithConfigRoot_PathsStayTrusted`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedNetworkRoot_RefusedBeforeNormalization**: Test that a relative
+`--input` under a `root` key naming a network share is refused by the network-path rule before any lookup, in the
+default mode. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedNetworkRoot_RefusedBeforeNormalization`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedInputThroughLinkUnderNoSymlinks_FileAccessDenied**: Test that a
+relocated input reached through a directory link is denied under `no-symlinks` (skipped where links cannot be created).
+This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedInputThroughLinkUnderNoSymlinks_FileAccessDenied`.
+
+**DictionaryGenerator_Generate_ConfigRootRelocatedInputUnderAny_IsRead**: Test that in the default mode a relocated
+input outside the working directory is read, so the `root` key keeps working. This scenario is tested by
+`DictionaryGenerator_Generate_ConfigRootRelocatedInputUnderAny_IsRead`.
 
 **DictionaryGenerator_Generate_ConfigNetworkPatternForwardSlashes_RefusedBeforeListing**: Test that a config pattern
 naming a network share with forward slashes is refused by the network-path rule before any folder is listed (not with

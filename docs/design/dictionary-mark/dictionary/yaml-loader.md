@@ -68,6 +68,8 @@ them via `context.WriteError`, and returns without generating output.
 #### Callers
 
 - **DictionaryGenerator.Generate** — calls `YamlDictionaryLoader.Load(filePath)` (or `LoadDeprecated`) once per
-  resolved input file of the command-line job, and the content overloads once per input file of a configuration-table
-  job, with the bytes returned by the job's `FileReferenceResolver`; accumulates the returned lists for conflict
+  resolved input file of a job read by name (a command-line job, except the relative inputs a configuration `root` key
+  moves), and the content overloads once per judged input file (a configuration-table job, or a relative command-line
+  input moved by the configuration `root` key), with the bytes returned by the job's `FileReferenceResolver`;
+  accumulates the returned lists for conflict
   detection.

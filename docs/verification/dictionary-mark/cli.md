@@ -155,3 +155,22 @@ exit code. This scenario is tested by `CliSubsystem_FileAccessFlow_AllowRoot_Con
 **CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero**: Test that a mistake in the file-access options exits
 non-zero with its usage error before any job runs. This scenario is tested by
 `CliSubsystem_FileAccessFlow_InvalidOptions_ExitsNonZero`.
+
+**CliSubsystem_FileAccessFlow_ConfigRootRelocatedCommandLinePaths_AreJudged**: Test that with a configuration file that
+has a `root` key and no tables, a relative `--input` and a relative `--output` that the key moves outside the allowed
+folder each exit non-zero with file-access-denied and write nothing. This scenario is tested by
+`CliSubsystem_FileAccessFlow_ConfigRootRelocatedCommandLinePaths_AreJudged`.
+
+**CliSubsystem_FileAccessFlow_RootFlagOrAbsolutePaths_StayTrustedUnderConfigRoot**: Test that `--root`, and absolute
+`--input` and `--output` paths, stay trusted under a configuration `root` key: both runs succeed outside the allowed
+folder. This scenario is tested by `CliSubsystem_FileAccessFlow_RootFlagOrAbsolutePaths_StayTrustedUnderConfigRoot`.
+
+**CliSubsystem_RestrictiveModeConfigEnvironment_RefusedAndNothingCreated**: Test that for each restrictive spelling
+(`--file-access roots`, `no-symlinks`, `roots,no-symlinks` and `--allow-root .`) a configuration table whose output is
+named by a `${VAR}` holding a secret-looking value exits with code 1 and an error naming `key 'output'`, never shows the
+value, and creates no file for it. This scenario is tested by
+`CliSubsystem_RestrictiveModeConfigEnvironment_RefusedAndNothingCreated`.
+
+**CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore**: Test that with no file-access option and with
+`--file-access any` the same kind of reference is expanded and the output is written with exit code 0. This scenario is
+tested by `CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore`.

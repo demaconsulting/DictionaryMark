@@ -147,7 +147,8 @@ Merge entries from multiple YAML files:
 dictionarymark --input terms/*.yaml --input extra/more-terms.yaml --output docs/glossary.md
 ```
 
-Input patterns may contain `${VAR}` environment variables. A pattern that matches no file, a
+Input patterns may contain `${VAR}` environment variables (in a configuration file only when no restrictive file-access
+mode is in effect; see *File Access*). A pattern that matches no file, a
 literal file that does not exist and an undefined variable are all errors. For the tables of a
 configuration file, a literal input (one without wildcards) is not looked up in advance: it is read
 through the file-access checks (see *File Access*), which report a file that does not exist as
@@ -280,8 +281,10 @@ a bullet list.
   *Root Directory*.
 - `..` segments are allowed anywhere before the first wildcard, for example `../shared/*.yaml` or
   `sub/../../shared/*.yaml`.
-- `${VAR}` environment variables are expanded in the `--config` path and in every input and output
-  path. An undefined variable is an error.
+- `${VAR}` environment variables are expanded in the `--config` path and in every command-line input,
+  output, root, log and results path, in every file-access mode. In the configuration file's own `root`, `input` and
+  `output` they are expanded only in the default and `any` modes; any other mode refuses them (see *File Access*).
+  An undefined variable is an error.
 - A pattern that matches no file is an error for that job, and so is a literal input that does not
   exist (reported by the file-access checks; see *File Access*).
 - Missing parent directories of every output file are created (also for `--output` on the command
@@ -327,7 +330,8 @@ The base directory for a relative path is chosen as follows:
 | `--config`, `--log`, `--results` | Not affected | Not affected | Working directory |
 
 - A relative `--root` is resolved against the working directory; a relative `root` key is resolved
-  against the configuration file's directory. Both support `${VAR}` and `..`.
+  against the configuration file's directory. Both support `..`. The `--root` path supports `${VAR}` in every
+  mode; the `root` key supports it only in the default and `any` file-access modes (see *File Access*).
 - Absolute input and output paths ignore the root.
 - Neither root may contain wildcards. `--root` must be an existing directory, may be given only once
   and must not be empty. The `root` key is configuration content, so it is only the base that relative
@@ -335,20 +339,27 @@ The base directory for a relative path is chosen as follows:
   access to anything. A `root` key that does not exist, or that names a network share, makes each table
   that uses it fail through the file-access checks (its inputs are not found or are refused). The
   `root` key is checked for wildcards and undefined variables even when `--root` overrides it.
+- The `root` key is untrusted content. When it, and not `--root`, moves a relative `--input` pattern or `--output`
+  path from the command line, those relative paths are judged by the file-access mode like the paths of a table (see
+  *File Access*). Use an absolute path, or `--root`, to keep a command-line path outside that check.
 
 ## File Access
 
 The trust boundary is the command line. Everything you type there is trusted, including `--file-access`,
 `--allow-root`, `--root` and the `--config` path itself, and reading the configuration file is never judged. The
 content of the configuration file is not trusted, because it may come from a source you do not fully trust, for example
-a pull request or a shared repository. Everything that content names reaches the disk only through the file-access
-checks: DictionaryMark judges every input and output its tables name by a file-access mode, and its `root:` key only
-moves where relative table paths point (it never grants access, and the allowed folders never come from it). The one
+a pull request or a shared repository. Everything that content names, or moves, reaches the disk only through the
+file-access checks: DictionaryMark judges every input and output its tables name by a file-access mode, and its `root:`
+key only moves where relative paths point (it never grants access, and the allowed folders never come from it). The one
 accepted exception is listing the folders of a wildcard pattern, which happens only after the pattern has passed the
 rules that refuse network paths. The paths you name on the command line yourself (`--config`, `--input`, `--output`,
-`--log` and `--results`) are trusted and never judged.
+`--log` and `--results`) are trusted and not judged, with one exception: when you give no `--root` and the
+configuration file has a `root:` key (and no `tables`), a relative `--input` pattern or `--output` path is moved by that
+untrusted key, so it is judged exactly like a table input or output. Absolute `--input` and `--output` paths, every
+path when `--root` is given, every path when the configuration file has no `root:` key, and `--config`, `--log` and
+`--results` stay trusted.
 
-| Mode | What configuration tables may read and write |
+| Mode | What configuration tables, and the relative command-line paths a `root:` key moves, may read and write |
 | :--- | :--- |
 | `any` (default) | Every regular local file, as Pandoc does |
 | `roots` | Only files inside the allowed folders |
@@ -366,6 +377,13 @@ dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root .
 
 # The same, and refuse every symbolic link or junction
 dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-access roots,no-symlinks
+
+# A config file with only a root: key (no tables) moves a relative --input/--output, so they are judged as well;
+# this is denied when the root: key points outside the --allow-root folder
+dictionarymark --config tools/dictionarymark.yaml --allow-root . --input "terms.yaml" --output out.md
+
+# --root (or an absolute path) keeps the command-line path trusted and not judged
+dictionarymark --config tools/dictionarymark.yaml --allow-root . --root ../other --input "terms.yaml"
 ```
 
 How the files are judged:
@@ -380,7 +398,10 @@ How the files are judged:
   at the output path that cannot be opened (for example a dangling link) is refused, and so is an output below a
   dangling folder link.
 - The `no-symlinks` rule trusts the configuration file's folder and the folders above it; a link below it is refused.
-- `--root` and the configuration `root:` key move the base of relative paths, but never widen the allowed folders.
+- `--root` and the configuration `root:` key move the base of relative paths, but never widen the allowed folders. The
+  allowed folders are the same for a table and for a relative command-line path that a `root:` key moves.
+- A denial of a relative command-line path that a `root:` key moves is reported as `Error: file-access-denied: ...`
+  (without a table job label), the run writes nothing and the exit code is non-zero.
 
 Under every mode, including the default `any`, these are refused for configuration tables: network paths
 (`\\server\share` and `//host`), device paths (and on Windows reserved names such as `NUL`, `CON` or `COM1` in any part
@@ -392,7 +413,7 @@ error.
 A table whose input or output the file-access mode denies fails with `file-access-denied`:
 
 ```text
-Error: table job 2 ('../out/table.md'): file-access-denied: The file 'C:\repo\out\table.md' was denied by the
+Error: table job 2 ('../out/table.md'): file-access-denied: The file '../out/table.md' was denied by the
 file-access policy 'roots'. Allow the file in the file-access policy, or reference a file it allows.
 ```
 
@@ -408,6 +429,38 @@ Either way the table writes nothing, the other tables still run, and the exit co
 
 A mistake in the options (an unknown mode, `--allow-root` with `any` or `no-symlinks`, or an `--allow-root` folder
 that does not exist) is reported before any input is read.
+
+### Environment Variables in the Configuration File
+
+Because the content of the configuration file is untrusted, a `${VAR}` environment-variable reference in its `root`
+key, in a table `input` or in a table `output` would let it read the environment of the process (for example a secret
+that CI keeps in a variable) and leak it through the name of a file it creates or through an error message. So under
+every mode except `any` - that is `roots`, `no-symlinks`, `roots,no-symlinks`, and `--allow-root`, which implies
+`roots` - such a reference is refused when the file is loaded, before any input is read and before anything is
+created. The run stops with exit code 1 and an error that names the file, the job and the key:
+
+```text
+Error: Config file 'C:\repo\docs\glossary\dictionarymark.yaml': table job 1: key 'output' must not contain environment
+variable references such as '${NAME}' while a restrictive file-access mode is in effect (--file-access roots or
+no-symlinks, or --allow-root); write the path literally or run with --file-access any
+```
+
+The error never shows the name or the value of the variable, nor whether it is defined, so it cannot be used to probe
+the environment. To fix it, write the path literally, or, if you trust the file, run with `--file-access any` (or
+without a file-access option), where `${VAR}` is expanded as before. The refusal applies even when `--root` is given,
+because the configuration file is loaded and checked regardless. Paths you type on the command line (`--config`,
+`--root`, `--input`, `--output`, `--log` and `--results`) are trusted and keep expanding `${VAR}` in every mode.
+
+### Paths in Messages
+
+A message about a path that the configuration file names, or that its `root:` key moves, shows the path as it was
+written, never the absolute path on the machine, so a message that is shown to the author of the file does not reveal
+where the checkout, the working directory or the temporary folders are. This covers the `file-access-denied` and the
+read and write errors, `Input file '...' was not found.`, invalid YAML, conflicts between inputs, and failures writing
+an output. A literal input is shown as written (`../other/terms.yaml`); a glob match is shown relative to the table's
+base directory with `/` separators (`../other/terms-b.yaml`), or in full when the pattern itself is an absolute path;
+an output is shown as written. A path that you type on the command line is shown in full, as before. The error text of
+the operating system is not rewritten where it names other folders, for example a missing parent folder of an output.
 
 Known limits:
 
@@ -545,8 +598,8 @@ The following command-line options are supported:
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths, for example `25,75` |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file (once only) |
 | `--root <dir>` | Base directory for relative input and output paths (once only) |
-| `--file-access <mode>` | Files configuration tables may use: `any` (default), `roots`, `no-symlinks` or both |
-| `--allow-root <dir>` | A folder configuration tables may use (repeatable; implies `roots`) |
+| `--file-access <mode>` | File-access mode for tables and `root:`-moved paths (default `any`; see File Access) |
+| `--allow-root <dir>` | A folder those files may be in (repeatable; implies `roots`) |
 
 # Examples
 

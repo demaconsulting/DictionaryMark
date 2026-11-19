@@ -186,6 +186,59 @@ public class TableJobTests
         Assert.Throws<ArgumentException>(() => TableJob.Create(1, [], "out.md", BaseDirectory, []));
     }
 
+    /// <summary>Test that a config-table job judges every path, relative or absolute.</summary>
+    [Fact]
+    public void TableJob_IsJudged_ConfigTableJob_JudgesEveryPath()
+    {
+        // Arrange: a configuration-table job
+        var job = TableJob.Create(1, ["a.yaml"], "out.md", BaseDirectory, []);
+
+        // Act: ask about a relative and an absolute path
+        var relative = job.IsJudged("a.yaml");
+        var absolute = job.IsJudged(Path.GetFullPath("a.yaml"));
+
+        // Assert: both are judged and the job has judged paths
+        Assert.True(relative);
+        Assert.True(absolute);
+        Assert.True(job.HasJudgedPaths);
+    }
+
+    /// <summary>Test that a command-line job under the config root judges only the relative paths.</summary>
+    [Fact]
+    public void TableJob_IsJudged_CommandLineJobUnderConfigRoot_JudgesRelativePathsOnly()
+    {
+        // Arrange: a command-line job whose base directory is the config file's root key
+        var job = TableJob.Create(null, ["a.yaml"], "out.md", BaseDirectory, [], null, true);
+
+        // Act: ask about a relative and an absolute path
+        var relative = job.IsJudged("a.yaml");
+        var absolute = job.IsJudged(Path.GetFullPath("a.yaml"));
+
+        // Assert: only the path the root key would move is judged
+        Assert.True(relative);
+        Assert.False(absolute);
+        Assert.True(job.RelativePathsJudged);
+        Assert.True(job.HasJudgedPaths);
+    }
+
+    /// <summary>Test that a command-line job without a config root judges nothing.</summary>
+    [Fact]
+    public void TableJob_IsJudged_CommandLineJobWithoutConfigRoot_JudgesNothing()
+    {
+        // Arrange: a command-line job whose base directory is not the config file's root key
+        var job = TableJob.Create(null, ["a.yaml"], "out.md", BaseDirectory, []);
+
+        // Act: ask about a relative and an absolute path
+        var relative = job.IsJudged("a.yaml");
+        var absolute = job.IsJudged(Path.GetFullPath("a.yaml"));
+
+        // Assert: nothing is judged
+        Assert.False(relative);
+        Assert.False(absolute);
+        Assert.False(job.RelativePathsJudged);
+        Assert.False(job.HasJudgedPaths);
+    }
+
     /// <summary>Test that the non-null members of the higher layer win in a merge.</summary>
     [Fact]
     public void FormattingSettings_Over_NonNullWins()

@@ -81,3 +81,16 @@ before they are looked up: with the configuration folder as the only allowed roo
 table with `file-access-denied`, a missing file inside it fails its table with `Input file '...' was not found.`, and a
 third table still generates its output. This scenario is tested by
 `DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup`.
+
+**DictionarySubsystem_FileAccess_ConfigRootRelocatedCommandLineJob_DeniedOutsideRoots**: Test that the dictionary
+subsystem judges the relative command-line paths that a configuration `root` key relocates: an input and an output
+moved outside the allowed folder fail with a non-zero exit code and write nothing. This scenario is tested by
+`DictionarySubsystem_FileAccess_ConfigRootRelocatedCommandLineJob_DeniedOutsideRoots`.
+
+**DictionarySubsystem_FileAccess_DeniedConfigPaths_MessagesShowWrittenPaths**: Test that a denied table input
+(`../other/more.yaml`), a denied glob match (`../other/*.yaml`) and a denied output (`../out/c.md`) are each reported as
+`file-access-denied` with the path as written (the glob match relative to the base directory) after the job label, with
+no part of the temporary folder in the output, and that the denied output's folder was not created. The inside-roots
+missing input of `DictionarySubsystem_FileAccess_LiteralInputs_JudgedBeforeLookup` is reported as
+`Input file 'missing.yaml' was not found.` without the allowed folder. These scenarios are tested by the tests of the
+same names.

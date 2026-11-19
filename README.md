@@ -142,12 +142,13 @@ dictionarymark --input glossary.yaml --format table --section "Glossary" --outpu
 | `--column-widths <w1,w2[,w3]>` | Relative table column widths (e.g. `25,75`) |
 | `--config <file>` | Read formatting defaults and table jobs from a YAML file |
 | `--root <dir>` | Base directory for relative input and output paths |
-| `--file-access <mode>` | Files `--config` tables may use: `any`, `roots`, `no-symlinks`, `roots,no-symlinks` |
-| `--allow-root <dir>` | Folder `--config` tables may use (repeatable; implies `roots`) |
+| `--file-access <mode>` | Files tables and `root:` paths may use: `any`, `roots`, `no-symlinks`, `roots,no-symlinks` |
+| `--allow-root <dir>` | Folder those files may be in (repeatable; implies `roots`) |
 
 Missing parent directories of output files are created. Input patterns may use `..` segments before
 the first wildcard (for example `../shared/*.yaml`), and input and output paths may contain `${VAR}`
-environment variables.
+environment variables (in a configuration file only when no restrictive file-access mode is in effect; see
+File Access).
 
 ### Examples
 
@@ -337,7 +338,8 @@ dictionarymark --config docs/glossary/dictionarymark.yaml
   command line. **With `tables`**, `--input` and `--output` are errors; `--silent` and `--log` are
   allowed.
 - **Paths** in the file are relative to the file's directory (unless a root directory is set), may use
-  `..` and `${VAR}`, and missing output directories are created.
+  `..`, and missing output directories are created. They may use `${VAR}` only in the default and `any`
+  file-access modes; any other mode refuses them (see File Access).
 - **Errors**: unknown or misplaced keys (for example `log` or `input` at the top level) are reported
   with the key, the job and the file. Every job runs; each failing job is reported as
   `table job {n} ('{output}')`, and the exit code is non-zero if any job failed.
@@ -362,17 +364,28 @@ ignore the root, and `--config`, `--log` and `--results` are never resolved agai
 exist. The configuration `root:` is only the base that relative job paths are combined with: it is
 resolved as text and never checked on disk, so a `root:` that does not exist (or names a network share)
 makes the tables that use it fail through the file-access checks below (not found, or refused). Both
-support `${VAR}` and `..`, and neither may contain wildcards.
+support `..`, and neither may contain wildcards. The command-line `--root` supports `${VAR}` in every mode; the
+configuration `root:` supports it only in the default and `any` modes (see File Access).
+
+A `root:` key in the configuration file is untrusted content, so when it (and not `--root`) moves a relative
+`--input` pattern or `--output` path from the command line, those relative paths are judged by the file-access mode
+exactly like the paths of a table (see File Access below). Give an absolute path, or use `--root`, to keep a
+command-line path outside that check.
 
 ### File Access
 
 The command line is trusted: every option, including `--config`, `--file-access`, `--allow-root` and `--root`, is
 taken as given, and reading the configuration file itself is never judged. The content of the configuration file is
 not trusted, because it may come from a source you do not fully trust (for example a pull request). Everything it
-names, including its `root:` key, reaches the disk only through the file-access checks: its table inputs (each literal
+names, or moves, reaches the disk only through the file-access checks: its table inputs (each literal
 input and every match of every glob) and outputs are judged by a file-access mode, and `root:` only moves where its
 relative paths point. The paths you name on the command line (`--config`, `--input`, `--output`, `--log`,
-`--results`) are never judged.
+`--results`) are not judged, with one exception: when no `--root` is given and the configuration file has a `root:`
+key (and no `tables`), a *relative* `--input` pattern or `--output` path is moved by that untrusted key, so it is
+judged exactly like a table input or output (every literal input and glob match, the output before anything is
+written, a refusal reported as `file-access-denied` with a non-zero exit code). Absolute `--input` and `--output`
+paths, every path when `--root` is given, every path when the configuration file has no `root:`, and `--config`,
+`--log` and `--results` stay trusted.
 
 ```pwsh
 # Confine the tables of a configuration file to the repository folder
@@ -384,23 +397,40 @@ dictionarymark --config docs/glossary/dictionarymark.yaml --allow-root . --file-
 
 - `any` (the default) allows every regular local file, as Pandoc does.
 - `roots` allows only files inside the `--allow-root` folders, or, without `--allow-root`, inside the working
-  directory and the configuration file's folder. `--root` and the configuration `root:` key never widen it.
+  directory and the configuration file's folder. `--root` and the configuration `root:` key never widen it. These are
+  the same folders for a table and for a relative command-line path that a `root:` key moves.
 - `no-symlinks` refuses a file reached through a symbolic link or junction below the configuration file's folder.
+- `roots,no-symlinks` applies both rules (the two may be given in either order). The mode governs the inputs and
+  outputs of the configuration tables and also the relative command-line `--input` and `--output` paths that a `root:`
+  key moves.
 
-Under every mode, network paths, device paths (and on Windows reserved names such as `NUL`), a colon outside a Windows
-drive, control characters, and anything that is not a regular file are refused, and each input is read up to 16 MiB.
-A table whose input or output the file-access mode denies fails with `file-access-denied`; a table that breaks one of
-the rules above (or names a file over 16 MiB) fails with the ordinary `Failed to read file` or
-`Failed to write output file` error, which names the rule. Either way the table writes nothing, the other tables still
-run, and the exit code is non-zero. Known limits: a hard link cannot be told apart from its file; the output check is
+Because the configuration file is untrusted, a `${VAR}` environment-variable reference in its `root:` key, in a table
+`input` or in a table `output` would let it read your environment (for example a secret held in a variable) and leak it
+through a file name or a message. So under every mode except `any` (`roots`, `no-symlinks`, `roots,no-symlinks`, and
+`--allow-root`, which implies `roots`), such a reference is refused when the file is loaded, before anything is read or
+created: the run stops with an error that names the file, the job and the key, for example
+`Config file '...': table job 1: key 'output' must not contain environment variable references such as '${NAME}' ...`.
+The error never shows a variable name or value, or whether the variable is set. Write the path literally, or run with
+`--file-access any` if you trust the file. Under the default and `any` modes nothing changes. The paths you type on the
+command line (`--config`, `--root`, `--input`, `--output`, `--log`, `--results`) keep expanding `${VAR}` in every mode.
+The refusal applies even when `--root` is given, because the file is loaded and checked regardless. Under every mode,
+network paths, device paths (and on Windows reserved names such as `NUL`), a colon outside a Windows drive, control
+characters, and anything that is not a regular file are refused, and each input is read up to 16 MiB. A table whose
+input or output the file-access mode denies fails with `file-access-denied`; a table that breaks one of the rules above
+(or names a file over 16 MiB) fails with the ordinary `Failed to read file` or `Failed to write output file` error,
+which names the rule. Either way the table writes nothing, the other tables still run, and the exit code is non-zero. A
+message about a path that the configuration file names, or that its `root:` key moves, shows the path as written in the
+file (a glob match relative to the table's base directory, for example `../other/terms.yaml`), never the absolute path
+on the machine, so the message does not reveal where the checkout or the working directory is; paths typed on the
+command line are shown in full as before. Known limits: operating-system error text that names other folders (for
+example a missing parent folder) is not rewritten; a hard link cannot be told apart from its file; the output check is
 not race-proof (the write follows by name); a literal configuration input is judged before it is looked up, so its
 existence is never revealed outside the allowed folders; a configuration input pattern that breaks one of the rules
-above (such as a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but
-listing the local folders of a wildcard pattern can reveal file names outside the allowed folders before the match is
-refused, although no content is read; and an `--allow-root` folder must exist when the run starts. Whether a file is
-inside an allowed folder is decided by the letter case stored on disk, so a folder named in another letter case works
-where the file system ignores case, while a folder that differs only in letter case on a case-sensitive file system
-stays outside.
+above (such as a network or URL-like pattern) is refused before anything is listed, so no host is contacted, but listing
+the local folders of a wildcard pattern can reveal file names outside the allowed folders before the match is refused,
+although no content is read; and an `--allow-root` folder must exist when the run starts. Whether a file is inside an
+allowed folder is decided by the letter case stored on disk, so a folder named in another letter case works where the
+file system ignores case, while a folder that differs only in letter case on a case-sensitive file system stays outside.
 See the User Guide for details.
 
 ### Conflicts
@@ -408,7 +438,8 @@ See the User Guide for details.
 The same term in several files is fine when the entries are identical. Entries that differ in `definition`, `pos`,
 `variants` or `visible` are an error naming the term, the differing fields and both files, for example
 `Error: Conflict: term 'API' differs in definition between <file A> and <file B>.` Approved-versus-deprecated conflicts
-are not checked by DictionaryMark; Ste100Mark enforces them. Input paths may contain `${VAR}` environment variables, and
+are not checked by DictionaryMark; Ste100Mark enforces them. Input paths may contain `${VAR}` environment variables
+(see File Access for the restrictive modes), and
 a pattern that matches no file is an error.
 
 ## Building

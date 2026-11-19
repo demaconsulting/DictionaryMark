@@ -960,6 +960,199 @@ public class ContextTests
         }
     }
 
+    /// <summary>
+    ///     Test that a restrictive file-access mode (each spelling, and the mode implied by --allow-root) refuses a
+    ///     ${VAR} reference in the config file's table output, naming the file, job and key but never the variable's
+    ///     name or value, and creates nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("--file-access", "roots")]
+    [InlineData("--file-access", "no-symlinks")]
+    [InlineData("--file-access", "roots,no-symlinks")]
+    [InlineData("--allow-root", ".")]
+    public void Context_Create_RestrictiveModeWithEnvironmentOutput_ThrowsWithoutLeak(string option, string value)
+    {
+        // Arrange: a table output that would expand to a secret-named file; the variable is defined
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var path = WriteConfig(tmpDir, "tables:\n  - input: a.yaml\n    output: ${" + VariableName + "}.md\n");
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        try
+        {
+            // Act
+            var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", path, option, value]));
+
+            // Assert: refused naming file, job and key; nothing leaked or created
+            Assert.StartsWith($"Config file '{path}': table job 1: key 'output' must not contain environment variable references", ex.Message);
+            Assert.DoesNotContain(secret, ex.Message);
+            Assert.DoesNotContain(VariableName, ex.Message);
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(path)!, secret + ".md")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a restrictive file-access mode refuses a ${VAR} reference in the config file's table input.
+    /// </summary>
+    [Theory]
+    [InlineData("--file-access", "roots")]
+    [InlineData("--file-access", "no-symlinks")]
+    [InlineData("--file-access", "roots,no-symlinks")]
+    [InlineData("--allow-root", ".")]
+    public void Context_Create_RestrictiveModeWithEnvironmentInput_ThrowsWithoutLeak(string option, string value)
+    {
+        // Arrange: a table input that references a defined variable
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var path = WriteConfig(tmpDir, "tables:\n  - input: ${" + VariableName + "}/*.yaml\n    output: a.md\n");
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        try
+        {
+            // Act
+            var ex = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", path, option, value]));
+
+            // Assert: refused naming file, job and key; nothing leaked
+            Assert.StartsWith($"Config file '{path}': table job 1: key 'input' must not contain environment variable references", ex.Message);
+            Assert.DoesNotContain(secret, ex.Message);
+            Assert.DoesNotContain(VariableName, ex.Message);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that a restrictive file-access mode refuses a ${VAR} reference in the config file's root key, and
+    ///     that the answer does not depend on whether the variable is defined.
+    /// </summary>
+    [Theory]
+    [InlineData("--file-access", "roots")]
+    [InlineData("--file-access", "no-symlinks")]
+    [InlineData("--file-access", "roots,no-symlinks")]
+    [InlineData("--allow-root", ".")]
+    public void Context_Create_RestrictiveModeWithEnvironmentRoot_ThrowsWhetherDefinedOrNot(string option, string value)
+    {
+        // Arrange: a root that references a variable
+        using var tmpDir = new TemporaryDirectory();
+        var secret = "DM_SECRET_" + Guid.NewGuid().ToString("N");
+        var path = WriteConfig(tmpDir, "root: ${" + VariableName + "}\n" + OneTableConfig);
+
+        // Act: once with the variable defined, once undefined
+        Environment.SetEnvironmentVariable(VariableName, secret);
+        string defined;
+        try
+        {
+            defined = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", path, option, value])).Message;
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+
+        var undefined = Assert.Throws<InvalidOperationException>(() => Context.Create(["--config", path, option, value])).Message;
+
+        // Assert: the same refusal, which reveals neither the value nor whether the variable is defined
+        Assert.StartsWith($"Config file '{path}': key 'root' must not contain environment variable references", defined);
+        Assert.Equal(defined, undefined);
+        Assert.DoesNotContain(secret, defined);
+        Assert.DoesNotContain("is not defined", undefined);
+    }
+
+    /// <summary>
+    ///     Test that the refusal also applies when the config root key would relocate a command-line --input and
+    ///     --output (the load fails, so no relocated path is ever judged or created), and when --root overrides it.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Context_Create_RootsWithEnvironmentRootAndCommandLinePaths_Throws(bool withCommandLineRoot)
+    {
+        // Arrange: a config whose root references a variable, with command-line input and output (and --root or not)
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "root: ${" + VariableName + "}\n");
+        var args = new List<string> { "--config", path, "--file-access", "roots", "--input", "a.yaml", "--output", "a.md" };
+        if (withCommandLineRoot)
+        {
+            args.AddRange(["--root", tmpDir.DirectoryPath]);
+        }
+
+        // Act / Assert: refused naming the config file and the root key
+        var ex = Assert.Throws<InvalidOperationException>(() => Context.Create([.. args]));
+        Assert.StartsWith($"Config file '{path}': key 'root' must not contain environment variable references", ex.Message);
+    }
+
+    /// <summary>
+    ///     Test that with no file-access option, and with --file-access any, ${VAR} references in the config file's
+    ///     root, input and output are accepted and expanded exactly as before.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Context_Create_AnyModeWithEnvironmentConfigPaths_Expands(bool explicitAny)
+    {
+        // Arrange: a config that uses a variable in its root, input and output
+        using var tmpDir = new TemporaryDirectory();
+        using var rootDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir,
+            "root: ${" + VariableName + "}\ntables:\n  - input: ${" + VariableName + "}/a.yaml\n    output: ${" + VariableName + "}/a.md\n");
+        Environment.SetEnvironmentVariable(VariableName, rootDir.DirectoryPath);
+        try
+        {
+            // Act
+            using var context = explicitAny
+                ? Context.Create(["--config", path, "--file-access", "any"])
+                : Context.Create(["--config", path]);
+
+            // Assert: the root is expanded and the job keeps its paths as written for expansion when it runs
+            var job = Assert.Single(context.Jobs);
+            Assert.Equal(Path.GetFullPath(rootDir.DirectoryPath), context.RootDirectory);
+            Assert.Equal(["${" + VariableName + "}/a.yaml"], job.InputPatterns);
+            Assert.Equal("${" + VariableName + "}/a.md", job.OutputFile);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
+    /// <summary>
+    ///     Test that command-line paths (--config, --root, --input, --output) still expand ${VAR} under a restrictive
+    ///     mode: only the untrusted config file content is refused.
+    /// </summary>
+    [Fact]
+    public void Context_Create_RootsWithCommandLineEnvironmentPaths_StillExpanded()
+    {
+        // Arrange: a variable naming the temporary directory, used in every command-line path
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "format: table\n");
+        Environment.SetEnvironmentVariable(VariableName, tmpDir.DirectoryPath);
+        try
+        {
+            // Act
+            using var context = Context.Create([
+                "--config", "${" + VariableName + "}/config/dictionarymark.yaml",
+                "--file-access", "roots",
+                "--root", "${" + VariableName + "}",
+                "--input", "${" + VariableName + "}/a.yaml",
+                "--output", "${" + VariableName + "}/a.md"]);
+
+            // Assert: the config path and root were expanded; the job's paths are expanded when it runs, not refused
+            Assert.Equal(path, context.ConfigFilePath);
+            Assert.Equal(Path.GetFullPath(tmpDir.DirectoryPath), context.RootDirectory);
+            var job = Assert.Single(context.Jobs);
+            Assert.Equal(["${" + VariableName + "}/a.yaml"], job.InputPatterns);
+            Assert.NotSame(FileAccessPolicy.AllowAll, context.FileAccess);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(VariableName, null);
+        }
+    }
+
     /// <summary>Test that --root sets the root directory.</summary>
     [Fact]
     public void Context_Create_RootFlag_SetsRootDirectory()
@@ -1161,6 +1354,82 @@ public class ContextTests
 
         // Assert
         Assert.Equal(root, Assert.Single(context.Jobs).BaseDirectory);
+    }
+
+    /// <summary>Test that a config root key without tables marks the relative command-line paths as judged.</summary>
+    [Fact]
+    public void Context_Create_ConfigRootWithoutTables_CommandLineJobPathsAreJudged()
+    {
+        // Arrange: a config with a root key and no tables
+        using var tmpDir = new TemporaryDirectory();
+        CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root\n");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--input", "a.yaml"]);
+
+        // Assert: the command-line job's relative paths are judged
+        var job = Assert.Single(context.Jobs);
+        Assert.True(job.RelativePathsJudged);
+        Assert.True(job.HasJudgedPaths);
+        Assert.True(job.IsJudged("a.yaml"));
+        Assert.False(job.IsJudged(Path.GetFullPath("a.yaml")));
+    }
+
+    /// <summary>Test that --root keeps the command-line job trusted even when the config has a root key.</summary>
+    [Fact]
+    public void Context_Create_ConfigRootAndRootFlag_CommandLineJobStaysTrusted()
+    {
+        // Arrange: a config with a root key and no tables, and --root naming another directory
+        using var tmpDir = new TemporaryDirectory();
+        CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root\n");
+        var root = CreateDirectory(tmpDir, "cli-root");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--root", root, "--input", "a.yaml"]);
+
+        // Assert: the command-line job is trusted
+        var job = Assert.Single(context.Jobs);
+        Assert.False(job.RelativePathsJudged);
+        Assert.False(job.HasJudgedPaths);
+        Assert.False(job.IsJudged("a.yaml"));
+    }
+
+    /// <summary>Test that the command-line job stays trusted without a config root key or without a config file.</summary>
+    [Fact]
+    public void Context_Create_ConfigWithoutRoot_CommandLineJobStaysTrusted()
+    {
+        // Arrange: a config without a root key and without tables
+        using var tmpDir = new TemporaryDirectory();
+        var path = WriteConfig(tmpDir, "format: table\n");
+
+        // Act: one run with the config, one without any config
+        using var withConfig = Context.Create(["--config", path, "--input", "a.yaml"]);
+        using var withoutConfig = Context.Create(["--input", "a.yaml"]);
+
+        // Assert: neither command-line job judges any path
+        Assert.False(Assert.Single(withConfig.Jobs).HasJudgedPaths);
+        Assert.False(Assert.Single(withoutConfig.Jobs).HasJudgedPaths);
+    }
+
+    /// <summary>Test that the command-line job keeps the config root's text before normalization.</summary>
+    [Fact]
+    public void Context_Create_ConfigRoot_CommandLineJobKeepsRootTextBeforeNormalization()
+    {
+        // Arrange: a root key with relative segments that normalization collapses
+        using var tmpDir = new TemporaryDirectory();
+        var root = CreateDirectory(tmpDir, "config-root");
+        var path = WriteConfig(tmpDir, "root: ../config-root/../config-root\n");
+
+        // Act
+        using var context = Context.Create(["--config", path, "--input", "a.yaml"]);
+
+        // Assert: the text keeps the ".." segments; the base directory is normalized
+        var job = Assert.Single(context.Jobs);
+        Assert.Equal(root, job.BaseDirectory);
+        Assert.Contains("..", job.BaseDirectoryText);
+        Assert.NotEqual(job.BaseDirectory, job.BaseDirectoryText);
     }
 
     /// <summary>Test that, without a root, config table jobs use the config file's directory.</summary>

@@ -447,7 +447,8 @@ public class DictionaryGeneratorTests
 
         // Assert: the malformed file is reported against the first job, which wrote nothing; the second job still ran
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Error: table job 1 ('a.md'): Invalid YAML in file '{malformed}':", err);
+        Assert.Contains("Error: table job 1 ('a.md'): Invalid YAML in file 'a.yaml':", err);
+        Assert.DoesNotContain(malformed, err);
         Assert.Contains("Error: 1 of 2 table jobs failed.", err);
         Assert.False(File.Exists(tmpDir.GetFilePath(Path.Combine("config", "a.md"))));
         Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
@@ -472,7 +473,8 @@ public class DictionaryGeneratorTests
 
         // Assert: the malformed file is reported against the first job; the second job still wrote its output
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Error: table job 1 ('old.md'): Invalid YAML in file '{malformed}':", err);
+        Assert.Contains("Error: table job 1 ('old.md'): Invalid YAML in file 'old.yaml':", err);
+        Assert.DoesNotContain(malformed, err);
         Assert.Contains("- **Beta**: Second", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("config", "b.md"))));
     }
 
@@ -621,8 +623,184 @@ public class DictionaryGeneratorTests
     }
 
     /// <summary>
+    ///     Test that the denial of a config input outside the allowed roots names the path as written in the config,
+    ///     never the absolute path on the host.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputOutsideRoots_MessageShowsWrittenPath()
+    {
+        // Arrange: the input is written as ../shared/terms.yaml and lies outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("shared", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../shared/terms.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the message shows the path as written and nothing of the host layout
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "Error: table job 1 ('out.md'): file-access-denied: The file '../shared/terms.yaml' was denied by the file-access policy 'roots'.",
+            err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+        Assert.DoesNotContain(Path.GetTempPath(), err);
+    }
+
+    /// <summary>
+    ///     Test that the denial of a glob match outside the allowed roots names the match relative to the job's base
+    ///     directory, never the absolute path on the host.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigGlobMatchOutsideRoots_MessageShowsMatchRelativeToBase()
+    {
+        // Arrange: matches in the config folder (allowed) and a sibling folder (denied)
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms-a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms-b.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: ../*/terms-*.yaml\n    output: out.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: the denied match is shown relative to the base directory
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: The file '../other/terms-b.yaml' was denied by the file-access policy 'roots'.", err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+        Assert.False(File.Exists(Path.Combine(root, "out.md")));
+    }
+
+    /// <summary>
+    ///     Test that the denial of a config output outside the allowed roots names the output as written and creates
+    ///     nothing.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigOutputOutsideRoots_MessageShowsWrittenPath()
+    {
+        // Arrange: the output is written as ../out/terms.md, outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: ../out/terms.md\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
+
+        // Assert: refused with the output as written; the folder was not created
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied: The file '../out/terms.md' was denied by the file-access policy 'roots'.", err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+        Assert.False(Directory.Exists(tmpDir.GetFilePath("out")));
+    }
+
+    /// <summary>
+    ///     Test that a refusal by a path-text rule (a network share named by the config root) shows the input pattern
+    ///     as written, not the root joined with it.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigNetworkRootPattern_MessageShowsWrittenPattern()
+    {
+        // Arrange: a root naming a network share, and a relative input
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "root: \"//dictionarymark-test.invalid/share\"\ntables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--file-access", "roots");
+
+        // Assert: the rule is reported against the pattern as written; the host name is not echoed
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to resolve input pattern 'terms.yaml': The path 'terms.yaml' is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("dictionarymark-test.invalid", err);
+    }
+
+    /// <summary>
+    ///     Test that a command-line input that the config root key relocates is judged and denied with the path as
+    ///     written on the command line, not the absolute path it was relocated to.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_RootRelocatedCommandLineInputDenied_MessageShowsWrittenPath()
+    {
+        // Arrange: the config root key moves the base to a folder outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var root = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", root, "--input", "terms.yaml");
+
+        // Assert: denied, showing the path as written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Error: file-access-denied: The file 'terms.yaml' was denied by the file-access policy 'roots'.", err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+    }
+
+    /// <summary>
+    ///     Test that a conflict between two config inputs names both files as written, not by absolute path.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigInputsConflict_MessageShowsWrittenPaths()
+    {
+        // Arrange: two inputs that define the same term differently
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "a.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "b.yaml")), "Alpha: Second\n");
+        var config = WriteConfig(tmpDir, "tables:\n  - input: [a.yaml, b.yaml]\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the conflict names the files as written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Conflict: term 'Alpha' differs in definition between a.yaml and b.yaml.", err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+    }
+
+    /// <summary>
+    ///     Test that an operating-system failure while writing a config output names the output as written, not the
+    ///     absolute path the operating system quotes.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigOutputWriteFailure_MessageShowsWrittenPath()
+    {
+        // Arrange: the output path names an existing directory, so the write fails
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "Alpha: First\n");
+        Directory.CreateDirectory(tmpDir.GetFilePath(Path.Combine("config", "out.md")));
+        var config = WriteConfig(tmpDir, "tables:\n  - input: terms.yaml\n    output: out.md\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config);
+
+        // Assert: the failure is reported against the output as written
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to write output file 'out.md':", err);
+        Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+    }
+
+    /// <summary>
+    ///     Test that a trusted command-line input that does not exist is still reported with its full path: only
+    ///     paths supplied by the config file are shown as written.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_TrustedAbsoluteInputMissing_MessageKeepsFullPath()
+    {
+        // Arrange: an absolute command-line input that does not exist
+        using var tmpDir = new TemporaryDirectory();
+        var missing = tmpDir.GetFilePath("missing.yaml");
+
+        // Act
+        var (_, err, exitCode) = Run("--input", missing);
+
+        // Assert: the command-line path is shown as before
+        Assert.Equal(1, exitCode);
+        Assert.Contains($"Input file '{missing}' was not found", err);
+    }
+
+    /// <summary>
     ///     Test that a literal config input inside the allowed roots that does not exist is reported clearly as not
-    ///     found, through the resolver's outcome.
+    ///     found, through the resolver's outcome, with the path as written.
     /// </summary>
     [Fact]
     public void DictionaryGenerator_Generate_ConfigLiteralMissingInputInsideRoots_ReportsNotFound()
@@ -636,9 +814,10 @@ public class DictionaryGeneratorTests
         // Act
         var (_, err, exitCode) = Run("--config", config, "--allow-root", root);
 
-        // Assert: a not-found error naming the full path; no output was written
+        // Assert: a not-found error naming the path as written (not the absolute path); no output was written
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Error: table job 1 ('out.md'): Input file '{missing}' was not found.", err);
+        Assert.Contains("Error: table job 1 ('out.md'): Input file 'sub/missing.yaml' was not found.", err);
+        Assert.DoesNotContain(missing, err);
         Assert.DoesNotContain("file-access-denied", err);
         Assert.False(File.Exists(Path.Combine(root, "out.md")));
     }
@@ -879,8 +1058,8 @@ public class DictionaryGeneratorTests
 
         // Assert
         Assert.Equal(1, exitCode);
-        Assert.Contains($"Failed to read file '{input}': The file '", err);
-        Assert.Contains("is larger than the allowed size.", err);
+        Assert.Contains("Failed to read file 'big.yaml': The file 'big.yaml' is larger than the allowed size.", err);
+        Assert.DoesNotContain(input, err);
         Assert.DoesNotContain("file-access-denied", err);
     }
 
@@ -923,6 +1102,232 @@ public class DictionaryGeneratorTests
         Assert.Equal(0, exitCode);
         Assert.Equal(string.Empty, err);
         Assert.Contains("- **Alpha**: First", File.ReadAllText(output));
+    }
+
+    /// <summary>
+    ///     Test that a relative command-line input that the config root key moves outside the allowed roots is denied,
+    ///     and the content of the file is not read.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedInputOutsideRoots_FileAccessDenied()
+    {
+        // Arrange: the config (no tables) has a root key naming a folder outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "secret.yaml")), "Secret: Hidden\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var allowed = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (output, err, exitCode) = Run("--config", config, "--allow-root", allowed, "--input", "secret.yaml");
+
+        // Assert: denied by the policy, not read
+        Assert.Equal(1, exitCode);
+        Assert.StartsWith("Error: file-access-denied:", err);
+        Assert.DoesNotContain("Secret", output);
+    }
+
+    /// <summary>
+    ///     Test that a relocated literal command-line input outside the allowed roots is denied before any lookup, so a
+    ///     file that does not exist is denied rather than reported as not found.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedLiteralInputOutsideRoots_DeniedWithoutLookup()
+    {
+        // Arrange: the relocated input does not exist
+        using var tmpDir = new TemporaryDirectory();
+        Directory.CreateDirectory(tmpDir.GetFilePath("other"));
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var allowed = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", allowed, "--input", "missing.yaml");
+
+        // Assert: the policy answers first
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.DoesNotContain("was not found", err);
+    }
+
+    /// <summary>
+    ///     Test that a relocated command-line glob with a match outside the allowed roots is denied, not skipped.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedGlobMatchOutsideRoots_IsDeniedNotSkipped()
+    {
+        // Arrange: one match lies inside the allowed folder, the other outside it
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "in", "terms.yaml")), "Alpha: First\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "out", "terms.yaml")), "Beta: Second\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var allowed = tmpDir.GetFilePath(Path.Combine("other", "in"));
+
+        // Act
+        var (output, err, exitCode) = Run("--config", config, "--allow-root", allowed, "--input", "*/terms.yaml");
+
+        // Assert: the outside match fails the job, so no output is produced from the inside match alone
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.DoesNotContain("Alpha", output);
+        Assert.DoesNotContain("Beta", output);
+    }
+
+    /// <summary>
+    ///     Test that a relative command-line output that the config root key moves outside the allowed roots is denied
+    ///     and nothing is created.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedOutputOutsideRoots_DeniedAndNothingCreated()
+    {
+        // Arrange: the input is absolute and trusted; the output is moved by the root key outside the allowed root
+        using var tmpDir = new TemporaryDirectory();
+        var input = tmpDir.GetFilePath(Path.Combine("config", "terms.yaml"));
+        File.WriteAllText(input, "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: ../out/nested\n");
+        var allowed = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--allow-root", allowed, "--input", input, "--output", "result.md");
+
+        // Assert: denied before anything is created, not even the folder
+        Assert.Equal(1, exitCode);
+        Assert.StartsWith("Error: file-access-denied:", err);
+        Assert.False(Directory.Exists(tmpDir.GetFilePath("out")));
+    }
+
+    /// <summary>
+    ///     Test that relocated command-line paths inside the allowed roots are generated.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedPathsInsideRoots_AreGenerated()
+    {
+        // Arrange: the root key names a folder inside the allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+
+        // Act
+        var (_, err, exitCode) = Run(
+            "--config", config, "--allow-root", tmpDir.DirectoryPath, "--input", "terms.yaml", "--output", "out.md");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("other", "out.md"))));
+    }
+
+    /// <summary>
+    ///     Test that absolute command-line paths stay trusted under a config root key, also next to a relative path
+    ///     that is judged and allowed.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedAbsolutePaths_StayTrusted()
+    {
+        // Arrange: the allowed root holds only the relocated relative input; the absolute input and output lie outside
+        using var tmpDir = new TemporaryDirectory();
+        var allowed = Directory.CreateDirectory(tmpDir.GetFilePath("other")).FullName;
+        File.WriteAllText(Path.Combine(allowed, "inside.yaml"), "Alpha: First\n");
+        var outside = tmpDir.GetFilePath(Path.Combine("outside", "terms.yaml"));
+        File.WriteAllText(outside, "Beta: Second\n");
+        var output = Path.Combine(tmpDir.DirectoryPath, "outside", "out", "terms.md");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+
+        // Act
+        var (_, err, exitCode) = Run(
+            "--config", config, "--allow-root", allowed, "--input", outside, "--input", "inside.yaml", "--output", output);
+
+        // Assert: both inputs load and the absolute output is written
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        var content = File.ReadAllText(output);
+        Assert.Contains("- **Alpha**: First", content);
+        Assert.Contains("- **Beta**: Second", content);
+    }
+
+    /// <summary>
+    ///     Test that --root keeps every command-line path trusted even when the config has a root key.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_RootFlagWithConfigRoot_PathsStayTrusted()
+    {
+        // Arrange: --root names a folder outside the only allowed root
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("cli-root", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+        var allowed = Path.GetDirectoryName(config)!;
+
+        // Act
+        var (_, err, exitCode) = Run(
+            "--config", config, "--allow-root", allowed, "--root", tmpDir.GetFilePath("cli-root"),
+            "--input", "terms.yaml", "--output", "out.md");
+
+        // Assert: read and written by the trusted route
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        Assert.Contains("- **Alpha**: First", File.ReadAllText(tmpDir.GetFilePath(Path.Combine("cli-root", "out.md"))));
+    }
+
+    /// <summary>
+    ///     Test that a relative command-line input under a config root key naming a network share is refused before it
+    ///     is looked up, even in the default mode.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedNetworkRoot_RefusedBeforeNormalization()
+    {
+        // Arrange: the root names a share and the input is relative to it
+        using var tmpDir = new TemporaryDirectory();
+        var config = WriteConfig(tmpDir, "root: \"//dictionarymark-test.invalid/share\"\n");
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--input", "terms.yaml");
+
+        // Assert: refused by the network-path rule, no lookup
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Failed to resolve input pattern 'terms.yaml': The path '", err);
+        Assert.Contains("is not allowed: network paths are not permitted.", err);
+        Assert.DoesNotContain("was not found", err);
+    }
+
+    /// <summary>
+    ///     Test that a relocated command-line input reached through a directory link is denied under no-symlinks.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedInputThroughLinkUnderNoSymlinks_FileAccessDenied()
+    {
+        // Arrange: config/alias is a link to config/real, which holds the dictionary; the root key names the link
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "real", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: alias\n");
+        var folder = Path.GetDirectoryName(config)!;
+        FileTestSupport.CreateDirectoryLinkOrSkip(Path.Combine(folder, "alias"), Path.Combine(folder, "real"));
+
+        // Act
+        var (_, err, exitCode) = Run("--config", config, "--file-access", "no-symlinks", "--input", "terms.yaml");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("file-access-denied:", err);
+        Assert.Contains("'no-symlinks'", err);
+    }
+
+    /// <summary>
+    ///     Test that in the default mode a relocated command-line input outside the working directory is still read,
+    ///     so the root key keeps working.
+    /// </summary>
+    [Fact]
+    public void DictionaryGenerator_Generate_ConfigRootRelocatedInputUnderAny_IsRead()
+    {
+        // Arrange: the root key names a sibling folder; no file-access option is given
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "terms.yaml")), "Alpha: First\n");
+        var config = WriteConfig(tmpDir, "root: ../other\n");
+
+        // Act
+        var (output, err, exitCode) = Run("--config", config, "--input", "terms.yaml");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal(string.Empty, err);
+        Assert.Contains("- **Alpha**: First", output);
     }
 
     /// <summary>

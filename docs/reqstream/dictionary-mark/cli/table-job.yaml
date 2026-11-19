@@ -53,3 +53,17 @@ sections:
                   unchanged.
                 tests:
                   - TableJob_Create_Label_NamesIndexAndOutput
+
+              - id: DictionaryMark-TableJob-JudgedPaths
+                title: >-
+                  The TableJob unit shall report every path of a configuration-table job as judged by the file-access
+                  policy, only the relative paths (those not rooted after variable expansion) of a command-line job
+                  whose base directory is the configuration file's root key, and no path of any other command-line job.
+                justification: |
+                  A rooted path ignores the base directory, so only a relative path is moved by the root key; stating
+                  this in one place gives the pipeline one answer to which paths are untrusted content.
+                tags: [security]
+                tests:
+                  - TableJob_IsJudged_ConfigTableJob_JudgesEveryPath
+                  - TableJob_IsJudged_CommandLineJobUnderConfigRoot_JudgesRelativePathsOnly
+                  - TableJob_IsJudged_CommandLineJobWithoutConfigRoot_JudgesNothing

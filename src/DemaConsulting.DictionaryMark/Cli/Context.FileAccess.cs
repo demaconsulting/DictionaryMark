@@ -28,11 +28,18 @@ namespace DemaConsulting.DictionaryMark.Cli;
 /// <remarks>
 ///     <para>
 ///         The options decide which local files the tables of a configuration file may read as inputs and write as
-///         outputs; the paths named on the command line are never judged. The mode <c>any</c> (the default) reads
+///         outputs, and the relative <c>--input</c> and <c>--output</c> paths that a configuration file's <c>root</c>
+///         key relocates (when no <c>--root</c> is given); every other path named on the command line is never judged.
+///         The mode <c>any</c> (the default) reads
 ///         every regular local file, as Pandoc does; <c>roots</c> keeps the table inputs and outputs inside the folders
 ///         of <c>--allow-root</c>, or, without it, inside the working directory and the folder of the configuration
 ///         file when it is outside it; <c>no-symlinks</c> refuses a symbolic link or junction; and
 ///         <c>roots,no-symlinks</c> applies both. <c>--allow-root</c> alone implies <c>roots</c>.
+///     </para>
+///     <para>
+///         Any mode other than <c>any</c> (including the one <c>--allow-root</c> implies) also stops a configuration
+///         file from using <c>${VAR}</c> references in its paths, because the file's content is untrusted; see
+///         <see cref="Create"/>. Command-line paths still expand them in every mode.
 ///     </para>
 ///     <para>
 ///         Every mistake (an unknown mode, <c>--allow-root</c> with <c>any</c> or <c>no-symlinks</c>, a folder that does

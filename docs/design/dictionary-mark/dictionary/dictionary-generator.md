@@ -36,17 +36,20 @@ N/A - static class with no instance state.
 - *Preconditions*: Arguments are non-null.
 - *Postconditions*: Output written to file or stdout, or an error reported and no output written.
 
-Processing steps: (0) For a configuration-table job (`job.Index` is set), create one
+Processing steps: (0) For a job with judged paths (`job.HasJudgedPaths`: a configuration-table job, or a command-line
+job whose relative paths the configuration `root` key moves, see `TableJob.IsJudged`), create one
 `FileReferenceResolver` with `BaseDirectory` = the configuration file's folder (never `--root` or the
 configuration `root` key, so a configuration file cannot move its own trusted origin) and `FileAccess` =
-`context.FileAccess`; the command-line job gets none and is never judged. (0a) For a configuration-table job, check
-each input pattern before anything is listed (`CheckPatterns`). (1) Resolve input file paths — call
-`ResolveInputs(job)`;
+`context.FileAccess`; any other command-line job gets none and is not judged. (0a) For such a job, check
+each judged input pattern before anything is listed (`CheckPatterns`). (1) Resolve input file paths — call
+`ResolveInputs(job)`, which returns the files and a map from each file a judged pattern named to the text shown for it in
+messages;
 return early on `ArgumentException`, `InvalidOperationException`, `IOException`, `UnauthorizedAccessException` or empty
 result. (2) Load entries — with a resolver, read every
-literal input and every matched file with `resolver.Resolve(file)` (every file is judged; nothing is skipped) and call
-`YamlDictionaryLoader.Load(file, content)` (or `LoadDeprecated(file, content)`) on the bytes it returned; without a
-resolver, call `YamlDictionaryLoader.Load(file)` (or `LoadDeprecated(file)`). Return early at the first failure:
+judged literal input and every judged matched file with `resolver.Resolve(file)` (every judged file is judged;
+nothing is skipped) and call
+`YamlDictionaryLoader.Load(file, content)` (or `LoadDeprecated(file, content)`) on the bytes it returned; any other file
+is read by name with `YamlDictionaryLoader.Load(file)` (or `LoadDeprecated(file)`). Return early at the first failure:
 `FileReferenceException`, a literal input or match that is not found, `IOException`, `UnauthorizedAccessException`,
 `YamlException` or `InvalidOperationException`. (3) Detect
 conflicts — call
@@ -56,7 +59,8 @@ conflicts — call
 input files. (5) Write output — if `job.OutputFile` is set, expand and root it as text with
 `PathResolver.Combine(job.OutputFile, job.BaseDirectoryText, "output path")` and normalize it with
 `PathResolver.ResolvePath(job.OutputFile, job.BaseDirectoryText, "output path")`, check the text (not the normalized
-path) with `resolver.CheckOutputPath(pathText)` when the job has a resolver (before anything is created), because
+path) with `resolver.CheckOutputPath(pathText)` when the job has a resolver and the output is judged
+(`job.IsJudged` of the expanded output path; before anything is created), because
 normalization can hide a never-list path (on Linux and macOS a leading `//` collapses to `/`), then use the
 normalized path to create missing parent directories with
 `Directory.CreateDirectory`, and write via `File.WriteAllText`; otherwise write via `context.WriteLine`. The base
@@ -64,30 +68,53 @@ directory may be a root directory, the configuration file's directory, or the wo
 not distinguish them.
 
 **ResolveInputs** *(private)*: Resolves a job's input patterns to the sorted (ordinal, case-insensitive),
-deduplicated list of full file paths to read. The command-line job is trusted, so every pattern goes to
-`GlobMatcher.Resolve(job.InputPatterns, job.BaseDirectory)`, which requires each literal file to exist. The patterns
-of a configuration-table job are untrusted content: each is expanded and rooted with
+deduplicated list of full file paths to read, and the map (case-insensitive) from each file that a judged pattern named
+to the text to show for it. A pattern is
+judged when `job.IsJudged(PathResolver.ExpandEnvironmentVariables(pattern, "glossary path"))`. A trusted pattern (every
+pattern of a command-line job without a configuration `root`, and an absolute pattern of one with it) goes to
+`GlobMatcher.Resolve`, which requires each literal file to exist. A judged pattern is untrusted content: it is expanded
+and rooted with
 `PathResolver.Combine(pattern, job.BaseDirectory, "glossary path")`; one without `*` or `?` is a literal input, which
 is only normalized with `Path.GetFullPath` (text arithmetic) and never looked up, because the resolver applies the
-policy before it looks for the file and reports a missing file as not found; the others are real wildcard patterns,
-which have already passed `CheckPatterns` and go to `GlobMatcher.Resolve`. Listing the folders of a wildcard pattern is
-the one access made for configuration content outside the resolver.
+policy before it looks for the file and reports a missing file as not found; its text is the pattern as written
+(`FileReferenceException.Printable`). The others are real wildcard patterns,
+which have already passed `CheckPatterns` and are each resolved on their own with `GlobMatcher.Resolve([pattern], base)`
+(the same strict semantics as the batch; one call per pattern so that the matches can be attributed to it); the text of
+a match is `ShownMatch`: the match relative to the job's base directory with `/` separators
+(`Path.GetRelativePath`), or the full match path when the expanded pattern is itself rooted (the author already wrote
+that prefix). When two judged patterns reach the same file the first one's text is kept (`TryAdd`). Listing
+the folders of a judged wildcard pattern is the one access made for untrusted content outside the resolver. A file
+reached by both a trusted and a judged pattern is judged.
 
-**CheckPatterns** *(private)*: For a configuration-table job, roots each input pattern with
+**Redact** *(private)*: Replaces each full path in a map by its shown text in a message (ordinal, case-insensitive,
+longest path first so a path that prefixes another cannot garble it). It is applied to the messages of the YAML loader
+(`Invalid YAML in file ...`, which quote the full path of the file), to each conflict string (which names two files by
+full path), to the text of an I/O exception for a judged input, and, with the single pair output full path to output
+as written, to the text of an I/O exception while writing a judged output. Operating-system text that names other paths
+(for example a missing parent folder) is not rewritten; that residual is documented, not claimed fixed.
+
+**CheckPatterns** *(private)*: For a job with judged paths, roots each judged input pattern with
 `PathResolver.Combine(pattern, job.BaseDirectoryText, "glossary path")` (the path that would be listed, rooted at the
 base directory's text before normalization so a `root` key such as `//host/share` stays a network path on Linux and
 macOS) and passes it, and
 its `Path.GetFullPath` form with `.` and `..` collapsed, to `FileReferenceResolver.CheckPatternText`. A
-`FileReferenceException` fails the job with `DescribeRefusal(ex, "Failed to resolve input pattern '{pattern}'")`
+`FileReferenceException` fails the job with
+`DescribeRefusal(ex, pattern, "Failed to resolve input pattern '{pattern}'")`, naming the pattern as written, not the
+expanded and rooted text that was checked,
 before any folder is listed, so a network, device, reserved Windows device-name or URL-like pattern never contacts a
 host or device. An undefined `${VAR}` or a
-malformed path is left to `ResolveInputs`, which reports it as before. Command-line patterns are not checked.
+malformed path is left to `ResolveInputs`, which reports it as before. Trusted patterns are not checked.
 
-**DescribeRefusal** *(private)*: Turns a `FileReferenceException` into the error text. A policy denial or a policy
+**DescribeRefusal** *(private)*: Turns a `FileReferenceException` and the path as written into the error text. The
+resolver reports the (absolute) path it was given, so the refusal is rebuilt as
+`new FileReferenceException(ex.Kind, written, ex.Reason) { PolicyName = ex.PolicyName }`, whose `Message` echoes the
+written text (control characters still replaced) and names the policy; a policy's own reason is never part of the
+message. Every handler is on a judged path, because the resolver exists only for jobs with judged paths, so no
+trusted/judged branching is needed. A policy denial or a policy
 that cannot be applied (`AccessDenied` or `RealPathUnavailable`) reads
 `file-access-denied: {message} Allow the file in the file-access policy, or reference a file it allows.` (CanvasNet's
 mapping and hint); any other refusal reads `Failed to read file '{file}': {message}` or
-`Failed to write output file '{file}': {message}`.
+`Failed to write output file '{file}': {message}`, where `{file}` is the written text.
 
 **Report** *(private)*: Writes `Error: {text}` for the command-line job, or `Error: {label}: {text}` for a
 configuration job, through `context.WriteError`. Every job error goes through this method, so command-line messages are
@@ -127,15 +154,17 @@ Error cases:
   `"Error: Failed to read file '{file}': {message}"` or `"Error: Failed to write output file '{file}': {message}"`.
 - **Input not found** — `Resolve` returned no file for a configuration-table input: a literal input that does not
   exist (in a folder the policy allows), or a glob match that vanished after the glob ran; reports
-  `"Error: Input file '{file}' was not found."` with the full path, the same message the command-line job gets for a
+  `"Error: Input file '{file}' was not found."` with the file as written for a judged path (a glob match relative to
+  the base directory), and the full path for a trusted path, the same message the command-line job gets for a
   missing literal file.
 - **I/O or access error reading YAML** — `IOException`, `UnauthorizedAccessException` or a
   path-validation exception from `YamlDictionaryLoader.Load`; reports
   `"Error: Failed to read file '{file}': {message}"`.
 - **Malformed YAML** — `YamlException` from `YamlDictionaryLoader.Load` (syntax error); reports
-  `"Error: Invalid YAML in file '{file}': {message}"`.
+  `"Error: Invalid YAML in file '{file}': {message}"`, with a judged file shown as written (the message's own quotation
+  of its full path is redacted).
 - **Invalid YAML structure** — `InvalidOperationException` from `YamlDictionaryLoader.Load`;
-  reports `"Error: Invalid YAML in file '{file}': {message}"`.
+  reports `"Error: Invalid YAML in file '{file}': {message}"` with the same redaction.
 - **Unresolvable output path** — `InvalidOperationException` from `PathResolver.ResolvePath`, for
   an undefined variable or a malformed or overlong path (for example a null character); reports
   `"Error: {message}"`, which for a malformed path reads
@@ -144,19 +173,21 @@ Error cases:
   path-validation exception from `Directory.CreateDirectory` or `File.WriteAllText`. A path that
   normalizes cleanly can still be rejected on write, for example a wildcard in a Windows file name.
   Reports `"Error: Failed to write output file '{file}': {message}"` with the output path as
-  written.
+  written (and, for a judged output, the operating system's quotation of its full path replaced by it).
 
 For configuration jobs, every message above is prefixed with the job label, for example
-`"Error: table job 2 ('docs/deprecated.md'): Input pattern 'x/*.yaml' matched no files."`.
+`"Error: table job 2 ('docs/deprecated.md'): Input pattern 'x/*.yaml' matched no files."`. A conflict message names the
+two files by full path, redacted to the written text for judged files.
 
 #### Dependencies
 
 - **Context** — CLI subsystem; provides the jobs, output channel, and exit code.
 - **TableJob** — CLI subsystem; one job's inputs, output, base directory, label and options.
-- **GlobMatcher** — Utilities subsystem; resolves the command-line job's patterns and the wildcard patterns of a
-  configuration-table job to concrete file paths.
+- **GlobMatcher** — Utilities subsystem; resolves the trusted patterns and the judged wildcard patterns to concrete
+  file paths.
 - **FileReferenceResolver**, **FileReferenceOptions**, **FileReference**, **FileReferenceException** — Files
-  subsystem; read and judge the input files of a configuration-table job and check its output path.
+  subsystem; read and judge the judged input files (of a configuration-table job, or moved by the configuration
+  `root` key) and check the judged output path.
 - **PathResolver** — Utilities subsystem; expands and roots the input patterns of a configuration-table job and
   resolves the output path against the job's base directory.
 - **YamlDictionaryLoader** — Dictionary subsystem unit; loads approved-term and deprecated-term entries

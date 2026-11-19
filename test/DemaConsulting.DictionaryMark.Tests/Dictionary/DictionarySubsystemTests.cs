@@ -265,12 +265,86 @@ public class DictionarySubsystemTests
             var err = errWriter.ToString();
             Assert.Equal(1, context.ExitCode);
             Assert.Contains("Error: table job 1 ('outside.md'): file-access-denied:", err);
-            Assert.Contains($"Error: table job 2 ('inside.md'): Input file '{Path.Combine(root, "missing.yaml")}' was not found.", err);
+            Assert.Contains("Error: table job 2 ('inside.md'): Input file 'missing.yaml' was not found.", err);
+            Assert.DoesNotContain(root, err);
             Assert.Contains("- **API**:", File.ReadAllText(Path.Combine(root, "terms.md")));
         }
         finally
         {
             Console.SetError(originalError);
         }
+    }
+
+    /// <summary>
+    ///     Test that the dictionary subsystem names a denied config input, a denied glob match and a denied output as
+    ///     they were written (a glob match relative to the base directory), never by an absolute host path.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_DeniedConfigPaths_MessagesShowWrittenPaths()
+    {
+        // Arrange: the config folder is the only allowed root; one table per kind of denied path
+        using var tmpDir = new TemporaryDirectory();
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("config", "terms.yaml")), "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "more.yaml")), "CLI: Command Line Interface\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config,
+            "tables:\n  - input: ../other/more.yaml\n    output: a.md\n"
+            + "  - input: ../other/*.yaml\n    output: b.md\n"
+            + "  - input: terms.yaml\n    output: ../out/c.md\n");
+        var root = Path.GetDirectoryName(config)!;
+        var originalError = Console.Error;
+        using var errWriter = new StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            using var context = Context.Create(["--config", config, "--allow-root", root]);
+
+            // Act
+            DictionaryGenerator.Generate(context);
+
+            // Assert: every denial names the path as written and nothing of the host layout
+            var err = errWriter.ToString();
+            Assert.Equal(1, context.ExitCode);
+            Assert.Contains("table job 1 ('a.md'): file-access-denied: The file '../other/more.yaml' was denied", err);
+            Assert.Contains("table job 2 ('b.md'): file-access-denied: The file '../other/more.yaml' was denied", err);
+            Assert.Contains("table job 3 ('../out/c.md'): file-access-denied: The file '../out/c.md' was denied", err);
+            Assert.DoesNotContain(tmpDir.DirectoryPath, err);
+            Assert.False(Directory.Exists(tmpDir.GetFilePath("out")));
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    /// <summary>
+    ///     Test that the dictionary subsystem judges the relative command-line paths that a config root key relocates:
+    ///     an input and an output moved outside the allowed folder fail with a non-zero exit code and write nothing.
+    /// </summary>
+    [Fact]
+    public void DictionarySubsystem_FileAccess_ConfigRootRelocatedCommandLineJob_DeniedOutsideRoots()
+    {
+        // Arrange: the config folder is the only allowed root; its root key (no tables) names a folder outside it
+        using var tmpDir = new TemporaryDirectory();
+        var inside = tmpDir.GetFilePath(Path.Combine("config", "terms.yaml"));
+        File.WriteAllText(inside, "API: Application Programming Interface\n");
+        File.WriteAllText(tmpDir.GetFilePath(Path.Combine("other", "secret.yaml")), "Secret: Hidden\n");
+        var config = tmpDir.GetFilePath(Path.Combine("config", "dictionarymark.yaml"));
+        File.WriteAllText(config, "root: ../other\n");
+        var root = Path.GetDirectoryName(config)!;
+        using var inputContext = Context.Create(
+            ["--silent", "--config", config, "--allow-root", root, "--input", "secret.yaml", "--output", inside + ".md"]);
+        using var outputContext = Context.Create(
+            ["--silent", "--config", config, "--allow-root", root, "--input", inside, "--output", "result.md"]);
+
+        // Act
+        DictionaryGenerator.Generate(inputContext);
+        DictionaryGenerator.Generate(outputContext);
+
+        // Assert: both are denied and nothing is written
+        Assert.Equal(1, inputContext.ExitCode);
+        Assert.Equal(1, outputContext.ExitCode);
+        Assert.False(File.Exists(inside + ".md"));
+        Assert.False(File.Exists(tmpDir.GetFilePath(Path.Combine("other", "result.md"))));
     }
 }

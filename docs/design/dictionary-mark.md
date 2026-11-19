@@ -56,7 +56,8 @@ selection, output formatting, and operational mode.
   column header), `--where-header <text>` (deprecated-table "where used" column header),
   `--column-widths <w1,w2[,w3]>` (relative table column widths), `--config <file>` (configuration
   file), `--root <dir>` (base directory for relative input and output paths),
-  `--file-access <any|roots|no-symlinks|roots,no-symlinks>` (which files configuration tables may read and write;
+  `--file-access <any|roots|no-symlinks|roots,no-symlinks>` (which files configuration tables, and relative
+  `--input`/`--output` paths a configuration `root` key moves, may read and write;
   the last occurrence wins), `--allow-root <dir>` (an allowed folder, repeatable; implies `roots`),
   and `--results`/`--result <file>` (results file). Returns exit code 0 on
   success, 1 on error.
@@ -111,7 +112,21 @@ The system has two security boundaries:
   `FileReferenceResolver` without being looked up first, and every glob match is read through it; the resolver decides
   about the opened file and parses the bytes it judged; every output is checked with `CheckOutputPath` before any folder
   is created. Network, device and alternate-data-stream paths, control characters and non-regular files are refused
-  under every mode, including the default `any`. Paths named on the command line are trusted and never judged. A denial
+  under every mode, including the default `any`. Paths named on the command line are trusted and not judged, except a
+  relative `--input` pattern or `--output` path that the configuration file's `root` key moves (no `--root` given, the
+  file has a `root` key and no tables): that path is untrusted content and is judged exactly like a table path. Absolute
+  command-line paths, every path when `--root` is given, every path when the file has no `root` key, and `--config`,
+  `--log` and `--results` stay trusted. Because the file's content is untrusted, a `${VAR}` environment-variable
+  reference in its `root`, table `input` or table `output` would let it read the process environment (for example a
+  secret) and leak it through a created file name or a message; so under every mode except `any` (`roots`,
+  `no-symlinks`, `roots,no-symlinks`, and `--allow-root`, which implies `roots`) `ConfigFile.Load` refuses such a
+  reference before anything is expanded, read or created, with an error that names the file, the job and the key and
+  that reveals neither the name nor the value of the variable nor whether it is defined; the paths typed on the command
+  line keep expanding `${VAR}` in every mode, and the default and `any` modes are unchanged. A message about a judged
+  path (a table path, or a relative command-line path moved by `root`) shows the path as written, a glob match relative
+  to the base directory, never the absolute host path, so a message shown to the author of the file does not reveal the
+  layout of the machine; the Files subsystem's contract (its message echoes only the reference it was given) is
+  unchanged, and `DictionaryGenerator` chooses which text to give it. A denial
   by the file-access mode fails only its table job with `file-access-denied`; any other refusal (a never-list path, a
   non-regular file, an input over 16 MiB) fails only its table job with the ordinary read or write error. Known limits:
   the write that follows the output check goes by name, so it is not free of races; each table input pattern is checked
@@ -128,16 +143,18 @@ The system has two security boundaries:
    `--allow-root`, loads the `--config` file (if any), and builds the generation jobs:
    one per configuration table, or one command-line job for `--input`. Each job carries its
    effective formatting (command line, then job, then configuration defaults, then built-in
-   defaults) and its base directory (see the precedence below). Any validation failure stops the
+   defaults) and its base directory (see the precedence below). When no `--root` is given and the configuration file
+   has a `root` key, the command-line job is marked so that its relative paths are judged. Any validation failure stops
+   the
    run here with exit code 1.
 2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
    `context.HeadingDepth` controls the Markdown heading level of the validation report header.
 3. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
-4. The job's input patterns are resolved against its base directory: `GlobMatcher.Resolve` resolves every
-   pattern of the command-line job and the wildcard patterns of a configuration-table job; a literal pattern of a
-   configuration-table job is only expanded, rooted and normalized as text.
+4. The job's input patterns are resolved against its base directory: `GlobMatcher.Resolve` resolves every trusted
+   pattern and the judged wildcard patterns; a judged literal pattern (a configuration-table pattern, or a relative
+   command-line pattern the configuration `root` key moves) is only expanded, rooted and normalized as text.
 5. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list. For a
-   configuration-table job, each file is first read through the job's `FileReferenceResolver`, which judges the
+   judged file, each file is first read through the job's `FileReferenceResolver`, which judges the
    opened file by the policy, and the loader parses the bytes it returned.
 6. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
    `context.WriteError` and halts output generation for that job.
@@ -145,7 +162,8 @@ The system has two security boundaries:
    columns by the job's column widths when given.
 8. The formatted Markdown is written to the job's output file (resolved against its base
    directory, creating missing parent directories), or to stdout if no output file was specified. For a
-   configuration-table job, the output path is first checked with `CheckOutputPath`.
+   judged output path (a configuration-table output, or a relative command-line output moved by the configuration `root`
+   key), the output path is first checked with `CheckOutputPath`.
 9. Errors of configuration jobs are prefixed with `table job {n} ('{output}')`; when any
    configuration job failed, a summary `{failed} of {total} table jobs failed` is reported.
 

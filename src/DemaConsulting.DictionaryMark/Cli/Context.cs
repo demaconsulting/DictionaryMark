@@ -138,7 +138,8 @@ internal sealed partial class Context : IDisposable
     public bool UsesConfigTables { get; private init; }
 
     /// <summary>
-    ///     Gets the file-access policy that judges the inputs and outputs of config-file table jobs, built from
+    ///     Gets the file-access policy that judges the inputs and outputs of config-file table jobs and the relative
+    ///     command-line paths a config <c>root</c> key relocates, built from
     ///     --file-access and --allow-root; <see cref="FileAccessPolicy.AllowAll"/> when neither was given.
     /// </summary>
     public FileAccessPolicy FileAccess { get; private init; } = FileAccessPolicy.AllowAll;
@@ -166,7 +167,10 @@ internal sealed partial class Context : IDisposable
     ///     against the working directory; resolve --config against the working directory (never the root);
     ///     build the file-access policy from --file-access and --allow-root, so a mistake there is reported
     ///     before any input is opened; load the config, which also resolves its <c>root</c> key as text only (the
-    ///     key is untrusted content and is never probed); reject
+    ///     key is untrusted content and is never probed) and, when a restrictive file-access mode is in effect
+    ///     (anything but <c>any</c>, including the mode implied by --allow-root), refuses <c>${VAR}</c> in the
+    ///     config's root, input and output paths so that untrusted content cannot read the environment
+    ///     (command-line paths still expand in every mode); reject
     ///     --input/--output when the config defines tables; build the jobs with the base directory --root, else
     ///     config <c>root</c>, else the path's origin default; and finally open the log file. Every validation failure stops the run before any job runs.
     ///     Performs file-system I/O (--root existence, config file, log file). Stateless after construction;
@@ -210,8 +214,12 @@ internal sealed partial class Context : IDisposable
             configPath is null ? [] : [configPath],
             Environment.CurrentDirectory);
 
-        // Load the config file
-        var config = configPath != null ? ConfigFile.Load(configPath) : null;
+        // Load the config file; its content is untrusted, so ${VAR} in its paths is expanded only when no restrictive
+        // file-access mode is in effect (the policy is exactly AllowAll for no options and for --file-access any).
+        // Command-line paths are trusted and are expanded in every mode by the resolver calls above and in the jobs
+        var config = configPath != null
+            ? ConfigFile.Load(configPath, allowEnvironmentVariables: ReferenceEquals(fileAccess, FileAccessPolicy.AllowAll))
+            : null;
 
         // Select the effective root (and its text before normalization) and the effective top-level formatting settings
         var rootDirectory = commandLineRoot ?? config?.RootDirectory;
@@ -219,8 +227,10 @@ internal sealed partial class Context : IDisposable
         var commandLine = parser.Formatting;
         var effective = commandLine.Over(config?.Defaults ?? FormattingSettings.Empty);
 
-        // Build the generation jobs
-        var jobs = BuildJobs(parser, config, rootDirectory, rootText);
+        // Build the generation jobs; a command-line path that the config root key relocates is untrusted content
+        // (no --root option, the config file has a root key), so the command-line job is told its base is that key
+        var rootFromConfig = commandLineRoot == null && config?.RootDirectory != null;
+        var jobs = BuildJobs(parser, config, rootDirectory, rootText, rootFromConfig);
 
         var result = new Context
         {
@@ -270,18 +280,26 @@ internal sealed partial class Context : IDisposable
     ///     the root or else the config file's directory. Otherwise, when --input was given, a single
     ///     command-line job is created with the command line and config defaults as layers and the root or
     ///     else the working directory as base directory. A config table job also receives the root's text before
-    ///     normalization, so the file-access resolver's text rules see its paths as written.
+    ///     normalization, so the file-access resolver's text rules see its paths as written; the command-line job
+    ///     receives it too, and is told when its base directory is the config file's <c>root</c> key (no --root
+    ///     option), which makes the relative paths that key moves judged by the file-access policy.
     /// </remarks>
     /// <param name="parser">The parsed arguments.</param>
     /// <param name="config">The loaded config file, or null.</param>
     /// <param name="rootDirectory">The effective root directory, or null.</param>
     /// <param name="rootText">The effective root directory as text before normalization, or null.</param>
+    /// <param name="rootFromConfig">True when the effective root is the config file's <c>root</c> key.</param>
     /// <returns>The jobs; empty when there is nothing to generate.</returns>
     /// <exception cref="ArgumentException">
     ///     Thrown when --input or --output is combined with config tables, or a job's column-width count does
     ///     not match its table shape.
     /// </exception>
-    private static List<TableJob> BuildJobs(ArgumentParser parser, ConfigFile? config, string? rootDirectory, string? rootText)
+    private static List<TableJob> BuildJobs(
+        ArgumentParser parser,
+        ConfigFile? config,
+        string? rootDirectory,
+        string? rootText,
+        bool rootFromConfig)
     {
         var commandLine = parser.Formatting;
 
@@ -328,7 +346,18 @@ internal sealed partial class Context : IDisposable
         if (parser.InputPatterns.Count > 0)
         {
             var baseDirectory = SelectBaseDirectory(rootDirectory, Environment.CurrentDirectory);
-            return [TableJob.Create(null, parser.InputPatterns, parser.OutputFile, baseDirectory, [commandLine, config?.Defaults])];
+            var baseDirectoryText = SelectBaseDirectory(rootText, Environment.CurrentDirectory);
+            return
+            [
+                TableJob.Create(
+                    null,
+                    parser.InputPatterns,
+                    parser.OutputFile,
+                    baseDirectory,
+                    [commandLine, config?.Defaults],
+                    baseDirectoryText,
+                    rootFromConfig)
+            ];
         }
 
         return [];

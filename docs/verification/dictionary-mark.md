@@ -185,8 +185,8 @@ against the configuration file's directory regardless of the working directory.
 This scenario is tested by
 `DictionaryMark_Config_RelativePathsWithParentSegments_ResolvedFromConfigDirectory`.
 
-**ConfigEnvironmentVariables**: `${VAR}` references in the `--config` path and in the input and
-output paths of a job must be expanded.
+**ConfigEnvironmentVariables**: `${VAR}` references in the `--config` path and, in the default file-access mode, in
+the input and output paths of a job must be expanded.
 This scenario is tested by `DictionaryMark_Config_EnvironmentVariablesInPaths_AreExpanded`.
 
 **ConfigJobFailures**: When the second of three jobs matches no files, jobs 1 and 3 must still be
@@ -256,7 +256,8 @@ in another letter case than the folder on disk must still allow the tables insid
 observed to be case-insensitive (skipped where it is observed to be case-sensitive); the default mode must still
 refuse never-list paths, and
 refuse a network input pattern before anything is listed; a denied table must fail alone with exit code 1; command-line
-paths must never be judged; the configuration `root` key must never widen the allowed folders; and every mistake in the
+paths must not be judged when no configuration `root` key relocates them (see **ConfigRootRelocated**); the
+configuration `root` key must never widen the allowed folders; and every mistake in the
 options must be a usage error reported before any input is read. This scenario is tested by
 `DictionaryMark_FileAccess_AllowRootAsProcess_ConfinesConfigJobs`,
 `DictionaryMark_FileAccess_MistakesAsProcess_AreUsageErrors`,
@@ -270,3 +271,41 @@ options must be a usage error reported before any input is read. This scenario i
 `DictionaryMark_FileAccess_LiteralConfigInputs_JudgedBeforeLookup`,
 `DictionaryMark_FileAccess_AllowRootInOtherCase_AllowsConfigJobsInside` and
 `DictionaryMark_FileAccess_ConfigRootKey_DoesNotWidenAllowedFolders`.
+
+**ConfigRootRelocated**: A relative `--input` pattern or `--output` path that a configuration `root` key moves (no
+`--root`, a configuration file with a `root` key and no `tables`) must be judged by the file-access mode exactly like a
+table path. With `--allow-root` naming the configuration file's folder and a `root` naming a folder outside it, a
+relative `--input` must be denied with `Error: file-access-denied:` and a non-zero exit code without its content being
+read, and a relative `--output` (with an absolute, trusted input) must be denied before anything is written, not even
+the folder; with a `root` inside the allowed folder both must be generated. Absolute `--input` and `--output` paths
+outside the allowed folders, and relative paths when `--root` is given, must stay trusted and be generated. This
+scenario is tested by `DictionaryMark_FileAccess_ConfigRootRelocatedInput_IsDenied`,
+`DictionaryMark_FileAccess_ConfigRootRelocatedOutput_IsDenied`,
+`DictionaryMark_FileAccess_ConfigRootRelocatedPathsInsideRoots_AreGenerated` and
+`DictionaryMark_FileAccess_CommandLineRootOrAbsolutePaths_StayTrustedUnderConfigRoot`.
+
+**ConfigEnvironmentRefused**: Under a restrictive mode (`roots`, `no-symlinks`, and `--allow-root`, which implies
+`roots`), a `${VAR}` reference in a configuration table `output`, a table `input` or the `root` key must be refused
+as a process before anything is read or created: exit code 1; an error naming the configuration file, the job
+(`table job 1`) and the key (`key 'output'`, `key 'input'`, `key 'root'`); a variable that holds a distinctive secret
+value must not appear anywhere in the output (nor in the `--log` file when it exists), nor may a file or folder
+named by it be created; the error for a defined and for an undefined variable must be identical (and must not say
+that the variable is not defined); a `root` reference must be refused for a configuration with tables and for a
+command-line `--input` and `--output` that the key would relocate. With no file-access option and with
+`--file-access any`, the same references must still be expanded and the output written. This scenario is tested by
+`DictionaryMark_FileAccess_ConfigOutputEnvironmentVariableAsProcess_RefusedWithoutLeak`,
+`DictionaryMark_FileAccess_ConfigInputEnvironmentVariableAsProcess_RefusedWithoutLeak`,
+`DictionaryMark_FileAccess_ConfigRootEnvironmentVariableAsProcess_RefusedForTablesAndRelocatedCommandLine` and
+`DictionaryMark_FileAccess_ConfigEnvironmentVariablesAsProcess_AnyModeStillExpands`.
+
+**CommandLineEnvironmentExpanded**: Under `--file-access roots`, `${VAR}` in `--root` and `--output` on the command
+line must still be expanded and the output written with exit code 0. This scenario is tested by
+`DictionaryMark_FileAccess_CommandLineEnvironmentVariablesAsProcess_StillExpandedUnderRoots`.
+
+**WrittenPathMessages**: With `--allow-root` naming the configuration file's folder, a table whose input is
+`../other/more.yaml`, a table whose glob `../other/*.yaml` matches a file outside, a table whose literal input does
+not exist, and a table whose output is `../out/d.md` must report their failures with the path as written
+(`The file '../other/more.yaml' was denied`, `Input file 'missing.yaml' was not found.`, `The file '../out/d.md' was
+denied`), keeping `file-access-denied` and the job label; neither the console output nor the `--log` file may contain
+the temporary folder or the working directory. This scenario is tested by
+`DictionaryMark_FileAccess_DeniedAndMissingConfigPathsAsProcess_ShowNoHostPath`.

@@ -87,7 +87,8 @@ sections:
               - id: DictionaryMark-ConfigFile-Root
                 title: >-
                   The ConfigFile unit shall accept an optional top-level non-empty root string, resolve it
-                  relative to the configuration file's directory with ${VAR} expansion and parent-directory
+                  relative to the configuration file's directory with ${VAR} expansion (unless the caller does not
+                  allow environment references) and parent-directory
                   normalization as text only, without accessing the file system (so a folder that does not exist
                   or a network location is accepted), and reject a root with wildcard characters, an undefined
                   variable or a malformed path, or a root key inside a table job, with an error naming the file
@@ -107,3 +108,26 @@ sections:
                   - ConfigFile_Load_RootInvalidValue_Throws
                   - ConfigFile_Load_RootInTableJob_ThrowsNamingJob
                   - ConfigFile_Load_NoRoot_RootDirectoryIsNull
+
+              - id: DictionaryMark-ConfigFile-EnvironmentReferences
+                title: >-
+                  The ConfigFile unit shall, when told that environment references are not allowed, refuse a ${VAR}
+                  reference in the root key, in any input pattern and in the output path of a table job, in file
+                  order and before the root is resolved, with an error that names the file, the job and the key and
+                  never the variable's name or value or whether it is defined, shall load literal paths (including
+                  text such as $NAME and %NAME%) unchanged, and shall, when they are allowed (the default), expand
+                  them in the root key and keep input and output paths as written.
+                justification: |
+                  The file's content is untrusted; expanding a ${VAR} reference in it would let it read the process
+                  environment. Checking before the root is resolved matters because resolving would otherwise report an
+                  undefined variable and so reveal whether it is set. The caller, which knows the file-access mode,
+                  decides whether references are allowed.
+                tags: [security]
+                children:
+                  - DictionaryMark-PathResolver-EnvironmentReferenceDetection
+                tests:
+                  - ConfigFile_Load_EnvironmentReferencesNotAllowed_RootReference_ThrowsNamingFileAndKeyWithoutLeak
+                  - ConfigFile_Load_EnvironmentReferencesNotAllowed_InputReference_ThrowsNamingJobAndKey
+                  - ConfigFile_Load_EnvironmentReferencesNotAllowed_OutputReference_ThrowsNamingJobAndKey
+                  - ConfigFile_Load_EnvironmentReferencesNotAllowed_NoReferences_Loads
+                  - ConfigFile_Load_EnvironmentReferencesAllowed_RootReferenceExpanded

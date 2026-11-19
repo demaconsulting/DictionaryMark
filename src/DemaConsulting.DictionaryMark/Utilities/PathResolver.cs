@@ -77,6 +77,29 @@ internal static partial class PathResolver
     }
 
     /// <summary>
+    ///     Reports whether a path contains a <c>${VAR}</c> reference that
+    ///     <see cref="ExpandEnvironmentVariables"/> would expand.
+    /// </summary>
+    /// <remarks>
+    ///     Exists so that a caller which must not let a path read the process environment can refuse the path
+    ///     without expanding it. It uses the same pattern as <see cref="ExpandEnvironmentVariables"/>, so what
+    ///     counts as a reference can never diverge from what would be expanded, and it never reads the
+    ///     environment: the answer is the same whether or not the variable is defined, which keeps it from
+    ///     becoming a way to probe the environment. Pure and thread-safe.
+    /// </remarks>
+    /// <param name="path">The path text to inspect. Must not be null.</param>
+    /// <returns>True when the text contains at least one <c>${NAME}</c> reference; otherwise false.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
+    public static bool ContainsEnvironmentReference(string path)
+    {
+        // Validate input
+        ArgumentNullException.ThrowIfNull(path);
+
+        // Match with the same pattern the expansion uses, without looking at the environment
+        return EnvironmentVariableRegex().IsMatch(path);
+    }
+
+    /// <summary>
     ///     Expands variables in a path and roots it against a base directory without normalizing it.
     /// </summary>
     /// <remarks>

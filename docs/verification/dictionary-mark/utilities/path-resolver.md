@@ -45,6 +45,18 @@ undefined variable must give the exact message naming the variable, the descript
 This scenario is tested by
 `PathResolver_ExpandEnvironmentVariables_Undefined_ThrowsNamingVariableAndDescription`.
 
+**PathResolver_ContainsEnvironmentReference_Text_DetectsOnlyExpandedForm**: `a/${X}/b`, `${X}` and `${_a1}` must be
+detected; `$X`, `%X%`, `${}`, `${1a}`, `$`, `{X}` and the empty string must not. This scenario is tested by
+`PathResolver_ContainsEnvironmentReference_Text_DetectsOnlyExpandedForm`.
+
+**PathResolver_ContainsEnvironmentReference_UndefinedVariable_DetectedWithoutError**: A reference to an undefined
+variable must be detected without an exception, proving the environment is not read. This scenario is tested by
+`PathResolver_ContainsEnvironmentReference_UndefinedVariable_DetectedWithoutError`.
+
+**PathResolver_ContainsEnvironmentReference_NullPath_ThrowsArgumentNullException**: A null path must be rejected with
+`ArgumentNullException`. This scenario is tested by
+`PathResolver_ContainsEnvironmentReference_NullPath_ThrowsArgumentNullException`.
+
 **PathResolver_Combine_GlobPattern_NotNormalized**: `../shared/**/*.yaml` must be rooted with its
 `..` segment left in place. This scenario is tested by
 `PathResolver_Combine_GlobPattern_NotNormalized`.
