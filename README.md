@@ -1,4 +1,4 @@
-# ![DictionaryMark: Markdown glossaries from YAML dictionary files. Writes bullet lists or tables with sized columns, lists deprecated terms, and reports conflicting definitions. Shown with the command 'dictionarymark --config dictionarymark.yaml' and the note '.NET 10 and 11, Windows, Linux, macOS'. A YAML glossary, rich entries with definition, pos and variants, deprecated terms with use and where, and a configuration file of table jobs flow into the dictionarymark .NET tool, and arrows lead out to a Markdown table with 25 to 75 column widths, a bullet list, and a deprecated-terms table; a fourth card shows PDF and HTML documents made from that Markdown downstream by Pandoc][hero]
+# ![DictionaryMark: Markdown glossaries from YAML dictionary files][hero]
 
 <!-- IMPORTANT: All links in this file must be absolute URLs.
      This file is distributed in packages and relative links will not resolve. -->
