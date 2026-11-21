@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640">
   <!-- The README hero banner. A YAML glossary, rich entries, deprecated terms, and a configuration file of table
        jobs flow into the dictionarymark tool and come out as a Markdown table with sized columns, a bullet list, a
-       deprecated-terms table, and Pandoc documents.
+       deprecated-terms table; Pandoc then makes documents from that Markdown (downstream).
        The definitions and the left panel follow the shared DEMA Consulting hero (CanvasNet and BuildMark).
        This file is docs/images/hero.svg, beside its rendered docs/images/hero.png (matching base names, per the
        diagram documentation standard); the files it embeds are in docs/images/hero/. -->
@@ -9,7 +9,7 @@
     <style>
       .word { font: bold 92px sans-serif; fill: #ffffff; }
       .eyebrow { font: bold 25px sans-serif; fill: #a5b4fc; }
-      .tag { font: bold 40px sans-serif; fill: #f8fafc; }
+      .tag { font: bold 36px sans-serif; fill: #f8fafc; }
       .body { font: 25px sans-serif; fill: #cbd5e1; }
       .cmd { font: 25px monospace; fill: #e2e8f0; }
       .prompt { fill: #5eead4; }
@@ -127,20 +127,20 @@
   <image href="hero/dc-logo-dark.svg" x="46" y="54" width="50" height="50"/>
   <text class="eyebrow" x="100" y="90">DEMA Consulting</text>
   <!-- DictionaryMark: "Dictionary" = 4890 units and "Mark" = 2334 units (7224 in all), so the name is drawn at
-       70px instead of 92px to end before x = 560 (at 557.7): x = 52 + 0.070 * 4890 = 394.3. -->
-  <text class="word" x="52" y="176" style="font-size: 70px">Dictionary</text>
-  <text class="word brandText" x="394.3" y="176" style="font-size: 70px">Mark</text>
+       floor(488000 / 7224) = 67px instead of 92px to end before x = 540 (at 536.0): x = 52 + 0.067 * 4890 = 379.6. -->
+  <text class="word" x="52" y="176" style="font-size: 67px">Dictionary</text>
+  <text class="word brandText" x="379.6" y="176" style="font-size: 67px">Mark</text>
   <rect x="58" y="200" width="132" height="6" rx="3" fill="url(#brand)"/>
-  <text class="tag" x="56" y="266">YAML dictionaries in.</text>
-  <text class="tag brandText" x="56" y="316">Markdown glossaries out.</text>
-  <text class="body" x="58" y="368">One .NET tool turns YAML term dictionaries</text>
-  <text class="body" x="58" y="402">into Markdown tables and bullet lists,</text>
-  <text class="body" x="58" y="436">for documents, docs pipelines and CI.</text>
+  <text class="tag" x="56" y="266">Markdown glossaries from</text>
+  <text class="tag" x="56" y="314" style="fill: #a5b4fc">YAML dictionary files.</text>
+  <text class="body" x="58" y="368">Writes bullet lists or tables with sized</text>
+  <text class="body" x="58" y="402">columns, lists deprecated terms, and</text>
+  <text class="body" x="58" y="436">reports conflicting definitions.</text>
   <rect x="56" y="468" width="480" height="90" rx="12" fill="#0a1022" fill-opacity="0.8" stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.5"/>
   <text class="cmd prompt" x="78" y="503">$</text>
   <text class="cmd" x="108" y="503">dictionarymark --config</text>
   <text class="cmd file" x="138" y="539">dictionarymark.yaml</text>
-  <text class="note" x="58" y="604">One config file, one run, every table.</text>
+  <text class="note" x="58" y="604">.NET 10 and 11 &#183; Windows, Linux, macOS</text>
 
 
   <!-- Input cards -->
@@ -283,7 +283,7 @@
     <text class="td" x="1148" y="531">in Product A</text>
     <text class="label" x="1232" y="585">Deprecated table</text>
 
-    <!-- Output four: Pandoc documents in PDF and HTML that include the generated Markdown -->
+    <!-- Output four (downstream): Pandoc documents in PDF and HTML made from the generated Markdown -->
     <rect class="card" x="1355" y="390" width="205" height="210" rx="16"/>
     <rect class="panel" x="1363" y="398" width="189" height="152" rx="10"/>
     <path class="page" d="M1377 408 L1449 408 L1465 424 L1465 542 L1377 542 Z"/>
@@ -300,6 +300,6 @@
     <text class="chip" x="1508" y="464">PDF</text>
     <rect x="1472" y="486" width="72" height="32" rx="7" fill="#ea580c"/>
     <text class="chip" x="1508" y="510">HTML</text>
-    <text class="label" x="1457" y="585">Pandoc docs</text>
+    <text class="label" x="1457" y="585">via Pandoc</text>
   </g>
 </svg>

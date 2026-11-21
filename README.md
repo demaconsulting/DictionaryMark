@@ -1,4 +1,4 @@
-# DictionaryMark
+# ![DictionaryMark: Markdown glossaries from YAML dictionary files. Writes bullet lists or tables with sized columns, lists deprecated terms, and reports conflicting definitions. Shown with the command 'dictionarymark --config dictionarymark.yaml' and the note '.NET 10 and 11, Windows, Linux, macOS'. A YAML glossary, rich entries with definition, pos and variants, deprecated terms with use and where, and a configuration file of table jobs flow into the dictionarymark .NET tool, and arrows lead out to a Markdown table with 25 to 75 column widths, a bullet list, and a deprecated-terms table; a fourth card shows PDF and HTML documents made from that Markdown downstream by Pandoc][hero]
 
 <!-- IMPORTANT: All links in this file must be absolute URLs.
      This file is distributed in packages and relative links will not resolve. -->
@@ -11,12 +11,6 @@
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=alert_status)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![Security](https://sonarcloud.io/api/project_badges/measure?project=demaconsulting_DictionaryMark&metric=security_rating)](https://sonarcloud.io/dashboard?id=demaconsulting_DictionaryMark)
 [![NuGet](https://img.shields.io/nuget/v/DemaConsulting.DictionaryMark?style=plastic)](https://www.nuget.org/packages/DemaConsulting.DictionaryMark)
-
-![DictionaryMark banner: the DictionaryMark name with the tagline 'YAML dictionaries in. Markdown glossaries out.'
-and the command 'dictionarymark --config dictionarymark.yaml'. A YAML glossary, rich entries with definition, pos
-and variants, deprecated terms with use and where, and a configuration file of table jobs flow on curved arrows into
-the dictionarymark .NET tool, and arrows lead out to a Markdown table with 25 to 75 column widths, a bullet list, a
-deprecated-terms table, and Pandoc documents in PDF and HTML][hero]
 
 ## Overview
 
