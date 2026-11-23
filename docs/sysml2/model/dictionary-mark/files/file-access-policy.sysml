@@ -1,4 +1,5 @@
-package DictionaryMark {
+package DictionaryMark_FileAccessPolicy {
+    private import DictionaryMark_RealPath::*;
     private import SoftwareItemMetadata::*;
 
     part def FileAccessPolicy {

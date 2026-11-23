@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_ConflictDetector {
     private import SoftwareItemMetadata::*;
 
     part def ConflictDetector {

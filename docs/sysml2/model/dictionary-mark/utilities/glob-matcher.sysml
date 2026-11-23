@@ -1,4 +1,5 @@
-package DictionaryMark {
+package DictionaryMark_GlobMatcher {
+    private import DictionaryMark_PathResolver::*;
     private import SoftwareItemMetadata::*;
 
     part def GlobMatcher {

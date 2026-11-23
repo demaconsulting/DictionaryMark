@@ -51,6 +51,7 @@ words:
   - deduplicator
   - DEMA
   - demaconsulting
+  - distinguishability
   - doctitle
   - docversion
   - lintmark
@@ -62,11 +63,13 @@ words:
   - Sarif
   - SARIF
   - sarif
+  - Sensmetry
   - shopt
   - slnx
   - Zorbix
   - snupkg
   - sonarscanner
+  - Syside
   - Supertypes
   - templatetool
   - thirdparty

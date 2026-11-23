@@ -1,4 +1,6 @@
-package DictionaryMark {
+package DictionaryMark_FileReferenceResolver {
+    private import DictionaryMark_FileAccessPolicy::*;
+    private import DictionaryMark_RealPath::*;
     private import SoftwareItemMetadata::*;
 
     part def FileReferenceResolver {

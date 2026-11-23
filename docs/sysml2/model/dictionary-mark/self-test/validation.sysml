@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_Validation {
     private import SoftwareItemMetadata::*;
 
     part def Validation {

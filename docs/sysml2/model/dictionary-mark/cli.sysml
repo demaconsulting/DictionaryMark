@@ -1,4 +1,7 @@
-package DictionaryMark {
+package DictionaryMark_CliSubsystem {
+    public import DictionaryMark_ConfigFile::*;
+    public import DictionaryMark_Context::*;
+    public import DictionaryMark_TableJob::*;
     private import SoftwareItemMetadata::*;
 
     part def CliSubsystem {

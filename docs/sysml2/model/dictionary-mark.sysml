@@ -1,7 +1,13 @@
 package DictionaryMark {
+    public import DictionaryMark_Program::*;
+    public import DictionaryMark_CliSubsystem::*;
+    public import DictionaryMark_DictionarySubsystem::*;
+    public import DictionaryMark_SelfTestSubsystem::*;
+    public import DictionaryMark_FilesSubsystem::*;
+    public import DictionaryMark_UtilitiesSubsystem::*;
     private import SoftwareItemMetadata::*;
 
-    import OtsDependencies::*;
+    private import OtsDependencies::*;
 
     doc
     /*

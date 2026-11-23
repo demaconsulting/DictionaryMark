@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_Program {
     private import SoftwareItemMetadata::*;
 
     part def Program {
