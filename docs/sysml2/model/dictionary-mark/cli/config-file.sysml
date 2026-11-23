@@ -1,4 +1,5 @@
-package DictionaryMark {
+package DictionaryMark_ConfigFile {
+    private import DictionaryMark_PathResolver::*;
     private import SoftwareItemMetadata::*;
 
     part def ConfigFile {
@@ -14,7 +15,7 @@ package DictionaryMark {
     }
 
     // ConfigFile builds formatting layers, parses YAML, and resolves the root key against the file's directory
-    dependency ConfigFile to FormattingSettings;
+    dependency ConfigFile to DictionaryMark_CliSubsystem::FormattingSettings;
     dependency ConfigFile to OtsDependencies::YamlDotNet;
     dependency ConfigFile to PathResolver;
 }

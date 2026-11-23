@@ -1,4 +1,8 @@
-package DictionaryMark {
+package DictionaryMark_Context {
+    private import DictionaryMark_ConfigFile::*;
+    private import DictionaryMark_TableJob::*;
+    private import DictionaryMark_PathResolver::*;
+    private import DictionaryMark_FileAccessPolicy::*;
     private import SoftwareItemMetadata::*;
 
     part def Context {

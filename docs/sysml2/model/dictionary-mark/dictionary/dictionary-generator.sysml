@@ -1,4 +1,7 @@
-package DictionaryMark {
+package DictionaryMark_DictionaryGenerator {
+    private import DictionaryMark_TableJob::*;
+    private import DictionaryMark_PathResolver::*;
+    private import DictionaryMark_FileReferenceResolver::*;
     private import SoftwareItemMetadata::*;
 
     part def DictionaryGenerator {

@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_MarkdownFormatter {
     private import SoftwareItemMetadata::*;
 
     part def MarkdownFormatter {

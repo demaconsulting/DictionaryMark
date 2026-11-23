@@ -1,4 +1,5 @@
-package DictionaryMark {
+package DictionaryMark_SelfTestSubsystem {
+    public import DictionaryMark_Validation::*;
     private import SoftwareItemMetadata::*;
 
     part def SelfTestSubsystem {

@@ -1,4 +1,8 @@
-package DictionaryMark {
+package DictionaryMark_UtilitiesSubsystem {
+    public import DictionaryMark_GlobMatcher::*;
+    public import DictionaryMark_PathHelpers::*;
+    public import DictionaryMark_PathResolver::*;
+    public import DictionaryMark_TemporaryDirectory::*;
     private import SoftwareItemMetadata::*;
 
     part def UtilitiesSubsystem {

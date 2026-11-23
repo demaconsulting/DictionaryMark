@@ -1,4 +1,7 @@
-package DictionaryMark {
+package DictionaryMark_FilesSubsystem {
+    public import DictionaryMark_FileAccessPolicy::*;
+    public import DictionaryMark_FileReferenceResolver::*;
+    public import DictionaryMark_RealPath::*;
     private import SoftwareItemMetadata::*;
 
     part def FilesSubsystem {

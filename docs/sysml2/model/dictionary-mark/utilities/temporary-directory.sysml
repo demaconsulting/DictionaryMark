@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_TemporaryDirectory {
     private import SoftwareItemMetadata::*;
 
     part def TemporaryDirectory {

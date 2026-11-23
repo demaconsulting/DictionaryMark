@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_RealPath {
     private import SoftwareItemMetadata::*;
 
     part def RealPath {

@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_YamlDictionaryLoader {
     private import SoftwareItemMetadata::*;
 
     part def YamlDictionaryLoader {

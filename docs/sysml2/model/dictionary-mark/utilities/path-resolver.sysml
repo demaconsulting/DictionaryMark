@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_PathResolver {
     private import SoftwareItemMetadata::*;
 
     part def PathResolver {

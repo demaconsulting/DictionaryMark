@@ -1,4 +1,4 @@
-package DictionaryMark {
+package DictionaryMark_TableJob {
     private import SoftwareItemMetadata::*;
 
     part def TableJob {
@@ -14,6 +14,6 @@ package DictionaryMark {
     }
 
     // TableJob merges formatting layers and produces the Markdown options used by the formatter
-    dependency TableJob to FormattingSettings;
-    dependency TableJob to MarkdownOptions;
+    dependency TableJob to DictionaryMark_CliSubsystem::FormattingSettings;
+    dependency TableJob to DictionaryMark_DictionarySubsystem::MarkdownOptions;
 }

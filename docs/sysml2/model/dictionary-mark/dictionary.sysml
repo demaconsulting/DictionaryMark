@@ -1,4 +1,8 @@
-package DictionaryMark {
+package DictionaryMark_DictionarySubsystem {
+    public import DictionaryMark_ConflictDetector::*;
+    public import DictionaryMark_DictionaryGenerator::*;
+    public import DictionaryMark_MarkdownFormatter::*;
+    public import DictionaryMark_YamlDictionaryLoader::*;
     private import SoftwareItemMetadata::*;
 
     part def DictionarySubsystem {
