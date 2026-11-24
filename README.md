@@ -439,7 +439,7 @@ a pattern that matches no file is an error.
 ## Building
 
 ```pwsh
-pwsh ./build.ps1
+pwsh ./build.ps1 -All
 ```
 
 ## User Guide
