@@ -2,10 +2,11 @@ package DictionaryMark_CliSubsystem {
     public import DictionaryMark_ConfigFile::*;
     public import DictionaryMark_Context::*;
     public import DictionaryMark_TableJob::*;
+    public import DictionaryMark_HelpCommand::*;
     private import SoftwareItemMetadata::*;
 
     part def CliSubsystem {
-        doc /* Command-line interface: argument parsing, configuration files, generation jobs and I/O ownership. */
+        doc /* Command-line interface: argument parsing, configuration files, generation jobs, I/O ownership, and the built-in help command. */
 
         metadata info : SoftwareInfo {
             testFiles = ("test/DemaConsulting.DictionaryMark.Tests/Cli/CliSubsystemTests.cs");
@@ -17,6 +18,7 @@ package DictionaryMark_CliSubsystem {
         part context : Context;
         part configFile : ConfigFile;
         part tableJob : TableJob;
+        part helpCommand : HelpCommand;
         part formattingSettings : FormattingSettings;
     }
 

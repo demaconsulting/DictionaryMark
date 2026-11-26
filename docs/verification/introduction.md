@@ -23,6 +23,7 @@ Local items:
     - **Context**: argument parser and I/O owner.
     - **ConfigFile**: YAML configuration file loader and validator.
     - **TableJob**: resolved table generation job with merged formatting settings.
+    - **HelpCommand**: built-in help command.
   - **Dictionary**: dictionary processing subsystem.
     - **DictionaryGenerator**: orchestrates dictionary generation.
     - **YamlDictionaryLoader**: loads YAML approved-term and deprecated-term files.
@@ -43,6 +44,7 @@ Local items:
 OTS items:
 
 - **BuildMark**: build-notes documentation tool.
+- **DemaConsulting.HelpCards**: built-in help library.
 - **DemaConsulting.TestResults**: TRX and JUnit XML test results library.
 - **FileAssert**: document assertion tool.
 - **Microsoft.Extensions.FileSystemGlobbing**: glob pattern matching for file system paths.

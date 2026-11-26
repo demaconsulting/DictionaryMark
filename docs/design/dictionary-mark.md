@@ -10,14 +10,15 @@ DictionaryMark is organized into five subsystems and one top-level Program unit.
 
 ![System Structure](DictionaryMarkView.svg)
 
-**Program** is the entry point and execution orchestrator. It creates a `Context` from the
+**Program** is the entry point and execution orchestrator. It first offers the arguments to
+`HelpCommand`, which answers the `help` command. Otherwise it creates a `Context` from the
 command-line arguments, dispatches to version display, help display, self-validation, or
 Dictionary generation based on the parsed flags, and returns the exit code.
 
 **Cli Subsystem** contains `Context`, which handles all command-line argument parsing and owns
 the output streams for logging and results; `ConfigFile`, which loads the optional YAML
-configuration file; and `TableJob`, which represents one generation job with its effective
-formatting.
+configuration file; `TableJob`, which represents one generation job with its effective
+formatting; and `HelpCommand`, which answers the built-in `help` command from embedded help cards.
 
 **Dictionary Subsystem** contains `YamlDictionaryLoader`, `ConflictDetector`, `MarkdownFormatter`,
 `DictionaryGenerator`, and supporting data-model types. It reads YAML files, detects term
@@ -37,8 +38,8 @@ consumed by the Cli, Dictionary and SelfTest subsystems.
 
 ## External Interfaces
 
-DictionaryMark exposes two external interfaces: its command-line argument list and the optional
-YAML configuration file named by `--config`.
+DictionaryMark exposes three external interfaces: its command-line argument list, the built-in
+`help` command, and the optional YAML configuration file named by `--config`.
 
 **Command-Line Interface**: The tool is invoked from a terminal with flags that control input
 selection, output formatting, and operational mode.
@@ -66,7 +67,20 @@ selection, output formatting, and operational mode.
   `..` segments are supported before the first wildcard. Missing output directories are created.
   All file I/O uses UTF-8 encoding without BOM. Input errors are strict: a missing file, an empty
   glob match, an undefined `${VAR}` reference, an entry without a definition, or an invalid
-  `--kind` value is reported as an error and produces no output.
+  `--kind` value is reported as an error and produces no output. Argument and configuration
+  errors are found before `--silent` and `--log` take effect, so they are always printed and never
+  logged. The `help` command is accepted as the first argument (see *Help Command*).
+
+**Help Command**: Built-in help, answered from help cards embedded in the tool assembly.
+
+- *Type*: CLI
+- *Role*: Provider (the tool answers the `help` command from the shell)
+- *Contract*: `dictionarymark help` prints the topic index and `dictionarymark help <topic>` prints
+  a topic card with its examples; HelpCards adds `--example`, `--search`, and `--json`. Returns exit
+  code 0 for success, 2 for a wrong help argument or an unknown topic, and 70 for a defective card
+  catalog.
+- *Constraints*: `help` must be the first argument. It is answered before the options are parsed,
+  so `--silent` and `--log` do not apply and no banner is printed.
 
 **Configuration File**: A YAML file that supplies formatting defaults, an optional root
 directory, and optional table jobs.
@@ -91,6 +105,8 @@ directory, and optional table jobs.
   see *FileSystemGlobbing*
 - **DemaConsulting.TestResults**: used for structured test-result reporting in `Validation` —
   see *DemaConsulting.TestResults*
+- **DemaConsulting.HelpCards**: used for loading, validating, and serving the built-in help cards
+  in `HelpCommand` — see *DemaConsulting.HelpCards*
 
 ## Risk Control Measures
 
@@ -138,7 +154,11 @@ The system has two security boundaries:
 
 ## Data Flow
 
-1. The user invokes the tool; `Program.Main` creates a `Context` from the command-line arguments.
+1. The user invokes the tool; `Program.Main` first offers the arguments to `HelpCommand.TryRun`.
+   When the first argument is `help`, it builds the card catalog, writes the topic index or the
+   topic card to the console, and the tool exits with its exit code. Otherwise it returns at once
+   without building the catalog, and the following steps apply.
+2. `Program.Main` creates a `Context` from the command-line arguments.
    `Context` resolves `--root` and `--config`, builds the file-access policy from `--file-access` and
    `--allow-root`, loads the `--config` file (if any), and builds the generation jobs:
    one per configuration table, or one command-line job for `--input`. Each job carries its
@@ -147,24 +167,24 @@ The system has two security boundaries:
    has a `root` key, the command-line job is marked so that its relative paths are judged. Any validation failure stops
    the
    run here with exit code 1.
-2. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
+3. If `--validate` is present, `Validation.Run` executes in-process self-tests and the tool exits.
    `context.HeadingDepth` controls the Markdown heading level of the validation report header.
-3. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
-4. The job's input patterns are resolved against its base directory: `GlobMatcher.Resolve` resolves every trusted
+4. `DictionaryGenerator` runs every job in turn, continuing after a failed job. For each job:
+5. The job's input patterns are resolved against its base directory: `GlobMatcher.Resolve` resolves every trusted
    pattern and the judged wildcard patterns; a judged literal pattern (a configuration-table pattern, or a relative
    command-line pattern the configuration `root` key moves) is only expanded, rooted and normalized as text.
-5. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list. For a
+6. `YamlDictionaryLoader.Load` reads each resolved YAML file and produces a `DictionaryEntry` list. For a
    judged file, each file is first read through the job's `FileReferenceResolver`, which judges the
    opened file by the policy, and the loader parses the bytes it returned.
-6. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
+7. `ConflictDetector.Detect` scans the job's combined entry list; any conflict is reported via
    `context.WriteError` and halts output generation for that job.
-7. `MarkdownFormatter.Format` renders the validated entries as a Markdown string, sizing table
+8. `MarkdownFormatter.Format` renders the validated entries as a Markdown string, sizing table
    columns by the job's column widths when given.
-8. The formatted Markdown is written to the job's output file (resolved against its base
+9. The formatted Markdown is written to the job's output file (resolved against its base
    directory, creating missing parent directories), or to stdout if no output file was specified. For a
    judged output path (a configuration-table output, or a relative command-line output moved by the configuration `root`
    key), the output path is first checked with `CheckOutputPath`.
-9. Errors of configuration jobs are prefixed with `table job {n} ('{output}')`; when any
+10. Errors of configuration jobs are prefixed with `table job {n} ('{output}')`; when any
    configuration job failed, a summary `{failed} of {total} table jobs failed` is reported.
 
 Base directory for relative input patterns and output paths:
@@ -186,4 +206,5 @@ Base directory for relative input patterns and output paths:
 - **Output size**: no enforced limit; formatted output is buffered in memory before writing.
 - **Encoding**: all file I/O uses UTF-8 without BOM.
 - **Exit-code contract**: exit code 0 means no errors recorded; exit code 1 means at least one
-  error was written via `context.WriteError`.
+  error was written via `context.WriteError`. The `help` command has its own exit codes; see
+  *Help Command*.

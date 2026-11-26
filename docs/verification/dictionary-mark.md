@@ -10,6 +10,14 @@ requirement maps to one or more named integration test scenarios. Integration te
 on external files use the `TemporaryDirectory` test helper to create and automatically clean up
 temporary files.
 
+The built-in `help` command is verified by running the compiled tool with `help` arguments. The
+command examples of the help cards are verified with the example runner of
+`DemaConsulting.HelpCards`: it gives each card a fresh scratch folder that holds the card's saved
+`source` examples, and calls a test delegate for each command example. The delegate copies the
+input files of `test/DemaConsulting.DictionaryMark.Tests/TestData/HelpExamples/` into that folder
+before every command, runs the compiled tool there with `Runner.RunInDirectory`, and the runner
+compares the exit code and the output with the `exit` and `expect` values of the example.
+
 ## Test Environment
 
 - **Test framework**: xUnit v3 with `[Collection("Sequential")]` to prevent parallel execution.
@@ -33,6 +41,8 @@ temporary files.
   the embedded self-validation output.
 - File-based tests must use `TemporaryDirectory` to ensure all temporary files are cleaned up
   on completion.
+- The `help` command lists the topics with exit code 0, and exits with code 2 for an unknown topic.
+- Every command example in the help cards gives the exit code and output that its card states.
 
 ## Test Scenarios
 
@@ -45,6 +55,21 @@ This scenario is tested by `DictionaryMark_VersionFlag_Provided_OutputsVersion`.
 listing all key command-line options and exit with code zero. This ensures users and automated
 pipelines can discover the tool's interface.
 This scenario is tested by `DictionaryMark_HelpFlag_Provided_OutputsUsageInformation`.
+
+**HelpTopics**: Invoke the tool with `help` as the sole argument; it must exit with code zero,
+list every topic with its command, and print no banner. This ensures users and AI agents that have
+only the installed tool can find the help topics.
+This scenario is tested by `DictionaryMark_HelpTopics_HelpVerb_ListsTopics`.
+
+**HelpUnknownTopic**: Invoke the tool with `help no-such-topic`; it must exit with code 2 and the
+output must name the topic, so that scripts can tell a mistyped topic from a failed tool run.
+This scenario is tested by `DictionaryMark_HelpTopics_UnknownTopic_ReturnsUsageError`.
+
+**HelpExamples**: Build the catalog that the tool ships and run every command example of every card
+against the compiled tool in a scratch folder that holds the card's saved source examples and the
+files of `TestData/HelpExamples`; at least one command example must exist, and each must give the
+exit code and output fragments that its card states.
+This scenario is tested by `DictionaryMark_HelpExamples_AllCommandExamples_GiveStatedResults`.
 
 **SelfValidation**: When the `--validate` flag is provided, the tool must run all built-in
 self-validation tests, print a summary, and exit with code zero when all tests pass. This

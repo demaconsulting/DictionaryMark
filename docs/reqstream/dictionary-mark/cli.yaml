@@ -198,3 +198,15 @@ sections:
             tests:
               - CliSubsystem_RestrictiveModeConfigEnvironment_RefusedAndNothingCreated
               - CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore
+
+          - id: DictionaryMark-Cli-HelpTopics
+            title: The CLI subsystem shall answer the help command from built-in help cards.
+            justification: |
+              Users and AI agents need help topics with worked examples from the installed
+              tool, without requiring external resources.
+            children:
+              - DictionaryMark-HelpCommand-HelpVerb
+              - DictionaryMark-HelpCommand-ValidCards
+              - DictionaryMark-HelpCommand-LineWidth
+            tests:
+              - CliSubsystem_HelpCommand_TopicRequested_PrintsTopic
