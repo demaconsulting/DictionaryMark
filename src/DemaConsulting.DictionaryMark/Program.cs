@@ -62,15 +62,28 @@ internal static class Program
     /// <returns>Exit code: 0 for success, non-zero for failure.</returns>
     /// <exception cref="Exception">Thrown when an unexpected error occurs; re-thrown after writing to stderr.</exception>
     /// <remarks>
-    ///     <see cref="ArgumentException"/> and <see cref="InvalidOperationException"/> are treated as
-    ///     expected errors: their messages are written to stderr and exit code 1 is returned without
-    ///     a stack trace. Any other exception is written to stderr and then re-thrown so that the
-    ///     runtime can record it in event logs.
+    ///     <para>
+    ///         The <c>help</c> command is answered first, by <see cref="HelpCommand"/>, before the
+    ///         command-line options are parsed: <c>help</c> is a command and not an option, so
+    ///         <see cref="Context.Create"/> would reject it. Its exit code is returned as is.
+    ///     </para>
+    ///     <para>
+    ///         <see cref="ArgumentException"/> and <see cref="InvalidOperationException"/> are treated as
+    ///         expected errors: their messages are written to stderr and exit code 1 is returned without
+    ///         a stack trace. Any other exception is written to stderr and then re-thrown so that the
+    ///         runtime can record it in event logs.
+    ///     </para>
     /// </remarks>
     public static int Main(string[] args)
     {
         try
         {
+            // Answer the help command before the options are parsed
+            if (HelpCommand.Default.TryRun(args, out var helpExitCode))
+            {
+                return helpExitCode;
+            }
+
             // Create context from command-line arguments
             using var context = Context.Create(args);
 
@@ -156,7 +169,8 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Writes the complete usage reference — all available flags and options — to the context output.
+    ///     Writes the complete usage reference — all available flags and options — to the context output,
+    ///     ending with a pointer to the built-in help topics.
     /// </summary>
     /// <remarks>
     ///     Called when the help flag is active to give users an inline, self-contained usage reference
@@ -165,7 +179,8 @@ internal static class Program
     /// <param name="context">The context for output.</param>
     private static void PrintHelp(Context context)
     {
-        context.WriteLine("Usage: dictionarymark [options]");
+        context.WriteLine($"Usage: {HelpCommand.ToolName} [options]");
+        context.WriteLine($"       {HelpCommand.ToolName} help [topic]");
         context.WriteLine("");
         context.WriteLine("Options:");
         context.WriteLine("  -v, --version                     Display version information");
@@ -192,6 +207,8 @@ internal static class Program
         context.WriteLine("  --root <dir>                      Base directory for relative input and output paths");
         context.WriteLine("  --file-access <mode>              Which local files config-file tables, and relative --input/--output paths moved by a config root, may read and write: any (default; every regular file), roots (only inside the --allow-root folders), no-symlinks (no symbolic link or junction), or roots,no-symlinks");
         context.WriteLine("  --allow-root <dir>                A folder those inputs and outputs may be in (repeatable; implies --file-access roots); without it roots allows the current folder and the config file's folder");
+        context.WriteLine("");
+        context.WriteLine(HelpCommand.Default.Footer);
     }
 
     /// <summary>

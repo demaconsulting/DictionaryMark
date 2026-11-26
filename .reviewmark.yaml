@@ -14,6 +14,7 @@ needs-review:
   - "docs/design/**/*.md"         # Design documentation files
   - "docs/verification/**/*.md"   # Verification documentation files
   - "docs/user_guide/**/*.md"     # User guide documentation
+  - "src/**/Help/**"              # Built-in help cards
   - "!**/obj/**"                  # Exclude build output
   - "!**/bin/**"                  # Exclude build output
   - "!**/generated/**"            # Exclude generated files
@@ -175,6 +176,21 @@ reviews:
       - "src/**/Cli/FormattingSettings.cs"
       - "src/**/Cli/TableJob.cs"
       - "test/**/Cli/TableJobTests.cs"
+
+  - id: DictionaryMark-Cli-HelpCommand
+    title: Review that DictionaryMark Cli HelpCommand Implementation is Correct
+    context:
+      - "docs/design/dictionary-mark.md"
+      - "docs/reqstream/dictionary-mark.yaml"
+      - "docs/design/dictionary-mark/cli.md"
+      - "docs/reqstream/dictionary-mark/cli.yaml"
+    paths:
+      - "docs/reqstream/dictionary-mark/cli/help-command.yaml"
+      - "docs/design/dictionary-mark/cli/help-command.md"
+      - "docs/verification/dictionary-mark/cli/help-command.md"
+      - "src/**/Cli/HelpCommand.cs"
+      - "src/**/Help/**"
+      - "test/**/Cli/HelpCommandTests.cs"
 
   # DictionaryMark-SelfTest Review (subsystem)
   - id: DictionaryMark-SelfTest
@@ -502,3 +518,10 @@ reviews:
       - "docs/reqstream/ots/test-results.yaml"
       - "docs/design/ots/test-results.md"
       - "docs/verification/ots/test-results.md"
+
+  - id: OTS-HelpCards
+    title: Review that HelpCards Provides Required Functionality
+    paths:
+      - "docs/reqstream/ots/help-cards.yaml"
+      - "docs/design/ots/help-cards.md"
+      - "docs/verification/ots/help-cards.md"

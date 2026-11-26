@@ -18,8 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DemaConsulting.DictionaryMark.Cli;
 using DemaConsulting.DictionaryMark.Tests.Helpers;
 using DemaConsulting.DictionaryMark.Utilities;
+using DemaConsulting.HelpCards.Catalog;
+using DemaConsulting.HelpCards.Testing;
 
 namespace DemaConsulting.DictionaryMark.Tests;
 
@@ -36,7 +39,13 @@ public class IntegrationTests
     private readonly string _dllPath;
 
     /// <summary>
-    ///     Initialize test by locating the DictionaryMark DLL.
+    ///     Full path to the test data folder in the test output, which holds the input files that the help
+    ///     examples read.
+    /// </summary>
+    private readonly string _testDataPath;
+
+    /// <summary>
+    ///     Initialize test by locating the DictionaryMark DLL and the test data.
     /// </summary>
     public IntegrationTests()
     {
@@ -44,6 +53,7 @@ public class IntegrationTests
         // because the test project references the main project
         var baseDir = AppContext.BaseDirectory;
         _dllPath = PathHelpers.SafePathCombine(baseDir, "DemaConsulting.DictionaryMark.dll");
+        _testDataPath = PathHelpers.SafePathCombine(baseDir, "TestData");
 
         Assert.True(File.Exists(_dllPath), $"Could not find DictionaryMark DLL at {_dllPath}");
     }
@@ -1875,5 +1885,85 @@ public class IntegrationTests
         Assert.Contains("API", File.ReadAllText(PathIn(tmpDir, "cli-root/relative.md")));
         Assert.Equal(0, absoluteExit);
         Assert.Contains("CI", File.ReadAllText(absoluteOutput));
+    }
+
+    /// <summary>
+    ///     Test that the help verb lists the help topics.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_HelpTopics_HelpVerb_ListsTopics()
+    {
+        // Arrange: (none - constructor initializes _dllPath)
+
+        // Act: run the tool with the help verb
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet",
+            _dllPath,
+            "help");
+
+        // Assert: every topic is listed with its command, without the banner
+        Assert.Equal(0, exitCode);
+        foreach (var topic in HelpCommand.RootCardIds)
+        {
+            Assert.Contains($"{HelpCommand.ToolName} help {topic}", output);
+        }
+
+        Assert.DoesNotContain("Copyright", output);
+    }
+
+    /// <summary>
+    ///     Test that an unknown help topic returns the usage-error exit code.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_HelpTopics_UnknownTopic_ReturnsUsageError()
+    {
+        // Arrange: (none - constructor initializes _dllPath)
+
+        // Act: ask for a topic that does not exist
+        var exitCode = Runner.Run(
+            out var output,
+            "dotnet",
+            _dllPath,
+            "help",
+            "no-such-topic");
+
+        // Assert: exit code 2 and a message that names the topic
+        Assert.Equal(2, exitCode);
+        Assert.Contains("no-such-topic", output);
+    }
+
+    /// <summary>
+    ///     Test that every command example in the help cards gives the result that its card states.
+    /// </summary>
+    [Fact]
+    public void DictionaryMark_HelpExamples_AllCommandExamples_GiveStatedResults()
+    {
+        // Arrange: the catalog the tool ships, and the input files that the examples read but users do not
+        // author (inputs of other topics and deliberately broken files)
+        var catalog = HelpCatalog.Create(HelpCommand.CreateOptions().GetCatalogConfiguration());
+        var exampleFiles = Directory.GetFiles(PathHelpers.SafePathCombine(_testDataPath, "HelpExamples"));
+
+        // Act: run every command example against the built tool in the runner's scratch folder; the runner
+        // compares the exit codes and the 'expect' fragments. The input files are copied in before every
+        // command, so that a command that overwrites a file cannot affect the next one.
+        var report = HelpExampleRunner.Run(catalog, invocation =>
+        {
+            foreach (var file in exampleFiles)
+            {
+                File.Copy(file, PathHelpers.SafePathCombine(invocation.WorkingDirectory, Path.GetFileName(file)), true);
+            }
+
+            var exitCode = Runner.RunInDirectory(
+                out var output,
+                invocation.WorkingDirectory,
+                "dotnet",
+                [_dllPath, .. invocation.Arguments]);
+            return new HelpExampleOutcome(exitCode, output);
+        });
+
+        // Assert: the cards hold command examples, and every one gave the result its card states
+        Assert.True(report.CommandsRun > 0, "The help cards contain no command examples.");
+        report.AssertSucceeded();
     }
 }

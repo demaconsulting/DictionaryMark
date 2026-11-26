@@ -68,4 +68,9 @@
     <ProjectReference Include="..\..\src\DemaConsulting.DictionaryMark\DemaConsulting.DictionaryMark.csproj" />
   </ItemGroup>
 
+  <!-- Test Data -->
+  <ItemGroup>
+    <None Update="TestData\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
