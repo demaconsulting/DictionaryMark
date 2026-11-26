@@ -15,6 +15,7 @@ input-files:
   - docs/design/dictionary-mark/cli/context.md
   - docs/design/dictionary-mark/cli/config-file.md
   - docs/design/dictionary-mark/cli/table-job.md
+  - docs/design/dictionary-mark/cli/help-command.md
   - docs/design/dictionary-mark/dictionary.md
   - docs/design/dictionary-mark/dictionary/yaml-loader.md
   - docs/design/dictionary-mark/dictionary/conflict-detector.md
@@ -35,6 +36,7 @@ input-files:
   - docs/design/ots/yaml-dot-net.md
   - docs/design/ots/file-system-globbing.md
   - docs/design/ots/test-results.md
+  - docs/design/ots/help-cards.md
 template: template.html
 table-of-contents: true
 number-sections: true

@@ -1,0 +1,6 @@
+---
+bench mode:
+  use: Test Mode
+  where: Product A
+setup screen:
+  use: Settings page

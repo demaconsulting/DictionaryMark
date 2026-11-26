@@ -24,6 +24,7 @@ OTS items:
 - **YamlDotNet**: integration and usage design.
 - **Microsoft.Extensions.FileSystemGlobbing**: integration and usage design.
 - **DemaConsulting.TestResults**: integration and usage design.
+- **DemaConsulting.HelpCards**: integration and usage design.
 
 Out of scope: test projects, build pipeline configuration, deployment and packaging, and external
 library internals.
@@ -54,11 +55,12 @@ inputs and judge config-job outputs](architecture.svg)
 
 - **src/** - source files and projects
   - **DemaConsulting.DictionaryMark/** - DictionaryMark system source
-    - **Cli/** - Cli subsystem
+    - **Cli/** - Cli subsystem, including the built-in `help` command (`HelpCommand.cs`)
     - **Dictionary/** - Dictionary subsystem
     - **Files/** - Files subsystem
     - **SelfTest/** - SelfTest subsystem
     - **Utilities/** - Utilities subsystem
+    - **Help/** - built-in help cards (Markdown with front matter), embedded in the assembly
 - **test/** - test projects
   - **DemaConsulting.DictionaryMark.Tests/** - DictionaryMark test source
     - **Cli/** - Cli subsystem tests
@@ -66,6 +68,7 @@ inputs and judge config-job outputs](architecture.svg)
     - **Files/** - Files subsystem tests
     - **SelfTest/** - SelfTest subsystem tests
     - **Utilities/** - Utilities subsystem tests
+    - **TestData/HelpExamples/** - input files that the help-card examples read
 
 ## Companion Artifact Structure
 

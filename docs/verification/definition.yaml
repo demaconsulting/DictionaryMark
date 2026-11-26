@@ -19,6 +19,7 @@ input-files:
   - docs/verification/dictionary-mark/cli/context.md
   - docs/verification/dictionary-mark/cli/config-file.md
   - docs/verification/dictionary-mark/cli/table-job.md
+  - docs/verification/dictionary-mark/cli/help-command.md
   - docs/verification/dictionary-mark/dictionary.md
   - docs/verification/dictionary-mark/dictionary/yaml-loader.md
   - docs/verification/dictionary-mark/dictionary/conflict-detector.md
@@ -46,6 +47,7 @@ input-files:
   - docs/verification/ots/sonarmark.md
   - docs/verification/ots/file-system-globbing.md
   - docs/verification/ots/test-results.md
+  - docs/verification/ots/help-cards.md
   - docs/verification/ots/versionmark.md
   - docs/verification/ots/weasyprint.md
   - docs/verification/ots/xunit.md

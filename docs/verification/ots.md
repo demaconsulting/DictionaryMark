@@ -4,6 +4,7 @@ This document describes the verification approach for Off-the-Shelf (OTS) softwa
 used by DictionaryMark. The following OTS items are covered:
 
 - **BuildMark**: `docs/verification/ots/buildmark.md`
+- **DemaConsulting.HelpCards**: `docs/verification/ots/help-cards.md`
 - **DemaConsulting.TestResults**: `docs/verification/ots/test-results.md`
 - **FileAssert**: `docs/verification/ots/fileassert.md`
 - **Microsoft.Extensions.FileSystemGlobbing**: `docs/verification/ots/file-system-globbing.md`
@@ -48,6 +49,10 @@ Evidence is collected for each OTS item through one or more of the following mec
 - **xUnit test-run results**: xUnit is verified by self-validation evidence embedded in the
   CI test run itself; every test discovered, executed, and reported by xUnit provides evidence
   that the framework is functioning correctly.
+- **Integration tests of DictionaryMark**, for a library that the tool uses at run time:
+  DemaConsulting.HelpCards is verified by the HelpCommand unit tests, which validate the shipped
+  cards with warnings treated as errors, and by the integration tests that run the compiled tool
+  with `help` arguments and run every command example of the cards.
 
 ## Regression Approach
 

@@ -11,6 +11,7 @@ includes:
   - docs/reqstream/dictionary-mark/cli/context.yaml
   - docs/reqstream/dictionary-mark/cli/config-file.yaml
   - docs/reqstream/dictionary-mark/cli/table-job.yaml
+  - docs/reqstream/dictionary-mark/cli/help-command.yaml
   - docs/reqstream/dictionary-mark/self-test.yaml
   - docs/reqstream/dictionary-mark/self-test/validation.yaml
   - docs/reqstream/dictionary-mark/dictionary.yaml
@@ -41,3 +42,4 @@ includes:
   - docs/reqstream/ots/yaml-dot-net.yaml
   - docs/reqstream/ots/file-system-globbing.yaml
   - docs/reqstream/ots/test-results.yaml
+  - docs/reqstream/ots/help-cards.yaml

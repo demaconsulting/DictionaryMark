@@ -18,6 +18,8 @@ N/A - standard test environment. Tests that write temporary YAML input files use
 ### Acceptance Criteria
 
 - All unit tests in `ProgramTests.cs` pass with zero failures.
+- The `help` command is answered before the options are parsed, and the usage text ends with a
+  pointer to it.
 - All unit requirements have at least one passing test scenario.
 - No tests are skipped or marked as expected failures.
 
@@ -31,9 +33,16 @@ This scenario is tested by `Program_Run_WithVersionFlag_DisplaysVersionOnly`.
 
 **Program_Run_WithHelpFlag_DisplaysUsageInformation**: `Program.Run` is called with a context
 created from `["--help"]`. Standard output must contain `"Usage:"`, `"Options:"`,
-`"--version"`, and `"--help"`; exit code must be zero. This confirms the help flag dispatches
-to full usage output.
+`"--version"`, `"--help"`, and the usage line `dictionarymark help [topic]`, and must end with
+the footer that points to the help command; exit code must be zero. This confirms the help flag
+dispatches to full usage output.
 This scenario is tested by `Program_Run_WithHelpFlag_DisplaysUsageInformation`.
+
+**Program_Main_WithHelpVerb_PrintsHelpIndex**: `Program.Main` is invoked with `["help"]`. Exit
+code must be zero, standard output must list the first help topic with its command, and the
+banner (`"Copyright"`) must not appear. This confirms that the help command is answered before
+the options are parsed.
+This scenario is tested by `Program_Main_WithHelpVerb_PrintsHelpIndex`.
 
 **Program_Run_WithValidateFlag_RunsValidation**: `Program.Run` is called with a context created
 from `["--validate"]`. Standard output must contain `"Total Tests:"` and exit code must be zero,

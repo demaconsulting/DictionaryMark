@@ -10,7 +10,8 @@ asserted. No mocking is applied at the subsystem boundary: all collaborators (`C
 logic, exercising the argument-parsing, configuration, job-building and output-routing paths in
 combination. Error paths that must stop the run are exercised through `Program.Main` so that the
 exit code and stderr message are asserted. Tests that write log or results files
-use `TemporaryDirectory` to create and clean up temporary file-system fixtures automatically.
+use `TemporaryDirectory` to create and clean up temporary file-system fixtures automatically. The
+help command is verified through `HelpCommand.Create`, which writes to in-memory writers.
 
 ### Test Environment
 
@@ -20,6 +21,7 @@ output files use `TemporaryDirectory` for automatic cleanup.
 ### Acceptance Criteria
 
 - All integration tests in `CliSubsystemTests.cs` pass with zero failures.
+- The `help` command prints a requested topic from the built-in help cards.
 - All subsystem requirements have at least one passing test scenario.
 - No tests are skipped or marked as expected failures.
 
@@ -174,3 +176,8 @@ value, and creates no file for it. This scenario is tested by
 **CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore**: Test that with no file-access option and with
 `--file-access any` the same kind of reference is expanded and the output is written with exit code 0. This scenario is
 tested by `CliSubsystem_AnyModeConfigEnvironment_ExpandedAsBefore`.
+
+**CliSubsystem_HelpCommand_TopicRequested_PrintsTopic**: `HelpCommand.TryRun` is offered
+`["help", "command-line"]` through a help command created with `HelpCommand.Create`. It must
+answer with the command-line topic, whose heading is `# Command-line options`, and exit code zero.
+This scenario is tested by `CliSubsystem_HelpCommand_TopicRequested_PrintsTopic`.

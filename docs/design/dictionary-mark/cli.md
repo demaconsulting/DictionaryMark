@@ -4,8 +4,9 @@
 
 ### Overview
 
-The Cli subsystem handles command-line argument parsing, configuration files, generation jobs and
-program output for DictionaryMark. It contains three units and one supporting data type:
+The Cli subsystem handles command-line argument parsing, configuration files, generation jobs,
+program output, and the built-in `help` command for DictionaryMark. It contains four units and one
+supporting data type:
 
 - `Context` encapsulates all argument-parsing logic, selects the root (base) directory, builds the
   file-access policy of the run and the generation jobs, and owns both output channels (console and log file).
@@ -13,14 +14,15 @@ program output for DictionaryMark. It contains three units and one supporting da
   defaults, the optional `root` key, and optional table jobs.
 - `TableJob` is one resolved generation job: input patterns, output path, base directory, and the
   effective Markdown options after the formatting precedence is applied.
+- `HelpCommand` answers the built-in `help` command from the help cards embedded in the assembly.
 - `FormattingSettings` is a supporting value type: one precedence layer of formatting settings in
   which every member is optional.
 
 Boundaries: parsing `string[]` args into typed properties, reading the configuration file,
 turning the command line and the file into a list of jobs, opening an optional log file, routing
-normal output through `WriteLine`, routing errors through `WriteError`, and exposing the derived
-`ExitCode`. All other subsystems communicate with the rest of the system through a `Context`
-instance and the `TableJob` instances it exposes.
+normal output through `WriteLine`, routing errors through `WriteError`, exposing the derived
+`ExitCode`, and answering the `help` command. All other subsystems communicate with the rest of
+the system through a `Context` instance and the `TableJob` instances it exposes.
 
 ### Interfaces
 
@@ -51,6 +53,23 @@ instance and the `TableJob` instances it exposes.
   `BaseDirectory` (for relative inputs and output), `Label` (`table job {n} ('{output}')` or
   `null`), `Options` (`MarkdownOptions`).
 - *Constraints*: Immutable.
+
+**HelpCommand.TryRun(string[] args, out int exitCode)**: Answers the `help` command from the
+built-in help cards.
+
+- *Type*: In-process .NET instance method (on the shared `HelpCommand.Default` instance).
+- *Role*: Provider — `Program.Main` calls it before `Context.Create`.
+- *Contract*: Returns `false`, writing nothing, when the first argument is not `help`. Otherwise
+  writes the answer to the console, returns `true`, and sets the exit code (see *Help Command* in
+  the system design).
+- *Constraints*: Does not throw for user input; does not use `Context`.
+
+**HelpCommand.Footer**: The sentence that points a reader of the usage text to the help command.
+
+- *Type*: In-process .NET instance property.
+- *Role*: Provider — `Program.PrintHelp` ends the usage text with it.
+- *Contract*: Returns the one-line pointer that HelpCards supplies.
+- *Constraints*: Reading it never builds the help catalog.
 
 **OutputFormat**, **SortOrder**, **InputKind** and **MarkdownOptions**: Types from the Dictionary
 subsystem.
@@ -138,3 +157,10 @@ open). `WriteError` additionally sets `_hasErrors = true`, writes to `Console.Er
 (unless `Silent`), and writes to `_logWriter`. `ExitCode` derives from `_hasErrors` only; it
 cannot be reset once an error is recorded. `Context` implements `IDisposable` to close the log
 `StreamWriter`.
+
+`HelpCommand` answers the `help` command before any `Context` exists: `Program.Main` offers it the
+arguments first, and when it answers, the invocation ends with its exit code and no `Context` is
+created. `Context` and `HelpCommand` do not call each other. `HelpCommand` writes its answers to the
+console itself; it is the one exception to `Context` owning all output, because the `help` command
+is answered before a `Context` exists. It is the only unit that uses the HelpCards library, and it
+reads the version from `Program.Version`.

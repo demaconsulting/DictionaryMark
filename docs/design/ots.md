@@ -1,8 +1,8 @@
 # OTS Dependencies
 
-DictionaryMark depends on three runtime OTS packages: YamlDotNet,
-Microsoft.Extensions.FileSystemGlobbing, and DemaConsulting.TestResults. Each is covered by a
-dedicated integration design file in the `ots/` sub-folder.
+DictionaryMark depends on four runtime OTS packages: YamlDotNet,
+Microsoft.Extensions.FileSystemGlobbing, DemaConsulting.TestResults, and DemaConsulting.HelpCards.
+Each is covered by a dedicated integration design file in the `ots/` sub-folder.
 
 ## Selection Criteria
 
@@ -25,13 +25,15 @@ SBOM generated during each build is the authoritative source for currently pinne
 
 ## General Integration Approach
 
-All three OTS packages are consumed through their published NuGet APIs without wrapper or adapter
+All four OTS packages are consumed through their published NuGet APIs without wrapper or adapter
 layers, keeping integration code minimal and direct. Each integration point is contained within a
 specific unit: YamlDotNet in `YamlDictionaryLoader`, Microsoft.Extensions.FileSystemGlobbing in
-`GlobMatcher`, and DemaConsulting.TestResults in `Validation`. This containment means that any
+`GlobMatcher`, DemaConsulting.TestResults in `Validation`, and DemaConsulting.HelpCards in
+`HelpCommand`. This containment means that any
 future replacement or upgrade affects at most one unit per OTS item. Exceptions surfaced by OTS
 calls are either re-thrown as-is or wrapped in an `InvalidOperationException` with a descriptive
-message before propagating to the caller.
+message before propagating to the caller. The test project also uses the test helpers of
+DemaConsulting.HelpCards to validate the help cards and run their examples.
 
 ## Qualification Strategy
 

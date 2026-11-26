@@ -5,7 +5,8 @@
 ### Purpose
 
 `Program` provides the application entry point (`Main`) and the internal execution entry point
-(`Run`). `Main` creates a `Context` from the CLI arguments, calls `Run`, and returns
+(`Run`). `Main` first offers the arguments to `HelpCommand`, which answers the `help` command;
+otherwise it creates a `Context` from the CLI arguments, calls `Run`, and returns
 `context.ExitCode`. Expected exceptions (`ArgumentException`, `InvalidOperationException`) are
 caught in `Main` and mapped to exit code 1 without a stack trace. `Program.Version` reads the
 assembly informational version attribute, falling back to `AssemblyVersion` then `"0.0.0"`.
@@ -19,13 +20,15 @@ the value more than once should store the result locally.
 
 ### Key Methods
 
-**Main**: Application entry point. Creates a `Context` from `args`, calls `Run(context)`, returns
-`context.ExitCode`. Catches `ArgumentException` and `InvalidOperationException` from
-`Context.Create`, writes to stderr, returns 1. Re-throws any other exception after writing to
-stderr.
+**Main**: Application entry point. First calls `HelpCommand.Default.TryRun(args, out exitCode)`.
+The `help` command is not an option, so `Context.Create` would reject it; when the help command
+answers, `Main` returns its exit code (see *Help Command* in the system design). Otherwise `Main`
+creates a `Context` from `args`, calls `Run(context)`, and returns `context.ExitCode`. Catches
+`ArgumentException` and `InvalidOperationException` from `Context.Create`, writes to stderr,
+returns 1. Re-throws any other exception after writing to stderr.
 
 - *Parameters*: `string[] args` — command-line arguments passed by the .NET runtime.
-- *Returns*: `int` — exit code (0 = success, 1 = error).
+- *Returns*: `int` — exit code (0 = success, 1 = error, or the exit code of the help command).
 - *Preconditions*: None.
 - *Postconditions*: Returns 0 when no errors were recorded; returns 1 when any error was recorded
   or an expected exception was caught.
@@ -52,8 +55,9 @@ notice to `context`.
 - *Postconditions*: Banner written to context output.
 
 **PrintHelp** *(private)*: Writes the full usage and options text to `context`, including the
-dictionary generation options `--column-widths <w1,w2[,w3]>`, `--config <file>`, `--root <dir>`,
-`--file-access <mode>` and `--allow-root <dir>`.
+usage line `dictionarymark help [topic]` and the dictionary generation options
+`--column-widths <w1,w2[,w3]>`, `--config <file>`, `--root <dir>`, `--file-access <mode>` and
+`--allow-root <dir>`, and ends with `HelpCommand.Default.Footer`, the pointer to the help command.
 
 - *Parameters*: `Context context` — output channel.
 - *Returns*: `void`.
@@ -78,11 +82,16 @@ Two layers:
 2. Unexpected errors — Any other exception written to stderr then re-thrown so the .NET runtime
    can record it.
 
+When the first argument is `help`, `HelpCommand` answers and its exit code is returned without
+creating a `Context`.
+
 `Run` itself does not throw; subsystem errors (`Validation`, `DictionaryGenerator`) are handled
 internally via `context.WriteError`.
 
 ### Dependencies
 
+- **HelpCommand** — CLI subsystem; answers the `help` command before the options are parsed, and
+  supplies the footer that ends the usage text.
 - **Context** — CLI subsystem; provides parsed flags, output channels, and exit code state.
 - **Validation** — SelfTest subsystem; invoked when `--validate` is specified.
 - **DictionaryGenerator** — Dictionary subsystem; invoked when `--input` patterns or

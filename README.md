@@ -46,6 +46,9 @@ gate](https://raw.githubusercontent.com/demaconsulting/DictionaryMark/main/docs/
 - 🔒 **File Access** - Confine the inputs and outputs of configuration-file tables to chosen folders and refuse links
 - 🌐 **Multi-Platform** - Windows, Linux, and macOS on .NET 10 and 11
 - ✅ **Self-Validation** - Built-in qualification tests for regulated environments
+- 📚 **Built-in Help** - `dictionarymark help` serves help topics
+  ([DemaConsulting.HelpCards](https://www.nuget.org/packages/DemaConsulting.HelpCards)) with runnable
+  examples, search, and JSON output for AI agents
 
 ## Installation
 
@@ -108,6 +111,13 @@ dotnet tool update DemaConsulting.DictionaryMark
 
 ```bash
 dictionarymark --input glossary.yaml --format table --section "Glossary" --output docs/glossary.md
+```
+
+List the built-in help topics, then print one with its runnable examples:
+
+```bash
+dictionarymark help
+dictionarymark help getting-started
 ```
 
 ### Options

@@ -1,0 +1,6 @@
+---
+format: table
+theme: dark
+tables:
+  - input: terms.yaml
+    output: out.md
