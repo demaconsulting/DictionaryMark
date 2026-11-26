@@ -16,6 +16,23 @@ Display usage information:
 dictionarymark --help
 ```
 
+The usage information ends with a pointer to the built-in help.
+
+## Built-in Help
+
+The `help` command prints help topics that explain each task with worked examples, for people and
+for AI agents that have only the installed tool. List the topics, then print one with its examples:
+
+```bash
+dictionarymark help
+dictionarymark help getting-started
+```
+
+Add `--search <words>` to find a topic, `--example <name>` to print one example of a topic, and
+`--json` to get any help answer as JSON. `help` is a command, not an option: it must be the first
+argument, and `--silent` and `--log` do not apply to it. The `help` command exits with code 0; an
+unknown topic or a wrong help argument prints a hint and exits with code 2.
+
 ## Generate a Bullet List
 
 Given a YAML file `glossary.yaml`:
@@ -506,6 +523,10 @@ non-zero exit code. For example:
 ```text
 Error: Unsupported argument '--unknown'
 ```
+
+Argument errors, such as an unknown option or an option without its value, and problems in the
+configuration file are found before `--silent` and `--log` take effect, so they are always printed
+and never logged.
 
 Conflicting entries for the same term across input files also produce a clear error naming the
 differing fields and both files:
