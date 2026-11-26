@@ -22,14 +22,25 @@ examples:
     content: |
       dotnet new tool-manifest
       dotnet tool install --local DemaConsulting.DictionaryMark
-  - name: run-in-ci
+  - name: ci-steps
     kind: snippet
-    language: shell
-    save-as: run-in-ci.sh
-    description: Restore the manifest tools in CI, then run the tool.
+    language: yaml
+    save-as: ci-steps.yaml
+    description: GitHub Actions steps that regenerate the tables and fail when they are stale.
     content: |
-      dotnet tool restore
-      dotnet {{tool}} --input glossary.yaml --format table --output docs/glossary.md
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+      - name: Restore the local .NET tools
+        run: dotnet tool restore
+      - name: Generate the tables
+        run: dotnet {{tool}} --config dictionarymark.yaml --file-access roots,no-symlinks
+      - name: Check that the committed tables are current
+        shell: bash
+        run: git diff --exit-code -- generated
   - name: version
     kind: command
     language: shell
@@ -66,16 +77,16 @@ examples:
 It reads YAML dictionary files of terms and writes them as a Markdown
 bullet list or table, ready to include in a document.
 
-1. **Install it.** The tool needs the .NET 10 SDK or later. In CI, set it
-   up first when the runner has an older .NET, for example with
-   `actions/setup-dotnet` and `dotnet-version: 10.x`.
-   For a repository or CI, install it as a local tool. Run the commands
+1. **Install it.** The tool needs the .NET 10 SDK or later. For a
+   repository or CI, install it as a local tool. Run the commands
    that [[#install-local]] prints once, without
    `dotnet new tool-manifest` when `.config/dotnet-tools.json` exists, and
-   commit that file. In CI, run `dotnet tool restore` first, then run the
-   tool as `dotnet {{tool}}`, as in the commands that
-   [[#run-in-ci]] prints. For one machine, install it globally and
-   run it as `{{tool}}`:
+   commit that file. In GitHub Actions, copy the steps that
+   [[#ci-steps]] prints. They set up .NET 10 with
+   `actions/setup-dotnet`, run `dotnet tool restore`, write the tables of
+   `dictionarymark.yaml` (see [[configuration]] and [[file-access]]), and
+   fail when they differ from the files committed in `generated`. For one
+   machine, install it globally and run it as `{{tool}}`:
 
    ```bash
    dotnet tool install -g DemaConsulting.DictionaryMark
